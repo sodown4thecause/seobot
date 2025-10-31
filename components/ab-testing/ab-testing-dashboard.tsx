@@ -38,8 +38,6 @@ import { useToast } from '@/hooks/use-toast'
 import {
   createABTest,
   startABTest,
-  pauseABTest,
-  completeABTest,
   getUserABTests,
   calculateABTestInsights,
   ABTest,

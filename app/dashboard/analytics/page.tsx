@@ -287,7 +287,7 @@ export default function AnalyticsPage() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ endpoint, percent }) => `${endpoint.split('/').pop()}: ${(percent * 100).toFixed(0)}%`}
+                label={(props: any) => `${props.endpoint.split('/').pop()}: ${(props.percent * 100).toFixed(0)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="requestCount"
