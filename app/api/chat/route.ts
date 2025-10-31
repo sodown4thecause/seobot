@@ -278,7 +278,7 @@ Be conversational and helpful. Ask clarifying questions when needed. Keep respon
 }
 
 async function saveChatMessages(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   messages: ChatMessage[],
   onboardingContext?: OnboardingContext

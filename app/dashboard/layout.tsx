@@ -1,4 +1,5 @@
 'use client'
+import { LayoutDashboard, Search, Sparkles } from 'lucide-react'
 
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'

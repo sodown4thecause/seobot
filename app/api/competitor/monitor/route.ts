@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { serverEnv } from '@/lib/config/env';
-import { dataForSEOService } from '@/lib/api/dataforseo-service';
+import { domainMetrics, serpAnalysis } from '@/lib/api/dataforseo-service';
 
 export const runtime = 'edge';
 
@@ -83,19 +83,19 @@ export async function POST(request: NextRequest) {
     for (const competitor of competitors) {
       try {
         // Get domain metrics
-        const metricsResult = await dataForSEOService.domainMetrics(competitor.domain);
+        const metricsResult = await domainMetrics({ domain: competitor.domain });
         
         let domainRank = 0;
         let backlinksCount = 0;
         let referringDomains = 0;
         let organicTrafficEst = 0;
 
-        if (metricsResult.success) {
-          const metrics = metricsResult.data;
+        if (metricsResult.success && metricsResult.data.tasks?.[0]?.result?.[0]) {
+          const metrics = metricsResult.data.tasks[0].result[0];
           domainRank = metrics.rank || 0;
           backlinksCount = metrics.backlinks || 0;
-          referringDomains = metrics.referringDomains || 0;
-          organicTrafficEst = metrics.organicTraffic || 0;
+          referringDomains = metrics.referring_domains || 0;
+          organicTrafficEst = 0; // Not available in current API
         }
 
         // Track keyword rankings
@@ -104,18 +104,19 @@ export async function POST(request: NextRequest) {
 
         if (trackedKeywords.length > 0) {
           for (const keyword of trackedKeywords.slice(0, 10)) {  // Limit to 10 keywords per competitor
-            const serpResult = await dataForSEOService.serpAnalysis(keyword, 'United States');
+            const serpResult = await serpAnalysis({ keyword, location_code: 2840 });
 
-            if (serpResult.success) {
-              const competitorResult = serpResult.data.organicResults.find(
-                r => r.url.includes(competitor.domain)
+            if (serpResult.success && serpResult.data.tasks?.[0]?.result?.[0]?.items) {
+              const items = serpResult.data.tasks[0].result[0].items;
+              const competitorResult = items.find(
+                (r: any) => r.url?.includes(competitor.domain)
               );
 
               if (competitorResult) {
                 keywordData.push({
                   keyword,
-                  position: competitorResult.position,
-                  url: competitorResult.url,
+                  position: Number(competitorResult.position) || 0,
+                  url: competitorResult.url || '',
                 });
               }
             }

@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import { Image as ImageIcon, Download, Sparkles, Loader2, Wand2 } from 'lucide-react'
-import { generateImageWithGemini, SEOPrompts, type GeminiImageRequest } from '@/lib/ai/image-generation'
+import { SEOPrompts, type GeminiImageRequest } from '@/lib/ai/image-generation'
 
 export function ImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -37,10 +37,24 @@ export function ImageGenerator() {
         size,
       }
 
-      const result = await generateImageWithGemini(request)
+      // Call API route instead of direct function
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      })
 
-      // Convert Uint8Array to blob URL
-      const blob = new Blob([result.data], { type: result.mediaType })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to generate image')
+      }
+
+      const result = await response.json()
+
+      // Convert base64 to blob URL
+      const base64Data = result.data
+      const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+      const blob = new Blob([binaryData], { type: result.mediaType })
       const imageUrl = URL.createObjectURL(blob)
       setGeneratedImage(imageUrl)
     } catch (err: any) {
@@ -68,64 +82,64 @@ export function ImageGenerator() {
   }
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+    <div className="glass rounded-xl p-6 space-y-6 shadow-purple">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <ImageIcon className="w-5 h-5 text-primary" />
+        <div className="p-2 glass-dark rounded-lg">
+          <ImageIcon className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold">AI Image Generator</h3>
-          <p className="text-sm text-muted-foreground">
-            Generate custom images for your articles using Gemini 2.5 Flash
+          <h3 className="text-lg font-semibold text-white">AI Image Generator</h3>
+          <p className="text-sm text-white/70">
+            Generate custom images for your articles using DALL-E 3
           </p>
         </div>
       </div>
 
       {/* Prompt Input */}
       <div className="space-y-2">
-        <label className="text-sm font-medium">Image Description</label>
+        <label className="text-sm font-medium text-white">Image Description</label>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Describe the image you want to generate..."
-          className="w-full h-24 px-3 py-2 bg-background border border-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+          className="w-full h-24 px-3 py-2 bg-white/10 border border-white/20 rounded-lg resize-none text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/30"
         />
         {error && (
-          <p className="text-sm text-red-500">{error}</p>
+          <p className="text-sm text-red-400">{error}</p>
         )}
       </div>
 
       {/* SEO Templates */}
       <div className="space-y-2">
-        <label className="text-sm font-medium">SEO-Optimized Templates</label>
+        <label className="text-sm font-medium text-white">SEO-Optimized Templates</label>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => useSEOTemplate('blogFeatured')}
-            className="px-3 py-1.5 text-xs bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
           >
             Blog Featured
           </button>
           <button
             onClick={() => useSEOTemplate('socialShare')}
-            className="px-3 py-1.5 text-xs bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
           >
             Social Share
           </button>
           <button
             onClick={() => useSEOTemplate('productShowcase')}
-            className="px-3 py-1.5 text-xs bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
           >
             Product
           </button>
           <button
             onClick={() => useSEOTemplate('infographic')}
-            className="px-3 py-1.5 text-xs bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
           >
             Infographic
           </button>
           <button
             onClick={() => useSEOTemplate('howTo')}
-            className="px-3 py-1.5 text-xs bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
           >
             How-To
           </button>
@@ -135,44 +149,44 @@ export function ImageGenerator() {
       {/* Configuration */}
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Style</label>
+          <label className="text-sm font-medium text-white">Style</label>
           <select
             value={style}
             onChange={(e) => setStyle(e.target.value as GeminiImageRequest['style'])}
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/30"
           >
-            <option value="realistic">Realistic</option>
-            <option value="artistic">Artistic</option>
-            <option value="illustrated">Illustrated</option>
-            <option value="photographic">Photographic</option>
+            <option value="realistic" className="bg-purple-mid">Realistic</option>
+            <option value="artistic" className="bg-purple-mid">Artistic</option>
+            <option value="illustrated" className="bg-purple-mid">Illustrated</option>
+            <option value="photographic" className="bg-purple-mid">Photographic</option>
           </select>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Type</label>
+          <label className="text-sm font-medium text-white">Type</label>
           <select
             value={type}
             onChange={(e) => setType(e.target.value as GeminiImageRequest['type'])}
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/30"
           >
-            <option value="blog">Blog</option>
-            <option value="social">Social Media</option>
-            <option value="product">Product</option>
-            <option value="infographic">Infographic</option>
-            <option value="custom">Custom</option>
+            <option value="blog" className="bg-purple-mid">Blog</option>
+            <option value="social" className="bg-purple-mid">Social Media</option>
+            <option value="product" className="bg-purple-mid">Product</option>
+            <option value="infographic" className="bg-purple-mid">Infographic</option>
+            <option value="custom" className="bg-purple-mid">Custom</option>
           </select>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Size</label>
+          <label className="text-sm font-medium text-white">Size</label>
           <select
             value={size}
             onChange={(e) => setSize(e.target.value as GeminiImageRequest['size'])}
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/30"
           >
-            <option value="small">Small (512x512)</option>
-            <option value="medium">Medium (1024x1024)</option>
-            <option value="large">Large (1792x1024)</option>
+            <option value="small" className="bg-purple-mid">Small (512x512)</option>
+            <option value="medium" className="bg-purple-mid">Medium (1024x1024)</option>
+            <option value="large" className="bg-purple-mid">Large (1792x1024)</option>
           </select>
         </div>
       </div>
@@ -181,7 +195,7 @@ export function ImageGenerator() {
       <button
         onClick={handleGenerate}
         disabled={isGenerating || !prompt.trim()}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 glass-dark text-white rounded-lg hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-purple"
       >
         {isGenerating ? (
           <>
@@ -203,11 +217,11 @@ export function ImageGenerator() {
             <img
               src={generatedImage}
               alt="Generated image"
-              className="w-full rounded-lg border border-border"
+              className="w-full rounded-lg border border-white/20 shadow-purple-lg"
             />
             <button
               onClick={handleDownload}
-              className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 p-2 glass-dark hover:bg-white/30 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
               title="Download image"
             >
               <Download className="w-4 h-4" />

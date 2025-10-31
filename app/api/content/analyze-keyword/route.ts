@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { serverEnv } from '@/lib/config/env';
-import { dataForSEOService } from '@/lib/api/dataforseo-service';
+import { keywordResearch, serpAnalysis } from '@/lib/api/dataforseo-service';
 
 export const runtime = 'edge';
 
@@ -67,35 +67,43 @@ export async function POST(request: NextRequest) {
         : 'United States');
 
     // Get keyword data from DataForSEO
-    const keywordResult = await dataForSEOService.keywordResearch([keyword], targetLocation);
+    const keywordResult = await keywordResearch({
+      keywords: [keyword],
+      location_code: 2840 // US default
+    });
 
     if (!keywordResult.success) {
       return NextResponse.json(
-        { error: keywordResult.error.message },
-        { status: keywordResult.error.statusCode || 500 }
+        { error: keywordResult.error?.message || 'Failed to get keyword data' },
+        { status: keywordResult.error?.statusCode || 500 }
       );
     }
 
-    const keywordData = keywordResult.data[0];
+    const keywordResultData = keywordResult.data.tasks?.[0]?.result?.[0];
 
-    if (!keywordData) {
+    if (!keywordResultData) {
       return NextResponse.json(
         { error: 'No keyword data found' },
         { status: 404 }
       );
     }
 
+    const keywordData = keywordResultData.keyword_data;
+
     // Get SERP analysis for top competitors
-    const serpResult = await dataForSEOService.serpAnalysis(keyword, targetLocation);
+    const serpResult = await serpAnalysis({
+      keyword,
+      location_code: 2840
+    });
 
     const topCompetitors =
-      serpResult.success
-        ? serpResult.data.organicResults.slice(0, 3).map((result) => ({
-            url: result.url.replace(/^https?:\/\/(www\.)?/, ''),
-            position: result.position,
-            title: result.title,
+      serpResult.success && serpResult.data.tasks?.[0]?.result?.[0]?.items
+        ? serpResult.data.tasks[0].result[0].items.slice(0, 3).map((result: any) => ({
+            url: (result.url || '').replace(/^https?:\/\/(www\.)?/, ''),
+            position: result.position || 0,
+            title: result.title || '',
             // Estimate word count from description length
-            wordCount: Math.round((result.description?.length || 500) * 3),
+            wordCount: Math.round(((result.description?.length || 500) * 3)),
           }))
         : [];
 
@@ -133,15 +141,16 @@ export async function POST(request: NextRequest) {
       : `${titleKeyword}: Everything You Need to Know (${currentYear})`;
 
     // Calculate estimated traffic (simplified formula)
-    const estimatedTraffic = Math.round(keywordData.searchVolume * 0.2);
+    const searchVolume = keywordData.search_volume || 0;
+    const estimatedTraffic = Math.round(searchVolume * 0.2);
 
     const analysisData = {
-      keyword: keywordData.keyword,
-      volume: keywordData.searchVolume,
-      difficulty: keywordData.difficulty,
-      cpc: keywordData.cpc,
-      competition: keywordData.competition,
-      relatedKeywords: keywordData.relatedKeywords.slice(0, 5),
+      keyword: keywordData.keyword || keyword,
+      volume: searchVolume,
+      difficulty: keywordData.keyword_difficulty || 0,
+      cpc: keywordData.cpc || 0,
+      competition: keywordData.competition || 0,
+      relatedKeywords: [], // TODO: Fetch from DataForSEO related keywords endpoint
       recommendedFormat,
       recommendedTitle,
       topCompetitors,

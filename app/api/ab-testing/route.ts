@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
         await recordImpression(
           data.testId,
           data.variantId,
-          request.headers.get('user-agent'),
-          request.ip
+          request.headers.get('user-agent') || undefined,
+          request.headers.get('x-forwarded-for')?.split(',')[0] || undefined
         )
         result = { success: true }
         break
@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
         await recordClick(
           data.testId,
           data.variantId,
-          request.headers.get('user-agent'),
-          request.ip
+          request.headers.get('user-agent') || undefined,
+          request.headers.get('x-forwarded-for')?.split(',')[0] || undefined
         )
         result = { success: true }
         break

@@ -8,7 +8,6 @@ import {
   CACHE_PREFIXES,
   CACHE_TTL,
 } from '../redis/client'
-import crypto from 'crypto'
 
 /**
  * OpenAI embedding model for consistent 1536-dimensional vectors
@@ -29,8 +28,12 @@ const EMBEDDING_CONFIG = {
 /**
  * Generate a hash for text to use as cache key
  */
-function getTextHash(text: string): string {
-  return crypto.createHash('sha256').update(text.trim().toLowerCase()).digest('hex')
+async function getTextHash(text: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(text.trim().toLowerCase())
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
 /**
@@ -66,7 +69,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     const sanitizedText = text.trim().slice(0, 8000) // OpenAI max ~8k tokens
 
     // Check Redis cache first (embeddings rarely change, cache for 30 days)
-    const textHash = getTextHash(sanitizedText)
+    const textHash = await getTextHash(sanitizedText)
     const cacheKey = `${CACHE_PREFIXES.EMBEDDING}${textHash}`
     const cached = await cacheGet<number[]>(cacheKey)
 
