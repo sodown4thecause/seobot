@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "publish": "Publish",
+    "draft": "Draft",
+    "published": "Published",
+    "continue": "Continue",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "opportunities": "Opportunities",
+    "content": "Content",
+    "analytics": "Analytics",
+    "competitors": "Competitors",
+    "settings": "Settings"
+  },
+  "seo": {
+    "seo_score": "SEO Score",
+    "search_volume": "Search Volume",
+    "keyword_difficulty": "Keyword Difficulty",
+    "domain_authority": "Domain Authority",
+    "backlinks": "Backlinks",
+    "rankings": "Rankings",
+    "organic_traffic": "Organic Traffic",
+    "keyword_research": "Keyword Research",
+    "competitor_analysis": "Competitor Analysis",
+    "content_optimization": "Content Optimization",
+    "link_building": "Link Building"
+  },
+  "content": {
+    "blog_post": "Blog Post",
+    "product_page": "Product Page",
+    "landing_page": "Landing Page",
+    "word_count": "Word Count",
+    "reading_time": "Reading Time",
+    "meta_title": "Meta Title",
+    "meta_description": "Meta Description",
+    "internal_links": "Internal Links"
+  },
+  "actions": {
+    "create_content": "Create Content",
+    "analyze_keyword": "Analyze Keyword",
+    "track_competitors": "Track Competitors",
+    "generate_report": "Generate Report",
+    "export_data": "Export Data"
+  },
+  "time": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "this_week": "This Week",
+    "this_month": "This Month",
+    "last_7_days": "Last 7 Days",
+    "last_30_days": "Last 30 Days",
+    "last_90_days": "Last 90 Days"
+  },
+  "onboarding": {
+    "step_1_title": "Business Profile",
+    "step_1_description": "Tell us about your business",
+    "step_2_title": "Brand Voice",
+    "step_2_description": "Let's capture your unique style",
+    "step_3_title": "Competitors",
+    "step_3_description": "Discover who you're competing against",
+    "step_4_title": "Goals & Targeting",
+    "step_4_description": "Define your content strategy",
+    "step_5_title": "CMS Integration",
+    "step_5_description": "Connect your website",
+    "complete_title": "You're all set!",
+    "complete_description": "Your SEO command center is ready"
+  },
+  "dashboard": {
+    "welcome_back": "Welcome back!",
+    "seo_health_score": "SEO Health Score",
+    "top_opportunities": "Top Opportunities",
+    "recent_content": "Recent Content",
+    "competitor_updates": "Competitor Updates",
+    "quick_actions": "Quick Actions",
+    "create_new_content": "Create New Content",
+    "view_all_opportunities": "View All Opportunities",
+    "analyze_competitors": "Analyze Competitors"
+  },
+  "ai_assistant": {
+    "welcome_message": "Hi! I'm your AI SEO assistant. How can I help you rank higher today?",
+    "type_message": "Type your message...",
+    "send": "Send",
+    "analyzing": "Analyzing...",
+    "generating_content": "Generating content...",
+    "research_complete": "Research complete!",
+    "content_ready": "Your content is ready!"
+  },
+  "opportunities": {
+    "no_opportunities": "No opportunities found",
+    "high_priority": "High Priority",
+    "medium_priority": "Medium Priority",
+    "low_priority": "Low Priority",
+    "quick_win": "Quick Win",
+    "trending_topic": "Trending Topic",
+    "competitor_gap": "Competitor Gap",
+    "analyze_this_keyword": "Analyze This Keyword",
+    "create_content_for_this": "Create Content For This"
+  },
+  "content_editor": {
+    "title_placeholder": "Enter your title...",
+    "content_placeholder": "Start writing your content...",
+    "seo_optimization": "SEO Optimization",
+    "seo_suggestions": "SEO Suggestions",
+    "add_internal_link": "Add Internal Link",
+    "optimize_for_seo": "Optimize for SEO",
+    "preview": "Preview",
+    "save_draft": "Save Draft",
+    "publish_now": "Publish Now",
+    "schedule": "Schedule"
+  },
+  "analytics": {
+    "overview": "Overview",
+    "traffic_trends": "Traffic Trends",
+    "ranking_changes": "Ranking Changes",
+    "top_keywords": "Top Keywords",
+    "content_performance": "Content Performance",
+    "backlink_growth": "Backlink Growth",
+    "competitor_comparison": "Competitor Comparison",
+    "export_report": "Export Report",
+    "date_range": "Date Range"
+  },
+  "settings": {
+    "general": "General",
+    "account": "Account",
+    "integrations": "Integrations",
+    "billing": "Billing",
+    "team": "Team",
+    "notifications": "Notifications",
+    "api_keys": "API Keys",
+    "language": "Language",
+    "timezone": "Timezone",
+    "email_preferences": "Email Preferences"
+  },
+  "errors": {
+    "something_went_wrong": "Something went wrong",
+    "try_again": "Please try again",
+    "contact_support": "Contact support",
+    "network_error": "Network error",
+    "validation_error": "Validation error",
+    "unauthorized": "Unauthorized access"
+  },
+  "success": {
+    "content_published": "Content published successfully!",
+    "changes_saved": "Changes saved successfully!",
+    "integration_connected": "Integration connected successfully!",
+    "profile_updated": "Profile updated successfully!"
+  }
+}

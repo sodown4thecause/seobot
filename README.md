@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SEO Platform - AI-Powered SEO & Content Creation
 
-## Getting Started
+An intelligent SEO and content creation platform that combines competitive analysis, keyword research, and AI-powered writing to help businesses create optimized content that ranks.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Conversational Onboarding**: AI-guided setup through natural conversation
+- **Competitor Analysis**: Automated competitor discovery and monitoring with DataForSEO
+- **Keyword Research**: Find untapped keyword opportunities with search volume and difficulty
+- **AI Content Generation**: Create SEO-optimized content using Gemini AI
+- **Brand Voice Extraction**: Learn your brand's voice from social media posts
+- **Real-time Research**: Get latest statistics and trends with Perplexity AI
+- **Content Extraction**: Clean text and metadata extraction with Jina AI
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 16, React 19, TailwindCSS, shadcn/ui, Framer Motion
+- **Backend**: Next.js API Routes, Edge Runtime
+- **Database**: Supabase (PostgreSQL + Auth + Storage)
+- **AI/ML**: Gemini 2.0, Vercel AI SDK, Perplexity AI
+- **External APIs**: DataForSEO, Jina AI, Apify
+
+## 📋 Prerequisites
+
+- Node.js 18+ or 24+
+- npm
+- Supabase account
+- API keys: Google AI, DataForSEO, Perplexity, Jina, Apify (optional)
+
+## 🔧 Setup
+
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Environment variables** - Create `.env.local`:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-key
+   SUPABASE_SERVICE_ROLE_KEY=your-key
+   GOOGLE_API_KEY=your-key
+   DATAFORSEO_LOGIN=your-email
+   DATAFORSEO_PASSWORD=your-password
+   PERPLEXITY_API_KEY=your-key
+   JINA_API_KEY=your-key
+   APIFY_API_KEY=your-key
+   ```
+
+3. **Run Supabase migrations**
+   Apply migrations from `supabase/migrations/` to your Supabase project.
+
+4. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+## 📜 Scripts
+
+- `npm run dev` - Development server
+- `npm run build` - Production build
+- `npm run lint` - Run ESLint
+- `npm run lint:fix` - Fix linting errors
+- `npm run typecheck` - Type checking
+
+## 🏗️ Project Structure
+
+```
+app/                  # Next.js pages and API routes
+components/           # React components
+  ui/                # shadcn/ui components
+  chat/              # Chat interface
+  onboarding/        # Onboarding flow
+lib/                 # Utilities and services
+  api/               # External API services
+  config/            # Environment validation
+  supabase/          # Database client
+  types/             # TypeScript types
+supabase/migrations/ # Database schema
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚧 Development Status
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Completed (12/20 phases)**: Landing page, onboarding, chat interface, API services, database schema, component library
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**In Progress**: Real service integration, content creation, monitoring
 
-## Learn More
+**Planned**: CMS integrations, link building, analytics, testing
 
-To learn more about Next.js, take a look at the following resources:
+## 📄 License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Proprietary - All rights reserved

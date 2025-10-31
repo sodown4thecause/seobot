@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "publish": "Publier",
+    "draft": "Brouillon",
+    "published": "Publié",
+    "continue": "Continuer",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent"
+  },
+  "navigation": {
+    "dashboard": "Tableau de Bord",
+    "opportunities": "Opportunités",
+    "content": "Contenu",
+    "analytics": "Analytiques",
+    "competitors": "Concurrents",
+    "settings": "Paramètres"
+  },
+  "seo": {
+    "seo_score": "Score SEO",
+    "search_volume": "Volume de Recherche",
+    "keyword_difficulty": "Difficulté du Mot-clé",
+    "domain_authority": "Autorité de Domaine",
+    "backlinks": "Backlinks",
+    "rankings": "Classements",
+    "organic_traffic": "Trafic Organique",
+    "keyword_research": "Recherche de Mots-clés",
+    "competitor_analysis": "Analyse des Concurrents",
+    "content_optimization": "Optimisation du Contenu",
+    "link_building": "Création de Liens"
+  },
+  "content": {
+    "blog_post": "Article de Blog",
+    "product_page": "Page de Produit",
+    "landing_page": "Page d'Atterrissage",
+    "word_count": "Nombre de Mots",
+    "reading_time": "Temps de Lecture",
+    "meta_title": "Meta Titre",
+    "meta_description": "Meta Description",
+    "internal_links": "Liens Internes"
+  },
+  "actions": {
+    "create_content": "Créer du Contenu",
+    "analyze_keyword": "Analyser le Mot-clé",
+    "track_competitors": "Suivre les Concurrents",
+    "generate_report": "Générer un Rapport",
+    "export_data": "Exporter les Données"
+  },
+  "time": {
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "this_week": "Cette Semaine",
+    "this_month": "Ce Mois",
+    "last_7_days": "Derniers 7 Jours",
+    "last_30_days": "Derniers 30 Jours",
+    "last_90_days": "Derniers 90 Jours"
+  },
+  "onboarding": {
+    "step_1_title": "Profil d'Entreprise",
+    "step_1_description": "Parlez-nous de votre entreprise",
+    "step_2_title": "Voix de Marque",
+    "step_2_description": "Capturons votre style unique",
+    "step_3_title": "Concurrents",
+    "step_3_description": "Découvrez contre qui vous êtes en concurrence",
+    "step_4_title": "Objectifs et Ciblage",
+    "step_4_description": "Définissez votre stratégie de contenu",
+    "step_5_title": "Intégration CMS",
+    "step_5_description": "Connectez votre site web",
+    "complete_title": "Tout est prêt !",
+    "complete_description": "Votre centre de commandement SEO est prêt"
+  },
+  "dashboard": {
+    "welcome_back": "Bon retour !",
+    "seo_health_score": "Score de Santé SEO",
+    "top_opportunities": "Principales Opportunités",
+    "recent_content": "Contenu Récent",
+    "competitor_updates": "Mises à jour des Concurrents",
+    "quick_actions": "Actions Rapides",
+    "create_new_content": "Créer du Nouveau Contenu",
+    "view_all_opportunities": "Voir Toutes les Opportunités",
+    "analyze_competitors": "Analyser les Concurrents"
+  },
+  "ai_assistant": {
+    "welcome_message": "Bonjour ! Je suis votre assistant SEO IA. Comment puis-je vous aider à mieux vous classer aujourd'hui ?",
+    "type_message": "Tapez votre message...",
+    "send": "Envoyer",
+    "analyzing": "Analyse en cours...",
+    "generating_content": "Génération du contenu...",
+    "research_complete": "Recherche terminée !",
+    "content_ready": "Votre contenu est prêt !"
+  },
+  "opportunities": {
+    "no_opportunities": "Aucune opportunité trouvée",
+    "high_priority": "Haute Priorité",
+    "medium_priority": "Priorité Moyenne",
+    "low_priority": "Basse Priorité",
+    "quick_win": "Victoire Rapide",
+    "trending_topic": "Sujet Tendance",
+    "competitor_gap": "Écart Concurrentiel",
+    "analyze_this_keyword": "Analyser ce Mot-clé",
+    "create_content_for_this": "Créer du Contenu pour Ceci"
+  },
+  "content_editor": {
+    "title_placeholder": "Entrez votre titre...",
+    "content_placeholder": "Commencez à écrire votre contenu...",
+    "seo_optimization": "Optimisation SEO",
+    "seo_suggestions": "Suggestions SEO",
+    "add_internal_link": "Ajouter un Lien Interne",
+    "optimize_for_seo": "Optimiser pour le SEO",
+    "preview": "Aperçu",
+    "save_draft": "Enregistrer le Brouillon",
+    "publish_now": "Publier Maintenant",
+    "schedule": "Programmer"
+  },
+  "analytics": {
+    "overview": "Aperçu",
+    "traffic_trends": "Tendances de Trafic",
+    "ranking_changes": "Changements de Classement",
+    "top_keywords": "Principaux Mots-clés",
+    "content_performance": "Performance du Contenu",
+    "backlink_growth": "Croissance des Backlinks",
+    "competitor_comparison": "Comparaison des Concurrents",
+    "export_report": "Exporter le Rapport",
+    "date_range": "Plage de Dates"
+  },
+  "settings": {
+    "general": "Général",
+    "account": "Compte",
+    "integrations": "Intégrations",
+    "billing": "Facturation",
+    "team": "Équipe",
+    "notifications": "Notifications",
+    "api_keys": "Clés API",
+    "language": "Langue",
+    "timezone": "Fuseau Horaire",
+    "email_preferences": "Préférences Email"
+  },
+  "errors": {
+    "something_went_wrong": "Quelque chose s'est mal passé",
+    "try_again": "Veuillez réessayer",
+    "contact_support": "Contacter le support",
+    "network_error": "Erreur réseau",
+    "validation_error": "Erreur de validation",
+    "unauthorized": "Accès non autorisé"
+  },
+  "success": {
+    "content_published": "Contenu publié avec succès !",
+    "changes_saved": "Modifications enregistrées avec succès !",
+    "integration_connected": "Intégration connectée avec succès !",
+    "profile_updated": "Profil mis à jour avec succès !"
+  }
+}
