@@ -655,7 +655,1032 @@ Why this works:
 - Structured for both paragraph and list snippet formats`
   },
 
-  // Add more frameworks here... continuing with remaining AEO, GEO, and Marketing frameworks
-  // Due to length, I'll create the complete file with all 20+ frameworks
+
+  // ============================================================================
+  // AEO (Answer Engine Optimization) FRAMEWORKS - continued
+  // ============================================================================
+
+  {
+    name: 'FAQ Page Optimization',
+    category: 'aeo',
+    tags: ['faq', 'questions', 'people also ask', 'schema', 'answer', 'voice search'],
+    description: `FAQ page optimization focuses on creating question-and-answer content that targets "People Also Ask" queries and voice search variations while improving user experience and reducing support load. Effective FAQ pages anticipate user questions proactively, providing immediate answers that satisfy informational intent without requiring users to navigate deeper into your site. Each FAQ should address a specific question using natural language that mirrors how users actually ask—complete sentences, conversational tone, and complete thoughts rather than keyword fragments. Organize FAQs logically by topic or customer journey stage, grouping related questions together and creating clear sections. Structure each answer concisely (50-100 words for featured snippet eligibility), provide immediate value, and link to deeper resources for users wanting more detail. FAQ schema markup (FAQPage structured data) is critical; it enables rich results in Google with expand/collapse functionality, increasing visibility and click-through rates significantly. Target long-tail question keywords that align with your products, services, or expertise, particularly those appearing in "People Also Ask" boxes for your main target keywords. Voice search optimization requires answers in natural, conversational language that directly addresses the query in the first sentence. Monitor Search Console for queries where your FAQ page appears, as this indicates potential featured snippet opportunities. Update FAQs regularly based on customer support inquiries, new products/services, seasonal questions, and Search Console data. FAQ pages also distribute link equity and can improve overall site authority when linked from multiple pages. Consider creating topic-specific FAQ sections on product pages, service pages, and category pages rather than only having a single site-wide FAQ page.`,
+    structure: {
+      sections: [
+        {
+          name: 'Question Research',
+          description: 'Identifying high-value user questions',
+          tips: [
+            'Use "People Also Ask" data from SERPs',
+            'Analyze customer support tickets',
+            'Check Quora, Reddit, and forums',
+            'Study competitor FAQ sections',
+            'Use AnswerThePublic for question ideas'
+          ]
+        },
+        {
+          name: 'Answer Format',
+          description: 'Crafting snippet-worthy responses',
+          tips: [
+            'Lead with direct answer (first 15 words)',
+            'Keep answers 50-100 words',
+            'Use conversational, natural language',
+            'Include relevant keywords naturally',
+            'Provide immediate value without clicks'
+          ]
+        },
+        {
+          name: 'FAQ Schema Markup',
+          description: 'Implementing structured data',
+          tips: [
+            'Add FAQPage schema to page',
+            'Include all question-answer pairs',
+            'Use valid JSON-LD format',
+            'Test with Google Rich Results Test',
+            'Update schema when FAQs change'
+          ]
+        },
+        {
+          name: 'Organization',
+          description: 'Logical question grouping',
+          tips: [
+            'Group by topic or user journey stage',
+            'Limit to 3-5 questions per section',
+            'Use H2s for question categories',
+            'Add anchor links for easy navigation',
+            'Link to detailed resources for elaboration'
+          ]
+        }
+      ],
+      best_practices: [
+        'Keep answers concise but complete',
+        'Use natural language matching voice search patterns',
+        'Update quarterly based on new customer questions',
+        'Link to deeper resources for expanded answers',
+        'Add FAQ sections to product/service pages',
+        'Monitor PAA (People Also Ask) for new opportunities',
+        'Use schema markup for enhanced SERP display',
+        'Make FAQs discoverable through internal linking'
+      ],
+      use_cases: [
+        'Dedicated FAQ pages for common questions',
+        'Product page FAQs addressing specific concerns',
+        'Service page FAQs for pricing/availability',
+        'Knowledge base articles with Q&A format',
+        'Help/Support center documentation',
+        'Comparison pages addressing decision factors'
+      ],
+      common_mistakes: [
+        'Answers too long or indirect',
+        'Generic questions not specific to audience',
+        'Missing FAQ schema markup',
+        'Not updating when business/services change',
+        'Asking only obvious or basic questions',
+        'Creating FAQ pages that duplicate support content',
+        'Not linking to FAQ pages from relevant pages'
+      ]
+    },
+    example: `Optimized FAQ Section:
+
+H2: Frequently Asked Questions
+
+H3: Pricing and Plans
+Q: How much does your SEO service cost?
+A: "Our SEO services start at $1,500/month and scale based on your business size and goals. Most small-to-medium businesses see the best results with our $2,500/month package, which includes keyword research, content optimization, and monthly reporting. We offer a free strategy consultation to determine the right package for your needs."
+
+[Schema markup would include this question-answer pair]
+
+H3: Timeline and Results
+Q: How long does SEO take to show results?
+A: "Most clients see initial improvements within 3-4 months, with significant results appearing around the 6-month mark. SEO is a long-term strategy—unlike paid advertising, organic rankings build momentum over time. We provide monthly progress reports so you can track improvements in traffic, rankings, and conversions."
+
+Why this works:
+- Direct, conversational answers
+- 50-80 words (snippet-optimized)
+- Includes target keywords naturally
+- Provides specific value (pricing, timeline)
+- Structured for schema markup
+- Addresses common decision factors`
+  },
+
+  {
+    name: 'How-To Content Structure',
+    category: 'aeo',
+    tags: ['howto', 'tutorial', 'steps', 'schema', 'instructions', 'guide'],
+    description: `How-to content structure optimization targets Google's HowTo rich results—visual, step-by-step search features that dominate SERP real estate and drive high click-through rates. HowTo schema markup transforms ordinary content into rich, engaging experiences with numbered steps, images, and sometimes videos. The structure must be crystal clear: begin with an introductory paragraph explaining what users will learn or accomplish, then break down the process into numbered steps (5-10 steps optimal), where each step contains a descriptive title, detailed explanation, and a high-quality image. The HowTo schema is comprehensive, requiring specific elements: name (the overall task), image (hero image representing the end result), estimated time to complete, supply lists, tool lists, and step-by-step instructions with images. Target long-tail keywords that naturally include "how to" or question words like "what," "why," or "which." The content must provide genuine value—users should be able to complete the task by following your instructions without needing additional resources. Use action verbs in step titles (Choose, Select, Create, Install, Configure) and keep each step focused on a single action. High-quality images are mandatory; Google requires an image for every HowTo schema. Include estimated completion time to set user expectations, and consider difficulty level if relevant. For complex procedures, break down steps into substeps using ordered lists. Monitor Search Console for queries triggering HowTo displays and optimize based on what users actually search.`,
+    structure: {
+      sections: [
+        {
+          name: 'Introduction',
+          description: 'Overview and value proposition',
+          tips: [
+            'Explain what users will accomplish',
+            'Include estimated completion time',
+            'Mention prerequisites if any',
+            'State benefits of completing task',
+            'Include primary keyword naturally'
+          ]
+        },
+        {
+          name: 'Step Structure',
+          description: 'Clear, actionable step organization',
+          tips: [
+            'Use numbered steps (5-10 optimal)',
+            'One action per step',
+            'Begin with strong action verbs',
+            'Include image for every step',
+            'Keep each step focused and clear'
+          ]
+        },
+        {
+          name: 'Visual Assets',
+          description: 'Images and media requirements',
+          tips: [
+            'High-quality images for each step',
+            'Show the action being described',
+            'Include tool/supply images if relevant',
+            'Use descriptive alt text',
+            'Compress images for fast loading'
+          ]
+        },
+        {
+          name: 'Schema Implementation',
+          description: 'HowTo structured data setup',
+          tips: [
+            'Add HowTo schema to page',
+            'Include all required properties',
+            'Provide estimated time in ISO format',
+            'List all tools/supplies needed',
+            'Test with Rich Results Test tool'
+          ]
+        }
+      ],
+      best_practices: [
+        'Provide genuine, actionable value',
+        'Include images for every step',
+        'Use HowTo schema markup',
+        'Target "how to" long-tail keywords',
+        'Make steps scannable with subheadings',
+        'Link to related resources',
+        'Include troubleshooting tips',
+        'Update content when processes change'
+      ],
+      use_cases: [
+        'Step-by-step tutorials and guides',
+        'Software setup and configuration',
+        'DIY projects and crafts',
+        'Cooking recipes and techniques',
+        'Home improvement projects',
+        'Technology tutorials'
+      ],
+      common_mistakes: [
+        'Missing images for steps',
+        'Steps too complex or multi-part',
+        'Not using HowTo schema markup',
+        'Generic titles without action words',
+        'Skipping prerequisites or requirements',
+        'Images don\'t match step descriptions',
+        'Content too thin or oversimplified'
+      ]
+    },
+    example: `HowTo Content Structure:
+
+Title: How to Set Up Google Analytics 4 (GA4) in 2024
+
+Introduction (100 words):
+"Learn how to set up Google Analytics 4 for your website in 15 minutes. This step-by-step guide shows you how to create a GA4 property, install tracking code, and configure essential settings to start tracking your website visitors, conversions, and user behavior. GA4 provides advanced insights compared to Universal Analytics. No technical expertise required."
+
+[Estimated Time: 15 minutes]
+
+HowTo Schema Structure:
+- Name: "How to Set Up Google Analytics 4 (GA4)"
+- Image: GA4 dashboard screenshot
+- Total Time: PT15M (15 minutes ISO format)
+- Step 1: Create GA4 Property (with screenshot)
+- Step 2: Install Tracking Code (with installation guide)
+- Step 3: Configure Data Streams (with settings screenshot)
+- Step 4: Set Up Conversion Events (with configuration steps)
+- Step 5: Create Custom Reports (with report builder screenshots)
+
+Why this works:
+- Clear value in intro (15 minutes, what\'s accomplished)
+- Action-oriented step titles
+- Images for every step
+- HowTo schema properly implemented
+- Estimated time sets expectations
+- Targets "how to" keyword naturally`
+  },
+
+  // ============================================================================
+  // SEO FRAMEWORKS - ADDITIONAL
+  // ============================================================================
+
+  {
+    name: 'Image SEO Optimization',
+    category: 'seo',
+    tags: ['images', 'alt text', 'file size', 'format', 'lazy loading', 'core web vitals'],
+    description: `Image SEO optimization ensures visual content enhances both user experience and search engine understanding while contributing to Core Web Vitals and page performance. Images significantly impact page load speed—large, unoptimized images can add seconds to load time, hurting both user experience and SEO rankings. The foundation is descriptive, keyword-rich alt text that accurately describes the image content for users who cannot see it (screen readers, image blocking, or visual impairments). Alt text should be specific and contextual, typically 5-15 words, avoiding keyword stuffing while including relevant keywords naturally. File naming conventions matter: use descriptive, hyphenated filenames (red-running-shoes-mens.jpg instead of IMG_3842.jpg), include target keywords when relevant, and keep filenames under 100 characters. Image compression is critical for Core Web Vitals: use modern formats like WebP or AVIF for smaller file sizes, compress images to 80-85% quality (often indistinguishable from 100%), resize images to display dimensions before upload (never upload 4000px images for 400px displays), and use responsive images with srcset for different screen sizes. Strategic image placement improves SEO: place images near relevant text, use captions to add context, implement lazy loading for below-fold images, and consider image sitemaps for large sites.`,
+    structure: {
+      sections: [
+        {
+          name: 'Alt Text Strategy',
+          description: 'Descriptive alternative text writing',
+          tips: [
+            'Be specific and contextual (5-15 words)',
+            'Include keywords naturally if relevant',
+            'Describe function or content clearly',
+            'Avoid "image of" or "picture of"',
+            'Don\'t stuff multiple keywords'
+          ]
+        },
+        {
+          name: 'File Optimization',
+          description: 'Technical image optimization',
+          tips: [
+            'Use descriptive, hyphenated filenames',
+            'Compress to 80-85% quality',
+            'Resize to display dimensions',
+            'Choose WebP or AVIF when possible',
+            'Keep file sizes under 100KB when possible'
+          ]
+        },
+        {
+          name: 'Responsive Images',
+          description: 'Multi-device optimization',
+          tips: [
+            'Implement srcset for different sizes',
+            'Use picture element for art direction',
+            'Set width and height attributes',
+            'Leverage lazy loading (loading="lazy")',
+            'Consider CDN for image delivery'
+          ]
+        },
+        {
+          name: 'Image Placement',
+          description: 'Strategic positioning for SEO',
+          tips: [
+            'Place near relevant text content',
+            'Use captions to add context',
+            'Include images in XML sitemaps',
+            'Link images to related content when relevant',
+            'Add images to FAQ and HowTo content'
+          ]
+        }
+      ],
+      best_practices: [
+        'Always include descriptive alt text',
+        'Use modern image formats (WebP, AVIF)',
+        'Optimize images before uploading',
+        'Implement lazy loading for performance',
+        'Use responsive images for mobile',
+        'Include images in content strategy',
+        'Monitor image performance in PageSpeed Insights',
+        'Add images to product and blog content'
+      ],
+      use_cases: [
+        'Product pages with multiple product images',
+        'Blog posts with supporting visuals',
+        'Infographics for link earning',
+        'Recipe and how-to content',
+        'E-commerce category pages',
+        'News and media websites'
+      ],
+      common_mistakes: [
+        'Missing or generic alt text',
+        'Keyword stuffing in alt attributes',
+        'Uploading full-resolution images',
+        'Using "click here" alt text',
+        'Ignoring mobile image optimization',
+        'Large file sizes slowing page speed',
+        'Not implementing responsive images'
+      ]
+    },
+    example: `Image SEO in Practice:
+
+Instead of:
+<img src="IMG_3842.jpg" alt="">
+
+Use:
+<img
+  src="red-nike-running-shoes.webp"
+  alt="Nike Air Zoom Pegasus 40 men's red running shoes on track"
+  width="400"
+  height="300"
+  loading="lazy"
+>
+
+Advanced Implementation:
+<picture>
+  <source media="(max-width: 600px)" srcset="red-nike-shoes-400w.webp">
+  <source media="(max-width: 900px)" srcset="red-nike-shoes-600w.webp">
+  <img src="red-nike-shoes-800w.webp"
+       alt="Nike Air Zoom Pegasus 40 men's red running shoes on track"
+       width="400"
+       height="300"
+       loading="lazy">
+</picture>
+
+Why this works:
+- Descriptive filename with keywords
+- Specific, contextual alt text
+- Proper dimensions prevent layout shift
+- Lazy loading improves Core Web Vitals
+- Responsive images for different screen sizes
+- WebP format reduces file size by 25-50%`
+  },
+
+  {
+    name: 'Schema Markup Implementation',
+    category: 'seo',
+    tags: ['schema', 'structured data', 'json-ld', 'rich results', 'semantic seo'],
+    description: `Schema markup implementation adds structured data to your website, helping search engines understand content context and enable rich results that dramatically improve visibility and click-through rates. Schema.org provides a vocabulary of standardized tags (in JSON-LD format) that annotate content types—from articles and products to FAQs and reviews—giving search engines precise information about meaning rather than just text. Different schema types drive specific rich results: Article schema enables headline, date published, author, and image display; Product schema shows price, availability, ratings, and reviews directly in SERPs; FAQ schema creates expandable question-answer blocks; Recipe schema displays cooking time, ingredients, and ratings; LocalBusiness schema powers knowledge panels with NAP information. Implementation requires accuracy and validation: use JSON-LD format (preferred by Google over microdata), ensure markup matches visible content (never mislead), include all required properties for each schema type, test markup with Google's Rich Results Test before publishing, and monitor Search Console for rich result impressions and errors. Context matters more than quantity—implement schema for content types that appear in your content, ensuring markup is comprehensive and accurate. Local businesses should prioritize LocalBusiness and LocalBusiness schema with NAP (Name, Address, Phone), opening hours, and geo-coordinates. E-commerce sites should focus on Product, Review, and Offer schema. Content sites should implement Article, BreadcrumbList, and FAQ schema.`,
+    structure: {
+      sections: [
+        {
+          name: 'Schema Type Selection',
+          description: 'Choosing appropriate schema for content',
+          tips: [
+            'Match schema to visible content type',
+            'Prioritize high-impact schema first',
+            'Use multiple schema types on same page',
+            'Focus on schema for main content',
+            'Avoid creating non-existent information'
+          ]
+        },
+        {
+          name: 'JSON-LD Implementation',
+          description: 'Proper structured data coding',
+          tips: [
+            'Use JSON-LD format (Google preferred)',
+            'Place in <head> or inline near content',
+            'Include @context and @type properties',
+            'Ensure all required fields present',
+            'Keep markup updated with content changes'
+          ]
+        },
+        {
+          name: 'Content Alignment',
+          description: 'Ensuring markup matches content',
+          tips: [
+            'Schema must match visible content exactly',
+            'Don\'t include information not on page',
+            'Update markup when content changes',
+            'Ensure dates and prices are current',
+            'Include accurate review and rating data'
+          ]
+        },
+        {
+          name: 'Testing and Monitoring',
+          description: 'Validation and performance tracking',
+          tips: [
+            'Test with Google Rich Results Test',
+            'Monitor Search Console for errors',
+            'Track rich result impressions',
+            'Check markup after site changes',
+            'Validate structured data regularly'
+          ]
+        }
+      ],
+      best_practices: [
+        'Implement schema for high-value pages first',
+        'Use Google\'s preferred JSON-LD format',
+        'Test all markup before going live',
+        'Keep schema updated with content changes',
+        'Focus on accuracy over quantity',
+        'Use multiple relevant schema types',
+        'Monitor Search Console for rich results',
+        'Follow Google\'s schema guidelines strictly'
+      ],
+      use_cases: [
+        'E-commerce product pages (Product schema)',
+        'Blog articles and news (Article schema)',
+        'FAQ sections (FAQ schema)',
+        'Local business websites (LocalBusiness)',
+        'Restaurant and recipe sites (Recipe)',
+        'Event listings (Event schema)',
+        'Organization websites (Organization)'
+      ],
+      common_mistakes: [
+        'Schema doesn\'t match visible content',
+        'Missing required schema properties',
+        'Using incorrect schema types',
+        'Not testing markup before publishing',
+        'Including made-up information in markup',
+        'Letting schema become outdated',
+        'Keyword stuffing in schema properties'
+      ]
+    },
+    example: `Complete Product Schema Example:
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "Nike Air Zoom Pegasus 40 Running Shoes",
+  "image": [
+    "https://example.com/images/red-nike-shoes-1.jpg",
+    "https://example.com/images/red-nike-shoes-2.jpg"
+  ],
+  "description": "Men's lightweight running shoes with responsive cushioning",
+  "sku": "PEG40-RED-10",
+  "brand": {
+    "@type": "Brand",
+    "name": "Nike"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "129.99",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "https://example.com/products/nike-pegasus-40"
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.5",
+    "reviewCount": "187"
+  }
+}
+</script>
+
+Why this works:
+- JSON-LD format (Google preferred)
+- All required Product properties included
+- Matches visible product information
+- Includes Offers for price and availability
+- Has AggregateRating for star display
+- Proper schema.org vocabulary
+- Ready for rich result display`
+  },
+
+  // ============================================================================
+  // ADDITIONAL SEO FRAMEWORKS
+  // ============================================================================
+
+  {
+    name: 'Core Web Vitals Optimization',
+    category: 'seo',
+    tags: ['core web vitals', 'page speed', 'lcp', 'cls', 'fid', 'performance', 'user experience'],
+    description: `Core Web Vitals optimization focuses on three critical user experience metrics—Largest Contentful Paint (LCP), Cumulative Layout Shift (CLS), and Interaction to Next Paint (INP)—that directly impact search rankings and conversion rates. Largest Contentful Paint measures loading performance;aim for under 2.5 seconds by optimizing and compressing hero images, preloading critical resources, using content delivery networks (CDNs), and implementing efficient image formats like WebP or AVIF. Cumulative Layout Shift measures visual stability; keep it under 0.1 by always including width and height attributes on images and videos, reserving space for embeds, avoiding inserting content above existing content, and using transform animations instead of animations that trigger layout changes. Interaction to Next Paint measures responsiveness; target under 200ms by minimizing JavaScript execution time, breaking up long tasks, reducing main thread work, and using web workers for heavy computations. Performance optimization begins with measurement: use PageSpeed Insights to identify specific issues, Lighthouse for lab data, and Core Web Vitals report in Search Console for field data. Image optimization is typically the largest quick win: compress images, use responsive images with srcset, implement lazy loading for below-fold images, and serve images in next-gen formats. JavaScript optimization includes code splitting, tree shaking unused code, deferring non-critical scripts, and reducing third-party script impact.`,
+    structure: {
+      sections: [
+        {
+          name: 'Largest Contentful Paint (LCP)',
+          description: 'Optimizing loading performance (target: under 2.5s)',
+          tips: [
+            'Compress and optimize hero images',
+            'Preload critical resources',
+            'Use a fast CDN (Cloudflare, Fastly)',
+            'Minimize render-blocking resources',
+            'Serve images in WebP/AVIF format'
+          ]
+        },
+        {
+          name: 'Cumulative Layout Shift (CLS)',
+          description: 'Preventing visual instability (target: under 0.1)',
+          tips: [
+            'Always set width/height on images',
+            'Reserve space for ads and embeds',
+            'Avoid inserting content above existing content',
+            'Use CSS transform for animations',
+            'Set size attributes on all media'
+          ]
+        },
+        {
+          name: 'Interaction to Next Paint (INP)',
+          description: 'Improving responsiveness (target: under 200ms)',
+          tips: [
+            'Minimize JavaScript execution time',
+            'Break up long tasks (50ms chunks)',
+            'Reduce main thread blocking',
+            'Use web workers for heavy computations',
+            'Optimize event handlers'
+          ]
+        },
+        {
+          name: 'Performance Measurement',
+          description: 'Monitoring and tracking CWV',
+          tips: [
+            'Use PageSpeed Insights for diagnosis',
+            'Monitor Search Console CWV report',
+            'Set up RUM (Real User Monitoring)',
+            'Test on mobile and desktop',
+            'Track CWV monthly for trends'
+          ]
+        }
+      ],
+      best_practices: [
+        'Compress images before uploading',
+        'Use a content delivery network (CDN)',
+        'Minimize and compress JavaScript/CSS',
+        'Implement lazy loading for images',
+        'Preload critical resources (fonts, CSS)',
+        'Avoid large render-blocking resources',
+        'Monitor CWV in Search Console',
+        'Test performance monthly'
+      ],
+      use_cases: [
+        'E-commerce product pages',
+        'Blog articles with hero images',
+        'Landing pages with video backgrounds',
+        'News and media sites',
+        'Mobile-first websites',
+        'Sites with heavy third-party scripts'
+      ],
+      common_mistakes: [
+        'Large, uncompressed images',
+        'Missing width/height on media',
+        'Render-blocking CSS and JavaScript',
+        'Not testing on mobile devices',
+        'Ignoring third-party script impact',
+        'Not monitoring CWV regularly',
+        'Animations that cause layout shifts'
+      ]
+    },
+    example: `Core Web Vitals Implementation:
+
+1. Image Optimization:
+<img
+  src="hero-image.webp"
+  width="1200"
+  height="600"
+  loading="eager"
+  fetchpriority="high"
+>
+
+2. Prevent Layout Shift:
+/* Reserve space for images */
+.hero-image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 1;
+}
+
+/* Reserve space for ads */
+.ad-container {
+  min-height: 250px;
+  display: block;
+}
+
+3. Preload Critical Resources:
+<link rel="preload" href="/fonts/main-font.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/styles/critical.css" as="style">
+
+4. Defer Non-Critical JavaScript:
+<script defer src="/js/non-critical.js"></script>
+
+Why this works:
+- Width/height prevent layout shift
+- WebP format reduces file size
+- Preloading improves LCP
+- Defer prevents render blocking
+- Proper aspect ratios maintain layout`
+  },
+
+  {
+    name: 'Local SEO Optimization',
+    category: 'geo',
+    tags: ['local seo', 'google my business', 'nap', 'local citations', 'maps', 'near me'],
+    description: `Local SEO optimization ensures your business appears in location-based searches, Google Maps results, and "near me" queries, driving foot traffic and local customers. The foundation is Google Business Profile (formerly Google My Business) optimization: claim and verify your listing, provide complete and accurate information (name, address, phone), select the most relevant primary and secondary categories, write a compelling business description with local keywords, add high-quality photos regularly, collect and respond to reviews, post updates and offers, and enable messaging. NAP consistency—Name, Address, Phone number—across your website, Google Business Profile, and all online directories is critical; even minor inconsistencies (like "St." vs "Street") can hurt local rankings. Local citations from reputable directories (Yelp, Yellow Pages, industry-specific directories) build local authority and confirm business legitimacy. Include location-specific keywords naturally on your website: in title tags, headers, content, meta descriptions, and alt text. Create location-specific landing pages if you serve multiple areas, each with unique content optimized for that location. Customer reviews significantly impact local rankings and conversions: actively request reviews from satisfied customers, respond to all reviews (positive and negative) promptly, avoid review gating or buying fake reviews, and showcase reviews on your website. Local link building focuses on community partnerships, local events, sponsorships, and local news coverage.`,
+    structure: {
+      sections: [
+        {
+          name: 'Google Business Profile',
+          description: 'Complete profile optimization',
+          tips: [
+            'Claim and verify your listing',
+            'Select accurate primary/secondary categories',
+            'Write keyword-rich business description',
+            'Add high-quality photos monthly',
+            'Post updates and offers regularly'
+          ]
+        },
+        {
+          name: 'NAP Consistency',
+          description: 'Unified business information across platforms',
+          tips: [
+            'Use exact same format everywhere',
+            'Include suite/unit numbers if applicable',
+            'Match on website, GBP, and directories',
+            'Check for variations (St vs Street)',
+            'Audit all citations quarterly'
+          ]
+        },
+        {
+          name: 'Location Keywords',
+          description: 'Geographic keyword targeting',
+          tips: [
+            'Include city/neighborhood in title tags',
+            'Add location modifiers naturally in content',
+            'Use "near me" variations in content',
+            'Optimize for long-tail local queries',
+            'Create location-specific landing pages'
+          ]
+        },
+        {
+          name: 'Review Management',
+          description: 'Building and managing online reputation',
+          tips: [
+            'Actively request reviews from customers',
+            'Respond to all reviews within 24-48 hours',
+            'Address negative reviews professionally',
+            'Showcase reviews on your website',
+            'Never buy fake reviews or game the system'
+          ]
+        }
+      ],
+      best_practices: [
+        'Keep Google Business Profile updated',
+        'Ensure NAP consistency across all platforms',
+        'Add location to page titles and headers',
+        'Collect and respond to reviews regularly',
+        'Build local citations from quality directories',
+        'Create location-specific content',
+        'Participate in local community events',
+        'Monitor local search rankings monthly'
+      ],
+      use_cases: [
+        'Brick-and-mortar businesses',
+        'Service-area businesses',
+        'Restaurants and cafes',
+        'Local service providers',
+        'Medical and legal practices',
+        'Retail stores with physical locations'
+      ],
+      common_mistakes: [
+        'Inconsistent NAP information',
+        'Missing or incomplete Google Business Profile',
+        'Ignoring negative reviews',
+        'Keyword stuffing location keywords',
+        'Duplicate content on location pages',
+        'Not tracking local search rankings',
+        'Buying fake reviews'
+      ]
+    },
+    example: `Local SEO Implementation:
+
+Title Tag: "Best Pizza in Austin TX | Joe's Pizzeria | Delivery & Dine-In"
+
+H1: "Authentic Italian Pizza in Austin, Texas"
+
+Business Address Format (consistent everywhere):
+Joe's Pizzeria
+1234 South Lamar Blvd
+Austin, TX 78704
+(512) 555-0123
+
+Google Business Profile Categories:
+- Primary: Pizza restaurant
+- Secondary: Italian restaurant, Delivery service
+
+Local Landing Page Content:
+"Austin's favorite neighborhood pizzeria since 1998, serving authentic wood-fired pizza in South Lamar. Located in the heart of South Austin, just minutes from Zilker Park and downtown. Order online for delivery within 5 miles or visit our dine-in restaurant."
+
+Why this works:
+- City name in title tag and H1
+- Consistent NAP format
+- Location-specific keywords naturally integrated
+- Mentions nearby landmarks for context
+- Primary and secondary categories target different searches
+- Unique content (not duplicated across locations)`
+  },
+
+  {
+    name: 'E-A-T (Expertise, Authoritativeness, Trustworthiness)',
+    category: 'seo',
+    tags: ['e-a-t', 'expertise', 'authoritativeness', 'trustworthiness', 'yMYL', 'content quality'],
+    description: `E-A-T (Expertise, Authoritativeness, Trustworthiness) is Google's quality framework evaluating content creators and pages, especially critical for "Your Money or Your Life" (YMYL) topics like health, finance, and legal advice. Expertise requires demonstrating deep knowledge and qualifications: include author bylines with credentials and expertise, show years of experience and education, cite authoritative sources, use accurate and up-to-date information, and have content reviewed by qualified experts when applicable. Authoritativeness builds through recognition and credibility: earn high-quality backlinks from reputable sites, receive mentions and citations from other experts, build a strong social media presence, contribute guest posts to authoritative publications, and speak at industry conferences or events. Trustworthiness encompasses transparency and reliability: clearly state sources and citations, provide contact information and about page, disclose affiliations and potential conflicts of interest, protect user data with SSL certificates and privacy policies, maintain accurate and error-free content, and provide clear refund, return, or service policies. E-A-T signals must be visible to users and search engines: author bio boxes with credentials, About Us and Contact pages with complete information, site-wide SSL (HTTPS), easily findable privacy policies and terms of service, and clear dates on articles showing when content was written and updated.`,
+    structure: {
+      sections: [
+        {
+          name: 'Demonstrating Expertise',
+          description: 'Showing author and content qualifications',
+          tips: [
+            'Include detailed author bylines',
+            'List credentials, education, and experience',
+            'Have content reviewed by qualified experts',
+            'Use accurate, up-to-date information',
+            'Cite authoritative sources and studies'
+          ]
+        },
+        {
+          name: 'Building Authoritativeness',
+          description: 'Establishing site and author credibility',
+          tips: [
+            'Earn high-quality backlinks naturally',
+            'Get mentioned by industry authorities',
+            'Guest post on reputable publications',
+            'Build strong social media presence',
+            'Participate in industry events'
+          ]
+        },
+        {
+          name: 'Building Trust',
+          description: 'Ensuring transparency and reliability',
+          tips: [
+            'Use HTTPS across entire site',
+            'Include clear About and Contact pages',
+            'Disclose affiliations and conflicts',
+            'Provide accurate, error-free content',
+            'Show clear publication dates'
+          ]
+        },
+        {
+          name: 'YMYL Content Optimization',
+          description: 'Special considerations for sensitive topics',
+          tips: [
+            'Have medical/financial content reviewed by experts',
+            'Include expert quotes and citations',
+            'Add disclaimers for advice content',
+            'Update YMYL content regularly',
+            'Link to authoritative sources'
+          ]
+        }
+      ],
+      best_practices: [
+        'Always include author bylines',
+        'Link to author bio from every article',
+        'Update and republish older content',
+        'Cite high-quality sources',
+        'Respond to comments and questions',
+        'Maintain active social presence',
+        'Regular content audits for accuracy',
+        'Expert review for YMYL topics'
+      ],
+      use_cases: [
+        'Health and medical content',
+        'Financial advice and investing',
+        'Legal information and guidance',
+        'Tax and accounting content',
+        'Insurance and real estate',
+        'Any topic affecting wellbeing or finances'
+      ],
+      common_mistakes: [
+        'Anonymous content without author info',
+        'Missing or incomplete About/Contact pages',
+        'No SSL certificate (HTTP vs HTTPS)',
+        'Outdated information without updates',
+        'Weak or irrelevant source citations',
+        'No expert review for YMYL topics',
+        'Affiliate disclaimers missing or hidden'
+      ]
+    },
+    example: `E-A-T Implementation:
+
+Author Bio Example:
+"John Smith, CPA
+John Smith is a Certified Public Accountant with over 15 years of experience in tax preparation and financial planning for small businesses. He holds a Master's degree in Accounting from the University of Texas and has been featured in Forbes, Inc., and Accounting Today. John has prepared over 10,000 tax returns and regularly speaks at accounting conferences. This article was reviewed by Sarah Johnson, CPA, tax director at Austin Accounting Firm."
+
+Article Header:
+"Written by John Smith, CPA | Last Updated: October 15, 2024 | Reviewed by Sarah Johnson, CPA"
+
+Footer Information:
+"About Us | Contact | Privacy Policy | Terms of Service
+This site is SSL secured. We may receive a commission when you click certain links, at no extra cost to you. All content reviewed by qualified experts."
+
+Why this works:
+- Clear author credentials and experience
+- Expert review noted prominently
+- Regular update dates show freshness
+- Site-wide SSL and transparency
+- Affiliate disclosure upfront
+- Authoritative sources cited`
+  },
+
+  // ============================================================================
+  // MARKETING FRAMEWORKS
+  // ============================================================================
+
+  {
+    name: 'Content Marketing Strategy',
+    category: 'marketing',
+    tags: ['content strategy', 'editorial calendar', 'content pillars', 'topic clusters', 'blogging'],
+    description: `Content marketing strategy creates a systematic approach to planning, creating, and distributing valuable content that attracts, engages, and converts your target audience. The foundation is understanding your audience's pain points, questions, and interests through market research, customer interviews, Search Console data, and keyword research. Content pillars—3-5 broad topics your brand specializes in—serve as the backbone of your strategy, each containing 10-20 supporting articles that comprehensively cover the topic from different angles and search intents. An editorial calendar ensures consistent publishing (minimum weekly for blogs), tracks content performance, and aligns content with business goals and seasonal trends. Each piece of content should serve one of four strategic purposes: TOFU (Top of Funnel)—attract and educate cold audiences with informational content; MOFU (Middle of Funnel)—engage and nurture with comparison, list, and guide content; BOFU (Bottom of Funnel)—convert with case studies, product pages, and comparison content; or RETENTION—delight existing customers with advanced tips and updates. Content distribution amplifies reach: share on social media platforms where your audience is active, send in email newsletters, repurpose into different formats (infographics, videos, podcasts), and build internal links to distribute authority. Measure success through organic traffic growth, keyword rankings, time on page, conversions, and customer attribution.`,
+    structure: {
+      sections: [
+        {
+          name: 'Content Pillars',
+          description: 'Broad topic authority areas',
+          tips: [
+            'Identify 3-5 core business topics',
+            'Align with products/services and audience needs',
+            'Create 10-20 pieces per pillar',
+            'Include different content types and formats',
+            'Link pillar content to build topical authority'
+          ]
+        },
+        {
+          name: 'Editorial Calendar',
+          description: 'Consistent content planning and scheduling',
+          tips: [
+            'Publish at minimum weekly for blogs',
+            'Plan 3 months ahead for seasonal content',
+            'Balance TOFU/MOFU/BOFU content',
+            'Align with business goals and campaigns',
+            'Track performance and adjust strategy'
+          ]
+        },
+        {
+          name: 'Funnel Mapping',
+          description: 'Content for each stage of buyer journey',
+          tips: [
+            'TOFU: Educational blog posts and guides',
+            'MOFU: Comparisons, lists, and how-tos',
+            'BOFU: Case studies and product pages',
+            'RETENTION: Advanced tips and updates',
+            'Create content clusters around each stage'
+          ]
+        },
+        {
+          name: 'Content Repurposing',
+          description: 'Maximizing value from each piece',
+          tips: [
+            'Turn blog posts into social media posts',
+            'Create infographics from key statistics',
+            'Record video explanations of articles',
+            'Host podcasts interviewing industry experts',
+            'Send email series from comprehensive guides'
+          ]
+        }
+      ],
+      best_practices: [
+        'Research audience before creating content',
+        'Focus on quality over quantity',
+        'Link related content to build authority',
+        'Update and republish high-performing content',
+        'Use data to guide content decisions',
+        'Balance promotional and educational content',
+        'Measure against clear KPIs',
+        'Repurpose successful content in new formats'
+      ],
+      use_cases: [
+        'B2B companies building thought leadership',
+        'SaaS products educating prospects',
+        'E-commerce brands with blog content',
+        'Consultants and agencies',
+        'News and media publications',
+        'Local businesses with blog content'
+      ],
+      common_mistakes: [
+        'Creating content without clear strategy',
+        'Only creating promotional content',
+        'Publishing inconsistently',
+        'Not repurposing successful content',
+        'Ignoring audience research',
+        'No content performance tracking',
+        'Not updating or republishing old content',
+        'Creating content for all funnel stages at once'
+      ]
+    },
+    example: `Content Marketing Strategy Example:
+
+Content Pillar: "Email Marketing" (B2B SaaS company)
+
+Supporting Content (Topic Cluster):
+1. TOFU: "What is Email Marketing?" (guide)
+2. TOFU: "Email Marketing vs. Social Media"
+3. TOFU: "Email Marketing Statistics 2024"
+4. MOFU: "Best Email Marketing Platforms Compared"
+5. MOFU: "How to Build an Email List from Scratch"
+6. MOFU: "Email Marketing Templates That Convert"
+7. MOFU: "7 Email Automation Workflows"
+8. BOFU: "Case Study: How Company X Grew 300% with Email"
+9. BOFU: "Our Email Marketing Platform vs. Competitors"
+10. RETENTION: "Advanced Segmentation Strategies"
+11. RETENTION: "Email Deliverability Best Practices"
+
+Editorial Calendar (Q1 2024):
+Week 1: "What is Email Marketing?" (blog post)
+Week 2: Email newsletter featuring the guide
+Week 3: "Best Email Platforms Compared" (blog post)
+Week 4: Social media campaign
+Week 5: "How to Build Email List" (blog post)
+Week 6: Webinar on email marketing basics
+Week 7: "Email Templates That Convert" (blog post)
+Week 8: Case study announcement (blog post)
+
+Why this works:
+- Clear topic cluster around one pillar
+- Content serves different funnel stages
+- Consistent weekly publishing
+- Multiple content formats (blog, newsletter, webinar)
+- Strategic distribution across channels`
+  },
+
+  {
+    name: 'Conversion Rate Optimization (CRO)',
+    category: 'marketing',
+    tags: ['cro', 'conversions', 'a/b testing', 'landing pages', 'call-to-action', 'user experience'],
+    description: `Conversion Rate Optimization (CRO) is the systematic process of improving website elements to increase the percentage of visitors who complete desired actions—purchases, sign-ups, downloads, or inquiries. CRO begins with conversion tracking: define clear goals in Google Analytics, set up Google Tag Manager for flexible tracking, identify micro-conversions (email signups, downloads) and macro-conversions (purchases, qualified leads), and create conversion funnels to identify drop-off points. Landing page optimization focuses on specific elements: compelling headlines that communicate unique value propositions, clear calls-to-action (CTAs) with action-oriented language and contrasting colors, social proof elements including testimonials, reviews, and trust badges, simplified forms with minimal required fields, and mobile-optimized designs with fast loading times. A/B testing is fundamental to CRO—test one element at a time (headline, CTA, image, color), run tests to statistical significance (usually 95% confidence), test for at least one full business cycle (weekly pattern), and document results and learnings. User experience factors significantly impact conversions: page loading speed (target under 3 seconds), mobile responsiveness, intuitive navigation, clear value propositions, and minimal friction.`,
+    structure: {
+      sections: [
+        {
+          name: 'Conversion Tracking',
+          description: 'Setting up measurement and goals',
+          tips: [
+            'Define clear macro and micro conversions',
+            'Set up goals in Google Analytics',
+            'Create conversion funnels to identify drop-offs',
+            'Use UTM parameters for campaign tracking',
+            'Implement Google Tag Manager for flexibility'
+          ]
+        },
+        {
+          name: 'Landing Page Elements',
+          description: 'Optimizing key conversion components',
+          tips: [
+            'Compelling headline with clear value prop',
+            'Action-oriented CTA buttons',
+            'Social proof (testimonials, reviews)',
+            'Minimal form fields (only essential)',
+            'Mobile-optimized design and speed'
+          ]
+        },
+        {
+          name: 'A/B Testing',
+          description: 'Systematic testing for improvements',
+          tips: [
+            'Test one element at a time',
+            'Run to 95% statistical significance',
+            'Test for minimum 1-2 weeks',
+            'Document all tests and results',
+            'Only implement clear winners'
+          ]
+        },
+        {
+          name: 'User Experience',
+          description: 'Reducing friction and improving UX',
+          tips: [
+            'Page load speed under 3 seconds',
+            'Intuitive navigation and layout',
+            'Clear value proposition above fold',
+            'Minimize steps to conversion',
+            'Use white space effectively'
+          ]
+        }
+      ],
+      best_practices: [
+        'Start with high-traffic pages',
+        'Test CTA buttons and headlines first',
+        'Use heat mapping tools to understand behavior',
+        'Keep testing new elements continuously',
+        'Focus on mobile experience',
+        'Use social proof strategically',
+        'Reduce form fields to essentials',
+        'Implement exit-intent popups cautiously'
+      ],
+      use_cases: [
+        'SaaS product landing pages',
+        'E-commerce checkout processes',
+        'Lead generation forms',
+        'Email signup pages',
+        'Event registration pages',
+        'Donation pages for nonprofits'
+      ],
+      common_mistakes: [
+        'Testing multiple elements at once',
+        'Not running tests to significance',
+        'Making changes based on gut feeling',
+        'Ignoring mobile users',
+        'Forms with too many required fields',
+        'No clear value proposition',
+        'Not tracking conversions properly',
+        'Not documenting test results'
+      ]
+    },
+    example: `CRO Testing Example:
+
+Original Landing Page:
+Headline: "Download Our E-book"
+CTA Button: "Submit"
+
+Conversion Rate: 2.3%
+
+Test Variation A:
+Headline: "Free Guide: 7 Proven Email Strategies That Increased Our Clients' Conversions by 45%"
+Subheadline: "Get the exact templates and workflows used by 500+ businesses"
+CTA Button: "Get My Free Guide Now →"
+
+Conversion Rate: 4.1% (78% improvement)
+
+Test Variation B:
+Headline: "Free Guide: 7 Proven Email Strategies"
+Subheadline: "Get templates that increased conversions by 45%"
+CTA Button: "Download Free Guide"
+Added: Social proof "Join 5,000+ marketers"
+
+Conversion Rate: 3.8% (65% improvement)
+
+Why Variation A won:
+- More specific benefits (45% increase)
+- Urgency implied in subheadline
+- Action-oriented CTA ("Get My")
+- Numbers create credibility
+- Clear value promise
+
+Implementation:
+- Keep winning variation for 30 days
+- Test next element (social proof placement)
+- Document all learnings for future tests`
+  },
 
 ]

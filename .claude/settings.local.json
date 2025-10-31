@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout -b feature/improvements-quick-wins)",
+      "Bash(npm install @upstash/redis)",
+      "Bash(npm run seed:frameworks)",
+      "Bash(npm install @upstash/ratelimit)",
+      "Bash(npm install recharts)",
+      "Bash(git add .)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

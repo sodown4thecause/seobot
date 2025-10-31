@@ -7,6 +7,7 @@ import { Sparkles, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
 import { renderMessageComponent, type MessageComponent } from './message-types'
+import { ExportButton } from '@/components/ui/export-button'
 
 interface AIChatInterfaceProps {
   context?: any
@@ -171,23 +172,30 @@ export function AIChatInterface({
                   {renderMessageContent(message.content, message.id)}
                 </div>
                 {message.role === 'assistant' && (
-                  <button
-                    onClick={() => copyToClipboard(message.content, message.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity self-start px-2 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 rounded hover:bg-muted"
-                    title="Copy to clipboard"
-                  >
-                    {copiedId === message.id ? (
-                      <>
-                        <Check className="w-3 h-3 text-primary" />
-                        <span className="text-primary">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" />
-                        <span>Copy</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                    <button
+                      onClick={() => copyToClipboard(message.content, message.id)}
+                      className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 rounded hover:bg-muted"
+                      title="Copy to clipboard"
+                    >
+                      {copiedId === message.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-primary" />
+                          <span className="text-primary">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                    <ExportButton
+                      content={message.content}
+                      size="sm"
+                      className="text-xs"
+                    />
+                  </div>
                 )}
               </div>
             </motion.div>

@@ -2,6 +2,13 @@ import { embed, embedMany } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import pLimit from 'p-limit'
 import pRetry from 'p-retry'
+import {
+  cacheGet,
+  cacheSet,
+  CACHE_PREFIXES,
+  CACHE_TTL,
+} from '../redis/client'
+import crypto from 'crypto'
 
 /**
  * OpenAI embedding model for consistent 1536-dimensional vectors
@@ -18,6 +25,13 @@ const EMBEDDING_CONFIG = {
   requestTimeout: 30000, // 30 seconds
   chunkMaxTokens: 800, // Conservative estimate for chunking
 } as const
+
+/**
+ * Generate a hash for text to use as cache key
+ */
+function getTextHash(text: string): string {
+  return crypto.createHash('sha256').update(text.trim().toLowerCase()).digest('hex')
+}
 
 /**
  * Retry wrapper with exponential backoff for rate limits and transient errors
@@ -47,10 +61,24 @@ async function withRetry<T>(
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   const startTime = Date.now()
-  
+
   try {
     const sanitizedText = text.trim().slice(0, 8000) // OpenAI max ~8k tokens
-    
+
+    // Check Redis cache first (embeddings rarely change, cache for 30 days)
+    const textHash = getTextHash(sanitizedText)
+    const cacheKey = `${CACHE_PREFIXES.EMBEDDING}${textHash}`
+    const cached = await cacheGet<number[]>(cacheKey)
+
+    if (cached) {
+      const duration = Date.now() - startTime
+      console.log(
+        `[Embedding] Cache hit for text (${sanitizedText.length} chars) in ${duration}ms`
+      )
+      return cached
+    }
+
+    // Generate embedding if not cached
     const result = await withRetry(
       async () =>
         embed({
@@ -59,6 +87,9 @@ export async function generateEmbedding(text: string): Promise<number[]> {
         }),
       'generateEmbedding'
     )
+
+    // Cache the result for 30 days (embeddings don't change)
+    await cacheSet(cacheKey, result.embedding, CACHE_TTL.EMBEDDING)
 
     const duration = Date.now() - startTime
     console.log(

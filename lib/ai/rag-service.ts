@@ -12,6 +12,14 @@ import { createClient } from '@supabase/supabase-js'
 import { generateEmbedding } from './embedding'
 import { type FrameworkCategory } from './framework-seeds'
 import { LRUCache } from 'lru-cache'
+import {
+  cacheGet,
+  cacheSet,
+  cacheGetBatch,
+  cacheSetBatch,
+  CACHE_PREFIXES,
+  CACHE_TTL,
+} from '../redis/client'
 
 // ============================================================================
 // TYPES
@@ -226,16 +234,33 @@ export async function findRelevantFrameworks(
       userId,
     } = options
 
-    // Check cache first
+    // Check cache first - try LRU cache (fastest)
     const cacheKey = getCacheKey(query, options)
-    const cached = retrievalCache.get(cacheKey)
+    const lruCached = retrievalCache.get(cacheKey)
 
-    if (cached) {
+    if (lruCached) {
       const duration = Date.now() - startTime
       console.log(
-        `[RAG] Cache hit for "${query.slice(0, 50)}..." (${duration}ms)`
+        `[RAG] LRU cache hit for "${query.slice(0, 50)}..." (${duration}ms)`
       )
-      return cached.frameworks
+      return lruCached.frameworks
+    }
+
+    // Try Redis cache (shared across instances)
+    const redisKey = `${CACHE_PREFIXES.FRAMEWORK_SEARCH}${cacheKey}`
+    const redisCached = await cacheGet<{ frameworks: Framework[]; timestamp: number }>(redisKey)
+
+    if (redisCached) {
+      const duration = Date.now() - startTime
+      console.log(
+        `[RAG] Redis cache hit for "${query.slice(0, 50)}..." (${duration}ms)`
+      )
+      // Populate LRU cache for next time
+      retrievalCache.set(cacheKey, {
+        frameworks: redisCached.frameworks,
+        timestamp: redisCached.timestamp,
+      })
+      return redisCached.frameworks
     }
 
     console.log(`[RAG] Cache miss, performing retrieval for "${query.slice(0, 50)}..."`)
@@ -319,12 +344,16 @@ export async function findRelevantFrameworks(
 
     // Take top N results
     const results = reRanked.slice(0, maxResults)
-
-    // Cache results
-    retrievalCache.set(cacheKey, {
+    const cacheEntry = {
       frameworks: results,
       timestamp: Date.now(),
-    })
+    }
+
+    // Cache results in both LRU (fast) and Redis (shared)
+    retrievalCache.set(cacheKey, cacheEntry)
+
+    // Store in Redis with longer TTL (10 minutes)
+    await cacheSet(redisKey, cacheEntry, CACHE_TTL.FRAMEWORK_SEARCH)
 
     const duration = Date.now() - startTime
     console.log(

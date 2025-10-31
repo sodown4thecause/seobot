@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { keywordResearch } from '@/lib/api/dataforseo-service'
+import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 
 export const runtime = 'edge'
 
@@ -11,6 +12,12 @@ interface RequestBody {
 }
 
 export async function POST(req: Request) {
+  // Check rate limit
+  const rateLimitResponse = await rateLimitMiddleware(req as any, 'KEYWORDS')
+  if (rateLimitResponse) {
+    return rateLimitResponse
+  }
+
   try {
     const body = (await req.json()) as RequestBody
     const { keywords, location } = body

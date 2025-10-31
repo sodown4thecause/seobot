@@ -4,15 +4,16 @@ import { createClient } from '@/lib/supabase/server'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import { type OnboardingData, type OnboardingStep } from '@/lib/onboarding/state'
 import { serverEnv } from '@/lib/config/env'
-import { 
-  findRelevantFrameworks, 
+import {
+  findRelevantFrameworks,
   formatFrameworksForPrompt,
-  batchIncrementUsage 
+  batchIncrementUsage
 } from '@/lib/ai/rag-service'
-import { 
-  dataForSEOFunctions, 
-  handleDataForSEOFunctionCall 
+import {
+  dataForSEOFunctions,
+  handleDataForSEOFunctionCall
 } from '@/lib/ai/dataforseo-tools'
+import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 
 export const runtime = 'edge'
 
@@ -40,6 +41,12 @@ interface RequestBody {
 }
 
 export async function POST(req: Request) {
+  // Check rate limit
+  const rateLimitResponse = await rateLimitMiddleware(req as any, 'CHAT')
+  if (rateLimitResponse) {
+    return rateLimitResponse
+  }
+
   try {
     const body = (await req.json()) as RequestBody
     const { messages, context } = body
