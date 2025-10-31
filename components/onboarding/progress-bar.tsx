@@ -14,7 +14,7 @@ export function OnboardingProgressBar({ state }: ProgressBarProps) {
   const progress = state.progress
   
   return (
-    <div className="w-full px-8 py-6 bg-background border-b border-border">
+    <div className="w-full px-8 py-6 glass-dark border-b border-white/10">
       {/* Step Indicators */}
       <div className="flex justify-between items-center mb-4">
         {ONBOARDING_STEPS.map((step, index) => {
@@ -30,9 +30,9 @@ export function OnboardingProgressBar({ state }: ProgressBarProps) {
                   className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center",
                     "font-semibold text-sm transition-all duration-300",
-                    isComplete && "bg-primary text-primary-foreground",
-                    isActive && "bg-primary text-primary-foreground ring-4 ring-primary/20",
-                    !isActive && !isComplete && "bg-muted text-muted-foreground"
+                    isComplete && "bg-white text-purple-deep",
+                    isActive && "bg-white text-purple-deep ring-4 ring-white/20",
+                    !isActive && !isComplete && "bg-white/20 text-white/60"
                   )}
                 >
                   {isComplete ? (
@@ -46,7 +46,7 @@ export function OnboardingProgressBar({ state }: ProgressBarProps) {
                 <div className="absolute top-12 left-1/2 -translate-x-1/2 whitespace-nowrap">
                   <p className={cn(
                     "text-xs font-medium",
-                    isActive ? "text-primary" : "text-muted-foreground"
+                    isActive ? "text-white" : "text-white/60"
                   )}>
                     {step.name}
                   </p>
@@ -55,9 +55,9 @@ export function OnboardingProgressBar({ state }: ProgressBarProps) {
               
               {/* Connecting Line */}
               {index < ONBOARDING_STEPS.length - 1 && (
-                <div className="flex-1 h-0.5 bg-border mx-2">
+                <div className="flex-1 h-0.5 bg-white/20 mx-2">
                   <motion.div
-                    className="h-full bg-primary"
+                    className="h-full bg-white"
                     initial={{ width: '0%' }}
                     animate={{ width: isComplete ? '100%' : '0%' }}
                     transition={{ duration: 0.5 }}
@@ -72,14 +72,14 @@ export function OnboardingProgressBar({ state }: ProgressBarProps) {
       {/* Progress Bar */}
       <div className="mt-8">
         <div className="flex justify-between items-center mb-2">
-          <p className="text-sm font-medium text-foreground">
+          <p className="text-sm font-medium text-white">
             {ONBOARDING_STEPS[state.currentStep - 1]?.description}
           </p>
-          <p className="text-sm font-semibold text-primary">
+          <p className="text-sm font-semibold text-white">
             {Math.round(progress)}% Complete
           </p>
         </div>
-        <Progress value={progress} className="h-2" />
+        <Progress value={progress} className="h-2 bg-white/20" />
       </div>
     </div>
   )

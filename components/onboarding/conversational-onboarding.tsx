@@ -112,18 +112,22 @@ export function ConversationalOnboarding({ userId, onComplete }: ConversationalO
   }, [])
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen purple-gradient flex flex-col">
       {/* Minimal Top Bar */}
-      <div className="bg-background border-b border-border">
+      <div className="glass-dark border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">S</span>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-400 to-primary flex items-center justify-center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
-              <span className="text-lg font-bold text-foreground">SEO Platform</span>
+              <span className="text-lg font-bold text-white tracking-tight">Flow Intent</span>
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-white/70">
               Step {onboardingState.currentStep} of {ONBOARDING_STEPS.length}
             </div>
           </div>
