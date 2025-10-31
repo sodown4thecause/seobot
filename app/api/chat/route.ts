@@ -113,8 +113,8 @@ export async function POST(req: Request) {
     ]
 
     // Create Gemini model with DataForSEO function calling tools
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp',
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-pro',
       tools: [{
         functionDeclarations: dataForSEOFunctions as any
       }]

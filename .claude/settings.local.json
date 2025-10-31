@@ -6,7 +6,9 @@
       "Bash(npm run seed:frameworks)",
       "Bash(npm install @upstash/ratelimit)",
       "Bash(npm install recharts)",
-      "Bash(git add .)"
+      "Bash(git add .)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: implement 5 quick wins for SEO chatbot\n\n✅ Redis Caching\n- Added two-level caching (LRU + Redis) for frameworks and embeddings\n- Upstash Redis client with edge compatibility\n- Cache hits <20ms, shared across serverless instances\n\n✅ Expanded RAG Frameworks (6→16)\n- Added 10 new comprehensive frameworks across SEO, AEO, GEO, Marketing\n- Improved semantic search with diverse context\n- Successfully seeded to database\n\n✅ Content Export Functionality\n- Export to HTML, Markdown, Plain Text, and JSON\n- Beautiful styled HTML documents with metadata\n- One-click export button in chat interface\n- Client-side utilities for flexible exports\n\n✅ Rate Limiting Implementation\n- Sliding window rate limits per endpoint type\n- Upstash Ratelimit with Redis backend\n- Configurable limits (chat: 10/min, exports: 20/min, keywords: 10/hour)\n- Applied to chat, export, and keywords APIs\n\n✅ Usage Analytics Dashboard\n- Interactive dashboard at /dashboard/analytics\n- Charts for usage trends, popular frameworks, API endpoints\n- Time range filtering (7d, 30d, 90d)\n- Real-time metrics with Recharts visualization\n\n📊 Performance Impact:\n- Sub-200ms framework retrieval with caching\n- 30-day embedding cache reduces API costs\n- Shared Redis cache across instances\n- Rate limiting prevents abuse\n\n🎯 User Experience:\n- Export content in 4 formats\n- Beautiful analytics visualizations\n- 16 frameworks for comprehensive SEO guidance\n- Production-ready with edge compatibility\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npm install @google/generative-ai@latest)"
     ],
     "deny": [],
     "ask": []
