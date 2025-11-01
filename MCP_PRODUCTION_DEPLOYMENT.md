@@ -22,7 +22,9 @@ Choose one of these hosting options:
 
 1. **Create Railway account**: https://railway.app
 2. **Create new project** → "Deploy from GitHub" or "Empty Project"
-3. **Add Dockerfile** (create in your repo):
+3. **Add Dockerfile** (must be named exactly `Dockerfile` - no extension):
+
+The `Dockerfile` is already in your repo root. If you're deploying from a separate repo, create a new repo with just the Dockerfile:
 
 ```dockerfile
 FROM node:18-alpine
@@ -41,9 +43,15 @@ ENV PORT=3000
 # Expose port
 EXPOSE 3000
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/mcp', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
 # Start HTTP server
 CMD ["dataforseo-mcp-server", "http"]
 ```
+
+**Important**: The file must be named exactly `Dockerfile` (no extension like `.mcp-server` or `.txt`)
 
 4. **Set environment variables in Railway dashboard**:
    - `DATAFORSEO_USERNAME` = your username

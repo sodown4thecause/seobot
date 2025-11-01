@@ -240,9 +240,13 @@ For production deployment on Vercel, you'll need to deploy the MCP server separa
 See **[MCP_PRODUCTION_DEPLOYMENT.md](./MCP_PRODUCTION_DEPLOYMENT.md)** for complete production deployment instructions.
 
 Quick summary:
-1. Deploy MCP server to Railway/Render/Fly.io using the Dockerfile
-2. Set `DATAFORSEO_MCP_URL` in Vercel environment variables to your deployed MCP server URL
-3. Redeploy your Vercel app
+1. Deploy MCP server to Railway/Render/Fly.io using the `Dockerfile` (must be named exactly `Dockerfile`)
+2. Set environment variables in Railway dashboard:
+   - `DATAFORSEO_USERNAME` = your username
+   - `DATAFORSEO_PASSWORD` = your password
+   - `DATAFORSEO_SIMPLE_FILTER` = `true`
+3. Set `DATAFORSEO_MCP_URL` in Vercel environment variables to your deployed MCP server URL
+4. Redeploy your Vercel app
 
 ## Additional Resources
 
