@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { serverEnv } from '@/lib/config/env';
-import { perplexityService } from '@/lib/api/perplexity-service';
+import { researchTopic, fetchLatestStats, analyzeTrends } from '@/lib/api/perplexity-service';
 
 export const runtime = 'edge';
 
@@ -59,15 +59,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Research topic using Perplexity
-    const researchResult = await perplexityService.researchTopic(
-      keyword,
-      `Provide comprehensive research about "${keyword}". Include:
+    const researchResult = await researchTopic({
+      topic: `Provide comprehensive research about "${keyword}". Include:
 1. Latest statistics and data (with years)
 2. Current trends and developments
 3. Expert insights and common misconceptions
 4. Practical examples and use cases
 5. Key facts that would make great content`
-    );
+    });
 
     if (!researchResult.success) {
       return NextResponse.json(
@@ -79,20 +78,20 @@ export async function POST(request: NextRequest) {
     const research = researchResult.data;
 
     // Get latest stats as separate call
-    const statsResult = await perplexityService.fetchLatestStats(keyword);
+    const statsResult = await fetchLatestStats({ topic: keyword });
     const stats = statsResult.success ? statsResult.data : null;
 
     // Get trend analysis
-    const trendsResult = await perplexityService.analyzeTrends(keyword);
+    const trendsResult = await analyzeTrends({ topic: keyword });
     const trends = trendsResult.success ? trendsResult.data : null;
 
     // Combine research data
     const combinedResearch = {
       keyword,
-      mainContent: research.content,
-      citations: research.citations,
-      stats: stats?.content || '',
-      trends: trends?.content || '',
+      mainContent: research.choices?.[0]?.message?.content || '',
+      citations: research.citations || [],
+      stats: stats?.choices?.[0]?.message?.content || '',
+      trends: trends?.choices?.[0]?.message?.content || '',
       researchedAt: new Date().toISOString(),
     };
 

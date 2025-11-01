@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { 
-  generateImageSuggestions, 
-  generateImageWithOpenAI, 
+import {
+  generateImageSuggestions,
+  generateImageWithOpenAI,
   generateImageVariations,
-  ImageGenerationOptions 
+  ImageGenerationOptions,
+  generateImageWithGemini,
+  editImageWithGemini,
+  generateImageVariationsWithGemini,
+  type GeminiImageRequest
 } from '@/lib/ai/image-generation'
 
 // Initialize Supabase client
@@ -47,7 +51,7 @@ export async function POST(request: NextRequest) {
       case 'generate':
         const options: ImageGenerationOptions = data
         result = await generateImageWithOpenAI(options)
-        
+
         // Store generated images in database for user
         if (Array.isArray(result) && result.length > 0) {
           const { error: dbError } = await supabase
@@ -73,6 +77,22 @@ export async function POST(request: NextRequest) {
       case 'variations':
         const { prompt, articleContext } = data
         result = await generateImageVariations(prompt, articleContext)
+        break
+
+      // Gemini 2.5 Flash Actions
+      case 'generate-gemini':
+        const geminiRequest: GeminiImageRequest = data
+        result = await generateImageWithGemini(geminiRequest)
+        break
+
+      case 'edit-gemini':
+        const { imageUrl, editPrompt } = data
+        result = await editImageWithGemini(imageUrl, editPrompt)
+        break
+
+      case 'variations-gemini':
+        const { basePrompt, styles } = data
+        result = await generateImageVariationsWithGemini(basePrompt, styles)
         break
 
       default:

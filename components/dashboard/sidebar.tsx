@@ -29,7 +29,7 @@ const FEATURES: NavItem[] = [
 
 const WORKSPACES: NavItem[] = [
   { name: 'New Project', href: '/dashboard/content/create', icon: FolderPlus },
-  { name: 'Image', href: '/dashboard/image', icon: ImageIcon },
+  { name: 'Image Creation', href: '/images', icon: ImageIcon },
   { name: 'Presentation', href: '/dashboard/presentation', icon: Layout },
   { name: 'Riset', href: '/dashboard/riset', icon: FileText },
 ]

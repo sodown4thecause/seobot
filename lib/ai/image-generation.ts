@@ -1,6 +1,6 @@
-import { generateObject } from 'ai'
+import { generateObject, generateText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { google } from '@ai-sdk/google'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createClient } from '@supabase/supabase-js'
 
 // Initialize AI providers
@@ -8,11 +8,26 @@ const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-// Supabase client for storing generated images
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+})
+
+// Supabase client for storing generated images (lazy initialization)
+let supabaseClient: ReturnType<typeof createClient> | null = null
+
+function getSupabase() {
+  if (!supabaseClient) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase configuration is missing')
+    }
+    
+    supabaseClient = createClient(supabaseUrl, supabaseKey)
+  }
+  return supabaseClient
+}
 
 export interface ImageGenerationOptions {
   prompt: string
@@ -82,7 +97,7 @@ Focus on images that:
 Return as JSON array.`
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-2.5-pro'),
       prompt,
       schema: {
         type: 'array',
@@ -143,7 +158,7 @@ Return only the enhanced prompt, no explanations.`
 
   try {
     const { text } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-2.5-pro'),
       prompt: contextualPrompt,
       schema: { type: 'string' }
     })
@@ -197,7 +212,7 @@ export async function generateImageWithOpenAI(
       const imageBuffer = await fetch(image.url).then(res => res.buffer())
       const fileName = `generated/${Date.now()}-${Math.random().toString(36).substring(7)}.png`
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await getSupabase().storage
         .from('article-images')
         .upload(fileName, imageBuffer, {
           contentType: 'image/png',
@@ -209,7 +224,7 @@ export async function generateImageWithOpenAI(
         continue
       }
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: { publicUrl } } = getSupabase().storage
         .from('article-images')
         .getPublicUrl(fileName)
 
@@ -261,7 +276,7 @@ Requirements:
 Return only the alt text, no quotes or explanations.`
 
     const { text } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-2.5-pro'),
       prompt: altPrompt,
       schema: { type: 'string' }
     })
@@ -338,7 +353,7 @@ export function getImageGenerationCost(
 ): number {
   // OpenAI DALL-E 3 pricing (as of 2024)
   const baseCost = quality === 'hd' ? 0.08 : 0.04
-  
+
   // Adjust for size
   const sizeMultiplier = {
     '1024x1024': 1,
@@ -349,4 +364,246 @@ export function getImageGenerationCost(
   }
 
   return numberOfImages * baseCost * (sizeMultiplier[size as keyof typeof sizeMultiplier] || 1)
+}
+
+// ============================================================================
+// GEMINI 2.5 FLASH IMAGE GENERATION
+// ============================================================================
+
+export interface GeminiImageRequest {
+  prompt: string
+  size?: 'small' | 'medium' | 'large'
+  style?: 'realistic' | 'artistic' | 'illustrated' | 'photographic'
+  type?: 'blog' | 'social' | 'product' | 'infographic' | 'custom'
+}
+
+export interface GeminiGeneratedImage {
+  id: string
+  data: Uint8Array
+  mediaType: string
+  prompt: string
+  timestamp: number
+}
+
+/**
+ * Generate image using Google Gemini 2.5 Flash Image
+ * Optimized for article writers who need custom images
+ */
+export async function generateImageWithGemini(
+  request: GeminiImageRequest
+): Promise<GeminiGeneratedImage> {
+  const { GoogleGenAI } = require('@google/genai')
+  
+  try {
+    const { prompt, size = 'medium', style = 'realistic', type = 'blog' } = request
+
+    // Build enhanced prompt for better results
+    const styleModifiers = {
+      realistic: 'photorealistic, high quality, detailed, professional photography',
+      artistic: 'artistic, creative, stylized, visually appealing, digital art',
+      illustrated: 'illustrated, clean design, vector-style, minimal, flat design',
+      photographic: 'photographic style, natural lighting, high resolution, DSLR quality',
+    }
+
+    const typeModifiers = {
+      blog: 'suitable for blog posts, educational content, informative',
+      social: 'engaging, shareable, eye-catching, social media optimized',
+      product: 'professional product photography, clean background, commercial quality',
+      infographic: 'clear data visualization, charts and graphs, informative design',
+      custom: 'custom style, unique design, tailored to specific needs',
+    }
+
+    const enhancedPrompt = `${prompt}. Style: ${styleModifiers[style]}. Purpose: ${typeModifiers[type]}. High quality, professional, optimized for ${type} content.`
+
+    console.log(`[GeminiImageGen] Generating image with enhanced prompt`)
+
+    // Initialize Google GenAI
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_API_KEY,
+    })
+
+    const generationConfig = {
+      maxOutputTokens: 32768,
+      temperature: 1,
+      topP: 0.95,
+      responseModalities: ['TEXT', 'IMAGE'],
+    }
+
+    const req = {
+      model: 'gemini-2.5-flash-image',
+      contents: [{ role: 'user', parts: [{ text: enhancedPrompt }] }],
+      config: generationConfig,
+    }
+
+    const response = await ai.models.generateContent(req)
+    
+    if (!response.candidates || response.candidates.length === 0) {
+      throw new Error('No images were generated by Gemini')
+    }
+
+    // Extract image from response
+    const candidate = response.candidates[0]
+    const imagePart = candidate.content.parts.find((part: any) => part.inlineData)
+    
+    if (!imagePart || !imagePart.inlineData) {
+      throw new Error('No image data found in response')
+    }
+
+    // Convert base64 to Uint8Array
+    const base64Data = imagePart.inlineData.data
+    const binaryString = atob(base64Data)
+    const uint8Array = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      uint8Array[i] = binaryString.charCodeAt(i)
+    }
+
+    const generatedImage: GeminiGeneratedImage = {
+      id: `gemini-${Date.now()}`,
+      data: uint8Array,
+      mediaType: imagePart.inlineData.mimeType || 'image/png',
+      prompt: request.prompt,
+      timestamp: Date.now(),
+    }
+
+    console.log(`[GeminiImageGen] Successfully generated image`)
+    return generatedImage
+  } catch (error: any) {
+    console.error('[GeminiImageGen] Error:', error)
+    throw new Error(`Failed to generate image with Gemini: ${error.message}`)
+  }
+}
+
+/**
+ * Edit an existing image using Gemini 2.5 Flash
+ */
+export async function editImageWithGemini(
+  imageUrl: string,
+  editPrompt: string
+): Promise<GeminiGeneratedImage> {
+  try {
+    console.log(`[GeminiImageGen] Editing image with prompt: ${editPrompt}`)
+
+    const result = await generateText({
+      model: google('gemini-2.5-flash-image-preview'),
+      prompt: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `${editPrompt}. Maintain the original composition and quality.
+              Make precise, natural-looking changes. High resolution output.`,
+            },
+            {
+              type: 'image',
+              image: imageUrl,
+              mediaType: 'image/jpeg',
+            },
+          ],
+        },
+      ],
+      maxTokens: 1000,
+    })
+
+    if (!result.files || result.files.length === 0) {
+      throw new Error('No edited images were generated')
+    }
+
+    const file = result.files.find(f => f.mediaType?.startsWith('image/'))
+    if (!file) {
+      throw new Error('Generated file is not an image')
+    }
+
+    const editedImage: GeminiGeneratedImage = {
+      id: `gemini-edit-${Date.now()}`,
+      data: file.uint8Array,
+      mediaType: file.mediaType,
+      prompt: editPrompt,
+      timestamp: Date.now(),
+    }
+
+    console.log(`[GeminiImageGen] Successfully edited image`)
+    return editedImage
+  } catch (error: any) {
+    console.error('[GeminiImageGen] Error:', error)
+    throw new Error(`Failed to edit image with Gemini: ${error.message}`)
+  }
+}
+
+/**
+ * Generate multiple images with different styles
+ */
+export async function generateImageVariationsWithGemini(
+  basePrompt: string,
+  styles: Array<GeminiImageRequest['style']> = ['realistic', 'artistic', 'illustrated']
+): Promise<GeminiGeneratedImage[]> {
+  const results = await Promise.allSettled(
+    styles.map(style =>
+      generateImageWithGemini({
+        prompt: basePrompt,
+        style,
+        type: 'blog',
+        size: 'medium'
+      })
+    )
+  )
+
+  const successful: GeminiGeneratedImage[] = []
+  const failed: { style: string; error: string }[] = []
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      successful.push(result.value)
+    } else {
+      failed.push({
+        style: styles[index],
+        error: result.reason.message,
+      })
+    }
+  })
+
+  console.log(
+    `[GeminiImageGen] Generated ${successful.length} variations (${failed.length} failed)`
+  )
+
+  return successful
+}
+
+/**
+ * SEO-optimized image prompts for common article types
+ */
+export const SEOPrompts = {
+  blogFeatured: (topic: string, keywords: string[] = []) =>
+    `Professional blog featured image for: ${topic}.
+     Include keywords: ${keywords.join(', ')}.
+     Clean, modern design with space for text overlay.
+     High quality, professional appearance.`,
+
+  socialShare: (title: string, brand?: string) =>
+    `Social media shareable image for: "${title}".
+     ${brand ? `Brand: ${brand}.` : ''}
+     Eye-catching, engaging design optimized for social media.
+     Vibrant colors, clear typography, share-friendly.`,
+
+  productShowcase: (product: string, features: string[] = []) =>
+    `Product showcase image for: ${product}.
+     Features: ${features.join(', ')}.
+     Clean white background, professional product photography,
+     commercial quality, e-commerce optimized.`,
+
+  infographic: (topic: string, dataPoints: string[] = []) =>
+    `Infographic about: ${topic}.
+     Data: ${dataPoints.join(', ')}.
+     Clean data visualization, charts and graphs,
+     informative design with clear hierarchy.`,
+
+  howTo: (title: string, steps: string[] = []) =>
+    `How-to illustration for: ${title}.
+     Steps: ${steps.slice(0, 3).join(', ')}.
+     Step-by-step visual guide, instructional design.`,
+
+  comparison: (item1: string, item2: string, category: string) =>
+    `Comparison between ${item1} vs ${item2} in ${category}.
+     Split-screen layout, clear differentiation,
+     professional design, easy to understand.`,
 }
