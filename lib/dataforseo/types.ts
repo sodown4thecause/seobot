@@ -4,7 +4,10 @@
  * Comprehensive types for all DataForSEO API endpoints
  */
 
-import type { ApiResult, ApiError } from '@/lib/types/api-responses'
+import type { ApiError } from '@/lib/types/api-responses'
+
+// Re-export ApiError for convenience
+export type { ApiError }
 
 // ============================================================================
 // BASE TYPES

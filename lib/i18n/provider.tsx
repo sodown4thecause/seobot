@@ -16,7 +16,7 @@ interface Translations {
   [key: string]: any
 }
 
-const translations: Record<LocaleType, Translations> = {
+const translations: Record<LocaleType, () => Promise<Translations>> = {
   en: () => import('./locales/en.json').then(m => m.default),
   es: () => import('./locales/es.json').then(m => m.default),
   fr: () => import('./locales/fr.json').then(m => m.default),

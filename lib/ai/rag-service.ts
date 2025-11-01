@@ -273,11 +273,12 @@ export async function findRelevantFrameworks(
 
     // Call Supabase RPC function for vector similarity search
     const supabase = getSupabaseClient()
-    const { data, error } = await supabase.rpc('match_frameworks', {
+    const rpcResult = await (supabase.rpc as any)('match_frameworks', {
       query_embedding: queryEmbedding,
       match_threshold: threshold,
       match_count: retrievalCount,
     })
+    const { data, error } = rpcResult as { data: MatchFrameworkResult[] | null; error: any }
 
     if (error) {
       console.error('[RAG] Supabase RPC error:', error)
@@ -311,7 +312,7 @@ export async function findRelevantFrameworks(
     }
 
     // Fetch full framework details
-    const frameworkIds = (data as MatchFrameworkResult[]).map((r) => r.id)
+    const frameworkIds = data.map((r) => r.id)
     const { data: fullFrameworks, error: fetchError } = await supabase
       .from('writing_frameworks')
       .select('*')
@@ -323,8 +324,8 @@ export async function findRelevantFrameworks(
     }
 
     // Merge similarity scores with full data
-    const frameworksWithScores: Framework[] = fullFrameworks.map((fw) => {
-      const match = (data as MatchFrameworkResult[]).find((m) => m.id === fw.id)
+    const frameworksWithScores: Framework[] = fullFrameworks.map((fw: any) => {
+      const match = data.find((m) => m.id === fw.id)
       return {
         ...fw,
         similarity: match?.similarity || 0,
@@ -451,13 +452,28 @@ export async function incrementFrameworkUsage(
     const supabase = getSupabaseClient()
     
     // Fire-and-forget: don't await
+    // Note: Supabase doesn't support raw SQL in update, so we fetch and update
+    // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
     supabase
       .from('writing_frameworks')
-      .update({ usage_count: supabase.raw('usage_count + 1') })
+      .select('usage_count')
       .eq('id', frameworkId)
-      .then(({ error }) => {
-        if (error) {
-          console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, error)
+      .single()
+      .then(({ data: current }) => {
+        if (current && typeof (current as any).usage_count === 'number') {
+          const usageCount = (current as any).usage_count + 1
+          // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
+          return supabase
+            .from('writing_frameworks')
+            // @ts-ignore
+            .update({ usage_count: usageCount })
+            .eq('id', frameworkId)
+        }
+        return null
+      })
+      .then((result) => {
+        if (result?.error) {
+          console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, result.error)
         }
       })
   } catch (error) {
@@ -480,17 +496,32 @@ export async function batchIncrementUsage(
     const supabase = getSupabaseClient()
     
     // Update all frameworks in one query
-    supabase
-      .from('writing_frameworks')
-      .update({ usage_count: supabase.raw('usage_count + 1') })
-      .in('id', frameworkIds)
-      .then(({ error }) => {
-        if (error) {
-          console.warn('[RAG] Failed to batch increment usage:', error)
-        } else {
-          console.log(`[RAG] Incremented usage for ${frameworkIds.length} frameworks`)
-        }
-      })
+    // Note: Supabase doesn't support raw SQL, so we need to fetch and update individually
+    for (const frameworkId of frameworkIds) {
+      // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
+      supabase
+        .from('writing_frameworks')
+        .select('usage_count')
+        .eq('id', frameworkId)
+        .single()
+        .then(({ data: current }) => {
+          if (current && typeof (current as any).usage_count === 'number') {
+            const usageCount = (current as any).usage_count + 1
+            // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
+            return supabase
+              .from('writing_frameworks')
+              // @ts-ignore
+              .update({ usage_count: usageCount })
+              .eq('id', frameworkId)
+          }
+          return null
+        })
+        .then((result) => {
+          if (result?.error) {
+            console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, result.error)
+          }
+        })
+    }
   } catch (error) {
     console.warn('[RAG] Batch usage tracking error:', error)
   }

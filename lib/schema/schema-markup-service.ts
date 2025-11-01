@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { z } from 'zod'
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+})
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -168,7 +173,7 @@ Return only the JSON-LD schema object, no explanations or markdown formatting.`
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: { type: 'object' }
+      schema: z.record(z.unknown()),
     })
 
     return object
@@ -433,7 +438,7 @@ Return only the completed JSON schema, no explanations.`
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: { type: 'object' }
+      schema: z.record(z.unknown()),
     })
 
     return object

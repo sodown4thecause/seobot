@@ -99,7 +99,26 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
     if (value === null) {
       return null
     }
-    return JSON.parse(value as string) as T
+
+    // Handle case where Upstash Redis might return already parsed object
+    if (typeof value !== 'string') {
+      return value as T
+    }
+
+    // Try to parse as JSON string
+    try {
+      return JSON.parse(value) as T
+    } catch (parseError) {
+      // If JSON parsing fails, the cache entry might be corrupted
+      // Delete it and return null to force regeneration
+      console.warn(`[Redis] Corrupted cache entry for key ${key}, deleting...`)
+      try {
+        await client.del(key)
+      } catch (delError) {
+        // Ignore delete errors
+      }
+      return null
+    }
   } catch (error) {
     console.error(`[Redis] Failed to get cache for key ${key}:`, error)
     return null
@@ -211,8 +230,22 @@ export async function cacheGetBatch<T>(
       const value = values[index]
       if (value !== null) {
         try {
-          result[key] = JSON.parse(value as string) as T
-        } catch {
+          // Handle case where Upstash Redis might return already parsed object
+          if (typeof value !== 'string') {
+            result[key] = value as T
+          } else {
+            result[key] = JSON.parse(value) as T
+          }
+        } catch (parseError) {
+          // Corrupted cache entry - delete it
+          console.warn(`[Redis] Corrupted cache entry for key ${key}, deleting...`)
+          try {
+            client.del(key).catch(() => {
+              // Ignore delete errors
+            })
+          } catch {
+            // Ignore delete errors
+          }
           result[key] = null
         }
       } else {

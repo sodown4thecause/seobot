@@ -106,11 +106,26 @@ export async function aiKeywordSearchVolume(params: {
   location_name?: string
   language_code?: string
 }) {
-  return doFetch<any>('/ai_optimization/ai_keyword_data/keywords_search_volume/live', {
+  console.log('[DataForSEO] Calling ai_keyword_search_volume with:', {
+    keywords: params.keywords,
+    location_name: params.location_name,
+    language_code: params.language_code,
+  })
+  
+  const result = await doFetch<any>('/ai_optimization/ai_keyword_data/keywords_search_volume/live', {
     keywords: params.keywords,
     location_name: params.location_name ?? 'United States',
     language_code: params.language_code ?? 'en',
   })
+  
+  console.log('[DataForSEO] ai_keyword_search_volume response:', {
+    success: result.success,
+    hasData: result.success ? !!result.data : false,
+    tasksLength: result.success ? result.data?.tasks?.length : 0,
+    firstTaskResult: result.success ? result.data?.tasks?.[0]?.result : undefined,
+  })
+  
+  return result
 }
 
 export async function chatGPTLLMScraper(params: {

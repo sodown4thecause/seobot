@@ -75,10 +75,33 @@ export function ImageGenerator() {
 
   const useSEOTemplate = (templateKey: keyof typeof SEOPrompts) => {
     const templateFn = SEOPrompts[templateKey]
-    if (templateFn) {
-      const generatedPrompt = templateFn(prompt)
-      setPrompt(generatedPrompt)
+    if (!templateFn) return
+    
+    let generatedPrompt: string
+    // Handle different function signatures explicitly
+    switch (templateKey) {
+      case 'blogFeatured':
+        generatedPrompt = SEOPrompts.blogFeatured(prompt, [])
+        break
+      case 'socialShare':
+        generatedPrompt = SEOPrompts.socialShare(prompt)
+        break
+      case 'productShowcase':
+        generatedPrompt = SEOPrompts.productShowcase(prompt, [])
+        break
+      case 'infographic':
+        generatedPrompt = SEOPrompts.infographic(prompt, [])
+        break
+      case 'howTo':
+        generatedPrompt = SEOPrompts.howTo(prompt, [])
+        break
+      case 'comparison':
+        generatedPrompt = SEOPrompts.comparison(prompt, prompt, 'comparison')
+        break
+      default:
+        return
     }
+    setPrompt(generatedPrompt)
   }
 
   return (

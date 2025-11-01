@@ -21,19 +21,19 @@ export function renderMessageComponent(
       return <UrlInput onSubmit={onSubmit} {...component.props} />
     
     case 'card_selector':
-      return <CardSelector onSubmit={onSubmit} {...component.props} />
+      return <CardSelector onSubmit={onSubmit} options={component.props.options || []} {...component.props} />
     
     case 'location_picker':
       return <LocationPicker onSubmit={onSubmit} {...component.props} />
     
     case 'confirmation_buttons':
-      return <ConfirmationButtons onSubmit={onSubmit} {...component.props} />
+      return <ConfirmationButtons onSubmit={onSubmit} options={component.props.options || []} {...component.props} />
     
     case 'loading_indicator':
       return <LoadingIndicator {...component.props} />
     
     case 'analysis_result':
-      return <AnalysisResult {...component.props} />
+      return <AnalysisResult title={component.props.title || 'Analysis Result'} data={component.props.data || {}} {...component.props} />
     
     default:
       return null

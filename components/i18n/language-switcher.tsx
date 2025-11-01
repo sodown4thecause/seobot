@@ -154,7 +154,7 @@ export function OnboardingLanguageSelector() {
       {Object.entries(localeNames).map(([code, name]) => (
         <button
           key={code}
-          onClick={() => handleLanguageChange(code as LocaleType)}
+          onClick={() => setLocale(code as LocaleType)}
           className={`
             flex flex-col items-center space-y-2 p-4 rounded-lg border-2 transition-all
             ${locale === code 

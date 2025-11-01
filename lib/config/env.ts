@@ -13,6 +13,7 @@ const serverEnvSchema = z.object({
   // External APIs
   DATAFORSEO_LOGIN: z.string().email(),
   DATAFORSEO_PASSWORD: z.string().min(1),
+  DATAFORSEO_MCP_URL: z.string().url().optional(), // MCP server URL (defaults to http://localhost:3000/mcp)
   PERPLEXITY_API_KEY: z.string().min(1),
   JINA_API_KEY: z.string().min(1),
   APIFY_API_KEY: z.string().min(1).optional(),
@@ -44,6 +45,7 @@ function getServerEnv() {
       GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
       DATAFORSEO_LOGIN: process.env.DATAFORSEO_LOGIN,
       DATAFORSEO_PASSWORD: process.env.DATAFORSEO_PASSWORD,
+      DATAFORSEO_MCP_URL: process.env.DATAFORSEO_MCP_URL,
       PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
       JINA_API_KEY: process.env.JINA_API_KEY,
       APIFY_API_KEY: process.env.APIFY_API_KEY,

@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { serverEnv } from '@/lib/config/env';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GoogleGenerativeAIStream, StreamingTextResponse } from 'ai';
 
 export const runtime = 'edge';
 
@@ -143,66 +142,68 @@ Format the article in clean Markdown with proper structure.`;
 
     const response = await model.generateContentStream(systemPrompt);
 
+    // Create content record in database first
+    const { data: contentRecord, error: contentError } = await supabase
+      .from('content')
+      .insert({
+        business_profile_id: businessProfileId,
+        title: analysisData?.recommendedTitle || `${keyword} - Article`,
+        target_keyword: keyword,
+        status: 'draft',
+        word_count: 0,
+        created_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (contentError) {
+      console.error('Failed to create content record:', contentError);
+    }
+
     // Convert to streaming response
-    const stream = GoogleGenerativeAIStream(response, {
-      onStart: async () => {
-        // Create content record in database
-        const { data: content, error: contentError } = await supabase
-          .from('content')
-          .insert({
-            business_profile_id: businessProfileId,
-            title: analysisData?.recommendedTitle || `${keyword} - Article`,
-            target_keyword: keyword,
-            status: 'draft',
-            word_count: 0,
-            created_at: new Date().toISOString(),
-          })
-          .select('id')
-          .single();
+    let fullCompletion = '';
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of response.stream) {
+            const text = chunk.text();
+            fullCompletion += text;
+            controller.enqueue(encoder.encode(text));
+          }
+          
+          // Save completed content
+          if (contentRecord) {
+            const wordCount = fullCompletion.split(/\s+/).length;
+            await supabase
+              .from('content')
+              .update({
+                content: fullCompletion,
+                word_count: wordCount,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', contentRecord.id);
 
-        if (contentError) {
-          console.error('Failed to create content record:', contentError);
-        }
-      },
-      onCompletion: async (completion: string) => {
-        // Save completed content to database
-        const wordCount = completion.split(/\s+/).length;
-
-        const { data: content } = await supabase
-          .from('content')
-          .select('id')
-          .eq('business_profile_id', businessProfileId)
-          .eq('target_keyword', keyword)
-          .eq('status', 'draft')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (content) {
-          // Update content record
-          await supabase
-            .from('content')
-            .update({
-              content: completion,
+            await supabase.from('content_versions').insert({
+              content_id: contentRecord.id,
+              version_number: 1,
+              content: fullCompletion,
               word_count: wordCount,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', content.id);
-
-          // Create version
-          await supabase.from('content_versions').insert({
-            content_id: content.id,
-            version_number: 1,
-            content: completion,
-            word_count: wordCount,
-            change_summary: 'Initial AI generation',
-            created_at: new Date().toISOString(),
-          });
+              change_summary: 'Initial AI generation',
+              created_at: new Date().toISOString(),
+            });
+          }
+          
+          controller.close();
+        } catch (error) {
+          controller.error(error);
         }
-      },
+      }
     });
 
-    return new StreamingTextResponse(stream);
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/event-stream' }
+    });
   } catch (error) {
     console.error('Content generation error:', error);
     return new Response('Failed to generate content', { status: 500 });

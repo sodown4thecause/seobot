@@ -290,15 +290,31 @@ export async function handleDataForSEOFunctionCall(
           location_name: args.location,
         })
 
-        if (!result.success) return `Error: ${result.error.message}`
+        if (!result.success) {
+          console.error('[Tool] ai_keyword_search_volume error:', result.error)
+          return `Error: ${result.error.message}`
+        }
 
+        console.log('[Tool] ai_keyword_search_volume raw response:', JSON.stringify(result.data, null, 2))
+        
         const data = result.data.tasks?.[0]?.result
-        if (!data || data.length === 0) return 'No AI search volume data found.'
+        if (!data || data.length === 0) {
+          console.warn('[Tool] ai_keyword_search_volume: No data in response')
+          return 'No AI search volume data found.'
+        }
 
-        const formatted = data.map((item: any) => ({
+        // Filter out empty objects and check if we have valid data
+        const validData = data.filter((item: any) => item && Object.keys(item).length > 0)
+        if (validData.length === 0) {
+          console.warn('[Tool] ai_keyword_search_volume: All items are empty objects', data)
+          return 'No AI search volume data found. The API returned empty results for these keywords.'
+        }
+
+        const formatted = validData.map((item: any) => ({
           keyword: item.keyword,
-          search_volume: item.search_volume,
-          monthly_searches: item.monthly_searches,
+          search_volume: item.search_volume ?? item.monthly_searches ?? null,
+          monthly_searches: item.monthly_searches ?? item.search_volume ?? null,
+          platform: item.platform || 'unknown',
         }))
 
         return JSON.stringify(formatted, null, 2)

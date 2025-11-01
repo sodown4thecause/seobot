@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { z } from 'zod'
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+})
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -121,7 +126,7 @@ export async function createTeam(params: {
     if (error) throw error
 
     // Add owner as team member
-    await addTeamMember(data.id, params.ownerId, 'owner', [params.ownerId])
+    await addTeamMember(data.id, params.ownerId, 'owner', params.ownerId)
 
     // Get member count
     const { count } = await supabase
@@ -305,6 +310,9 @@ export async function addContentComment(params: {
       .single()
 
     if (error) throw error
+    if (!profile) {
+      throw new Error('User profile not found')
+    }
 
     return {
       id: data.id,
@@ -318,9 +326,9 @@ export async function addContentComment(params: {
       resolvedBy: data.resolved_by,
       resolvedAt: data.resolved_at,
       userProfile: {
-        name: profile.name,
-        email: profile.email,
-        avatar: profile.avatar_url
+        name: profile.name || '',
+        email: profile.email || '',
+        avatar: profile.avatar_url || null
       },
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -421,7 +429,7 @@ export async function submitForApproval(params: {
 }): Promise<ContentApproval> {
   try {
     // Get user profile
-    const { data: profile } = await supabase
+    const { data: userProfile } = await supabase
       .from('profiles')
       .select('name, email, avatar_url')
       .eq('id', params.userId)
@@ -437,10 +445,18 @@ export async function submitForApproval(params: {
         notes: params.notes,
         status: 'pending'
       })
-      .select()
+      .select(`
+        *,
+        user:profiles(name, email, avatar_url)
+      `)
       .single()
 
     if (error) throw error
+    if (!data) {
+      throw new Error('Failed to create approval request')
+    }
+
+    const profile = data.user as { name: string | null; email: string | null; avatar_url: string | null } | null
 
     return {
       id: data.id,
@@ -451,9 +467,9 @@ export async function submitForApproval(params: {
       approvalLevel: data.approval_level,
       notes: data.notes,
       userProfile: {
-        name: profile.name,
-        email: profile.email,
-        avatar: profile.avatar_url
+        name: profile?.name || '',
+        email: profile?.email || '',
+        avatar: profile?.avatar_url || undefined
       },
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -591,18 +607,16 @@ Provide insights for:
 
 Return as JSON with keys: suggestedReviewers, potentialIssues, optimizationTips`
 
+    const collaborationInsightsSchema = z.object({
+      suggestedReviewers: z.array(z.string()),
+      potentialIssues: z.array(z.string()),
+      optimizationTips: z.array(z.string()),
+    })
+
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'object',
-        properties: {
-          suggestedReviewers: { type: 'array', items: { type: 'string' } },
-          potentialIssues: { type: 'array', items: { type: 'string' } },
-          optimizationTips: { type: 'array', items: { type: 'string' } }
-        },
-        required: ['suggestedReviewers', 'potentialIssues', 'optimizationTips']
-      }
+      schema: collaborationInsightsSchema,
     })
 
     return object as {

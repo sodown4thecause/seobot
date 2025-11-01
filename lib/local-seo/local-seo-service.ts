@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { z } from 'zod'
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+})
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -417,24 +422,22 @@ For each task, include:
 
 Return as JSON array of tasks.`
 
+    const optimizationTaskSchema = z.array(
+      z.object({
+        type: z.string(),
+        title: z.string(),
+        description: z.string(),
+        priority: z.string(),
+        estimatedImpact: z.number(),
+        estimatedTime: z.number(),
+        steps: z.array(z.string()),
+      })
+    )
+
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            type: { type: 'string' },
-            title: { type: 'string' },
-            description: { type: 'string' },
-            priority: { type: 'string' },
-            estimatedImpact: { type: 'number' },
-            estimatedTime: { type: 'number' },
-            steps: { type: 'array', items: { type: 'string' } }
-          }
-        }
-      }
+      schema: optimizationTaskSchema,
     })
 
     const tasks = object as any[]
@@ -582,53 +585,40 @@ For each idea, include:
 
 Return as JSON with three arrays: blogPosts, socialMediaPosts, landingPages.`
 
+    const contentIdeasSchema = z.object({
+      blogPosts: z.array(
+        z.object({
+          title: z.string(),
+          description: z.string(),
+          keywords: z.array(z.string()),
+          callToAction: z.string(),
+          wordCount: z.number(),
+        })
+      ),
+      socialMediaPosts: z.array(
+        z.object({
+          title: z.string(),
+          description: z.string(),
+          keywords: z.array(z.string()),
+          callToAction: z.string(),
+          characterCount: z.number(),
+        })
+      ),
+      landingPages: z.array(
+        z.object({
+          title: z.string(),
+          description: z.string(),
+          keywords: z.array(z.string()),
+          callToAction: z.string(),
+          wordCount: z.number(),
+        })
+      ),
+    })
+
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'object',
-        properties: {
-          blogPosts: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                description: { type: 'string' },
-                keywords: { type: 'array', items: { type: 'string' } },
-                callToAction: { type: 'string' },
-                wordCount: { type: 'number' }
-              }
-            }
-          },
-          socialMediaPosts: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                description: { type: 'string' },
-                keywords: { type: 'array', items: { type: 'string' } },
-                callToAction: { type: 'string' },
-                characterCount: { type: 'number' }
-              }
-            }
-          },
-          landingPages: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                description: { type: 'string' },
-                keywords: { type: 'array', items: { type: 'string' } },
-                callToAction: { type: 'string' },
-                wordCount: { type: 'number' }
-              }
-            }
-          }
-        }
-      }
+      schema: contentIdeasSchema,
     })
 
     return object as any

@@ -98,7 +98,14 @@ export function ABTestingDashboard({
         })
 
       const insightsResults = await Promise.all(insightsPromises)
-      const allInsights = insightsResults.reduce((acc, insight) => ({ ...acc, ...insight }), {})
+      const allInsights: Record<string, ABTestInsights> = {}
+      insightsResults.forEach((insight) => {
+        Object.entries(insight).forEach(([key, value]) => {
+          if (value !== null && typeof value === 'object') {
+            allInsights[key] = value as ABTestInsights
+          }
+        })
+      })
       setTestInsights(allInsights)
     } catch (error) {
       console.error('Failed to load A/B tests:', error)
@@ -503,7 +510,10 @@ export function ABTestingDashboard({
                 <p className="text-sm text-gray-600 text-center mb-4">
                   Create your first A/B test to start optimizing your content
                 </p>
-                <Button onClick={() => document.querySelector('button[data-state="open"]')?.click()}>
+                <Button onClick={() => {
+                  const button = document.querySelector('button[data-state="open"]') as HTMLButtonElement | null
+                  button?.click()
+                }}>
                   <Plus className="w-4 h-4 mr-2" />
                   Create Test
                 </Button>
