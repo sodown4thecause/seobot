@@ -3,12 +3,24 @@
  * 
  * Connects to the DataForSEO MCP server to access 40+ SEO tools
  * with simplified filter schema for LLM compatibility
+ * 
+ * Note: Compatible with Edge runtime - uses Web APIs instead of Node.js APIs
  */
 
 import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp'
 import { serverEnv } from '@/lib/config/env'
 
 let mcpClient: Awaited<ReturnType<typeof createMCPClient>> | null = null
+
+/**
+ * Create Basic Auth header using Web APIs (Edge runtime compatible)
+ */
+function createBasicAuth(username: string, password: string): string {
+  // Use Web API btoa instead of Buffer (Edge runtime compatible)
+  const credentials = `${username}:${password}`
+  const encoded = btoa(credentials)
+  return `Basic ${encoded}`
+}
 
 /**
  * Get or create the DataForSEO MCP client instance
@@ -20,18 +32,23 @@ export async function getDataForSEOMCPClient() {
     
     console.log('[MCP] Connecting to DataForSEO MCP server at:', mcpUrl)
     
-    mcpClient = await createMCPClient({
-      transport: {
-        type: 'http',
-        url: mcpUrl,
-        // Basic auth using DataForSEO credentials
-        headers: {
-          'Authorization': `Basic ${Buffer.from(`${serverEnv.DATAFORSEO_LOGIN}:${serverEnv.DATAFORSEO_PASSWORD}`).toString('base64')}`,
+    try {
+      mcpClient = await createMCPClient({
+        transport: {
+          type: 'http',
+          url: mcpUrl,
+          // Basic auth using DataForSEO credentials (Edge runtime compatible)
+          headers: {
+            'Authorization': createBasicAuth(serverEnv.DATAFORSEO_LOGIN, serverEnv.DATAFORSEO_PASSWORD),
+          },
         },
-      },
-    })
-    
-    console.log('[MCP] Connected to DataForSEO MCP server')
+      })
+      
+      console.log('[MCP] Connected to DataForSEO MCP server')
+    } catch (error) {
+      console.error('[MCP] Failed to connect to MCP server:', error)
+      throw error
+    }
   }
   
   return mcpClient
@@ -45,15 +62,25 @@ export async function getDataForSEOMCPClient() {
  * The server will automatically return simplified schemas if configured.
  */
 export async function getDataForSEOTools() {
-  const client = await getDataForSEOMCPClient()
-  
-  // Get tools from MCP server
-  // The server will return simplified schemas if DATAFORSEO_SIMPLE_FILTER=true is set
-  const tools = await client.tools()
-  
-  console.log(`[MCP] Loaded ${Object.keys(tools).length} tools from DataForSEO MCP server`)
-  
-  return tools
+  try {
+    const client = await getDataForSEOMCPClient()
+    
+    // Get tools from MCP server
+    // The server will return simplified schemas if DATAFORSEO_SIMPLE_FILTER=true is set
+    const tools = await client.tools()
+    
+    const toolCount = Object.keys(tools).length
+    console.log(`[MCP] Loaded ${toolCount} tools from DataForSEO MCP server`)
+    
+    if (toolCount === 0) {
+      console.warn('[MCP] Warning: No tools loaded from MCP server')
+    }
+    
+    return tools
+  } catch (error) {
+    console.error('[MCP] Failed to load tools from MCP server:', error)
+    throw error
+  }
 }
 
 /**
@@ -62,9 +89,13 @@ export async function getDataForSEOTools() {
  */
 export async function closeDataForSEOMCPClient() {
   if (mcpClient) {
-    await mcpClient.close()
-    mcpClient = null
-    console.log('[MCP] Closed DataForSEO MCP client connection')
+    try {
+      await mcpClient.close()
+      mcpClient = null
+      console.log('[MCP] Closed DataForSEO MCP client connection')
+    } catch (error) {
+      console.error('[MCP] Error closing client:', error)
+    }
   }
 }
 

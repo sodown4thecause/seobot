@@ -143,14 +143,30 @@ export async function POST(req: Request) {
     
     // Load tools from MCP server (with fallback to direct API tools)
     let seoTools: Record<string, any>
+    let mcpConnected = false
     try {
       // Try to load tools from MCP server first
       console.log('[Chat API] Attempting to load tools from MCP server...')
+      console.log('[Chat API] MCP URL:', serverEnv.DATAFORSEO_MCP_URL || 'http://localhost:3000/mcp')
       seoTools = await getDataForSEOTools()
-      console.log(`[Chat API] Successfully loaded ${Object.keys(seoTools).length} tools from MCP server`)
-    } catch (error) {
+      const toolCount = Object.keys(seoTools).length
+      console.log(`[Chat API] Successfully loaded ${toolCount} tools from MCP server`)
+      mcpConnected = true
+      
+      // Log first few tool names for debugging
+      if (toolCount > 0) {
+        const toolNames = Object.keys(seoTools).slice(0, 5)
+        console.log('[Chat API] Sample MCP tools:', toolNames)
+      }
+    } catch (error: any) {
       // Fallback to direct API tools if MCP server is unavailable
-      console.warn('[Chat API] MCP server unavailable, falling back to direct API tools:', error)
+      console.warn('[Chat API] MCP server unavailable, falling back to direct API tools')
+      console.warn('[Chat API] MCP error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      })
+      mcpConnected = false
       seoTools = {
         ai_keyword_search_volume: tool({
           description: 'Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.',
@@ -200,7 +216,9 @@ export async function POST(req: Request) {
     console.log('[Chat API] Streaming with:', {
       conversationMessageCount: conversationMessages.length,
       systemPromptLength: systemPrompt.length,
-      toolsCount: Object.keys(seoTools).length
+      toolsCount: Object.keys(seoTools).length,
+      mcpConnected: mcpConnected,
+      mcpUrl: serverEnv.DATAFORSEO_MCP_URL || 'not set (using default)'
     })
     
     // Use AI SDK v5's streamText for proper compatibility

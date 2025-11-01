@@ -1,8 +1,8 @@
 # DataForSEO MCP Server Startup Script (PowerShell)
 # Set your credentials here or use environment variables
 
-$env:DATAFORSEO_USERNAME = "liam@leadspeed.co"
-$env:DATAFORSEO_PASSWORD = "f63f04a30d4b5272"
+$env:DATAFORSEO_USERNAME = "your_username"
+$env:DATAFORSEO_PASSWORD = "your_password"
 $env:DATAFORSEO_SIMPLE_FILTER = "true"
 
 Write-Host "Starting DataForSEO MCP Server with simplified filter..." -ForegroundColor Green
