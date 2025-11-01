@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
-import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { generateObject, generateText } from 'ai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { z } from 'zod'
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+})
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -379,13 +384,12 @@ Create an HTML email template that:
 
 Return only the HTML template, no explanations.`
 
-    const { text } = await generateObject({
+    const result = await generateText({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: { type: 'string' }
     })
 
-    return text as string
+    return result.text
   } catch (error) {
     console.error('Failed to generate email template:', error)
     return getDefaultEmailTemplate(templateType, settings)

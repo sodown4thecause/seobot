@@ -2,19 +2,14 @@ import * as React from "react"
 
 type ToastActionElement = React.ReactElement<typeof ToastAction>
 
-export interface Toast {
+export interface ToasterToast {
   id: string
   title?: string
   description?: string
   action?: ToastActionElement
   variant?: "default" | "destructive"
-}
-
-export interface ToasterToast extends Toast {
-  id: string
-  title?: string
-  description?: string
-  action?: ToastActionElement
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const TOAST_LIMIT = 1
@@ -144,9 +139,9 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">
+type ToastProps = Omit<ToasterToast, "id" | "open" | "onOpenChange">
 
-function toast({ ...props }: Toast) {
+function toast({ ...props }: ToastProps) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -162,7 +157,7 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
-      onOpenChange: (open) => {
+      onOpenChange: (open: boolean) => {
         if (!open) dismiss()
       },
     },

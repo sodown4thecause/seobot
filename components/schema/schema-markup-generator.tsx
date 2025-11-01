@@ -27,7 +27,8 @@ import {
   Lightbulb,
   Database,
   Layers,
-  Target
+  Target,
+  Calendar
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -71,7 +72,7 @@ export function SchemaMarkupGenerator({ userId }: SchemaMarkupGeneratorProps) {
   const [implementationFormat, setImplementationFormat] = useState<'json-ld' | 'microdata' | 'rdfa'>('json-ld')
 
   // Form state
-  const [contentType, setContentType] = useState<SchemaType>('Article')
+  const [contentType, setContentType] = useState<SchemaType | 'all'>('Article')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [url, setUrl] = useState('')
@@ -132,7 +133,7 @@ export function SchemaMarkupGenerator({ userId }: SchemaMarkupGeneratorProps) {
           image: image.trim() || undefined,
           ...customFieldsData
         },
-        schemaType: contentType,
+        schemaType: contentType === 'all' ? 'Article' : contentType,
         customFields: customFieldsData,
         targetKeywords: keywords
       }, userId)
@@ -172,7 +173,7 @@ export function SchemaMarkupGenerator({ userId }: SchemaMarkupGeneratorProps) {
       
       const template = await createSchemaTemplate({
         templateName,
-        schemaType: contentType,
+        schemaType: contentType === 'all' ? 'Article' : contentType,
         templateContent: templateData,
         isPublic: isTemplatePublic,
         userId
@@ -339,7 +340,7 @@ export function SchemaMarkupGenerator({ userId }: SchemaMarkupGeneratorProps) {
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="contentType">Schema Type</Label>
-                  <Select value={contentType} onValueChange={(value) => setContentType(value as SchemaType)}>
+                  <Select value={contentType} onValueChange={(value) => setContentType(value as SchemaType | 'all')}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -541,7 +542,7 @@ export function SchemaMarkupGenerator({ userId }: SchemaMarkupGeneratorProps) {
 
                 <div>
                   <Label htmlFor="templateType">Schema Type</Label>
-                  <Select value={contentType} onValueChange={(value) => setContentType(value as SchemaType)}>
+                  <Select value={contentType} onValueChange={(value) => setContentType(value as SchemaType | 'all')}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -654,7 +655,7 @@ export function SchemaMarkupGenerator({ userId }: SchemaMarkupGeneratorProps) {
               <CardTitle className="text-base flex items-center justify-between">
                 <span>Generated Schemas</span>
                 <div className="flex items-center space-x-2">
-                  <Select value={contentType} onValueChange={(value) => setContentType(value as SchemaType)}>
+                  <Select value={contentType} onValueChange={(value) => setContentType(value as SchemaType | 'all')}>
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>

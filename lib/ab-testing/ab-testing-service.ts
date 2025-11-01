@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { z } from 'zod'
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+})
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -174,10 +179,7 @@ Return only the variations as a JSON array of strings, no explanations.`
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'array',
-        items: { type: 'string' }
-      }
+      schema: z.array(z.string()),
     })
 
     return object as string[]
@@ -364,7 +366,7 @@ export async function getVariantForUser(
     let selectedVariant: ABTestVariant | null = null
 
     for (const [variantId, percentage] of Object.entries(test.traffic_split)) {
-      cumulative += percentage
+      cumulative += (percentage as number)
       if (random <= cumulative) {
         selectedVariant = test.variants.find((v: ABTestVariant) => v.id === variantId) || null
         break
@@ -420,8 +422,9 @@ export async function calculateABTestInsights(testId: string): Promise<ABTestIns
     let bestVariant = ''
     let bestCTR = 0
     for (const [variantId, variantResult] of Object.entries(results.variantResults)) {
-      if (variantResult.ctr > bestCTR) {
-        bestCTR = variantResult.ctr
+      const result = variantResult as { ctr: number }
+      if (result.ctr > bestCTR) {
+        bestCTR = result.ctr
         bestVariant = variantId
       }
     }

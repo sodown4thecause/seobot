@@ -138,6 +138,8 @@ export function ChatInput({
           <div className="flex-1 min-w-0">
             <textarea
               ref={textareaRef}
+              id="chat-input"
+              name="chat-input"
               value={value}
               onChange={(e) => onChange(e?.target?.value || '')}
               onKeyDown={handleKeyDown}

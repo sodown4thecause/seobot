@@ -25,6 +25,8 @@ export function UrlInput({ onSubmit, placeholder = 'https://yourwebsite.com' }: 
       <div className="relative">
         <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
         <Input
+          id="url-input"
+          name="url-input"
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}

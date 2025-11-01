@@ -1,5 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
-import { GoogleGenerativeAIStream, StreamingTextResponse } from 'ai'
+import { streamText, tool } from 'ai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createClient } from '@/lib/supabase/server'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import { type OnboardingData, type OnboardingStep } from '@/lib/onboarding/state'
@@ -10,18 +10,22 @@ import {
   batchIncrementUsage
 } from '@/lib/ai/rag-service'
 import {
-  dataForSEOFunctions,
   handleDataForSEOFunctionCall
 } from '@/lib/ai/dataforseo-tools'
+import { getDataForSEOTools } from '@/lib/mcp/dataforseo-client'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
+import { z } from 'zod'
 
 export const runtime = 'edge'
 
-const genAI = new GoogleGenerativeAI(serverEnv.GOOGLE_API_KEY)
+const google = createGoogleGenerativeAI({
+  apiKey: serverEnv.GOOGLE_API_KEY,
+})
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
-  content: string
+  content?: string  // Legacy format
+  parts?: Array<{ type: string; text?: string }>  // AI SDK v5 format
 }
 
 interface OnboardingContext {
@@ -50,6 +54,14 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as RequestBody
     const { messages, context } = body
+    
+    // Debug logging
+    console.log('[Chat API] Received request:', {
+      messageCount: messages?.length || 0,
+      lastMessage: messages?.[messages.length - 1],
+      hasContext: !!context
+    })
+    
     const supabase = await createClient()
 
     // Get current user
@@ -62,9 +74,20 @@ export async function POST(req: Request) {
     const onboardingContext = context?.onboarding
     const isOnboarding = context?.page === 'onboarding'
     
+    // Extract message content - handle both AI SDK v5 format (parts) and legacy format (content)
+    const extractMessageContent = (msg: ChatMessage): string => {
+      if (msg.parts && Array.isArray(msg.parts)) {
+        // AI SDK v5 format
+        const textPart = msg.parts.find(p => p.type === 'text')
+        return textPart?.text || ''
+      }
+      return msg.content || ''
+    }
+    
     // RAG: Detect if query needs framework assistance
-    const lastUserMessage = messages[messages.length - 1]?.content || ''
-    const shouldUseRAG = detectFrameworkIntent(lastUserMessage)
+    const lastUserMessage = messages[messages.length - 1]
+    const lastUserMessageContent = extractMessageContent(lastUserMessage)
+    const shouldUseRAG = detectFrameworkIntent(lastUserMessageContent)
     
     let retrievedFrameworks: string = ''
     let frameworkIds: string[] = []
@@ -73,7 +96,7 @@ export async function POST(req: Request) {
     if (shouldUseRAG && !isOnboarding) {
       try {
         const ragStartTime = Date.now()
-        const frameworks = await findRelevantFrameworks(lastUserMessage, {
+        const frameworks = await findRelevantFrameworks(lastUserMessageContent, {
           maxResults: 3,
         })
         
@@ -99,99 +122,125 @@ export async function POST(req: Request) {
       systemPrompt = buildGeneralSystemPrompt(context, retrievedFrameworks)
     }
 
-    // Format messages for Gemini
-    const geminiMessages = messages.map((msg) => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }],
-    }))
-
-    // Add system prompt as first user message
-    const allMessages = [
-      { role: 'user', parts: [{ text: systemPrompt }] },
-      { role: 'model', parts: [{ text: 'I understand. I\'m ready to help you with SEO and content optimization.' }] },
-      ...geminiMessages,
-    ]
-
-    // Create Gemini model with DataForSEO function calling tools
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-pro',
-      tools: [{
-        functionDeclarations: dataForSEOFunctions as any
-      }]
-    })
+    // Convert messages to AI SDK v5 format
+    const systemMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = []
+    const conversationMessages: Array<{ role: 'user' | 'assistant'; content: string }> = []
     
-    const chat = model.startChat({
-      history: allMessages.slice(0, -1),
-    })
-
-    const lastMessage = messages[messages.length - 1]
+    // Add system prompt
+    systemMessages.push({ role: 'system', content: systemPrompt })
     
-    // First, try to get response (may include function calls)
-    const response = await chat.sendMessage(lastMessage.content)
-    
-    // Check if Gemini wants to call DataForSEO functions
-    const functionCall = response.response.functionCalls?.()?.[0]
-    
-    if (functionCall) {
-      console.log(`[Chat] Gemini calling function: ${functionCall.name}`, functionCall.args)
-      
-      // Execute the DataForSEO function
-      const functionResult = await handleDataForSEOFunctionCall(
-        functionCall.name,
-        functionCall.args
-      )
-      
-      console.log(`[Chat] Function result length: ${functionResult.length} chars`)
-      
-      // Send function result back to Gemini and get final response
-      const finalResponse = await chat.sendMessageStream([{
-        functionResponse: {
-          name: functionCall.name,
-          response: { result: functionResult }
-        }
-      }])
-      
-      // Stream the final response
-      const stream = GoogleGenerativeAIStream(finalResponse)
-      
-      // Save messages and return
-      if (user && !authError) {
-        await saveChatMessages(supabase, user.id, messages, isOnboarding ? onboardingContext : undefined)
-        if (isOnboarding && onboardingContext?.data && user.id) {
-          await saveOnboardingProgress(supabase, user.id, onboardingContext.data)
+    // Convert user messages
+    messages.forEach((msg) => {
+      const content = extractMessageContent(msg)
+      if (content) {
+        if (msg.role === 'user') {
+          conversationMessages.push({ role: 'user', content })
+        } else if (msg.role === 'assistant') {
+          conversationMessages.push({ role: 'assistant', content })
         }
       }
-      if (frameworkIds.length > 0) {
-        batchIncrementUsage(frameworkIds).catch(err => 
-          console.warn('[Chat] Failed to track framework usage:', err)
-        )
+    })
+    
+    // Load tools from MCP server (with fallback to direct API tools)
+    let seoTools: Record<string, any>
+    try {
+      // Try to load tools from MCP server first
+      console.log('[Chat API] Attempting to load tools from MCP server...')
+      seoTools = await getDataForSEOTools()
+      console.log(`[Chat API] Successfully loaded ${Object.keys(seoTools).length} tools from MCP server`)
+    } catch (error) {
+      // Fallback to direct API tools if MCP server is unavailable
+      console.warn('[Chat API] MCP server unavailable, falling back to direct API tools:', error)
+      seoTools = {
+        ai_keyword_search_volume: tool({
+          description: 'Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.',
+          inputSchema: z.object({
+            keywords: z.array(z.string()).describe('Keywords to analyze in AI platforms'),
+            location: z.string().optional().describe('Location (e.g., "United States", "United Kingdom")'),
+          }),
+          execute: async (args: { keywords: string[]; location?: string }) => {
+            return await handleDataForSEOFunctionCall('ai_keyword_search_volume', args)
+          },
+        }),
+        keyword_search_volume: tool({
+          description: 'Get Google search volume, CPC, and competition for keywords. Core keyword research tool.',
+          inputSchema: z.object({
+            keywords: z.array(z.string()).describe('Keywords to analyze (max 100)'),
+            location: z.string().optional().describe('Location for data'),
+          }),
+          execute: async (args: { keywords: string[]; location?: string }) => {
+            return await handleDataForSEOFunctionCall('keyword_search_volume', args)
+          },
+        }),
+        google_rankings: tool({
+          description: 'Get current Google SERP results for a keyword including position, URL, title, and SERP features.',
+          inputSchema: z.object({
+            keyword: z.string().describe('Keyword to check rankings for'),
+            location: z.string().optional().describe('Location for SERP results'),
+          }),
+          execute: async (args: { keyword: string; location?: string }) => {
+            return await handleDataForSEOFunctionCall('google_rankings', args)
+          },
+        }),
+        domain_overview: tool({
+          description: 'Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility.',
+          inputSchema: z.object({
+            domain: z.string().describe('Domain to analyze (without http://)'),
+            location: z.string().optional().describe('Location for metrics'),
+          }),
+          execute: async (args: { domain: string; location?: string }) => {
+            return await handleDataForSEOFunctionCall('domain_overview', args)
+          },
+        }),
       }
-      
-      return new StreamingTextResponse(stream)
+      console.log(`[Chat API] Using fallback: ${Object.keys(seoTools).length} direct API tools`)
     }
     
-    // No function call - stream normal response
-    const result = await chat.sendMessageStream(lastMessage.content)
-    const stream = GoogleGenerativeAIStream(result)
-
-    // Save messages to chat history (if user is authenticated)
-    if (user && !authError) {
-      await saveChatMessages(supabase, user.id, messages, isOnboarding ? onboardingContext : undefined)
-      
-      // If onboarding, save partial data to business_profiles
-      if (isOnboarding && onboardingContext?.data && user.id) {
-        await saveOnboardingProgress(supabase, user.id, onboardingContext.data)
-      }
-    }
+    // Debug logging
+    console.log('[Chat API] Streaming with:', {
+      conversationMessageCount: conversationMessages.length,
+      systemPromptLength: systemPrompt.length,
+      toolsCount: Object.keys(seoTools).length
+    })
     
-    // RAG: Track framework usage (fire-and-forget)
-    if (frameworkIds.length > 0) {
-      batchIncrementUsage(frameworkIds).catch(err => 
-        console.warn('[Chat] Failed to track framework usage:', err)
-      )
-    }
-
-    return new StreamingTextResponse(stream)
+    // Use AI SDK v5's streamText for proper compatibility
+    const result = await streamText({
+      model: google('gemini-2.0-flash-exp'),
+      system: systemPrompt,
+      messages: conversationMessages,
+      tools: seoTools,
+      onFinish: async ({ text, toolCalls }) => {
+        // Tool calls are handled automatically by AI SDK v5, but we can log them
+        if (toolCalls && toolCalls.length > 0) {
+          console.log(`[Chat] Executed ${toolCalls.length} tool calls`)
+        }
+        
+        // Save messages after completion
+        if (user && !authError) {
+          await saveChatMessages(supabase, user.id, messages, isOnboarding ? onboardingContext : undefined)
+          if (isOnboarding && onboardingContext?.data && user.id) {
+            await saveOnboardingProgress(supabase, user.id, onboardingContext.data)
+          }
+        }
+        
+        // Track framework usage
+        if (frameworkIds.length > 0) {
+          batchIncrementUsage(frameworkIds).catch(err => 
+            console.warn('[Chat] Failed to track framework usage:', err)
+          )
+        }
+      },
+    })
+    
+    console.log('[Chat API] Starting stream response...')
+    // Use toUIMessageStreamResponse for DefaultChatTransport compatibility
+    // This creates SSE format with 'data' protocol that DefaultChatTransport expects
+    const response = result.toUIMessageStreamResponse()
+    console.log('[Chat API] Response created:', {
+      status: response.status,
+      headers: Object.fromEntries(response.headers.entries())
+    })
+    return response
   } catch (error: unknown) {
     const err = error as Error
     console.error('Chat API error:', err)
@@ -261,6 +310,15 @@ Your capabilities include:
 - Providing strategic recommendations
 - Guiding users through setup processes
 
+You have access to 40+ SEO tools through the DataForSEO MCP server. These tools use simplified filter schemas optimized for LLM usage, making them easy to use. The tools cover:
+- AI Optimization (ChatGPT, Claude, Perplexity analysis)
+- Keyword Research (search volume, suggestions, difficulty)
+- SERP Analysis (Google rankings, SERP features)
+- Competitor Analysis (domain overlap, competitor discovery)
+- Domain Analysis (traffic, keywords, rankings, technologies)
+- On-Page Analysis (content parsing, Lighthouse audits)
+- Content Generation (optimized content creation)
+
 Be conversational and helpful. Ask clarifying questions when needed. Keep responses concise but informative.`
 
   let prompt = basePrompt
@@ -285,10 +343,11 @@ async function saveChatMessages(
 ) {
   try {
     const lastMessage = messages[messages.length - 1]
+    const content = lastMessage.parts?.find(p => p.type === 'text')?.text || lastMessage.content || ''
     const chatMessage = {
       user_id: userId,
       role: lastMessage.role,
-      content: lastMessage.content,
+      content: content,
       metadata: onboardingContext ? { onboarding: onboardingContext } : {},
     }
 

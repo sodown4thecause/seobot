@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
-import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { generateObject, generateText } from 'ai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { z } from 'zod'
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+})
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -222,24 +227,22 @@ For each suggestion, include:
 
 Return as JSON array of suggestions.`
 
+    const optimizationSuggestionsSchema = z.array(
+      z.object({
+        type: z.string(),
+        priority: z.string(),
+        suggestion: z.string(),
+        currentValue: z.string(),
+        suggestedValue: z.string(),
+        impact: z.number(),
+        reasoning: z.string(),
+      })
+    )
+
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            type: { type: 'string' },
-            priority: { type: 'string' },
-            suggestion: { type: 'string' },
-            currentValue: { type: 'string' },
-            suggestedValue: { type: 'string' },
-            impact: { type: 'number' },
-            reasoning: { type: 'string' }
-          }
-        }
-      }
+      schema: optimizationSuggestionsSchema,
     })
 
     return object as VideoOptimizationSuggestion[]
@@ -374,10 +377,7 @@ Return only the titles as a JSON array, no explanations.`
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'array',
-        items: { type: 'string' }
-      }
+      schema: z.array(z.string()),
     })
 
     return object as string[]
@@ -415,13 +415,12 @@ Create an optimized description that:
 
 Return only the optimized description, no explanations.`
 
-    const { text } = await generateObject({
+    const result = await generateText({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: { type: 'string' }
     })
 
-    return text as string
+    return result.text
   } catch (error) {
     console.error('Failed to generate description optimization:', error)
     return params.currentDescription
@@ -458,10 +457,7 @@ Return only the tags as a JSON array, no explanations.`
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'array',
-        items: { type: 'string' }
-      }
+      schema: z.array(z.string()),
     })
 
     return object as string[]

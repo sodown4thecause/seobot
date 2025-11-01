@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 
-export interface FeatureCardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface FeatureCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onDrag' | 'onDragStart' | 'onDragEnd' | 'onAnimationStart' | 'onAnimationEnd'> {
   icon: LucideIcon
   title: string
   description: string

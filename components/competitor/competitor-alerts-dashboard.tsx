@@ -35,7 +35,9 @@ import {
   ExternalLink,
   Copy,
   Download,
-  FileText
+  FileText,
+  Hash,
+  Save
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -249,7 +251,7 @@ export function CompetitorAlertsDashboard({ userId }: CompetitorAlertsDashboardP
       await updateAlertEventStatus(eventId, status)
       
       // Update local state
-      setAlertEvents(events.map(event => 
+      setAlertEvents(alertEvents.map(event => 
         event.id === eventId ? { ...event, status } : event
       ))
 

@@ -254,6 +254,7 @@ export async function getRateLimitStatus(
     }
   } catch (error) {
     console.error('[RateLimit] Error getting status:', error)
+    const config = RATE_LIMITS[type]
     return {
       limited: false,
       limit: config.limit,

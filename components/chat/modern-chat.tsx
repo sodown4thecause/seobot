@@ -1,6 +1,8 @@
 'use client'
 
-import { useChat } from 'ai/react'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
+import type { UIMessage } from 'ai'
 import { useEffect, useRef, useState } from 'react'
 import { Send, Sparkles, Copy, Check } from 'lucide-react'
 
@@ -12,11 +14,26 @@ interface ModernChatProps {
 export function ModernChat({ context, placeholder = "Message the AI" }: ModernChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [input, setInput] = useState('')
   
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    api: '/api/chat',
-    body: { context },
+  const chat = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: { context },
+    }),
+    onError: (error) => {
+      console.error('[Chat] Error:', error)
+      console.error('[Chat] Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        error
+      })
+      // Handle error gracefully - don't break the UI
+    },
   })
+
+  const { messages, sendMessage, status } = chat
+  const isLoading = status === 'streaming' || status === 'submitted'
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text)
@@ -61,77 +78,80 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
           </div>
         )}
 
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              alignItems: message.role === 'user' ? 'flex-end' : 'flex-start',
-            }}
-          >
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              maxWidth: '85%',
-              alignItems: 'flex-start',
-              flexDirection: message.role === 'user' ? 'row-reverse' : 'row'
-            }}>
-              {message.role === 'assistant' && (
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <Sparkles size={16} />
-                </div>
-              )}
-              
+        {messages.map((message: UIMessage) => {
+          const textContent = message.parts.find(p => p.type === 'text')?.text || ''
+          return (
+            <div
+              key={message.id}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: message.role === 'user' ? 'flex-end' : 'flex-start',
+              }}
+            >
               <div style={{
-                backgroundColor: message.role === 'user' ? '#2d3748' : '#2a2f3f',
-                padding: '12px 16px',
-                borderRadius: '16px',
-                lineHeight: '1.6',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word'
+                display: 'flex',
+                gap: '12px',
+                maxWidth: '85%',
+                alignItems: 'flex-start',
+                flexDirection: message.role === 'user' ? 'row-reverse' : 'row'
               }}>
-                {message.content}
-              </div>
+                {message.role === 'assistant' && (
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Sparkles size={16} />
+                  </div>
+                )}
+                
+                <div style={{
+                  backgroundColor: message.role === 'user' ? '#2d3748' : '#2a2f3f',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  lineHeight: '1.6',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                }}>
+                  {textContent}
+                </div>
 
-              {message.role === 'assistant' && (
-                <button
-                  onClick={() => copyToClipboard(message.content, message.id)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    color: copiedId === message.id ? '#10b981' : '#6b7280',
-                    transition: 'all 0.2s',
-                    opacity: 0.7
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '1'
-                    e.currentTarget.style.backgroundColor = '#374151'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '0.7'
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }}
-                >
-                  {copiedId === message.id ? <Check size={16} /> : <Copy size={16} />}
-                </button>
-              )}
+                {message.role === 'assistant' && (
+                  <button
+                    onClick={() => copyToClipboard(textContent, message.id)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '8px',
+                      borderRadius: '8px',
+                      color: copiedId === message.id ? '#10b981' : '#6b7280',
+                      transition: 'all 0.2s',
+                      opacity: 0.7
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = '1'
+                      e.currentTarget.style.backgroundColor = '#374151'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = '0.7'
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }}
+                  >
+                    {copiedId === message.id ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {isLoading && (
           <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
@@ -186,7 +206,14 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
         padding: '20px',
         borderTop: '1px solid #374151'
       }}>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <form onSubmit={(e) => {
+          e.preventDefault()
+          if (input.trim() && !isLoading) {
+            console.log('[Chat] Sending message:', input)
+            sendMessage({ text: input })
+            setInput('')
+          }
+        }} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <div style={{ 
             flex: 1,
             position: 'relative',
@@ -194,8 +221,10 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
             alignItems: 'center'
           }}>
             <input
+              id="modern-chat-input"
+              name="modern-chat-input"
               value={input}
-              onChange={handleInputChange}
+              onChange={(e) => setInput(e.target.value)}
               placeholder={placeholder}
               disabled={isLoading}
               style={{

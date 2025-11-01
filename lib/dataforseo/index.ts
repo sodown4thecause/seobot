@@ -43,9 +43,11 @@ export type {
 // Re-export constants
 export * from './constants'
 export { default as CONSTANTS } from './constants'
+import CONSTANTS from './constants'
 
 // Re-export client
 export { dataForSEOClient as client, default as clientDefault } from './client'
+import { dataForSEOClient } from './client'
 
 // ============================================================================
 // MODULAR TOOLS (30+ Tools)

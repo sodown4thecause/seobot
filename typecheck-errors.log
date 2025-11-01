@@ -1,0 +1,34 @@
+
+> seo-platform@0.1.0 typecheck
+> tsc --noEmit
+
+components/chat/ai-chat-interface.tsx(3,39): error TS2307: Cannot find module 'ai/react' or its corresponding type declarations.
+components/chat/ai-chat-interface.tsx(35,16): error TS7006: Parameter 'message' implicitly has an 'any' type.
+components/chat/ai-chat-interface.tsx(146,26): error TS7006: Parameter 'message' implicitly has an 'any' type.
+components/chat/modern-chat.tsx(3,39): error TS2307: Cannot find module 'ai/react' or its corresponding type declarations.
+components/chat/modern-chat.tsx(64,24): error TS7006: Parameter 'message' implicitly has an 'any' type.
+lib/ab-testing/ab-testing-service.ts(179,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/ai/image-generation.ts(99,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/ai/image-generation.ts(160,17): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/ai/image-generation.ts(280,17): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/ai/image-generation.ts(489,7): error TS2353: Object literal may only specify known properties, and 'experimental_attachments' does not exist in type 'CallSettings & { system?: string | undefined; } & { prompt: string | ModelMessage[]; messages?: undefined; } & { model: LanguageModel; tools?: ToolSet | undefined; ... 13 more ...; _internal?: { ...; } | undefined; }'.
+lib/ai/rag-service.ts(465,21): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+lib/ai/rag-service.ts(465,45): error TS2339: Property 'usage_count' does not exist on type 'never'.
+lib/ai/rag-service.ts(505,23): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+lib/ai/rag-service.ts(505,47): error TS2339: Property 'usage_count' does not exist on type 'never'.
+lib/collaboration/team-service.ts(605,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/competitor/competitor-alerts-service.ts(697,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/local-seo/local-seo-service.ts(425,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/local-seo/local-seo-service.ts(591,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/podcast/podcast-service.ts(308,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/podcast/podcast-service.ts(364,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/podcast/podcast-service.ts(470,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/podcast/podcast-service.ts(615,17): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/podcast/podcast-service.ts(666,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/schema/schema-markup-service.ts(172,17): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/schema/schema-markup-service.ts(438,17): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/video/video-seo-service.ts(230,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/video/video-seo-service.ts(380,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/video/video-seo-service.ts(424,17): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/video/video-seo-service.ts(466,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.
+lib/white-label/white-label-service.ts(386,17): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'FlexibleSchema<unknown>'.

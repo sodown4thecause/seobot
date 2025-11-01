@@ -1,9 +1,11 @@
 'use client'
 
-import { useChat } from 'ai/react'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
+import type { UIMessage } from 'ai'
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Copy, Check } from 'lucide-react'
+import { Sparkles, Copy, Check, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
 import { renderMessageComponent, type MessageComponent } from './message-types'
@@ -27,17 +29,34 @@ export function AIChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [pendingComponents, setPendingComponents] = useState<Map<string, MessageComponent>>(new Map())
+  const [input, setInput] = useState('')
   
-  const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
-    api: '/api/chat',
-    body: { context },
-    initialMessages: initialMessage ? [{ role: 'assistant', content: initialMessage }] : undefined,
-    onFinish: (message) => {
+  const chat = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: { context },
+    }),
+    messages: initialMessage ? [{ role: 'assistant', parts: [{ type: 'text', text: initialMessage }], id: 'initial' }] : undefined,
+    onFinish: ({ message }) => {
+      console.log('[Chat] Message finished:', message)
       scrollToBottom()
       // Parse components from message
-      parseComponentsFromMessage(message.content, message.id)
-    }
+      const textContent = message.parts.find(p => p.type === 'text')?.text || ''
+      parseComponentsFromMessage(textContent, message.id)
+    },
+    onError: (error) => {
+      console.error('[Chat] Error:', error)
+      console.error('[Chat] Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        error
+      })
+      // Handle error gracefully - don't break the UI
+    },
   })
+
+  const { messages, sendMessage, status } = chat
+  const isLoading = status === 'streaming' || status === 'submitted'
 
   const parseComponentsFromMessage = (content: string, messageId: string) => {
     // Look for JSON code blocks in the message
@@ -73,7 +92,8 @@ export function AIChatInterface({
     
     // Append user message with component data
     const message = formatComponentData(component.component, data)
-    append({ role: 'user', content: message })
+    console.log('[Chat] Sending component message:', message)
+    sendMessage({ text: message })
   }
 
   const formatComponentData = (componentType: string, data: any): string => {
@@ -105,16 +125,124 @@ export function AIChatInterface({
     scrollToBottom()
   }, [messages, pendingComponents])
 
-  const renderMessageContent = (content: string, messageId: string) => {
+  const renderMessageContent = (message: UIMessage, messageId: string) => {
+    const textContent = message.parts.find(p => p.type === 'text')?.text || ''
     // Remove JSON code blocks from display
-    const cleanedContent = content.replace(/```json\n[\s\S]*?\n```/g, '').trim()
+    const cleanedContent = textContent.replace(/```json\n[\s\S]*?\n```/g, '').trim()
     const component = pendingComponents.get(messageId)
+    
+    // Find tool calls
+    const toolCalls = message.parts.filter(p => p.type && p.type.startsWith('tool-'))
     
     return (
       <>
         {cleanedContent && (
-          <div className="whitespace-pre-wrap break-words">
-            {cleanedContent}
+          <div className="whitespace-pre-wrap break-words prose prose-invert prose-sm max-w-none">
+            <div className="text-white/90 leading-relaxed">
+              {cleanedContent.split('\n').map((line, i) => (
+                <span key={i}>
+                  {line}
+                  {i < cleanedContent.split('\n').length - 1 && <br />}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {toolCalls.length > 0 && (
+          <div className="mt-4 space-y-3">
+            {toolCalls.map((toolCall: any, index: number) => {
+              const toolName = toolCall.type.replace('tool-', '')
+              const toolInput = toolCall.input || toolCall.rawInput
+              const toolOutput = toolCall.output
+              const toolState = toolCall.state
+              const isLoading = toolState === 'submitted' || toolState === 'streaming'
+              const isSuccess = toolState === 'output-available' || toolState === 'done'
+              const isError = !!toolCall.errorText
+              
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    "bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm",
+                    "border rounded-xl p-4 space-y-3",
+                    "transition-all duration-200",
+                    isError ? "border-red-500/30" : "border-white/10",
+                    isSuccess && !isError && "border-green-500/30"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center",
+                        isLoading && "bg-blue-500/20 animate-pulse",
+                        isSuccess && !isError && "bg-green-500/20",
+                        isError && "bg-red-500/20"
+                      )}>
+                        {isLoading && <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />}
+                        {isSuccess && !isError && <CheckCircle2 className="w-4 h-4 text-green-400" />}
+                        {isError && <XCircle className="w-4 h-4 text-red-400" />}
+                        {!isLoading && !isSuccess && !isError && (
+                          <AlertCircle className="w-4 h-4 text-yellow-400" />
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-white">
+                          {toolName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        </span>
+                        {toolState && (
+                          <span className={cn(
+                            "text-xs mt-0.5",
+                            isSuccess && !isError ? 'text-green-400' :
+                            isError ? 'text-red-400' :
+                            'text-blue-400'
+                          )}>
+                            {toolState.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {toolInput && (
+                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                      <div className="text-xs font-medium text-white/70 mb-1.5">Input</div>
+                      <div className="text-sm text-white/90 font-mono">
+                        {typeof toolInput === 'object' ? (
+                          <pre className="whitespace-pre-wrap break-words text-xs">
+                            {JSON.stringify(toolInput, null, 2)}
+                          </pre>
+                        ) : (
+                          toolInput
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {toolOutput && (isSuccess || isError) && (
+                    <div className={cn(
+                      "rounded-lg p-3 border max-h-48 overflow-y-auto",
+                      isError ? "bg-red-500/10 border-red-500/30" : "bg-green-500/10 border-green-500/30"
+                    )}>
+                      <div className={cn(
+                        "text-xs font-medium mb-1.5",
+                        isError ? "text-red-400" : "text-green-400"
+                      )}>
+                        {isError ? "Error" : "Output"}
+                      </div>
+                      <pre className="text-xs text-white/90 whitespace-pre-wrap break-words font-mono">
+                        {typeof toolOutput === 'string' ? toolOutput : JSON.stringify(toolOutput, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                  {toolCall.errorText && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                      <div className="text-xs font-medium text-red-400 mb-1">Error</div>
+                      <div className="text-sm text-red-300">{toolCall.errorText}</div>
+                    </div>
+                  )}
+                </motion.div>
+              )
+            })}
           </div>
         )}
         {component && (
@@ -143,7 +271,10 @@ export function AIChatInterface({
           </div>
         )}
         <AnimatePresence>
-          {messages.map((message) => (
+          {messages.map((message: UIMessage) => {
+            const isUser = message.role === 'user'
+            const isAssistant = message.role === 'assistant'
+            return (
             <motion.div
               key={message.id}
               initial={{ opacity: 0, y: 16 }}
@@ -152,29 +283,32 @@ export function AIChatInterface({
               transition={{ duration: 0.3 }}
               className={cn(
                 "group flex items-start gap-3",
-                message.role === 'user' ? 'justify-end' : 'justify-start'
+                isUser ? 'justify-end' : 'justify-start'
               )}
             >
-              {message.role === 'assistant' && (
+              {isAssistant && (
                 <div className="flex-shrink-0 w-8 h-8 rounded-full glass flex items-center justify-center mt-1">
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
               )}
-              <div className="flex flex-col gap-1 max-w-[80%]">
+              <div className="flex flex-col gap-1.5 max-w-[85%]">
                 <div
                   className={cn(
-                    "rounded-2xl px-4 py-3 shadow-2xl",
-                    message.role === 'user'
-                      ? 'bg-white/15 backdrop-blur-md border border-white/20 text-white rounded-tr-sm'
-                      : 'glass text-white rounded-tl-sm'
+                    "rounded-2xl px-5 py-4 shadow-2xl transition-all duration-200",
+                    isUser
+                      ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-md border border-white/20 text-white rounded-tr-sm hover:border-white/30'
+                      : 'bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 text-white rounded-tl-sm hover:border-white/20'
                   )}
                 >
-                  {renderMessageContent(message.content, message.id)}
+                  {renderMessageContent(message, message.id)}
                 </div>
-                {message.role === 'assistant' && (
+                {isAssistant && (
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
                     <button
-                      onClick={() => copyToClipboard(message.content, message.id)}
+                      onClick={() => {
+                        const textContent = message.parts.find(p => p.type === 'text')?.text || ''
+                        copyToClipboard(textContent, message.id)
+                      }}
                       className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 rounded hover:bg-muted"
                       title="Copy to clipboard"
                     >
@@ -191,7 +325,7 @@ export function AIChatInterface({
                       )}
                     </button>
                     <ExportButton
-                      content={message.content}
+                      content={message.parts.find(p => p.type === 'text')?.text || ''}
                       size="sm"
                       className="text-xs"
                     />
@@ -199,23 +333,22 @@ export function AIChatInterface({
                 )}
               </div>
             </motion.div>
-          ))}
+          )})}
         </AnimatePresence>
         
         {isLoading && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
             className="flex items-start gap-3 justify-start"
           >
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
+            <div className="flex-shrink-0 w-8 h-8 rounded-full glass flex items-center justify-center mt-1">
+              <Sparkles className="w-4 h-4 text-white animate-pulse" />
             </div>
-            <div className="bg-card border border-border rounded-2xl px-4 py-3">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 rounded-2xl rounded-tl-sm px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                <span className="text-sm text-white/70">Thinking...</span>
               </div>
             </div>
           </motion.div>
@@ -229,18 +362,21 @@ export function AIChatInterface({
         <ChatInput
           value={input}
           onChange={(value) => {
-            handleInputChange({ target: { value } } as any)
+            setInput(value)
           }}
           onSubmit={() => {
             if (input.trim() && !isLoading) {
-              handleSubmit(new Event('submit') as any)
+              console.log('[Chat] Sending message:', input)
+              sendMessage({ text: input })
+              setInput('')
             }
           }}
           disabled={isLoading}
           placeholder={placeholder}
           showQuickActions={messages.length === 0}
           onQuickActionClick={(text) => {
-            append({ role: 'user', content: text })
+            console.log('[Chat] Sending quick action:', text)
+            sendMessage({ text })
           }}
         />
       </div>

@@ -300,7 +300,7 @@ function CreateContentForm() {
         )}
 
         {/* Step 2: Analysis Results */}
-        {step === 2 && contentData.keyword && (
+        {step === 2 && contentData?.keyword && (
           <motion.div
             key="step2"
             initial={{ opacity: 0, x: 20 }}

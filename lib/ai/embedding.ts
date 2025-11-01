@@ -1,5 +1,5 @@
 import { embed, embedMany } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { createOpenAI } from '@ai-sdk/openai'
 import pLimit from 'p-limit'
 import pRetry from 'p-retry'
 import {
@@ -13,6 +13,10 @@ import {
  * OpenAI embedding model for consistent 1536-dimensional vectors
  * text-embedding-3-small offers best cost/performance ratio
  */
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
+
 const embeddingModel = openai.embedding('text-embedding-3-small')
 
 /**
@@ -45,10 +49,10 @@ async function withRetry<T>(
 ): Promise<T> {
   return pRetry(fn, {
     retries: EMBEDDING_CONFIG.maxRetries,
-    onFailedAttempt: (error) => {
+    onFailedAttempt: (error: any) => {
       console.warn(
         `[Embedding] ${operation} attempt ${error.attemptNumber} failed:`,
-        error.message
+        error.message || String(error)
       )
     },
     minTimeout: 1000,

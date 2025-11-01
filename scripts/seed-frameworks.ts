@@ -118,7 +118,7 @@ async function prepareFramework(
   return {
     name: seed.name,
     description: seed.description,
-    structure: seed.structure as Record<string, unknown>,
+    structure: seed.structure as unknown as Record<string, unknown>,
     example: seed.example,
     category: seed.category,
     tags: seed.tags,
@@ -244,15 +244,16 @@ async function seedFrameworks() {
 
   try {
     // Run ANALYZE to update table statistics for query planner
-    await supabase.rpc('exec_sql', {
+    const { error } = await (supabase.rpc as any)('exec_sql', {
       query: 'ANALYZE writing_frameworks;',
-    }).catch(() => {
+    })
+    if (error) {
       // Fallback: If RPC doesn't exist, log warning
       console.warn('   ⚠️  Could not run ANALYZE (RPC not available)')
       console.warn('   💡 Run manually: ANALYZE writing_frameworks;')
-    })
-
-    console.log('   ✅ Table statistics updated')
+    } else {
+      console.log('   ✅ Table statistics updated')
+    }
   } catch (error) {
     console.warn('   ⚠️  Post-seed optimization skipped')
   }

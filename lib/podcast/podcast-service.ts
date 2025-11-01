@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
-import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { generateObject, generateText } from 'ai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { z } from 'zod'
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+})
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -300,19 +305,18 @@ Please provide:
 
 Return as JSON with keys: summary, keyTopics, guestSpeakers, mainPoints, actionItems`
 
+    const podcastAnalysisSchema = z.object({
+      summary: z.string(),
+      keyTopics: z.array(z.string()),
+      guestSpeakers: z.array(z.string()),
+      mainPoints: z.array(z.string()),
+      actionItems: z.array(z.string()),
+    })
+
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'object',
-        properties: {
-          summary: { type: 'string' },
-          keyTopics: { type: 'array', items: { type: 'string' } },
-          guestSpeakers: { type: 'array', items: { type: 'string' } },
-          mainPoints: { type: 'array', items: { type: 'string' } },
-          actionItems: { type: 'array', items: { type: 'string' } }
-        }
-      }
+      schema: podcastAnalysisSchema,
     })
 
     return object as any
@@ -356,78 +360,58 @@ Focus on SEO best practices, include target keywords naturally, and create conte
 
 Return as JSON with proper structure for all content types.`
 
+    const seoOptimizedContentSchema = z.object({
+      showNotes: z.string(),
+      timestamps: z.array(
+        z.object({
+          time: z.string(),
+          title: z.string(),
+          description: z.string(),
+          keywords: z.array(z.string()),
+        })
+      ),
+      keyQuotes: z.array(
+        z.object({
+          text: z.string(),
+          speaker: z.string(),
+          timestamp: z.string(),
+          context: z.string(),
+          shareable: z.boolean(),
+        })
+      ),
+      blogPostOutline: z.object({
+        title: z.string(),
+        introduction: z.string(),
+        mainPoints: z.array(z.string()),
+        conclusion: z.string(),
+        callToAction: z.string(),
+        estimatedReadingTime: z.number(),
+      }),
+      socialMediaPosts: z.array(
+        z.object({
+          platform: z.string(),
+          content: z.string(),
+          hashtags: z.array(z.string()),
+          media: z.array(z.string()),
+          optimalPostTime: z.string(),
+        })
+      ),
+      emailNewsletter: z.string(),
+      resources: z.array(
+        z.object({
+          type: z.string(),
+          title: z.string(),
+          url: z.string(),
+          description: z.string(),
+          mentionedAt: z.string(),
+        })
+      ),
+    })
+
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'object',
-        properties: {
-          showNotes: { type: 'string' },
-          timestamps: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                time: { type: 'string' },
-                title: { type: 'string' },
-                description: { type: 'string' },
-                keywords: { type: 'array', items: { type: 'string' } }
-              }
-            }
-          },
-          keyQuotes: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                text: { type: 'string' },
-                speaker: { type: 'string' },
-                timestamp: { type: 'string' },
-                context: { type: 'string' },
-                shareable: { type: 'boolean' }
-              }
-            }
-          },
-          blogPostOutline: {
-            type: 'object',
-            properties: {
-              title: { type: 'string' },
-              introduction: { type: 'string' },
-              mainPoints: { type: 'array', items: { type: 'string' } },
-              conclusion: { type: 'string' },
-              callToAction: { type: 'string' },
-              estimatedReadingTime: { type: 'number' }
-            }
-          },
-          socialMediaPosts: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                platform: { type: 'string' },
-                content: { type: 'string' },
-                hashtags: { type: 'array', items: { type: 'string' } },
-                media: { type: 'array', items: { type: 'string' } },
-                optimalPostTime: { type: 'string' }
-              }
-            }
-          },
-          emailNewsletter: { type: 'string' },
-          resources: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                type: { type: 'string' },
-                title: { type: 'string' },
-                url: { type: 'string' },
-                description: { type: 'string' },
-                mentionedAt: { type: 'string' }
-              }
-            }
-          }
-        }
-      }
+      schema: seoOptimizedContentSchema,
     })
 
     return object as SEOOptimizedContent
@@ -462,77 +446,56 @@ Focus on creating engaging, shareable content that drives traffic back to the or
 
 Return as JSON with detailed ideas for each format.`
 
+    const contentRepurposingSchema = z.object({
+      blogPosts: z.array(
+        z.object({
+          title: z.string(),
+          angle: z.string(),
+          targetAudience: z.string(),
+          keyPoints: z.array(z.string()),
+          estimatedWordCount: z.number(),
+        })
+      ),
+      videoClips: z.array(
+        z.object({
+          startTime: z.string(),
+          endTime: z.string(),
+          title: z.string(),
+          description: z.string(),
+          platforms: z.array(z.string()),
+          hashtags: z.array(z.string()),
+        })
+      ),
+      infographics: z.array(
+        z.object({
+          title: z.string(),
+          dataPoints: z.array(z.string()),
+          visualStyle: z.string(),
+          keyMessage: z.string(),
+        })
+      ),
+      twitterThreads: z.array(
+        z.object({
+          tweets: z.array(z.string()),
+          hook: z.string(),
+          callToAction: z.string(),
+          hashtags: z.array(z.string()),
+        })
+      ),
+      carouselPosts: z.array(
+        z.object({
+          slides: z.array(z.string()),
+          title: z.string(),
+          description: z.string(),
+          platform: z.string(),
+        })
+      ),
+    })
+
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'object',
-        properties: {
-          blogPosts: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                angle: { type: 'string' },
-                targetAudience: { type: 'string' },
-                keyPoints: { type: 'array', items: { type: 'string' } },
-                estimatedWordCount: { type: 'number' }
-              }
-            }
-          },
-          videoClips: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                startTime: { type: 'string' },
-                endTime: { type: 'string' },
-                title: { type: 'string' },
-                description: { type: 'string' },
-                platforms: { type: 'array', items: { type: 'string' } },
-                hashtags: { type: 'array', items: { type: 'string' } }
-              }
-            }
-          },
-          infographics: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                dataPoints: { type: 'array', items: { type: 'string' } },
-                visualStyle: { type: 'string' },
-                keyMessage: { type: 'string' }
-              }
-            }
-          },
-          twitterThreads: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                tweets: { type: 'array', items: { type: 'string' } },
-                hook: { type: 'string' },
-                callToAction: { type: 'string' },
-                hashtags: { type: 'array', items: { type: 'string' } }
-              }
-            }
-          },
-          carouselPosts: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                slides: { type: 'array', items: { type: 'string' } },
-                title: { type: 'string' },
-                description: { type: 'string' },
-                platform: { type: 'string' }
-              }
-            }
-          }
-        }
-      }
+      schema: contentRepurposingSchema,
     })
 
     return object as ContentRepurposing
@@ -607,13 +570,12 @@ Write a 1500-2000 word blog post that:
 
 Return only the blog post content, no explanations.`
 
-    const { text } = await generateObject({
+    const result = await generateText({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: { type: 'string' }
     })
 
-    return text as string
+    return result.text
   } catch (error) {
     console.error('Failed to generate blog post from podcast:', error)
     throw error
@@ -656,36 +618,27 @@ Generate a content calendar that:
 
 Return as JSON with daily breakdowns and platform-specific content.`
 
+    const socialMediaCalendarSchema = z.object({
+      calendar: z.array(
+        z.object({
+          date: z.string(),
+          posts: z.array(
+            z.object({
+              platform: z.string(),
+              content: z.string(),
+              hashtags: z.array(z.string()),
+              mediaType: z.string(),
+              optimalTime: z.string(),
+            })
+          ),
+        })
+      ),
+    })
+
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'object',
-        properties: {
-          calendar: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                date: { type: 'string' },
-                posts: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      platform: { type: 'string' },
-                      content: { type: 'string' },
-                      hashtags: { type: 'array', items: { type: 'string' } },
-                      mediaType: { type: 'string' },
-                      optimalTime: { type: 'string' }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+      schema: socialMediaCalendarSchema,
     })
 
     return object

@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { z } from 'zod'
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+})
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -689,19 +694,18 @@ Provide specific, actionable insights that can help inform our strategy.
 
 Return as JSON with keys: summary, keyChanges, recommendations, threats, opportunities.`
 
+    const competitorInsightsSchema = z.object({
+      summary: z.string(),
+      keyChanges: z.array(z.string()),
+      recommendations: z.array(z.string()),
+      threats: z.array(z.string()),
+      opportunities: z.array(z.string()),
+    })
+
     const { object } = await generateObject({
       model: google('gemini-2.0-flash-exp'),
       prompt,
-      schema: {
-        type: 'object',
-        properties: {
-          summary: { type: 'string' },
-          keyChanges: { type: 'array', items: { type: 'string' } },
-          recommendations: { type: 'array', items: { type: 'string' } },
-          threats: { type: 'array', items: { type: 'string' } },
-          opportunities: { type: 'array', items: { type: 'string' } }
-        }
-      }
+      schema: competitorInsightsSchema,
     })
 
     return object as any

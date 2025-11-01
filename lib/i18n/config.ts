@@ -1,5 +1,3 @@
-import { Locale, i18n } from 'next-international'
-
 export const locales = ['en', 'es', 'fr', 'de'] as const
 export type LocaleType = typeof locales[number]
 

@@ -6,7 +6,8 @@
  */
 
 import { serverEnv } from '@/lib/config/env'
-import type { DataForSEOResponse, ApiError } from './types'
+import type { DataForSEOResponse } from './types'
+import type { ApiError } from '@/lib/types/api-responses'
 import { BASE_URL } from './constants'
 import { getRedisClient, cacheGet, cacheSet, CACHE_PREFIXES } from '@/lib/redis/client'
 
@@ -80,7 +81,7 @@ async function doFetch<T>(
       return { success: false, error }
     }
 
-    const json = (await res.json()) as T
+    const json = (await res.json()) as { tasks: Array<{ id?: string; status?: string; result?: T; error?: ApiError }> }
     const result: DataForSEOResponse<T> = { success: true, data: json }
 
     // Cache successful responses
