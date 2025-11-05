@@ -199,11 +199,12 @@ export async function POST(req: Request) {
           },
         }),
         domain_overview: tool({
-          description: 'Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility.',
+          description: 'Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility. This is an expensive operation that requires user approval.',
           inputSchema: z.object({
             domain: z.string().describe('Domain to analyze (without http://)'),
             location: z.string().optional().describe('Location for metrics'),
           }),
+          needsApproval: true, // Expensive operation - requires user confirmation
           execute: async (args: { domain: string; location?: string }) => {
             return await handleDataForSEOFunctionCall('domain_overview', args)
           },
