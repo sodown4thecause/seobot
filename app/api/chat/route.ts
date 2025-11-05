@@ -279,6 +279,19 @@ export async function POST(req: Request) {
           )
         }
       },
+      onError: (error) => {
+        console.error('[Chat API] Stream error:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        })
+
+        // Return user-friendly error message
+        return {
+          error: 'An error occurred while processing your request. Please try again.',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        }
+      },
     })
   } catch (error: unknown) {
     const err = error as Error
