@@ -2,11 +2,14 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { type LucideIcon, MessageSquare, Archive, BookOpen, FolderPlus, Image as ImageIcon, FileText, Layout, ChevronsLeft, ChevronsRight, Crown } from 'lucide-react'
+import { type LucideIcon, MessageSquare, Archive, BookOpen, FolderPlus, Image as ImageIcon, FileText, Layout, ChevronsLeft, ChevronsRight, Crown, Target, Palette, PenTool, Sparkles, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { useAgent } from '@/components/providers/agent-provider'
+import { useChatModeOptional } from '@/components/chat/chat-mode-context'
 
 export interface NavItem {
   name: string
@@ -34,7 +37,50 @@ const WORKSPACES: NavItem[] = [
   { name: 'Riset', href: '/dashboard/riset', icon: FileText },
 ]
 
+const AGENTS = [
+  { id: 'seo_manager', name: 'SEO Manager', icon: Target, color: 'text-blue-400' },
+  { id: 'marketing_manager', name: 'Marketing Expert', icon: Palette, color: 'text-purple-400' },
+  { id: 'article_writer', name: 'Article Writer', icon: PenTool, color: 'text-green-400' },
+]
+
+const ADMIN_ITEMS: NavItem[] = [
+  { name: 'Admin', href: '/dashboard/admin', icon: ShieldCheck },
+]
+
 export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
+  const { state, actions } = useAgent()
+  const { activeAgent } = state
+  const { isImageMode, toggleImageMode } = useChatModeOptional()
+  const [isAdmin, setIsAdmin] = React.useState(false)
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    const checkAdmin = async () => {
+      try {
+        const res = await fetch('/api/admin/profile')
+        if (!res.ok) {
+          if (!cancelled) setIsAdmin(false)
+          return
+        }
+        const data = await res.json()
+        if (!cancelled) {
+          setIsAdmin(Boolean(data?.isAdmin))
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setIsAdmin(false)
+        }
+      }
+    }
+
+    checkAdmin()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  
   return (
     <aside
       className={cn(
@@ -96,6 +142,33 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
               {!collapsed && <span className="text-sm font-medium">New Chat</span>}
             </Link>
 
+            {/* Create Image Button */}
+            <button
+              onClick={toggleImageMode}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-lg w-full',
+                'transition-all duration-300',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-bright/60',
+                isImageMode
+                  ? 'glass border border-white/20 ring-1 ring-purple-400/30 text-white bg-purple-500/10'
+                  : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white'
+              )}
+              title={collapsed ? 'Create Image' : undefined}
+            >
+              <Sparkles className={cn(
+                'h-5 w-5 flex-shrink-0',
+                isImageMode ? 'text-purple-400' : ''
+              )} />
+              {!collapsed && (
+                <span className="text-sm font-medium flex-1 text-left">Create Image</span>
+              )}
+              {!collapsed && isImageMode && (
+                <Badge variant="default" className="ml-auto text-xs bg-purple-500 hover:bg-purple-600">
+                  Active
+                </Badge>
+              )}
+            </button>
+
             {/* Features Section */}
             <div>
               {!collapsed && (
@@ -128,6 +201,43 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
                       <Icon className="h-5 w-5 flex-shrink-0" />
                       {!collapsed && <span className="text-sm font-medium">{item.name}</span>}
                     </Link>
+                  )
+                })}
+              </nav>
+            </div>
+
+            {/* AI Agents Section */}
+            <div>
+              {!collapsed && (
+                <>
+                  <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3 px-3">
+                    AI Agents
+                  </h3>
+                  <Separator className="bg-white/10 mb-3" />
+                </>
+              )}
+              <nav className="space-y-1" role="navigation">
+                {AGENTS.map((agent) => {
+                  const Icon = agent.icon
+                  const isActive = activeAgent?.id === agent.id
+                  return (
+                    <button
+                      key={agent.id}
+                      onClick={() => actions.switchAgent(agent.id)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-3 py-2 rounded-lg',
+                        'transition-all duration-300',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-bright/60',
+                        isActive
+                          ? 'glass border border-white/20 ring-1 ring-cyan-bright/30 text-white'
+                          : 'text-white/70 hover:bg-white/5 hover:text-white'
+                      )}
+                      title={collapsed ? agent.name : undefined}
+                    >
+                      <Icon className={cn('h-5 w-5 flex-shrink-0', agent.color)} />
+                      {!collapsed && <span className="text-sm font-medium">{agent.name}</span>}
+                    </button>
                   )
                 })}
               </nav>
@@ -169,6 +279,45 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
                 })}
               </nav>
             </div>
+
+            {/* Admin Section */}
+            {isAdmin && (
+              <div>
+                {!collapsed && (
+                  <>
+                    <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3 px-3">
+                      Admin
+                    </h3>
+                    <Separator className="bg-white/10 mb-3" />
+                  </>
+                )}
+                <nav className="space-y-1" role="navigation">
+                  {ADMIN_ITEMS.map((item) => {
+                    const Icon = item.icon
+                    const isActive = currentPath === item.href
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg',
+                          'transition-all duration-300',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-bright/60',
+                          isActive
+                            ? 'glass border border-white/20 ring-1 ring-cyan-bright/30 text-white'
+                            : 'text-white/70 hover:bg-white/5 hover:text-white'
+                        )}
+                        title={collapsed ? item.name : undefined}
+                      >
+                        <Icon className="h-5 w-5 flex-shrink-0" />
+                        {!collapsed && <span className="text-sm font-medium">{item.name}</span>}
+                      </Link>
+                    )
+                  })}
+                </nav>
+              </div>
+            )}
           </div>
         </ScrollArea>
 
