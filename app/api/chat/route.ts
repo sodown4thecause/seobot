@@ -1,4 +1,4 @@
-import { ToolLoopAgent, createAgentUIStreamResponse, tool, stepCountIs, stopWhen } from 'ai'
+import { ToolLoopAgent, createAgentUIStreamResponse, tool, stepCountIs } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
@@ -22,17 +22,9 @@ export const runtime = 'edge'
 // AI SDK 6's ToolLoopAgent works best with OpenAI models
 const CHAT_MODEL_ID = 'gpt-4o-mini'
 
-// Configure OpenAI provider with telemetry for monitoring
+// Configure OpenAI provider
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  telemetry: {
-    isEnabled: true,
-    functionId: 'chat-api',
-    metadata: {
-      environment: process.env.NODE_ENV || 'development',
-      runtime: 'edge',
-    },
-  },
 })
 
 interface ChatMessage {
@@ -241,12 +233,23 @@ export async function POST(req: Request) {
       instructions: systemPrompt,
       tools: seoTools,
       // Stop after 5 steps OR when no tools are called (prevents runaway costs)
-      stopWhen: stopWhen({
-        or: [
-          stepCountIs(5), // Stop after 5 steps max
-          ({ step }) => step.toolCalls.length === 0, // Stop if no tools called in this step
-        ],
-      }),
+      stopWhen: [
+        stepCountIs(5), // Stop after 5 steps max
+        ({ steps }) => {
+          // Stop if the last step had no tool calls
+          const lastStep = steps[steps.length - 1]
+          return lastStep?.toolCalls?.length === 0
+        },
+      ],
+      // Enable telemetry for monitoring
+      experimental_telemetry: {
+        isEnabled: true,
+        functionId: 'chat-api',
+        metadata: {
+          environment: process.env.NODE_ENV || 'development',
+          runtime: 'edge',
+        },
+      },
     })
 
     // Convert messages to UIMessage format expected by AI SDK 6
@@ -267,34 +270,11 @@ export async function POST(req: Request) {
     return createAgentUIStreamResponse({
       agent,
       messages: uiMessages,
-      onFinish: async ({ finishReason, usage, steps }) => {
-        const stepCount = steps.length
-        const toolCallCount = steps.reduce((sum, s) => sum + s.toolCalls.length, 0)
-
-        // Collect tool execution metadata
-        const toolExecutions = steps.flatMap(step =>
-          step.toolCalls.map(tc => ({
-            toolName: tc.toolName,
-            args: tc.args,
-            timestamp: new Date().toISOString(),
-          }))
-        )
-
-        // Enhanced metadata logging
+      onFinish: async ({ messages: finalMessages, responseMessage, isAborted }) => {
         console.log('[Chat API] Agent finished:', {
-          finishReason,
-          stepCount,
-          toolCallCount,
-          usage: {
-            promptTokens: usage?.promptTokens,
-            completionTokens: usage?.completionTokens,
-            totalTokens: usage?.totalTokens,
-          },
-          toolExecutions,
-          performance: {
-            stepsPerMessage: stepCount / messages.length,
-            toolsPerStep: toolCallCount / (stepCount || 1),
-          },
+          messageCount: finalMessages.length,
+          isAborted,
+          responseMessageId: responseMessage.id,
         })
 
         // Save messages after completion
@@ -313,17 +293,18 @@ export async function POST(req: Request) {
         }
       },
       onError: (error) => {
+        const err = error as Error
         console.error('[Chat API] Stream error:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
+          message: err?.message,
+          stack: err?.stack,
+          name: err?.name,
         })
 
         // Return user-friendly error message
-        return {
-          error: 'An error occurred while processing your request. Please try again.',
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-        }
+        const errorMessage = 'An error occurred while processing your request. Please try again.'
+        return process.env.NODE_ENV === 'development' && err?.message
+          ? `${errorMessage} (${err.message})`
+          : errorMessage
       },
     })
   } catch (error: unknown) {
