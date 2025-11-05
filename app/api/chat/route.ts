@@ -258,11 +258,30 @@ export async function POST(req: Request) {
         const stepCount = steps.length
         const toolCallCount = steps.reduce((sum, s) => sum + s.toolCalls.length, 0)
 
+        // Collect tool execution metadata
+        const toolExecutions = steps.flatMap(step =>
+          step.toolCalls.map(tc => ({
+            toolName: tc.toolName,
+            args: tc.args,
+            timestamp: new Date().toISOString(),
+          }))
+        )
+
+        // Enhanced metadata logging
         console.log('[Chat API] Agent finished:', {
           finishReason,
           stepCount,
           toolCallCount,
-          usage,
+          usage: {
+            promptTokens: usage?.promptTokens,
+            completionTokens: usage?.completionTokens,
+            totalTokens: usage?.totalTokens,
+          },
+          toolExecutions,
+          performance: {
+            stepsPerMessage: stepCount / messages.length,
+            toolsPerStep: toolCallCount / (stepCount || 1),
+          },
         })
 
         // Save messages after completion
