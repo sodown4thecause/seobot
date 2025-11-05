@@ -1,4 +1,4 @@
-import { ToolLoopAgent, createAgentUIStreamResponse, tool } from 'ai'
+import { ToolLoopAgent, createAgentUIStreamResponse, tool, stepCountIs, stopWhen } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
@@ -226,6 +226,13 @@ export async function POST(req: Request) {
       model: openai(CHAT_MODEL_ID),
       instructions: systemPrompt,
       tools: seoTools,
+      // Stop after 5 steps OR when no tools are called (prevents runaway costs)
+      stopWhen: stopWhen({
+        or: [
+          stepCountIs(5), // Stop after 5 steps max
+          ({ step }) => step.toolCalls.length === 0, // Stop if no tools called in this step
+        ],
+      }),
     })
 
     // Convert messages to UIMessage format expected by AI SDK 6
