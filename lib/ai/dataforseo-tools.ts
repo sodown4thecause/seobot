@@ -1,10 +1,10 @@
 /**
- * DataForSEO Function Calling Tools for Gemini
- * 
- * 13 essential SEO tools exposed as Gemini function calling
+ * DataForSEO Function Calling Tools for AI SDK 6
+ *
+ * 13 essential SEO tools with Redis caching for performance
  */
 
-import { 
+import {
   keywordResearch,
   competitorAnalysis,
   serpAnalysis,
@@ -19,6 +19,7 @@ import {
   rankedKeywords,
   relevantPages,
 } from '@/lib/api/dataforseo-service'
+import { cachedDataForSEOCall } from './dataforseo-cache'
 
 // Gemini function declarations (13 tools)
 export const dataForSEOFunctions = [
@@ -285,37 +286,47 @@ export async function handleDataForSEOFunctionCall(
     switch (functionName) {
       // AI OPTIMIZATION
       case 'ai_keyword_search_volume': {
-        const result = await aiKeywordSearchVolume({
-          keywords: args.keywords,
-          location_name: args.location,
-        })
+        const formatted = await cachedDataForSEOCall(
+          'ai_keyword_search_volume',
+          args,
+          async () => {
+            const result = await aiKeywordSearchVolume({
+              keywords: args.keywords,
+              location_name: args.location,
+            })
 
-        if (!result.success) {
-          console.error('[Tool] ai_keyword_search_volume error:', result.error)
-          return `Error: ${result.error.message}`
-        }
+            if (!result.success) {
+              console.error('[Tool] ai_keyword_search_volume error:', result.error)
+              throw new Error(result.error.message)
+            }
 
-        console.log('[Tool] ai_keyword_search_volume raw response:', JSON.stringify(result.data, null, 2))
-        
-        const data = result.data.tasks?.[0]?.result
-        if (!data || data.length === 0) {
-          console.warn('[Tool] ai_keyword_search_volume: No data in response')
+            console.log('[Tool] ai_keyword_search_volume raw response:', JSON.stringify(result.data, null, 2))
+
+            const data = result.data.tasks?.[0]?.result
+            if (!data || data.length === 0) {
+              console.warn('[Tool] ai_keyword_search_volume: No data in response')
+              return []
+            }
+
+            // Filter out empty objects and check if we have valid data
+            const validData = data.filter((item: any) => item && Object.keys(item).length > 0)
+            if (validData.length === 0) {
+              console.warn('[Tool] ai_keyword_search_volume: All items are empty objects', data)
+              return []
+            }
+
+            return validData.map((item: any) => ({
+              keyword: item.keyword,
+              search_volume: item.search_volume ?? item.monthly_searches ?? null,
+              monthly_searches: item.monthly_searches ?? item.search_volume ?? null,
+              platform: item.platform || 'unknown',
+            }))
+          }
+        )
+
+        if (formatted.length === 0) {
           return 'No AI search volume data found.'
         }
-
-        // Filter out empty objects and check if we have valid data
-        const validData = data.filter((item: any) => item && Object.keys(item).length > 0)
-        if (validData.length === 0) {
-          console.warn('[Tool] ai_keyword_search_volume: All items are empty objects', data)
-          return 'No AI search volume data found. The API returned empty results for these keywords.'
-        }
-
-        const formatted = validData.map((item: any) => ({
-          keyword: item.keyword,
-          search_volume: item.search_volume ?? item.monthly_searches ?? null,
-          monthly_searches: item.monthly_searches ?? item.search_volume ?? null,
-          platform: item.platform || 'unknown',
-        }))
 
         return JSON.stringify(formatted, null, 2)
       }
@@ -362,61 +373,82 @@ export async function handleDataForSEOFunctionCall(
 
       // KEYWORD RESEARCH
       case 'keyword_search_volume': {
-        const result = await keywordResearch({
-          keywords: args.keywords,
-        })
+        const formatted = await cachedDataForSEOCall(
+          'keyword_search_volume',
+          args,
+          async () => {
+            const result = await keywordResearch({
+              keywords: args.keywords,
+            })
 
-        if (!result.success) return `Error: ${result.error.message}`
+            if (!result.success) throw new Error(result.error.message)
 
-        const data = result.data.tasks?.[0]?.result
-        if (!data || data.length === 0) return 'No keyword data found.'
+            const data = result.data.tasks?.[0]?.result
+            if (!data || data.length === 0) return []
 
-        const formatted = data.map((item: any) => ({
-          keyword: item.keyword,
-          search_volume: item.search_volume,
-          cpc: item.cpc,
-          competition: item.competition,
-        }))
+            return data.map((item: any) => ({
+              keyword: item.keyword,
+              search_volume: item.search_volume,
+              cpc: item.cpc,
+              competition: item.competition,
+            }))
+          }
+        )
 
+        if (formatted.length === 0) return 'No keyword data found.'
         return JSON.stringify(formatted, null, 2)
       }
 
       case 'keyword_suggestions': {
-        const result = await keywordsForKeywords({
-          keywords: args.keywords,
-        })
+        const formatted = await cachedDataForSEOCall(
+          'keyword_suggestions',
+          args,
+          async () => {
+            const result = await keywordsForKeywords({
+              keywords: args.keywords,
+            })
 
-        if (!result.success) return `Error: ${result.error.message}`
+            if (!result.success) throw new Error(result.error.message)
 
-        const data = result.data.tasks?.[0]?.result
-        if (!data || data.length === 0) return 'No keyword suggestions found.'
+            const data = result.data.tasks?.[0]?.result
+            if (!data || data.length === 0) return []
 
-        const formatted = data.slice(0, 50).map((item: any) => ({
-          keyword: item.keyword,
-          search_volume: item.search_volume,
-          competition: item.competition,
-        }))
+            return data.slice(0, 50).map((item: any) => ({
+              keyword: item.keyword,
+              search_volume: item.search_volume,
+              competition: item.competition,
+            }))
+          }
+        )
 
+        if (formatted.length === 0) return 'No keyword suggestions found.'
         return JSON.stringify(formatted, null, 2)
       }
 
       case 'keyword_difficulty': {
-        const result = await bulkKeywordDifficulty({
-          keywords: args.keywords,
-          location_name: args.location,
-        })
+        const formatted = await cachedDataForSEOCall(
+          'keyword_difficulty',
+          args,
+          async () => {
+            const result = await bulkKeywordDifficulty({
+              keywords: args.keywords,
+              location_name: args.location,
+            })
 
-        if (!result.success) return `Error: ${result.error.message}`
+            if (!result.success) throw new Error(result.error.message)
 
-        const data = result.data.tasks?.[0]?.result
-        if (!data || data.length === 0) return 'No difficulty data found.'
+            const data = result.data.tasks?.[0]?.result
+            if (!data || data.length === 0) return []
 
-        const formatted = data.map((item: any) => ({
-          keyword: item.keyword,
-          difficulty: item.keyword_difficulty,
-          search_volume: item.search_volume,
-        }))
+            return data.map((item: any) => ({
+              keyword: item.keyword,
+              difficulty: item.keyword_difficulty,
+              search_volume: item.search_volume,
+            }))
+          }
+        )
 
+        if (formatted.length === 0) return 'No difficulty data found.'
         return JSON.stringify(formatted, null, 2)
       }
 
