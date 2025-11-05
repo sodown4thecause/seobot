@@ -1,5 +1,5 @@
-import { streamText, tool } from 'ai'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { ToolLoopAgent, createAgentUIStreamResponse, tool } from 'ai'
+import { openai } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import { type OnboardingData, type OnboardingStep } from '@/lib/onboarding/state'
@@ -18,9 +18,9 @@ import { z } from 'zod'
 
 export const runtime = 'edge'
 
-const google = createGoogleGenerativeAI({
-  apiKey: serverEnv.GOOGLE_API_KEY,
-})
+// Using OpenAI GPT-4o-mini for better multi-step tool calling support
+// AI SDK 6's ToolLoopAgent works best with OpenAI models
+const CHAT_MODEL_ID = 'gpt-4o-mini'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -220,19 +220,43 @@ export async function POST(req: Request) {
       mcpConnected: mcpConnected,
       mcpUrl: serverEnv.DATAFORSEO_MCP_URL || 'not set (using default)'
     })
-    
-    // Use AI SDK v5's streamText for proper compatibility
-    const result = await streamText({
-      model: google('gemini-2.0-flash-exp'),
-      system: systemPrompt,
-      messages: conversationMessages,
+
+    // Create ToolLoopAgent for automatic multi-step tool calling (AI SDK 6)
+    const agent = new ToolLoopAgent({
+      model: openai(CHAT_MODEL_ID),
+      instructions: systemPrompt,
       tools: seoTools,
-      onFinish: async ({ text, toolCalls }) => {
-        // Tool calls are handled automatically by AI SDK v5, but we can log them
-        if (toolCalls && toolCalls.length > 0) {
-          console.log(`[Chat] Executed ${toolCalls.length} tool calls`)
-        }
-        
+    })
+
+    // Convert messages to UIMessage format expected by AI SDK 6
+    const uiMessages = conversationMessages.map((m) => ({
+      id: (globalThis as any).crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      role: m.role,
+      parts: [{ type: 'text' as const, text: m.content }],
+    }))
+
+    console.log('[Chat API] Starting agent stream response...')
+    console.log('[Chat API] Passing to agent:', {
+      messageCount: uiMessages.length,
+      lastMessage: uiMessages[uiMessages.length - 1]?.parts[0]?.text?.slice(0, 100),
+      toolCount: Object.keys(seoTools).length,
+    })
+
+    // Stream UI messages using the agent
+    return createAgentUIStreamResponse({
+      agent,
+      messages: uiMessages,
+      onFinish: async ({ finishReason, usage, steps }) => {
+        const stepCount = steps.length
+        const toolCallCount = steps.reduce((sum, s) => sum + s.toolCalls.length, 0)
+
+        console.log('[Chat API] Agent finished:', {
+          finishReason,
+          stepCount,
+          toolCallCount,
+          usage,
+        })
+
         // Save messages after completion
         if (user && !authError) {
           await saveChatMessages(supabase, user.id, messages, isOnboarding ? onboardingContext : undefined)
@@ -240,25 +264,15 @@ export async function POST(req: Request) {
             await saveOnboardingProgress(supabase, user.id, onboardingContext.data)
           }
         }
-        
+
         // Track framework usage
         if (frameworkIds.length > 0) {
-          batchIncrementUsage(frameworkIds).catch(err => 
+          batchIncrementUsage(frameworkIds).catch(err =>
             console.warn('[Chat] Failed to track framework usage:', err)
           )
         }
       },
     })
-    
-    console.log('[Chat API] Starting stream response...')
-    // Use toUIMessageStreamResponse for DefaultChatTransport compatibility
-    // This creates SSE format with 'data' protocol that DefaultChatTransport expects
-    const response = result.toUIMessageStreamResponse()
-    console.log('[Chat API] Response created:', {
-      status: response.status,
-      headers: Object.fromEntries(response.headers.entries())
-    })
-    return response
   } catch (error: unknown) {
     const err = error as Error
     console.error('Chat API error:', err)
