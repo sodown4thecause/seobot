@@ -1,5 +1,5 @@
 import { ToolLoopAgent, createAgentUIStreamResponse, tool, stepCountIs, stopWhen } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { createOpenAI } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import { type OnboardingData, type OnboardingStep } from '@/lib/onboarding/state'
@@ -21,6 +21,19 @@ export const runtime = 'edge'
 // Using OpenAI GPT-4o-mini for better multi-step tool calling support
 // AI SDK 6's ToolLoopAgent works best with OpenAI models
 const CHAT_MODEL_ID = 'gpt-4o-mini'
+
+// Configure OpenAI provider with telemetry for monitoring
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  telemetry: {
+    isEnabled: true,
+    functionId: 'chat-api',
+    metadata: {
+      environment: process.env.NODE_ENV || 'development',
+      runtime: 'edge',
+    },
+  },
+})
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
