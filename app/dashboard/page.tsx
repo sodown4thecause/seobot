@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { GradientOrb } from '@/components/ui/gradient-orb'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { WorkflowSelector, WorkflowProgress } from '@/components/workflows'
@@ -11,11 +11,14 @@ import { useToast } from '@/hooks/use-toast'
 export default function DashboardPage() {
   const [workflowExecution, setWorkflowExecution] = useState<WorkflowExecution | null>(null)
   const [isExecuting, setIsExecuting] = useState(false)
+  const [workflowResults, setWorkflowResults] = useState<any>(null)
   const { toast } = useToast()
+  const chatRef = useRef<any>(null)
 
   const handleWorkflowStart = async (workflowId: string) => {
     console.log('[Dashboard] Starting workflow:', workflowId)
     setIsExecuting(true)
+    setWorkflowResults(null)
 
     try {
       // Call workflow API
@@ -37,6 +40,7 @@ export default function DashboardPage() {
       console.log('[Dashboard] Workflow completed:', data)
 
       setWorkflowExecution(data.execution)
+      setWorkflowResults(data.results)
 
       toast({
         title: 'Workflow Completed!',
@@ -73,9 +77,11 @@ export default function DashboardPage() {
 
         {/* Chat Interface */}
         <AIChatInterface
+          ref={chatRef}
           context={{ page: 'dashboard' }}
           placeholder="Ask anything..."
           className="h-full"
+          workflowResults={workflowResults}
         />
       </motion.div>
     </div>

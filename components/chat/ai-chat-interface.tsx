@@ -17,14 +17,16 @@ interface AIChatInterfaceProps {
   placeholder?: string
   onComponentSubmit?: (component: string, data: any) => void
   initialMessage?: string
+  workflowResults?: any
 }
 
-export function AIChatInterface({ 
-  context, 
+export function AIChatInterface({
+  context,
   className,
   placeholder = "Type your message...",
   onComponentSubmit,
-  initialMessage
+  initialMessage,
+  workflowResults
 }: AIChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -55,14 +57,43 @@ export function AIChatInterface({
     },
   })
 
-  const { messages, sendMessage, status } = chat
+  const { messages, sendMessage, status, setMessages } = chat
   const isLoading = status === 'streaming' || status === 'submitted'
+
+  // Inject workflow results as a message when they arrive
+  useEffect(() => {
+    if (workflowResults && workflowResults.components) {
+      console.log('[Chat] Injecting workflow results:', workflowResults)
+
+      // Create a message with workflow results
+      const workflowMessage: UIMessage = {
+        id: `workflow-${Date.now()}`,
+        role: 'assistant',
+        parts: [
+          {
+            type: 'text',
+            text: workflowResults.summary || 'Workflow completed successfully!'
+          }
+        ]
+      }
+
+      // Add the message to chat
+      setMessages((prev: UIMessage[]) => [...prev, workflowMessage])
+
+      // Add components to pending components for rendering
+      workflowResults.components.forEach((comp: any) => {
+        setPendingComponents(prev => new Map(prev.set(workflowMessage.id, comp)))
+      })
+
+      scrollToBottom()
+    }
+  }, [workflowResults])
 
   const parseComponentsFromMessage = (content: string, messageId: string) => {
     // Look for JSON code blocks in the message
     const jsonRegex = /```json\n([\s\S]*?)\n```/g
     const matches = Array.from(content.matchAll(jsonRegex))
-    
+
     if (matches.length > 0) {
       matches.forEach((match) => {
         try {
