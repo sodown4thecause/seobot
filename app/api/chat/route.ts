@@ -1,5 +1,5 @@
 import { ToolLoopAgent, createAgentUIStreamResponse, tool, stepCountIs } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
+import { google } from '@ai-sdk/google'
 import { createClient } from '@/lib/supabase/server'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import { type OnboardingData, type OnboardingStep } from '@/lib/onboarding/state'
@@ -18,14 +18,9 @@ import { z } from 'zod'
 
 export const runtime = 'edge'
 
-// Using OpenAI GPT-4o-mini for better multi-step tool calling support
-// AI SDK 6's ToolLoopAgent works best with OpenAI models
-const CHAT_MODEL_ID = 'gpt-4o-mini'
-
-// Configure OpenAI provider
-const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Using Google Gemini 2.5 Flash for tool calling support
+// Gemini 2.5 Flash supports tool calling and is much cheaper than GPT-4
+const CHAT_MODEL_ID = 'gemini-2.5-flash'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -255,7 +250,7 @@ export async function POST(req: Request) {
 
     // Create ToolLoopAgent for automatic multi-step tool calling (AI SDK 6)
     const agent = new ToolLoopAgent({
-      model: openai(CHAT_MODEL_ID),
+      model: google(CHAT_MODEL_ID),
       instructions: systemPrompt,
       tools: seoTools,
       // Stop after 5 steps OR when no tools are called (prevents runaway costs)
@@ -274,6 +269,7 @@ export async function POST(req: Request) {
         metadata: {
           environment: process.env.NODE_ENV || 'development',
           runtime: 'edge',
+          model: CHAT_MODEL_ID,
         },
       },
     })
