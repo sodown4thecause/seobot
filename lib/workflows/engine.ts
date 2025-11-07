@@ -176,7 +176,7 @@ export class WorkflowEngine {
   }
 
   /**
-   * Execute a single tool (placeholder - will be implemented with actual tool execution)
+   * Execute a single tool with actual implementation
    */
   private async executeTool(
     toolName: string,
@@ -198,14 +198,26 @@ export class WorkflowEngine {
         }
       }
 
-      // TODO: Actual tool execution will be implemented here
-      // For now, return placeholder
       console.log(`[Workflow] Executing tool: ${toolName}`, params)
+
+      // Route to appropriate tool executor
+      let data: any
+
+      // External API tools
+      if (toolName === 'jina_reader') {
+        data = await this.executeJinaTool(params)
+      } else if (toolName === 'perplexity_search') {
+        data = await this.executePerplexityTool(params)
+      }
+      // DataForSEO tools (via MCP or direct API)
+      else {
+        data = await this.executeDataForSEOTool(toolName, params)
+      }
 
       const result: ToolExecutionResult = {
         toolName,
         success: true,
-        data: { placeholder: true },
+        data,
         cached: false,
         duration: Date.now() - startTime,
       }
@@ -225,6 +237,72 @@ export class WorkflowEngine {
         duration: Date.now() - startTime,
       }
     }
+  }
+
+  /**
+   * Execute Jina Reader tool
+   */
+  private async executeJinaTool(params?: Record<string, any>): Promise<any> {
+    const { scrapeWithJina } = await import('@/lib/external-apis/jina')
+
+    if (!params?.url) {
+      throw new Error('Jina Reader requires url parameter')
+    }
+
+    const result = await scrapeWithJina({
+      url: params.url,
+      timeout: params.timeout,
+    })
+
+    if (!result.success) {
+      throw new Error(result.error || 'Jina scraping failed')
+    }
+
+    return result
+  }
+
+  /**
+   * Execute Perplexity search tool
+   */
+  private async executePerplexityTool(params?: Record<string, any>): Promise<any> {
+    const { searchWithPerplexity } = await import('@/lib/external-apis/perplexity')
+
+    if (!params?.query) {
+      throw new Error('Perplexity search requires query parameter')
+    }
+
+    const result = await searchWithPerplexity({
+      query: params.query,
+      searchRecencyFilter: params.search_recency_filter || params.searchRecencyFilter,
+      returnCitations: params.return_citations ?? params.returnCitations ?? true,
+    })
+
+    if (!result.success) {
+      throw new Error(result.error || 'Perplexity search failed')
+    }
+
+    return result
+  }
+
+  /**
+   * Execute DataForSEO tool (via MCP or direct API)
+   */
+  private async executeDataForSEOTool(toolName: string, params?: Record<string, any>): Promise<any> {
+    const { handleDataForSEOFunctionCall } = await import('@/lib/ai/dataforseo-tools')
+
+    // Map workflow tool names to DataForSEO function names
+    const toolMapping: Record<string, string> = {
+      'ai_keyword_search_volume': 'ai_keyword_search_volume',
+      'keyword_search_volume': 'keyword_search_volume',
+      'google_rankings': 'google_rankings',
+      'domain_overview': 'domain_overview',
+    }
+
+    const functionName = toolMapping[toolName] || toolName
+
+    const result = await handleDataForSEOFunctionCall(functionName, params || {})
+
+    return result
   }
 
   /**
