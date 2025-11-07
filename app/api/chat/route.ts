@@ -1,5 +1,5 @@
 import { ToolLoopAgent, createAgentUIStreamResponse, tool, stepCountIs } from 'ai'
-import { google } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import { type OnboardingData, type OnboardingStep } from '@/lib/onboarding/state'
@@ -18,9 +18,12 @@ import { z } from 'zod'
 
 export const runtime = 'edge'
 
-// Using Google Gemini 2.5 Flash for tool calling support
-// Gemini 2.5 Flash supports tool calling and is much cheaper than GPT-4
-const CHAT_MODEL_ID = 'gemini-2.5-flash'
+// Using OpenAI GPT-4o-mini for tool calling support with MCP
+const CHAT_MODEL_ID = 'gpt-4o-mini'
+const openai = createOpenAI({
+  apiKey: serverEnv.OPENAI_API_KEY,
+  compatibility: 'strict',
+})
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -167,15 +170,72 @@ export async function POST(req: Request) {
       }
     })
     
-    // Use simplified tools for Gemini (MCP tools have complex schemas that Gemini rejects)
-    // Gemini doesn't support anyOf, nested arrays, or complex type unions in tool schemas
+    // Load tools from DataForSEO MCP server
     let seoTools: Record<string, any>
     let mcpConnected = false
 
-    console.log('[Chat API] Using simplified tools for Gemini compatibility')
-    mcpConnected = false
+    console.log('[Chat API] Attempting to load tools from MCP server...')
+    console.log('[Chat API] MCP URL:', serverEnv.DATAFORSEO_MCP_URL)
 
-    seoTools = {
+    try {
+      const mcpTools = await getDataForSEOTools()
+      if (mcpTools && Object.keys(mcpTools).length > 0) {
+        mcpConnected = true
+        seoTools = mcpTools
+        console.log(`[Chat API] Successfully loaded ${Object.keys(seoTools).length} tools from MCP server`)
+        console.log('[Chat API] Sample MCP tools:', Object.keys(seoTools).slice(0, 5))
+      } else {
+        console.log('[Chat API] No tools returned from MCP server, using fallback')
+        mcpConnected = false
+        seoTools = {
+          ai_keyword_search_volume: tool({
+            description: 'Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.',
+            inputSchema: z.object({
+              keywords: z.array(z.string()).describe('Keywords to analyze in AI platforms'),
+              location: z.string().optional().describe('Location (e.g., "United States", "United Kingdom")'),
+            }),
+            execute: async (args: { keywords: string[]; location?: string }) => {
+              return await handleDataForSEOFunctionCall('ai_keyword_search_volume', args)
+            },
+          }),
+          keyword_search_volume: tool({
+            description: 'Get Google search volume, CPC, and competition for keywords. Core keyword research tool.',
+            inputSchema: z.object({
+              keywords: z.array(z.string()).describe('Keywords to analyze (max 100)'),
+              location: z.string().optional().describe('Location for data'),
+            }),
+            execute: async (args: { keywords: string[]; location?: string }) => {
+              return await handleDataForSEOFunctionCall('keyword_search_volume', args)
+            },
+          }),
+          google_rankings: tool({
+            description: 'Get current Google SERP results for a keyword including position, URL, title, and SERP features.',
+            inputSchema: z.object({
+              keyword: z.string().describe('Keyword to check rankings for'),
+              location: z.string().optional().describe('Location for SERP results'),
+            }),
+            execute: async (args: { keyword: string; location?: string }) => {
+              return await handleDataForSEOFunctionCall('google_rankings', args)
+            },
+          }),
+          domain_overview: tool({
+            description: 'Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility. This is an expensive operation that requires user approval.',
+            inputSchema: z.object({
+              domain: z.string().describe('Domain to analyze (without http://)'),
+              location: z.string().optional().describe('Location for metrics'),
+            }),
+            needsApproval: true,
+            execute: async (args: { domain: string; location?: string }) => {
+              return await handleDataForSEOFunctionCall('domain_overview', args)
+            },
+          }),
+        }
+        console.log(`[Chat API] Using fallback: ${Object.keys(seoTools).length} direct API tools`)
+      }
+    } catch (error) {
+      console.error('[Chat API] Failed to load MCP tools:', error)
+      mcpConnected = false
+      seoTools = {
         ai_keyword_search_volume: tool({
           description: 'Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.',
           inputSchema: z.object({
@@ -212,13 +272,14 @@ export async function POST(req: Request) {
             domain: z.string().describe('Domain to analyze (without http://)'),
             location: z.string().optional().describe('Location for metrics'),
           }),
-          needsApproval: true, // Expensive operation - requires user confirmation
+          needsApproval: true,
           execute: async (args: { domain: string; location?: string }) => {
             return await handleDataForSEOFunctionCall('domain_overview', args)
           },
         }),
       }
-    console.log(`[Chat API] Using simplified tools: ${Object.keys(seoTools).length} tools`)
+      console.log(`[Chat API] Using fallback after error: ${Object.keys(seoTools).length} direct API tools`)
+    }
     
     // Debug logging
     console.log('[Chat API] Streaming with:', {
@@ -231,7 +292,7 @@ export async function POST(req: Request) {
 
     // Create ToolLoopAgent for automatic multi-step tool calling (AI SDK 6)
     const agent = new ToolLoopAgent({
-      model: google(CHAT_MODEL_ID),
+      model: openai(CHAT_MODEL_ID),
       instructions: systemPrompt,
       tools: seoTools,
       // Stop after 5 steps OR when no tools are called (prevents runaway costs)
