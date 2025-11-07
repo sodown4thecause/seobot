@@ -25,8 +25,8 @@ export function WorkflowSelector({ onWorkflowStart, className }: WorkflowSelecto
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Pre-Built Workflows</h3>
-          <p className="text-sm text-gray-600">
+          <h3 className="text-lg font-semibold text-white">Pre-Built Workflows</h3>
+          <p className="text-sm text-white/70">
             Get comprehensive insights in minutes with our expert workflows
           </p>
         </div>
@@ -34,7 +34,7 @@ export function WorkflowSelector({ onWorkflowStart, className }: WorkflowSelecto
           variant="ghost"
           size="sm"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1"
+          className="flex items-center gap-1 text-white/80 hover:text-white hover:bg-white/10"
         >
           {isExpanded ? (
             <>
