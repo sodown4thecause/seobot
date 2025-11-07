@@ -1,8 +1,13 @@
 -- Conversations, Library, and Archive System
 -- Migration for persistent chat conversations with library and archive functionality
 
+-- Drop existing tables if they exist (clean slate)
+DROP TABLE IF EXISTS library_items CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS conversations CASCADE;
+
 -- Conversations Table (replaces simple chat_messages)
-CREATE TABLE IF NOT EXISTS conversations (
+CREATE TABLE conversations (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   agent_type text NOT NULL DEFAULT 'general', -- 'seo_manager', 'marketing_manager', 'article_writer', 'general'
@@ -16,7 +21,7 @@ CREATE TABLE IF NOT EXISTS conversations (
 );
 
 -- Messages Table (linked to conversations)
-CREATE TABLE IF NOT EXISTS messages (
+CREATE TABLE messages (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   conversation_id uuid REFERENCES conversations(id) ON DELETE CASCADE NOT NULL,
   role text NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
@@ -26,7 +31,7 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 -- Library Items Table (saved responses, images, data)
-CREATE TABLE IF NOT EXISTS library_items (
+CREATE TABLE library_items (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   conversation_id uuid REFERENCES conversations(id) ON DELETE SET NULL,
@@ -131,8 +136,14 @@ CREATE POLICY "Users can delete their own library items"
   ON library_items FOR DELETE
   USING (auth.uid() = user_id);
 
+-- Drop existing functions and triggers if they exist
+DROP TRIGGER IF EXISTS update_conversation_on_message ON messages;
+DROP TRIGGER IF EXISTS set_conversation_title_from_message ON messages;
+DROP FUNCTION IF EXISTS update_conversation_timestamp();
+DROP FUNCTION IF EXISTS generate_conversation_title_from_message();
+
 -- Function to update conversation's last_message_at timestamp
-CREATE OR REPLACE FUNCTION update_conversation_timestamp()
+CREATE FUNCTION update_conversation_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
   UPDATE conversations
@@ -151,7 +162,7 @@ CREATE TRIGGER update_conversation_on_message
 
 -- Function to auto-generate conversation title from first message
 -- This runs AFTER INSERT on messages, not on conversation creation
-CREATE OR REPLACE FUNCTION generate_conversation_title_from_message()
+CREATE FUNCTION generate_conversation_title_from_message()
 RETURNS TRIGGER AS $$
 DECLARE
   conv_title text;
