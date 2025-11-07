@@ -44,11 +44,11 @@ CREATE TABLE IF NOT EXISTS library_items (
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_conversations_user_status ON conversations(user_id, status);
-CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(user_id, last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(user_id, last_message_at);
 CREATE INDEX IF NOT EXISTS idx_conversations_agent_type ON conversations(user_id, agent_type, status);
-CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at ASC);
-CREATE INDEX IF NOT EXISTS idx_library_items_user ON library_items(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_library_items_type ON library_items(user_id, item_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_library_items_user ON library_items(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_library_items_type ON library_items(user_id, item_type, created_at);
 CREATE INDEX IF NOT EXISTS idx_library_items_conversation ON library_items(conversation_id);
 
 -- Row Level Security (RLS) Policies
