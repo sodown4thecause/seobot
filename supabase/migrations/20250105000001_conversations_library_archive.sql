@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS conversations (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   agent_type text NOT NULL DEFAULT 'general', -- 'seo_manager', 'marketing_manager', 'article_writer', 'general'
-  title text NOT NULL, -- Auto-generated from first message or user-defined
+  title text NOT NULL DEFAULT 'New Conversation', -- Auto-generated from first message or user-defined
   status text DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deleted')),
   metadata jsonb DEFAULT '{}', -- {tags, summary, key_topics}
   created_at timestamp with time zone DEFAULT now(),
@@ -149,30 +149,36 @@ CREATE TRIGGER update_conversation_on_message
   EXECUTE FUNCTION update_conversation_timestamp();
 
 -- Function to auto-generate conversation title from first message
-CREATE OR REPLACE FUNCTION generate_conversation_title()
+-- This runs AFTER INSERT on messages, not on conversation creation
+CREATE OR REPLACE FUNCTION generate_conversation_title_from_message()
 RETURNS TRIGGER AS $$
+DECLARE
+  conv_title text;
+  message_count int;
 BEGIN
-  IF NEW.title IS NULL OR NEW.title = '' THEN
-    -- Get first user message and use first 50 chars as title
-    SELECT SUBSTRING(content, 1, 50) || CASE WHEN LENGTH(content) > 50 THEN '...' ELSE '' END
-    INTO NEW.title
-    FROM messages
-    WHERE conversation_id = NEW.id AND role = 'user'
-    ORDER BY created_at ASC
-    LIMIT 1;
-    
-    -- Fallback if no messages yet
-    IF NEW.title IS NULL OR NEW.title = '' THEN
-      NEW.title := 'New Conversation';
-    END IF;
+  -- Only update title if this is the first user message
+  SELECT COUNT(*) INTO message_count
+  FROM messages
+  WHERE conversation_id = NEW.conversation_id AND role = 'user';
+
+  IF message_count = 1 AND NEW.role = 'user' THEN
+    -- Generate title from first user message
+    SELECT SUBSTRING(NEW.content, 1, 50) || CASE WHEN LENGTH(NEW.content) > 50 THEN '...' ELSE '' END
+    INTO conv_title;
+
+    -- Update conversation title
+    UPDATE conversations
+    SET title = conv_title
+    WHERE id = NEW.conversation_id AND (title IS NULL OR title = '' OR title = 'New Conversation');
   END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger to auto-generate title
-CREATE TRIGGER set_conversation_title
-  BEFORE INSERT ON conversations
+-- Trigger to auto-generate title from first message
+CREATE TRIGGER set_conversation_title_from_message
+  AFTER INSERT ON messages
   FOR EACH ROW
-  EXECUTE FUNCTION generate_conversation_title();
+  EXECUTE FUNCTION generate_conversation_title_from_message();
 
