@@ -167,33 +167,15 @@ export async function POST(req: Request) {
       }
     })
     
-    // Load tools from MCP server (with fallback to direct API tools)
+    // Use simplified tools for Gemini (MCP tools have complex schemas that Gemini rejects)
+    // Gemini doesn't support anyOf, nested arrays, or complex type unions in tool schemas
     let seoTools: Record<string, any>
     let mcpConnected = false
-    try {
-      // Try to load tools from MCP server first
-      console.log('[Chat API] Attempting to load tools from MCP server...')
-      console.log('[Chat API] MCP URL:', serverEnv.DATAFORSEO_MCP_URL || 'http://localhost:3000/mcp')
-      seoTools = await getDataForSEOTools()
-      const toolCount = Object.keys(seoTools).length
-      console.log(`[Chat API] Successfully loaded ${toolCount} tools from MCP server`)
-      mcpConnected = true
-      
-      // Log first few tool names for debugging
-      if (toolCount > 0) {
-        const toolNames = Object.keys(seoTools).slice(0, 5)
-        console.log('[Chat API] Sample MCP tools:', toolNames)
-      }
-    } catch (error: any) {
-      // Fallback to direct API tools if MCP server is unavailable
-      console.warn('[Chat API] MCP server unavailable, falling back to direct API tools')
-      console.warn('[Chat API] MCP error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name
-      })
-      mcpConnected = false
-      seoTools = {
+
+    console.log('[Chat API] Using simplified tools for Gemini compatibility')
+    mcpConnected = false
+
+    seoTools = {
         ai_keyword_search_volume: tool({
           description: 'Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.',
           inputSchema: z.object({
@@ -236,8 +218,7 @@ export async function POST(req: Request) {
           },
         }),
       }
-      console.log(`[Chat API] Using fallback: ${Object.keys(seoTools).length} direct API tools`)
-    }
+    console.log(`[Chat API] Using simplified tools: ${Object.keys(seoTools).length} tools`)
     
     // Debug logging
     console.log('[Chat API] Streaming with:', {
