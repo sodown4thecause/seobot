@@ -89,11 +89,37 @@ export async function POST(req: Request) {
       return msg.content || ''
     }
     
-    // RAG: Detect if query needs framework assistance
+    // Extract last user message
     const lastUserMessage = messages[messages.length - 1]
     const lastUserMessageContent = extractMessageContent(lastUserMessage)
+
+    // WORKFLOW DETECTION: Check if user wants to run a workflow
+    const { detectWorkflow, isWorkflowRequest, extractWorkflowId } = await import('@/lib/workflows')
+    const detectedWorkflowId = detectWorkflow(lastUserMessageContent)
+    const isExplicitWorkflowRequest = isWorkflowRequest(lastUserMessageContent)
+    const explicitWorkflowId = extractWorkflowId(lastUserMessageContent)
+
+    const workflowId = explicitWorkflowId || detectedWorkflowId
+
+    if (workflowId) {
+      console.log('[Chat API] Workflow detected:', workflowId)
+      // Return a message indicating workflow execution
+      // The actual workflow will be executed via the /api/workflows/execute endpoint
+      return new Response(
+        JSON.stringify({
+          type: 'workflow',
+          workflowId,
+          message: `Starting workflow: ${workflowId}. Please use the workflow API endpoint to execute.`,
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // RAG: Detect if query needs framework assistance
     const shouldUseRAG = detectFrameworkIntent(lastUserMessageContent)
-    
+
     let retrievedFrameworks: string = ''
     let frameworkIds: string[] = []
     
