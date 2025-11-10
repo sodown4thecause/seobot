@@ -20,7 +20,7 @@ import { z } from 'zod'
 export const runtime = 'edge'
 
 // Using xAI Grok for fast reasoning and tool calling support
-const CHAT_MODEL_ID = 'grok-beta'
+const CHAT_MODEL_ID = 'grok-3'
 const xai = createOpenAI({
   apiKey: serverEnv.XAI_API_KEY,
   baseURL: 'https://api.x.ai/v1',
