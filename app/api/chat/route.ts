@@ -13,6 +13,7 @@ import {
   handleDataForSEOFunctionCall
 } from '@/lib/ai/dataforseo-tools'
 import { getDataForSEOTools } from '@/lib/mcp/dataforseo-client'
+import { getContentQualityTools } from '@/lib/ai/content-quality-tools'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { z } from 'zod'
 
@@ -281,11 +282,20 @@ export async function POST(req: Request) {
       console.log(`[Chat API] Using fallback after error: ${Object.keys(seoTools).length} direct API tools`)
     }
     
+    // Add content quality tools (Winston AI + Rytr)
+    const contentQualityTools = getContentQualityTools()
+    const allTools = {
+      ...seoTools,
+      ...contentQualityTools,
+    }
+
     // Debug logging
     console.log('[Chat API] Streaming with:', {
       conversationMessageCount: conversationMessages.length,
       systemPromptLength: systemPrompt.length,
-      toolsCount: Object.keys(seoTools).length,
+      seoToolsCount: Object.keys(seoTools).length,
+      contentQualityToolsCount: Object.keys(contentQualityTools).length,
+      totalToolsCount: Object.keys(allTools).length,
       mcpConnected: mcpConnected,
       mcpUrl: serverEnv.DATAFORSEO_MCP_URL || 'not set (using default)'
     })
@@ -294,7 +304,7 @@ export async function POST(req: Request) {
     const agent = new ToolLoopAgent({
       model: xai(CHAT_MODEL_ID),
       instructions: systemPrompt,
-      tools: seoTools,
+      tools: allTools,
       // Stop after 5 steps OR when no tools are called (prevents runaway costs)
       stopWhen: [
         stepCountIs(5), // Stop after 5 steps max
@@ -437,6 +447,7 @@ Your capabilities include:
 - Analyzing websites and competitors
 - Finding keyword opportunities
 - Creating SEO-optimized content
+- Validating content quality and originality
 - Providing strategic recommendations
 - Guiding users through setup processes
 
@@ -448,6 +459,16 @@ You have access to 40+ SEO tools through the DataForSEO MCP server. These tools 
 - Domain Analysis (traffic, keywords, rankings, technologies)
 - On-Page Analysis (content parsing, Lighthouse audits)
 - Content Generation (optimized content creation)
+
+You also have access to content quality and generation tools:
+- Winston AI: Plagiarism detection, AI content detection, SEO validation
+- Rytr AI: SEO content generation, meta titles/descriptions, content improvement
+
+When generating or validating content:
+1. Use Rytr to generate SEO-optimized content with proper tone and keywords
+2. Use Winston AI to validate content for plagiarism and AI detection
+3. Ensure all content is original, engaging, and SEO-compliant
+4. Provide recommendations for improving content quality
 
 Be conversational and helpful. Ask clarifying questions when needed. Keep responses concise but informative.`
 
