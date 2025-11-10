@@ -18,11 +18,11 @@ import { z } from 'zod'
 
 export const runtime = 'edge'
 
-// Using OpenAI GPT-4o-mini for tool calling support with MCP
-const CHAT_MODEL_ID = 'gpt-4o-mini'
-const openai = createOpenAI({
-  apiKey: serverEnv.OPENAI_API_KEY,
-  compatibility: 'strict',
+// Using xAI Grok for fast reasoning and tool calling support
+const CHAT_MODEL_ID = 'grok-beta'
+const xai = createOpenAI({
+  apiKey: serverEnv.XAI_API_KEY,
+  baseURL: 'https://api.x.ai/v1',
 })
 
 interface ChatMessage {
@@ -292,7 +292,7 @@ export async function POST(req: Request) {
 
     // Create ToolLoopAgent for automatic multi-step tool calling (AI SDK 6)
     const agent = new ToolLoopAgent({
-      model: openai(CHAT_MODEL_ID),
+      model: xai(CHAT_MODEL_ID),
       instructions: systemPrompt,
       tools: seoTools,
       // Stop after 5 steps OR when no tools are called (prevents runaway costs)

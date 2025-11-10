@@ -7,9 +7,11 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   
-  // Gemini AI
+  // AI Providers
   GOOGLE_API_KEY: z.string().min(1),
-  
+  XAI_API_KEY: z.string().min(1),
+  OPENAI_API_KEY: z.string().min(1).optional(), // Optional, only for embeddings
+
   // External APIs
   DATAFORSEO_LOGIN: z.string().email(),
   DATAFORSEO_PASSWORD: z.string().min(1),
@@ -44,6 +46,8 @@ function getServerEnv() {
       NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
       GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+      XAI_API_KEY: process.env.XAI_API_KEY,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
       DATAFORSEO_LOGIN: process.env.DATAFORSEO_LOGIN,
       DATAFORSEO_PASSWORD: process.env.DATAFORSEO_PASSWORD,
       DATAFORSEO_MCP_URL: process.env.DATAFORSEO_MCP_URL,
