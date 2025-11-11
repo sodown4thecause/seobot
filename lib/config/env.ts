@@ -9,8 +9,8 @@ const serverEnvSchema = z.object({
   
   // AI Providers
   GOOGLE_API_KEY: z.string().min(1),
-  XAI_API_KEY: z.string().min(1),
-  OPENAI_API_KEY: z.string().min(1).optional(), // Optional, only for embeddings
+  XAI_API_KEY: z.string().min(1).optional(), // Optional, kept for backward compatibility
+  OPENAI_API_KEY: z.string().min(1), // Required for chat interface
 
   // External APIs
   DATAFORSEO_LOGIN: z.string().email(),
@@ -20,10 +20,15 @@ const serverEnvSchema = z.object({
   PERPLEXITY_API_KEY: z.string().min(1),
   JINA_API_KEY: z.string().min(1),
   APIFY_API_KEY: z.string().min(1).optional(),
+  FIRECRAWL_API_KEY: z.string().min(1).optional(),
 
   // Content Quality & Generation APIs
   WINSTON_AI_API_KEY: z.string().min(1),
   RYTR_API_KEY: z.string().min(1),
+  
+  // MCP Server URLs
+  WINSTON_MCP_URL: z.string().url().optional(),
+  FIRECRAWL_MCP_URL: z.string().url().optional(),
   
   // Redis (optional for caching)
   UPSTASH_REDIS_REST_URL: z.preprocess(
@@ -59,8 +64,11 @@ function getServerEnv() {
       PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
       JINA_API_KEY: process.env.JINA_API_KEY,
       APIFY_API_KEY: process.env.APIFY_API_KEY,
+      FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY,
       WINSTON_AI_API_KEY: process.env.WINSTON_AI_API_KEY,
       RYTR_API_KEY: process.env.RYTR_API_KEY,
+      WINSTON_MCP_URL: process.env.WINSTON_MCP_URL,
+      FIRECRAWL_MCP_URL: process.env.FIRECRAWL_MCP_URL,
       UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
       UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     })
