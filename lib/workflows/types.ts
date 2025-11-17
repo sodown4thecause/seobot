@@ -2,7 +2,7 @@
 
 export type WorkflowStepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped'
 
-export type AgentRole = 'research' | 'strategy' | 'content' | 'qa' | 'orchestrator'
+export type AgentRole = 'research' | 'strategy' | 'content' | 'qa' | 'orchestrator' | 'seo_manager'
 
 export interface WorkflowTool {
   name: string
@@ -19,7 +19,7 @@ export interface WorkflowStep {
   parallel: boolean // Execute tools in parallel
   dependencies?: string[] // Step IDs that must complete first
   systemPrompt?: string // Custom prompt for this step
-  outputFormat?: 'text' | 'json' | 'component'
+  outputFormat?: 'text' | 'json' | 'component' | 'structured'
   componentType?: string // For generative UI
 }
 
@@ -39,12 +39,27 @@ export interface Workflow {
   name: string
   description: string
   icon: string
-  category: 'seo' | 'content' | 'research' | 'analysis'
+  category: 'seo' | 'content' | 'research' | 'analysis' | 'aeo'
   estimatedTime: string
   steps: WorkflowStep[]
   tags: string[]
   requiredTools?: string[] // Tools that must be available
   requiredAPIs?: string[] // External APIs needed (jina, perplexity)
+  // Optional parameter metadata for workflow execution
+  parameters?: Record<
+    string,
+    {
+      type: string
+      description?: string
+      required?: boolean
+      example?: any
+    }
+  >
+  // Optional structured output metadata for generative UI
+  output?: {
+    type: 'text' | 'json' | 'component' | 'structured'
+    components?: string[]
+  }
 }
 
 export interface WorkflowExecution {

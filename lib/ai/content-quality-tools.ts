@@ -1,7 +1,8 @@
 /**
- * AI SDK Tools for Content Quality & Generation
- * 
+ * AI SDK 6 Tools for Content Quality & Generation
+ *
  * Provides Winston AI and Rytr tools for the chat interface
+ * Compatible with AI SDK 6 using inputSchema instead of parameters
  */
 
 import { tool } from 'ai'
@@ -28,7 +29,7 @@ import {
 
 export const validateContentTool = tool({
   description: 'Validate content for SEO compliance, checking plagiarism and AI detection. Use this to ensure content is original and SEO-friendly.',
-  parameters: z.object({
+  inputSchema: z.object({
     text: z.string().describe('The content text to validate'),
   }),
   execute: async ({ text }) => {
@@ -48,7 +49,7 @@ export const validateContentTool = tool({
 
 export const checkPlagiarismTool = tool({
   description: 'Check content for plagiarism and duplicate sources. Returns plagiarism score and matching sources.',
-  parameters: z.object({
+  inputSchema: z.object({
     text: z.string().describe('The content text to check for plagiarism'),
     language: z.string().optional().describe('Language code (default: en)'),
   }),
@@ -77,7 +78,7 @@ export const checkPlagiarismTool = tool({
 
 export const checkAiContentTool = tool({
   description: 'Detect if content is AI-generated. Returns AI detection score and confidence level.',
-  parameters: z.object({
+  inputSchema: z.object({
     text: z.string().describe('The content text to check'),
   }),
   execute: async ({ text }) => {
@@ -99,7 +100,7 @@ export const checkAiContentTool = tool({
 
 export const generateSEOContentTool = tool({
   description: 'Generate complete SEO-optimized content including main content, meta title, and meta description. Use this for creating new blog posts or articles.',
-  parameters: z.object({
+  inputSchema: z.object({
     topic: z.string().describe('The topic or subject to write about'),
     keywords: z.array(z.string()).describe('Target keywords to include'),
     tone: z.enum([
@@ -125,7 +126,7 @@ export const generateSEOContentTool = tool({
 
 export const generateBlogSectionTool = tool({
   description: 'Generate a blog section or paragraph about a specific topic with target keywords.',
-  parameters: z.object({
+  inputSchema: z.object({
     topic: z.string().describe('The topic to write about'),
     keywords: z.array(z.string()).describe('Keywords to include naturally'),
     tone: z.enum([
@@ -148,7 +149,7 @@ export const generateBlogSectionTool = tool({
 
 export const generateMetaTitleTool = tool({
   description: 'Generate an SEO-optimized meta title (50-60 characters) for a page.',
-  parameters: z.object({
+  inputSchema: z.object({
     topic: z.string().describe('The page topic'),
     primaryKeyword: z.string().describe('Primary keyword to include'),
   }),
@@ -164,7 +165,7 @@ export const generateMetaTitleTool = tool({
 
 export const generateMetaDescriptionTool = tool({
   description: 'Generate an SEO-optimized meta description (155-160 characters) for a page.',
-  parameters: z.object({
+  inputSchema: z.object({
     pageTitle: z.string().describe('The page title'),
     keywords: z.array(z.string()).describe('Keywords to include'),
   }),
@@ -180,7 +181,7 @@ export const generateMetaDescriptionTool = tool({
 
 export const improveContentTool = tool({
   description: 'Improve existing content to make it more engaging, clear, and SEO-friendly.',
-  parameters: z.object({
+  inputSchema: z.object({
     text: z.string().describe('The content to improve'),
     tone: z.enum([
       'informative', 'casual', 'formal', 'enthusiastic', 'professional'
@@ -199,7 +200,7 @@ export const improveContentTool = tool({
 
 export const expandContentTool = tool({
   description: 'Expand content with more details, examples, and explanations.',
-  parameters: z.object({
+  inputSchema: z.object({
     text: z.string().describe('The content to expand'),
     tone: z.enum([
       'informative', 'casual', 'formal', 'enthusiastic', 'professional'

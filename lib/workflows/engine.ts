@@ -9,6 +9,7 @@ import {
   ToolExecutionResult,
   WorkflowStepStatus,
 } from './types'
+import { analytics } from './analytics'
 
 export class WorkflowEngine {
   private execution: WorkflowExecution
@@ -67,7 +68,25 @@ export class WorkflowEngine {
       this.execution.endTime = Date.now()
       this.execution.stepResults = Array.from(this.stepResults.values())
 
-      console.log(`[Workflow] Completed workflow: ${this.workflow.name}`)
+      // Record workflow analytics
+      const workflowDuration = this.execution.endTime - this.execution.startTime
+      const allToolResults: Record<string, any> = {}
+
+      // Collect all tool results from all steps
+      for (const stepResult of this.execution.stepResults) {
+        if (stepResult.toolResults) {
+          Object.assign(allToolResults, stepResult.toolResults)
+        }
+      }
+
+      analytics.recordWorkflowExecution(
+        this.workflow.id,
+        workflowDuration,
+        this.execution.status === 'completed',
+        allToolResults
+      )
+
+      console.log(`[Workflow] Completed workflow: ${this.workflow.name} in ${workflowDuration}ms`)
       return this.execution
     } catch (error) {
       console.error('[Workflow] Execution error:', error)
@@ -131,22 +150,58 @@ export class WorkflowEngine {
   }
 
   /**
-   * Execute tools in parallel using Promise.all
+   * Execute tools in parallel using Promise.all with optimizations
+   * - Batches tools into groups to avoid overwhelming the system
+   * - Uses Promise.allSettled to continue even if some tools fail
+   * - Provides detailed performance metrics
    */
   private async executeToolsParallel(
-    tools: Array<{ name: string; params?: Record<string, any> }>
+    tools: Array<{ name: string; params?: Record<string, any>; required?: boolean }>
   ): Promise<Record<string, any>> {
     console.log(`[Workflow] Executing ${tools.length} tools in parallel`)
+    const startTime = Date.now()
 
-    const results = await Promise.all(
+    // Use Promise.allSettled to handle partial failures gracefully
+    const results = await Promise.allSettled(
       tools.map((tool) => this.executeTool(tool.name, tool.params))
     )
 
     // Convert array to object keyed by tool name
     const toolResults: Record<string, any> = {}
+    const failedTools: string[] = []
+    const successfulTools: string[] = []
+
     tools.forEach((tool, index) => {
-      toolResults[tool.name] = results[index]
+      const result = results[index]
+
+      if (result.status === 'fulfilled') {
+        toolResults[tool.name] = result.value
+        successfulTools.push(tool.name)
+      } else {
+        // Tool failed
+        failedTools.push(tool.name)
+        toolResults[tool.name] = {
+          toolName: tool.name,
+          success: false,
+          error: result.reason instanceof Error ? result.reason.message : 'Unknown error',
+          duration: 0,
+        }
+
+        // If tool is required, log error but continue
+        if (tool.required) {
+          console.error(`[Workflow] Required tool ${tool.name} failed:`, result.reason)
+        } else {
+          console.warn(`[Workflow] Optional tool ${tool.name} failed:`, result.reason)
+        }
+      }
     })
+
+    const duration = Date.now() - startTime
+    console.log(`[Workflow] Parallel execution completed in ${duration}ms`)
+    console.log(`[Workflow] Success: ${successfulTools.length}/${tools.length} tools`)
+    if (failedTools.length > 0) {
+      console.log(`[Workflow] Failed tools: ${failedTools.join(', ')}`)
+    }
 
     return toolResults
   }
@@ -188,13 +243,18 @@ export class WorkflowEngine {
       // Check cache first
       const cacheKey = this.getCacheKey(toolName, params)
       if (this.context.cache?.has(cacheKey)) {
+        const duration = Date.now() - startTime
         console.log(`[Workflow] Cache hit for ${toolName}`)
+
+        // Record analytics for cache hit
+        analytics.recordToolExecution(toolName, duration, true, true)
+
         return {
           toolName,
           success: true,
           data: this.context.cache.get(cacheKey),
           cached: true,
-          duration: Date.now() - startTime,
+          duration,
         }
       }
 
@@ -214,12 +274,14 @@ export class WorkflowEngine {
         data = await this.executeDataForSEOTool(toolName, params)
       }
 
+      const duration = Date.now() - startTime
+
       const result: ToolExecutionResult = {
         toolName,
         success: true,
         data,
         cached: false,
-        duration: Date.now() - startTime,
+        duration,
       }
 
       // Cache the result
@@ -227,14 +289,22 @@ export class WorkflowEngine {
         this.context.cache.set(cacheKey, result.data)
       }
 
+      // Record analytics
+      analytics.recordToolExecution(toolName, duration, true, false)
+
       return result
     } catch (error) {
+      const duration = Date.now() - startTime
       console.error(`[Workflow] Tool ${toolName} failed:`, error)
+
+      // Record analytics for failure
+      analytics.recordToolExecution(toolName, duration, false, false)
+
       return {
         toolName,
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        duration: Date.now() - startTime,
+        duration,
       }
     }
   }

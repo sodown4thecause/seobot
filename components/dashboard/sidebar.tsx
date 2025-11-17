@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { type LucideIcon, MessageSquare, Archive, BookOpen, FolderPlus, Image as ImageIcon, FileText, Layout, ChevronsLeft, ChevronsRight, Crown, Target, Palette, PenTool, Sparkles, ShieldCheck } from 'lucide-react'
+import { type LucideIcon, MessageSquare, Archive, BookOpen, FolderPlus, Image as ImageIcon, FileText, Layout, ChevronsLeft, ChevronsRight, Crown, Target, Palette, PenTool, Sparkles, ShieldCheck, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -35,6 +35,7 @@ const WORKSPACES: NavItem[] = [
   { name: 'Image Creation', href: '/images', icon: ImageIcon },
   { name: 'Presentation', href: '/dashboard/presentation', icon: Layout },
   { name: 'Riset', href: '/dashboard/riset', icon: FileText },
+  { name: 'Workflow Analytics', href: '/dashboard/workflow-analytics', icon: BarChart3 },
 ]
 
 const AGENTS = [

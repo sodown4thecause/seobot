@@ -11,7 +11,11 @@
       "Bash(npm install @google/generative-ai@latest)",
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat: DataForSEO modularization + Gemini 2.5 Pro upgrade\n\n✅ DataForSEO Modular Architecture\n- Created modular structure at lib/dataforseo/\n- 7 organized modules: keywords, serp, competitors, domain, ai, onPage, content\n- 190+ API endpoints documented\n- Smart Redis caching with TTL by data type\n- 100% TypeScript coverage with comprehensive types\n\n✅ Keyword Module (7 tools implemented)\n- searchVolume: Get search volume for keywords\n- suggestions: Find related keyword suggestions  \n- difficulty: SEO difficulty scores\n- ideas: Generate keyword ideas\n- related: Find related keywords\n- historical: Historical search volume data\n- forSite: Keywords a domain ranks for\n\n✅ Upgraded to Gemini 2.5 Pro\n- Changed from gemini-2.0-flash-exp to gemini-2.5-pro\n- 2M token context (vs 1M)\n- Enhanced reasoning and SEO knowledge\n- Better content quality and analysis\n\n✅ Smart Caching Infrastructure\n- Redis-backed caching for all DataForSEO responses\n- Smart TTL: 1h (SERP), 24h (domains), 7 days (stable data)\n- Cache hit/miss logging\n- Graceful degradation if Redis unavailable\n\n✅ Backwards Compatibility\n- All 13 existing tools still work\n- Optional migration to new modular structure\n- Unified API in lib/dataforseo/index.ts\n\n📊 Architecture Benefits:\n- Easy to maintain and extend\n- Type-safe throughout\n- Reusable modules\n- Clear separation of concerns\n\n🚀 Ready for 30+ SEO Tools:\n- Keyword research: 7 tools\n- SERP analysis: 6 tools (structure ready)\n- Competitors: 4 tools (structure ready)\n- Domain analysis: 6 tools (structure ready)\n- AI optimization: 3 tools\n- On-page: 3 tools (structure ready)\n- Content: 3 tools (structure ready)\n\n📈 Impact:\n- Lower API costs via caching\n- Faster responses\n- Better AI quality (Gemini 2.5 Pro)\n- Better code organization\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(npm run build)",
-      "Bash(pkill -f \"next build\")"
+      "Bash(pkill -f \"next build\")",
+      "Bash(task-master --version:*)",
+      "Bash(npm install:*)",
+      "Bash(task-master models:*)",
+      "Bash(npm run typecheck:*)"
     ],
     "deny": [],
     "ask": []

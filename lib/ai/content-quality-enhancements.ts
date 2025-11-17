@@ -1,8 +1,9 @@
 /**
- * Enhanced Content Quality Tools
- * 
+ * Enhanced Content Quality Tools for AI SDK 6
+ *
  * Additional tools for SEO/AEO optimization, human-like writing, and fact-checking
  * Extends the existing content-quality-tools.ts
+ * Compatible with AI SDK 6 using inputSchema instead of parameters
  */
 
 import { tool } from 'ai'
@@ -225,7 +226,7 @@ function generateHeadingRecommendations({ h1Count, h2Count, h3Count }: { h1Count
  */
 export const validateContentQualityTool = tool({
   description: 'Comprehensive content quality validation including readability, style, originality, and SEO metrics. Use this to ensure content meets high quality standards.',
-  parameters: z.object({
+  inputSchema: z.object({
     content: z.string().describe('The content text to validate'),
     targetKeywords: z.array(z.string()).optional().describe('Target keywords for SEO analysis'),
     existingContent: z.string().optional().describe('Existing content to compare against for similarity check'),
@@ -304,7 +305,7 @@ export const validateContentQualityTool = tool({
  */
 export const analyzeSEOContentTool = tool({
   description: 'Analyze content for SEO optimization including keyword density, meta tags, heading structure, and overall SEO score.',
-  parameters: z.object({
+  inputSchema: z.object({
     content: z.string().describe('The content to analyze'),
     title: z.string().optional().describe('Page title (for meta analysis)'),
     metaDescription: z.string().optional().describe('Meta description (for analysis)'),
@@ -382,7 +383,7 @@ export const analyzeSEOContentTool = tool({
  */
 export const factCheckContentTool = tool({
   description: 'Verify factual claims in content using web search and knowledge base. Returns verification results for each claim.',
-  parameters: z.object({
+  inputSchema: z.object({
     content: z.string().describe('Content to fact-check'),
     claims: z.array(z.string()).optional().describe('Specific claims to verify (auto-extracted if not provided)'),
   }),

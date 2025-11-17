@@ -66,7 +66,7 @@ export function AIChatInterface({
       console.log('[Chat] Injecting workflow results:', workflowResults)
 
       // Create a message with workflow results
-      const workflowMessage: UIMessage = {
+      const workflowMessage: typeof messages[number] = {
         id: `workflow-${Date.now()}`,
         role: 'assistant',
         parts: [
@@ -78,7 +78,7 @@ export function AIChatInterface({
       }
 
       // Add the message to chat
-      setMessages((prev: UIMessage[]) => [...prev, workflowMessage])
+      setMessages((prev) => [...prev, workflowMessage])
 
       // Add components to pending components for rendering
       workflowResults.components.forEach((comp: any) => {

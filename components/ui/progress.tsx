@@ -5,8 +5,9 @@ const Progress = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
     value?: number
+    indicatorClassName?: string
   }
->(({ className, value = 0, ...props }, ref) => (
+>(({ className, value = 0, indicatorClassName, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
@@ -16,7 +17,10 @@ const Progress = React.forwardRef<
     {...props}
   >
     <div
-      className="h-full bg-primary transition-all duration-300 ease-in-out"
+      className={cn(
+        "h-full bg-primary transition-all duration-300 ease-in-out",
+        indicatorClassName
+      )}
       style={{ width: `${Math.min(100, Math.max(0, value || 0))}%` }}
     />
   </div>

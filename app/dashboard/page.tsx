@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { GradientOrb } from '@/components/ui/gradient-orb'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { WorkflowSelector, WorkflowProgress } from '@/components/workflows'
@@ -13,7 +13,6 @@ export default function DashboardPage() {
   const [isExecuting, setIsExecuting] = useState(false)
   const [workflowResults, setWorkflowResults] = useState<any>(null)
   const { toast } = useToast()
-  const chatRef = useRef<any>(null)
 
   const handleWorkflowStart = async (workflowId: string) => {
     console.log('[Dashboard] Starting workflow:', workflowId)
@@ -77,7 +76,6 @@ export default function DashboardPage() {
 
         {/* Chat Interface */}
         <AIChatInterface
-          ref={chatRef}
           context={{ page: 'dashboard' }}
           placeholder="Ask anything..."
           className="h-full"

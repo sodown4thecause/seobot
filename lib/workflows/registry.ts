@@ -2,10 +2,15 @@
 
 import { Workflow } from './types'
 import { rankOnChatGPTWorkflow } from './definitions/rank-on-chatgpt'
+import { aeoComprehensiveAuditWorkflow } from './definitions/aeo-comprehensive-audit'
+import { aeoCitationOptimizationWorkflow } from './definitions/aeo-citation-optimization'
+import { aeoMultiPlatformOptimizationWorkflow } from './definitions/aeo-multi-platform-optimization'
 
 export const workflows: Record<string, Workflow> = {
   'rank-on-chatgpt': rankOnChatGPTWorkflow,
-  // More workflows will be added here
+  'aeo-comprehensive-audit': aeoComprehensiveAuditWorkflow,
+  'aeo-citation-optimization': aeoCitationOptimizationWorkflow,
+  'aeo-multi-platform-optimization': aeoMultiPlatformOptimizationWorkflow,
 }
 
 export function getWorkflow(id: string): Workflow | undefined {

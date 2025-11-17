@@ -25,10 +25,14 @@ const serverEnvSchema = z.object({
   // Content Quality & Generation APIs
   WINSTON_AI_API_KEY: z.string().min(1),
   RYTR_API_KEY: z.string().min(1),
-  
+
+  // Feature flags / experimental toggles
+  ENABLE_CODEMODE_PRIMARY: z.string().optional(),
+
   // MCP Server URLs
   WINSTON_MCP_URL: z.string().url().optional(),
   FIRECRAWL_MCP_URL: z.string().url().optional(),
+  JINA_MCP_URL: z.string().url().optional(),
   
   // Redis (optional for caching)
   UPSTASH_REDIS_REST_URL: z.preprocess(
@@ -67,8 +71,11 @@ function getServerEnv() {
       FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY,
       WINSTON_AI_API_KEY: process.env.WINSTON_AI_API_KEY,
       RYTR_API_KEY: process.env.RYTR_API_KEY,
+      // Feature flags / experimental toggles
+      ENABLE_CODEMODE_PRIMARY: process.env.ENABLE_CODEMODE_PRIMARY,
       WINSTON_MCP_URL: process.env.WINSTON_MCP_URL,
       FIRECRAWL_MCP_URL: process.env.FIRECRAWL_MCP_URL,
+      JINA_MCP_URL: process.env.JINA_MCP_URL,
       UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
       UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     })

@@ -1,0 +1,1 @@
+{"mcpServers":{"exa":{"command":"npm exec","args":["-y","exa-mcp-server"],"env":{"EXA_API_KEY":"439a01c2-ed45-4b9e-b651-5b0ffeb9515e"},"disabled":false,"alwaysAllow":[]}}}

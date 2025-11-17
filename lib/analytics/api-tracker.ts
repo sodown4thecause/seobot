@@ -1,0 +1,155 @@
+/**
+ * API Analytics Tracker
+ * Tracks API calls to external services and logs to Supabase
+ */
+
+import { createClient } from '@/lib/supabase/server'
+
+export type APIService = 
+  | 'dataforseo'
+  | 'perplexity'
+  | 'openai'
+  | 'firecrawl'
+  | 'rytr'
+  | 'winston'
+  | 'jina'
+
+interface APICallMetadata {
+  service: APIService
+  endpoint: string
+  method: string
+  statusCode?: number
+  tokensUsed?: number
+  costUSD?: number
+  durationMs?: number
+  metadata?: Record<string, any>
+}
+
+// Cost per 1K tokens/requests for each service
+const SERVICE_COSTS = {
+  openai: {
+    'gpt-4o-mini-input': 0.00015, // per 1K tokens
+    'gpt-4o-mini-output': 0.0006, // per 1K tokens
+    'text-embedding-ada-002': 0.0001, // per 1K tokens
+  },
+  perplexity: {
+    'sonar-pro': 0.003, // per 1K tokens
+    'sonar': 0.001, // per 1K tokens
+  },
+  dataforseo: {
+    'serp': 0.0025, // per request
+    'keywords': 0.001, // per request
+    'backlinks': 0.005, // per request
+  },
+  firecrawl: {
+    'scrape': 0.001, // per page
+    'crawl': 0.0005, // per page
+  },
+  jina: {
+    'reader': 0.0001, // per request
+  },
+  rytr: {
+    'generate': 0.002, // per 1K chars
+  },
+  winston: {
+    'detect': 0.001, // per request
+  },
+}
+
+/**
+ * Calculate cost based on service and usage
+ */
+export function calculateCost(
+  service: APIService,
+  endpoint: string,
+  tokensOrUnits: number
+): number {
+  const costs = SERVICE_COSTS[service]
+  if (!costs) return 0
+
+  // For OpenAI, use specific model costs
+  if (service === 'openai') {
+    if (endpoint.includes('embedding')) {
+      return (tokensOrUnits / 1000) * costs['text-embedding-ada-002']
+    }
+    // Default to gpt-4o-mini input cost
+    return (tokensOrUnits / 1000) * costs['gpt-4o-mini-input']
+  }
+
+  // For other services, use first available cost
+  const firstCost = Object.values(costs)[0]
+  return (tokensOrUnits / 1000) * firstCost
+}
+
+/**
+ * Track an API call
+ */
+export async function trackAPICall(
+  userId: string,
+  metadata: APICallMetadata
+): Promise<void> {
+  try {
+    const supabase = await createClient()
+
+    // Calculate cost if not provided
+    const cost = metadata.costUSD ?? calculateCost(
+      metadata.service,
+      metadata.endpoint,
+      metadata.tokensUsed ?? 1000
+    )
+
+    await supabase.from('api_usage_logs').insert({
+      user_id: userId,
+      service: metadata.service,
+      endpoint: metadata.endpoint,
+      method: metadata.method,
+      status_code: metadata.statusCode,
+      tokens_used: metadata.tokensUsed ?? 0,
+      cost_usd: cost,
+      duration_ms: metadata.durationMs,
+      metadata: metadata.metadata ?? {},
+    })
+
+    console.log(`[API Tracker] Logged ${metadata.service} call: ${metadata.endpoint}`)
+  } catch (error) {
+    console.error('[API Tracker] Failed to log API call:', error)
+    // Don't throw - tracking failures shouldn't break the app
+  }
+}
+
+/**
+ * Wrapper for tracking API calls with automatic timing
+ */
+export async function trackAPICallWithTiming<T>(
+  userId: string,
+  service: APIService,
+  endpoint: string,
+  method: string,
+  apiCall: () => Promise<T>,
+  calculateTokens?: (result: T) => number
+): Promise<T> {
+  const startTime = Date.now()
+  let statusCode = 200
+  let result: T
+
+  try {
+    result = await apiCall()
+    return result
+  } catch (error: any) {
+    statusCode = error.status ?? 500
+    throw error
+  } finally {
+    const durationMs = Date.now() - startTime
+    const tokensUsed = result && calculateTokens ? calculateTokens(result) : undefined
+
+    await trackAPICall(userId, {
+      service,
+      endpoint,
+      method,
+      statusCode,
+      tokensUsed,
+      durationMs,
+    })
+  }
+}
+

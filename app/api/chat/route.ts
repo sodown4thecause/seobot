@@ -19,16 +19,44 @@ import {
 } from "@/lib/ai/rag-service";
 import { handleDataForSEOFunctionCall } from "@/lib/ai/dataforseo-tools";
 import { getDataForSEOTools } from "@/lib/mcp/dataforseo-client";
+import { getFirecrawlTools } from "@/lib/mcp/firecrawl-client";
+import { getWinstonTools } from "@/lib/mcp/winston-client";
 import { getContentQualityTools } from "@/lib/ai/content-quality-tools";
 import { getEnhancedContentQualityTools } from "@/lib/ai/content-quality-enhancements";
-import { buildCodemodeToolRegistry, createCodemodeTool } from "@/lib/ai/codemode";
+import { getAEOTools } from "@/lib/ai/aeo-tools";
+import { getAEOPlatformTools } from "@/lib/ai/aeo-platform-tools";
+import { scrapeWithJina } from "@/lib/external-apis/jina";
+import { searchWithPerplexity } from "@/lib/external-apis/perplexity";
+import {
+  buildCodemodeToolRegistryFromExisting,
+  createCodemodeTool,
+} from "@/lib/ai/codemode";
 import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
+import { createProfiler, timeAsync } from "@/lib/ai/profiler";
+import {
+  getCachedDataForSEOTools,
+  getCachedFirecrawlTools,
+  getCachedWinstonTools,
+  prewarmToolCaches,
+} from "@/lib/ai/tool-cache";
 import { z } from "zod";
 
-export const runtime = "edge";
+// Lazy prewarm flag - triggers prewarm on first request
+let prewarmTriggered = false;
+let prewarmPromise: Promise<void> | null = null;
 
-// Using OpenAI GPT-4.1 for chat interface with tool calling support
-const CHAT_MODEL_ID = "gpt-4.1";
+// Changed from "edge" to "nodejs" to support codemode's dynamic code execution
+// Edge Runtime doesn't allow new Function() or eval() for security reasons
+export const runtime = "nodejs";
+
+// Feature flag: when true, codemode becomes the primary interface for MCP/API tools
+// and those tools will not be exposed directly to the agent. This makes it easy
+// to roll back to the previous mixed mode if needed.
+const USE_CODEMODE_PRIMARY = serverEnv.ENABLE_CODEMODE_PRIMARY === "true";
+
+// Using OpenAI GPT-4o-mini for chat interface with tool calling support
+// GPT-4o-mini offers excellent tool calling at lower cost than GPT-4o
+const CHAT_MODEL_ID = "gpt-4o-mini";
 const openai = createOpenAI({
   apiKey: serverEnv.OPENAI_API_KEY,
 });
@@ -56,15 +84,32 @@ interface RequestBody {
 }
 
 export async function POST(req: Request) {
+  // Lazy prewarm on first request (non-blocking)
+  if (!prewarmTriggered) {
+    prewarmTriggered = true;
+    // Start prewarm in background (don't await)
+    prewarmPromise = prewarmToolCaches().catch((err) => {
+      console.warn("[Chat API] Prewarm failed (non-critical):", err);
+    });
+  }
+
+  // Initialize profiler
+  const profiler = createProfiler();
+  profiler.start("total");
+
   // Check rate limit
+  profiler.start("rateLimit");
   const rateLimitResponse = await rateLimitMiddleware(req as any, "CHAT");
+  profiler.end("rateLimit");
   if (rateLimitResponse) {
     return rateLimitResponse;
   }
 
   try {
+    profiler.start("parseRequest");
     const body = (await req.json()) as RequestBody;
     const { messages, context } = body;
+    profiler.end("parseRequest");
 
     // Debug logging
     console.log("[Chat API] Received request:", {
@@ -73,6 +118,7 @@ export async function POST(req: Request) {
       hasContext: !!context,
     });
 
+    profiler.start("auth");
     const supabase = await createClient();
 
     // Get current user
@@ -80,6 +126,7 @@ export async function POST(req: Request) {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
+    profiler.end("auth");
 
     // Extract onboarding context if present
     const onboardingContext = context?.onboarding;
@@ -98,6 +145,19 @@ export async function POST(req: Request) {
     // Extract last user message
     const lastUserMessage = messages[messages.length - 1];
     const lastUserMessageContent = extractMessageContent(lastUserMessage);
+
+    // Detect if user wants codemode (lazy loading optimization in legacy mode)
+    const wantsCodemode =
+      lastUserMessageContent.toLowerCase().includes("codemode") ||
+      lastUserMessageContent.toLowerCase().includes("use code") ||
+      lastUserMessageContent.toLowerCase().includes("execute code") ||
+      lastUserMessageContent.toLowerCase().includes("chain multiple") ||
+      lastUserMessageContent.toLowerCase().includes("orchestrate");
+
+    // In primary mode, codemode is always available. In legacy mode, we only
+    // load codemode when the user explicitly asks for it to avoid unnecessary
+    // overhead on simple queries.
+    const shouldUseCodemode = USE_CODEMODE_PRIMARY || wantsCodemode;
 
     // WORKFLOW DETECTION: Check if user wants to run a workflow
     const { detectWorkflow, isWorkflowRequest, extractWorkflowId } =
@@ -133,7 +193,7 @@ export async function POST(req: Request) {
     // RAG: Retrieve relevant frameworks if needed
     if (shouldUseRAG && !isOnboarding) {
       try {
-        const ragStartTime = Date.now();
+        profiler.start("rag");
         const frameworks = await findRelevantFrameworks(
           lastUserMessageContent,
           {
@@ -144,12 +204,13 @@ export async function POST(req: Request) {
         if (frameworks.length > 0) {
           retrievedFrameworks = formatFrameworksForPrompt(frameworks);
           frameworkIds = frameworks.map((f) => f.id);
-          const ragDuration = Date.now() - ragStartTime;
-          console.log(
-            `[Chat] RAG retrieved ${frameworks.length} frameworks in ${ragDuration}ms`,
-          );
         }
+        profiler.end("rag");
+        console.log(
+          `[Chat] RAG retrieved ${frameworks.length} frameworks in ${profiler.getDuration("rag")}ms`,
+        );
       } catch (error) {
+        profiler.end("rag");
         // Graceful degradation: continue without RAG if retrieval fails
         console.warn(
           "[Chat] RAG retrieval failed, continuing without frameworks:",
@@ -159,6 +220,7 @@ export async function POST(req: Request) {
     }
 
     // Build system prompt based on context
+    profiler.start("buildPrompt");
     let systemPrompt: string;
     if (isOnboarding && onboardingContext) {
       const currentStep = onboardingContext.currentStep || 1;
@@ -168,8 +230,13 @@ export async function POST(req: Request) {
         onboardingData as OnboardingData,
       );
     } else {
-      systemPrompt = buildGeneralSystemPrompt(context, retrievedFrameworks);
+      systemPrompt = buildGeneralSystemPrompt(
+        context,
+        retrievedFrameworks,
+        USE_CODEMODE_PRIMARY,
+      );
     }
+    profiler.end("buildPrompt");
 
     // Convert messages to AI SDK v5 format
     const systemMessages: Array<{
@@ -196,213 +263,353 @@ export async function POST(req: Request) {
       }
     });
 
-    // Load tools from DataForSEO MCP server
+    // Load all tools in parallel using cached getters
+    profiler.start("loadTools");
+
+    // Helper function to create fallback SEO tools
+    const createFallbackSEOTools = () => ({
+      ai_keyword_search_volume: tool({
+        description:
+          "Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.",
+        inputSchema: z.object({
+          keywords: z
+            .array(z.string())
+            .describe("Keywords to analyze in AI platforms"),
+          location: z
+            .string()
+            .optional()
+            .describe('Location (e.g., "United States", "United Kingdom")'),
+        }),
+        execute: async (args: {
+          keywords: string[];
+          location?: string;
+        }) => {
+          return await handleDataForSEOFunctionCall(
+            "ai_keyword_search_volume",
+            args,
+          );
+        },
+      }),
+      keyword_search_volume: tool({
+        description:
+          "Get Google search volume, CPC, and competition for keywords. Core keyword research tool.",
+        inputSchema: z.object({
+          keywords: z
+            .array(z.string())
+            .describe("Keywords to analyze (max 100)"),
+          location: z.string().optional().describe("Location for data"),
+        }),
+        execute: async (args: {
+          keywords: string[];
+          location?: string;
+        }) => {
+          return await handleDataForSEOFunctionCall(
+            "keyword_search_volume",
+            args,
+          );
+        },
+      }),
+      google_rankings: tool({
+        description:
+          "Get current Google SERP results for a keyword including position, URL, title, and SERP features.",
+        inputSchema: z.object({
+          keyword: z.string().describe("Keyword to check rankings for"),
+          location: z
+            .string()
+            .optional()
+            .describe("Location for SERP results"),
+        }),
+        execute: async (args: { keyword: string; location?: string }) => {
+          return await handleDataForSEOFunctionCall(
+            "google_rankings",
+            args,
+          );
+        },
+      }),
+      domain_overview: tool({
+        description:
+          "Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility. This is an expensive operation that requires user approval.",
+        inputSchema: z.object({
+          domain: z
+            .string()
+            .describe("Domain to analyze (without http://)"),
+          location: z.string().optional().describe("Location for metrics"),
+        }),
+        needsApproval: true,
+        execute: async (args: { domain: string; location?: string }) => {
+          return await handleDataForSEOFunctionCall(
+            "domain_overview",
+            args,
+          );
+        },
+      }),
+    });
+
+    // Load MCP tools in parallel. Codemode will reuse these loaded tools so we
+    // don't need a separate codemode registry load here.
+    const toolLoadPromises: Promise<any>[] = [
+      timeAsync("loadDataForSEOTools", () => getCachedDataForSEOTools(), profiler),
+      timeAsync("loadFirecrawlTools", () => getCachedFirecrawlTools(), profiler),
+      timeAsync("loadWinstonTools", () => getCachedWinstonTools(), profiler),
+    ];
+
+    const toolResults = await Promise.allSettled(toolLoadPromises);
+    const [
+      seoToolsResult,
+      firecrawlToolsResult,
+      winstonToolsResult,
+    ] = toolResults;
+
+    // Helper function to validate and filter tools with valid schemas
+    const validateTool = (toolName: string, tool: any): boolean => {
+      if (!tool || typeof tool !== 'object') {
+        return false;
+      }
+
+      // Check if tool has required properties
+      if (typeof tool.execute !== 'function') {
+        return false;
+      }
+
+      // Validate inputSchema - must be a Zod schema object
+      if (tool.inputSchema) {
+        // Check if it's a Zod schema (has _def property or is a ZodObject)
+        const isZodSchema =
+          tool.inputSchema._def !== undefined ||
+          tool.inputSchema.parse !== undefined ||
+          typeof tool.inputSchema === 'function';
+
+        if (!isZodSchema) {
+          console.warn(`[Chat API] Tool ${toolName} has invalid inputSchema, skipping`);
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    // Process DataForSEO tools
     let seoTools: Record<string, any>;
     let mcpConnected = false;
+    if (seoToolsResult.status === "fulfilled" && seoToolsResult.value && Object.keys(seoToolsResult.value).length > 0) {
+      mcpConnected = true;
+      const rawTools = seoToolsResult.value;
 
-    console.log("[Chat API] Attempting to load tools from MCP server...");
-    console.log("[Chat API] MCP URL:", serverEnv.DATAFORSEO_MCP_URL);
+      // Filter out invalid tools
+      const validTools: Record<string, any> = {};
+      let invalidCount = 0;
 
-    try {
-      const mcpTools = await getDataForSEOTools();
-      if (mcpTools && Object.keys(mcpTools).length > 0) {
-        mcpConnected = true;
-        seoTools = mcpTools;
-        console.log(
-          `[Chat API] Successfully loaded ${Object.keys(seoTools).length} tools from MCP server`,
-        );
-        console.log(
-          "[Chat API] Sample MCP tools:",
-          Object.keys(seoTools).slice(0, 5),
-        );
-      } else {
-        console.log(
-          "[Chat API] No tools returned from MCP server, using fallback",
-        );
-        mcpConnected = false;
-        seoTools = {
-          ai_keyword_search_volume: tool({
-            description:
-              "Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.",
-            inputSchema: z.object({
-              keywords: z
-                .array(z.string())
-                .describe("Keywords to analyze in AI platforms"),
-              location: z
-                .string()
-                .optional()
-                .describe('Location (e.g., "United States", "United Kingdom")'),
-            }),
-            execute: async (args: {
-              keywords: string[];
-              location?: string;
-            }) => {
-              return await handleDataForSEOFunctionCall(
-                "ai_keyword_search_volume",
-                args,
-              );
-            },
-          }),
-          keyword_search_volume: tool({
-            description:
-              "Get Google search volume, CPC, and competition for keywords. Core keyword research tool.",
-            inputSchema: z.object({
-              keywords: z
-                .array(z.string())
-                .describe("Keywords to analyze (max 100)"),
-              location: z.string().optional().describe("Location for data"),
-            }),
-            execute: async (args: {
-              keywords: string[];
-              location?: string;
-            }) => {
-              return await handleDataForSEOFunctionCall(
-                "keyword_search_volume",
-                args,
-              );
-            },
-          }),
-          google_rankings: tool({
-            description:
-              "Get current Google SERP results for a keyword including position, URL, title, and SERP features.",
-            inputSchema: z.object({
-              keyword: z.string().describe("Keyword to check rankings for"),
-              location: z
-                .string()
-                .optional()
-                .describe("Location for SERP results"),
-            }),
-            execute: async (args: { keyword: string; location?: string }) => {
-              return await handleDataForSEOFunctionCall(
-                "google_rankings",
-                args,
-              );
-            },
-          }),
-          domain_overview: tool({
-            description:
-              "Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility. This is an expensive operation that requires user approval.",
-            inputSchema: z.object({
-              domain: z
-                .string()
-                .describe("Domain to analyze (without http://)"),
-              location: z.string().optional().describe("Location for metrics"),
-            }),
-            needsApproval: true,
-            execute: async (args: { domain: string; location?: string }) => {
-              return await handleDataForSEOFunctionCall(
-                "domain_overview",
-                args,
-              );
-            },
-          }),
-        };
-        console.log(
-          `[Chat API] Using fallback: ${Object.keys(seoTools).length} direct API tools`,
-        );
+      for (const [toolName, tool] of Object.entries(rawTools)) {
+        if (validateTool(toolName, tool)) {
+          validTools[toolName] = tool;
+        } else {
+          invalidCount++;
+        }
       }
-    } catch (error) {
-      console.error("[Chat API] Failed to load MCP tools:", error);
-      mcpConnected = false;
-      seoTools = {
-        ai_keyword_search_volume: tool({
-          description:
-            "Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.",
-          inputSchema: z.object({
-            keywords: z
-              .array(z.string())
-              .describe("Keywords to analyze in AI platforms"),
-            location: z
-              .string()
-              .optional()
-              .describe('Location (e.g., "United States", "United Kingdom")'),
-          }),
-          execute: async (args: { keywords: string[]; location?: string }) => {
-            return await handleDataForSEOFunctionCall(
-              "ai_keyword_search_volume",
-              args,
-            );
-          },
-        }),
-        keyword_search_volume: tool({
-          description:
-            "Get Google search volume, CPC, and competition for keywords. Core keyword research tool.",
-          inputSchema: z.object({
-            keywords: z
-              .array(z.string())
-              .describe("Keywords to analyze (max 100)"),
-            location: z.string().optional().describe("Location for data"),
-          }),
-          execute: async (args: { keywords: string[]; location?: string }) => {
-            return await handleDataForSEOFunctionCall(
-              "keyword_search_volume",
-              args,
-            );
-          },
-        }),
-        google_rankings: tool({
-          description:
-            "Get current Google SERP results for a keyword including position, URL, title, and SERP features.",
-          inputSchema: z.object({
-            keyword: z.string().describe("Keyword to check rankings for"),
-            location: z
-              .string()
-              .optional()
-              .describe("Location for SERP results"),
-          }),
-          execute: async (args: { keyword: string; location?: string }) => {
-            return await handleDataForSEOFunctionCall("google_rankings", args);
-          },
-        }),
-        domain_overview: tool({
-          description:
-            "Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility. This is an expensive operation that requires user approval.",
-          inputSchema: z.object({
-            domain: z.string().describe("Domain to analyze (without http://)"),
-            location: z.string().optional().describe("Location for metrics"),
-          }),
-          needsApproval: true,
-          execute: async (args: { domain: string; location?: string }) => {
-            return await handleDataForSEOFunctionCall("domain_overview", args);
-          },
-        }),
-      };
+
+      seoTools = validTools;
+
+      if (invalidCount > 0) {
+        console.warn(`[Chat API] Filtered out ${invalidCount} invalid DataForSEO tools`);
+      }
+
       console.log(
-        `[Chat API] Using fallback after error: ${Object.keys(seoTools).length} direct API tools`,
+        `[Chat API] Successfully loaded ${Object.keys(seoTools).length} valid tools from MCP server`,
+      );
+      console.log(
+        "[Chat API] Sample MCP tools:",
+        Object.keys(seoTools).slice(0, 5),
+      );
+
+      // Use fallback if no valid tools
+      if (Object.keys(seoTools).length === 0) {
+        console.log("[Chat API] No valid tools from MCP server, using fallback");
+        mcpConnected = false;
+        seoTools = createFallbackSEOTools();
+      }
+    } else {
+      console.log(
+        "[Chat API] No tools returned from MCP server, using fallback",
+      );
+      mcpConnected = false;
+      seoTools = createFallbackSEOTools();
+      console.log(
+        `[Chat API] Using fallback: ${Object.keys(seoTools).length} direct API tools`,
       );
     }
 
-    // Add content quality tools (Winston AI + Rytr)
-    const contentQualityTools = getContentQualityTools();
-    // Add enhanced content quality tools (SEO analysis, readability, fact-checking)
-    const enhancedContentTools = getEnhancedContentQualityTools();
-    
-    // Build codemode tool registry and create codemode tool
-    let codemodeTool: ReturnType<typeof createCodemodeTool> | null = null;
-    try {
-      const codemodeRegistry = await buildCodemodeToolRegistry();
-      codemodeTool = createCodemodeTool(codemodeRegistry);
-      console.log("[Chat API] Codemode tool created with", Object.keys(codemodeRegistry).length, "tools");
-    } catch (error) {
-      console.warn("[Chat API] Failed to create codemode tool:", error);
+    // Process Firecrawl tools
+    let firecrawlTools: Record<string, any> = {};
+    if (firecrawlToolsResult.status === "fulfilled" && firecrawlToolsResult.value) {
+      const rawTools = firecrawlToolsResult.value;
+      const validTools: Record<string, any> = {};
+
+      for (const [toolName, tool] of Object.entries(rawTools)) {
+        if (validateTool(toolName, tool)) {
+          validTools[toolName] = tool;
+        }
+      }
+
+      firecrawlTools = validTools;
+      console.log("[Chat API] Loaded Firecrawl MCP tools:", Object.keys(firecrawlTools).length);
+    } else if (firecrawlToolsResult.status === "rejected") {
+      console.warn("[Chat API] Failed to load Firecrawl MCP tools:", firecrawlToolsResult.reason);
     }
-    
-    const allTools = {
-      ...seoTools,
-      ...contentQualityTools,
-      ...enhancedContentTools,
-      // Add codemode tool if available
-      ...(codemodeTool ? { codemode: codemodeTool } : {}),
+
+    // Process Winston tools
+    let winstonMCPTools: Record<string, any> = {};
+    if (winstonToolsResult.status === "fulfilled" && winstonToolsResult.value) {
+      const rawTools = winstonToolsResult.value;
+      const validTools: Record<string, any> = {};
+
+      for (const [toolName, tool] of Object.entries(rawTools)) {
+        if (validateTool(toolName, tool)) {
+          validTools[toolName] = tool;
+        }
+      }
+
+      winstonMCPTools = validTools;
+      console.log("[Chat API] Loaded Winston MCP tools:", Object.keys(winstonMCPTools).length);
+    } else if (winstonToolsResult.status === "rejected") {
+      const reason = winstonToolsResult.reason;
+      console.warn("[Chat API] ⚠️ Winston MCP unavailable (continuing without it):", reason instanceof Error ? reason.message : String(reason));
+    }
+
+    profiler.end("loadTools");
+
+    // Add content quality tools (Winston AI + Rytr) - NOW ENABLED with AI SDK 6 compatible schemas
+    const contentQualityTools = getContentQualityTools();
+    console.log("[Chat API] Loaded content quality tools:", Object.keys(contentQualityTools).length);
+
+    // Add enhanced content quality tools (SEO analysis, readability, fact-checking) - NOW ENABLED
+    const enhancedContentTools = getEnhancedContentQualityTools();
+    console.log("[Chat API] Loaded enhanced content tools:", Object.keys(enhancedContentTools).length);
+
+    // Add AEO (Answer Engine Optimization) tools - NEW in Phase 2
+    const aeoTools = getAEOTools();
+    console.log("[Chat API] Loaded AEO tools:", Object.keys(aeoTools).length);
+
+    // Add AEO platform-specific tools - NEW in Phase 2
+    const aeoPlatformTools = getAEOPlatformTools();
+    console.log("[Chat API] Loaded AEO platform tools:", Object.keys(aeoPlatformTools).length);
+
+    // Add Jina and Perplexity tools
+    const jinaPerplexityTools = {
+      jina_scrape: tool({
+        description: 'Scrape and extract clean markdown content from any URL. Use this to analyze competitor content or extract information from web pages.',
+        inputSchema: z.object({
+          url: z.string().describe('The URL to scrape'),
+          timeout: z.number().optional().describe('Timeout in milliseconds (default: 30000)'),
+        }),
+        execute: async ({ url, timeout }) => {
+          const result = await scrapeWithJina({ url, timeout });
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to scrape URL');
+          }
+          return {
+            title: result.title,
+            content: result.markdown || result.content,
+            metadata: result.metadata,
+            summary: `✅ Scraped ${result.title || url} (${result.metadata?.wordCount || 0} words)`,
+          };
+        },
+      }),
+      perplexity_research: tool({
+        description: 'Search for authoritative information with citations using Perplexity AI. Use this for fact-checking, research, and finding credible sources.',
+        inputSchema: z.object({
+          query: z.string().describe('The research query or question'),
+          searchRecencyFilter: z.enum(['month', 'week', 'day', 'hour']).optional().describe('Filter by recency (default: month)'),
+          returnCitations: z.boolean().optional().describe('Return citations (default: true)'),
+        }),
+        execute: async ({ query, searchRecencyFilter, returnCitations }) => {
+          const result = await searchWithPerplexity({
+            query,
+            searchRecencyFilter,
+            returnCitations: returnCitations !== false,
+          });
+          if (!result.success) {
+            throw new Error(result.error || 'Perplexity search failed');
+          }
+          return {
+            answer: result.answer,
+            citations: result.citations,
+            citationCount: result.citations.length,
+            summary: `✅ Found ${result.citations.length} authoritative sources for "${query}"`,
+          };
+        },
+      }),
     };
+
+    // Build codemode tool (only when enabled for this request). We reuse the
+    // already loaded MCP tools to avoid any extra network calls when building
+    // the codemode registry.
+    profiler.start("buildCodemodeTool");
+    let codemodeTool: ReturnType<typeof createCodemodeTool> | null = null;
+    if (shouldUseCodemode) {
+      try {
+        const codemodeRegistry = await buildCodemodeToolRegistryFromExisting({
+          dataForSEOTools: seoTools,
+          firecrawlTools,
+          winstonTools: winstonMCPTools,
+        });
+        codemodeTool = createCodemodeTool(codemodeRegistry);
+        console.log(
+          "[Chat API] Codemode tool created with",
+          Object.keys(codemodeRegistry).length,
+          "tools in registry",
+        );
+      } catch (error) {
+        console.warn("[Chat API] Failed to build codemode registry:", error);
+      }
+    } else {
+      console.log("[Chat API] Codemode disabled for this request");
+    }
+    profiler.end("buildCodemodeTool");
+
+    // In codemode-primary mode, we expose only a minimal set of direct tools
+    // and route all MCP/API operations through the codemode tool. In legacy
+    // mode, we keep exposing all tools directly for backwards compatibility.
+    let allTools: Record<string, any>;
+    if (USE_CODEMODE_PRIMARY) {
+      const minimalDirectTools = {
+        ...contentQualityTools,
+        ...enhancedContentTools,
+        ...aeoTools,
+        ...aeoPlatformTools,
+      };
+
+      allTools = {
+        ...minimalDirectTools,
+        ...(codemodeTool ? { codemode: codemodeTool } : {}),
+      };
+    } else {
+      allTools = {
+        ...seoTools,
+        ...firecrawlTools,
+        ...winstonMCPTools,
+        ...contentQualityTools,
+        ...enhancedContentTools,
+        ...aeoTools,
+        ...aeoPlatformTools,
+        ...jinaPerplexityTools,
+        ...(codemodeTool ? { codemode: codemodeTool } : {}),
+      };
+    }
 
     // Debug logging
     console.log("[Chat API] Streaming with:", {
       conversationMessageCount: conversationMessages.length,
       systemPromptLength: systemPrompt.length,
-      seoToolsCount: Object.keys(seoTools).length,
+      dataForSEOToolsCount: Object.keys(seoTools).length,
+      firecrawlToolsCount: Object.keys(firecrawlTools).length,
+      winstonMCPToolsCount: Object.keys(winstonMCPTools).length,
       contentQualityToolsCount: Object.keys(contentQualityTools).length,
       enhancedContentToolsCount: Object.keys(enhancedContentTools).length,
-      codemodeEnabled: !!codemodeTool,
+      aeoToolsCount: Object.keys(aeoTools).length,
+      aeoPlatformToolsCount: Object.keys(aeoPlatformTools).length,
+      jinaPerplexityToolsCount: Object.keys(jinaPerplexityTools).length,
+      codemodeEnabled: codemodeTool !== null,
+      codemodeMode: USE_CODEMODE_PRIMARY ? "codemode-primary" : "legacy-mixed",
       totalToolsCount: Object.keys(allTools).length,
       mcpConnected: mcpConnected,
       mcpUrl: serverEnv.DATAFORSEO_MCP_URL || "not set (using default)",
@@ -444,6 +651,11 @@ export async function POST(req: Request) {
       role: m.role,
       parts: [{ type: "text" as const, text: m.content }],
     }));
+
+    profiler.end("total");
+
+    // Log performance timings
+    profiler.logTimings("Chat API");
 
     console.log("[Chat API] Starting agent stream response...");
     console.log("[Chat API] Passing to agent:", {
@@ -611,6 +823,7 @@ function detectFrameworkIntent(message: string): boolean {
 function buildGeneralSystemPrompt(
   context?: ChatContext,
   ragFrameworks?: string,
+  useCodemodePrimary: boolean = false,
 ): string {
   const basePrompt = `You are an expert SEO assistant helping users improve their search rankings and create optimized content. You are friendly, professional, and provide actionable advice.
 
@@ -654,6 +867,14 @@ When generating or validating content:
 Be conversational and helpful. Ask clarifying questions when needed. Keep responses concise but informative.`;
 
   let prompt = basePrompt;
+
+  if (useCodemodePrimary) {
+    prompt += `\n\nIMPORTANT: Tool usage policy for this conversation (codemode-primary mode):\n- All MCP and external API tools (DataForSEO, Firecrawl, Winston, Perplexity, Jina, Rytr) must be accessed ONLY via the "codemode" tool.\n- Do NOT attempt to call these tools directly. Instead, always write JavaScript code and execute it via the codemode tool.\n- Use the codemode.<toolName>(...) namespace to call tools (for example, codemode.dataforseo_google_rankings(...) or codemode.perplexity_search(...)).\n- Prefer codemode whenever you need to chain multiple tool calls, perform conditional logic, or orchestrate complex SEO workflows.\n`;
+  } else {
+    // Legacy mixed mode: codemode is available but tools may also be called directly.
+    // Codemode is still recommended for multi-step workflows and complex orchestration.
+    prompt += `\n\nTool usage policy (legacy mixed mode):\n- You MAY call DataForSEO, Firecrawl, Winston, Perplexity, Jina, and Rytr tools directly when appropriate.\n- Prefer the codemode tool when you need to orchestrate multiple calls, add control flow, or reduce the number of tool steps.\n`;
+  }
 
   // Inject RAG frameworks if available
   if (ragFrameworks && ragFrameworks.length > 0) {
