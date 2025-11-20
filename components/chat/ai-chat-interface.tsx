@@ -1,9 +1,8 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
-import type { UIMessage } from 'ai'
-import { useEffect, useRef, useState } from 'react'
+import type { UIMessage as Message } from 'ai'
+import { useEffect, useRef, useState, forwardRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Copy, Check, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -20,33 +19,30 @@ interface AIChatInterfaceProps {
   workflowResults?: any
 }
 
-export function AIChatInterface({
+export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(({
   context,
   className,
   placeholder = "Type your message...",
   onComponentSubmit,
   initialMessage,
   workflowResults
-}: AIChatInterfaceProps) {
+}, ref) => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [pendingComponents, setPendingComponents] = useState<Map<string, MessageComponent>>(new Map())
   const [input, setInput] = useState('')
-  
+
   const chat = useChat({
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-      body: { context },
-    }),
-    messages: initialMessage ? [{ role: 'assistant', parts: [{ type: 'text', text: initialMessage }], id: 'initial' }] : undefined,
-    onFinish: ({ message }) => {
+    body: { context },
+    initialMessages: initialMessage ? [{ role: 'assistant', content: initialMessage, id: 'initial' }] : undefined,
+    onFinish: (message: any) => {
       console.log('[Chat] Message finished:', message)
       scrollToBottom()
       // Parse components from message
-      const textContent = message.parts.find(p => p.type === 'text')?.text || ''
+      const textContent: string = message.content || ''
       parseComponentsFromMessage(textContent, message.id)
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('[Chat] Error:', error)
       console.error('[Chat] Error details:', {
         message: error?.message,
@@ -55,10 +51,29 @@ export function AIChatInterface({
       })
       // Handle error gracefully - don't break the UI
     },
-  })
+  } as any) as any
 
-  const { messages, sendMessage, status, setMessages } = chat
+  // console.log('[Chat] useChat hook result:', chat)
+  
+  // Safely access properties
+  const messages = chat?.messages || []
+  const append = chat?.append || chat?.sendMessage // Fallback to sendMessage if append is missing
+  const status = chat?.status || 'ready'
+  const setMessages = chat?.setMessages
+  
   const isLoading = status === 'streaming' || status === 'submitted'
+
+  const sendMessage = (data: { text: string }) => {
+    // Check if we have append (newer SDK) or sendMessage (older SDK/compat)
+    if (append) {
+      // If it's the newer SDK 'append', it expects a message object
+      // If it's the older 'sendMessage', it often expected { text } or a message object.
+      // Let's try the standard message object which is most robust across versions.
+      append({ role: 'user', content: data.text })
+    } else {
+      console.error('[Chat] No send function available')
+    }
+  }
 
   // Inject workflow results as a message when they arrive
   useEffect(() => {
@@ -66,19 +81,15 @@ export function AIChatInterface({
       console.log('[Chat] Injecting workflow results:', workflowResults)
 
       // Create a message with workflow results
-      const workflowMessage: UIMessage = {
+      const workflowMessage: any = {
         id: `workflow-${Date.now()}`,
         role: 'assistant',
-        parts: [
-          {
-            type: 'text',
-            text: workflowResults.summary || 'Workflow completed successfully!'
-          }
-        ]
+        content: workflowResults.summary || 'Workflow completed successfully!',
+        parts: [{ type: 'text', text: workflowResults.summary || 'Workflow completed successfully!' }],
       }
 
       // Add the message to chat
-      setMessages((prev: UIMessage[]) => [...prev, workflowMessage])
+      setMessages((prev: any[]) => [...prev, workflowMessage])
 
       // Add components to pending components for rendering
       workflowResults.components.forEach((comp: any) => {
@@ -115,12 +126,12 @@ export function AIChatInterface({
       newMap.delete(messageId)
       return newMap
     })
-    
+
     // Send data to chat
     if (onComponentSubmit) {
       onComponentSubmit(component.component, data)
     }
-    
+
     // Append user message with component data
     const message = formatComponentData(component.component, data)
     console.log('[Chat] Sending component message:', message)
@@ -147,24 +158,36 @@ export function AIChatInterface({
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
   }
-  
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
-  
+
   useEffect(() => {
     scrollToBottom()
   }, [messages, pendingComponents])
 
-  const renderMessageContent = (message: UIMessage, messageId: string) => {
-    const textContent = message.parts.find(p => p.type === 'text')?.text || ''
+  const renderMessageContent = (message: any, messageId: string) => {
+    console.log('[Chat] Rendering message:', { id: messageId, role: message.role, content: message.content, parts: message.parts, tools: message.toolInvocations })
+
+    let textContent: string = message.content || ''
+
+    // Handle AI SDK 6 parts format if content is empty
+    if (!textContent && message.parts && Array.isArray(message.parts)) {
+      textContent = message.parts
+        .filter((p: any) => p.type === 'text')
+        .map((p: any) => p.text)
+        .join('')
+    }
+
     // Remove JSON code blocks from display
     const cleanedContent = textContent.replace(/```json\n[\s\S]*?\n```/g, '').trim()
     const component = pendingComponents.get(messageId)
-    
+
     // Find tool calls
-    const toolCalls = message.parts.filter(p => p.type && p.type.startsWith('tool-'))
-    
+    // AI SDK 6 uses toolInvocations
+    const toolCalls = message.toolInvocations || []
+
     return (
       <>
         {cleanedContent && (
@@ -182,14 +205,28 @@ export function AIChatInterface({
         {toolCalls.length > 0 && (
           <div className="mt-4 space-y-3">
             {toolCalls.map((toolCall: any, index: number) => {
-              const toolName = toolCall.type.replace('tool-', '')
-              const toolInput = toolCall.input || toolCall.rawInput
-              const toolOutput = toolCall.output
+              const toolName = toolCall.toolName
+              const toolInput = toolCall.args
+              // AI SDK 6: result is in 'result' property
+              const toolOutput = toolCall.result
               const toolState = toolCall.state
-              const isLoading = toolState === 'submitted' || toolState === 'streaming'
-              const isSuccess = toolState === 'output-available' || toolState === 'done'
-              const isError = !!toolCall.errorText
-              
+              const isLoading = toolState !== 'result'
+              const isSuccess = toolState === 'result'
+              const isError = false // AI SDK 6 handles errors differently, usually via state
+
+              if (toolName === 'client_ui') {
+                const componentData = {
+                  component: toolInput.component,
+                  props: toolInput.props || {}
+                }
+
+                return (
+                  <div key={index} className="mt-4 w-full">
+                    {renderMessageComponent(componentData, (data) => handleComponentSubmit(messageId, componentData, data))}
+                  </div>
+                )
+              }
+
               return (
                 <motion.div
                   key={index}
@@ -226,8 +263,8 @@ export function AIChatInterface({
                           <span className={cn(
                             "text-xs mt-0.5",
                             isSuccess && !isError ? 'text-green-400' :
-                            isError ? 'text-red-400' :
-                            'text-blue-400'
+                              isError ? 'text-red-400' :
+                                'text-blue-400'
                           )}>
                             {toolState.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                           </span>
@@ -284,7 +321,7 @@ export function AIChatInterface({
       </>
     )
   }
-  
+
   return (
     <div className={cn("flex flex-col h-full min-h-0", className)}>
       {/* Messages Area */}
@@ -296,77 +333,78 @@ export function AIChatInterface({
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Ready to Create Something New?</h2>
             <p className="text-white/80 max-w-md mb-6">
-              I'm your AI SEO assistant. I can help you analyze competitors, find keyword opportunities, 
+              I'm your AI SEO assistant. I can help you analyze competitors, find keyword opportunities,
               and create optimized content.
             </p>
           </div>
         )}
         <AnimatePresence>
-          {messages.map((message: UIMessage) => {
+          {messages.map((message: any) => {
             const isUser = message.role === 'user'
             const isAssistant = message.role === 'assistant'
             return (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className={cn(
-                "group flex items-start gap-3",
-                isUser ? 'justify-end' : 'justify-start'
-              )}
-            >
-              {isAssistant && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full glass flex items-center justify-center mt-1">
-                  <Sparkles className="w-4 h-4 text-white" />
-                </div>
-              )}
-              <div className="flex flex-col gap-1.5 max-w-[85%]">
-                <div
-                  className={cn(
-                    "rounded-2xl px-5 py-4 shadow-2xl transition-all duration-200",
-                    isUser
-                      ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-md border border-white/20 text-white rounded-tr-sm hover:border-white/30'
-                      : 'bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 text-white rounded-tl-sm hover:border-white/20'
-                  )}
-                >
-                  {renderMessageContent(message, message.id)}
-                </div>
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className={cn(
+                  "group flex items-start gap-3",
+                  isUser ? 'justify-end' : 'justify-start'
+                )}
+              >
                 {isAssistant && (
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const textContent = message.parts.find(p => p.type === 'text')?.text || ''
-                        copyToClipboard(textContent, message.id)
-                      }}
-                      className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 rounded hover:bg-muted"
-                      title="Copy to clipboard"
-                    >
-                      {copiedId === message.id ? (
-                        <>
-                          <Check className="w-3 h-3 text-primary" />
-                          <span className="text-primary">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
-                    <ExportButton
-                      content={message.parts.find(p => p.type === 'text')?.text || ''}
-                      size="sm"
-                      className="text-xs"
-                    />
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full glass flex items-center justify-center mt-1">
+                    <Sparkles className="w-4 h-4 text-white" />
                   </div>
                 )}
-              </div>
-            </motion.div>
-          )})}
+                <div className="flex flex-col gap-1.5 max-w-[85%]">
+                  <div
+                    className={cn(
+                      "rounded-2xl px-5 py-4 shadow-2xl transition-all duration-200",
+                      isUser
+                        ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-md border border-white/20 text-white rounded-tr-sm hover:border-white/30'
+                        : 'bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 text-white rounded-tl-sm hover:border-white/20'
+                    )}
+                  >
+                    {renderMessageContent(message, message.id)}
+                  </div>
+                  {isAssistant && (
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const textContent = message.content || ''
+                          copyToClipboard(textContent, message.id)
+                        }}
+                        className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 rounded hover:bg-muted"
+                        title="Copy to clipboard"
+                      >
+                        {copiedId === message.id ? (
+                          <>
+                            <Check className="w-3 h-3 text-primary" />
+                            <span className="text-primary">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                      <ExportButton
+                        content={message.content || ''}
+                        size="sm"
+                        className="text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )
+          })}
         </AnimatePresence>
-        
+
         {isLoading && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -384,10 +422,10 @@ export function AIChatInterface({
             </div>
           </motion.div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
-      
+
       {/* Input Area */}
       <div className="p-4">
         <ChatInput
@@ -413,4 +451,4 @@ export function AIChatInterface({
       </div>
     </div>
   )
-}
+})

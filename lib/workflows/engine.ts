@@ -198,20 +198,31 @@ export class WorkflowEngine {
         }
       }
 
-      console.log(`[Workflow] Executing tool: ${toolName}`, params)
+      // Substitute dynamic parameters from previous steps
+      const effectiveParams = this.substituteDynamicParams(params || {})
+
+      console.log(`[Workflow] Executing tool: ${toolName}`, effectiveParams)
 
       // Route to appropriate tool executor
       let data: any
 
       // External API tools
       if (toolName === 'jina_reader') {
-        data = await this.executeJinaTool(params)
+        data = await this.executeJinaTool(effectiveParams)
       } else if (toolName === 'perplexity_search') {
-        data = await this.executePerplexityTool(params)
+        data = await this.executePerplexityTool(effectiveParams)
+      }
+      // Firecrawl tools
+      else if (toolName.startsWith('firecrawl_') || toolName === 'scrape' || toolName === 'crawl' || toolName === 'map') {
+        data = await this.executeFirecrawlTool(toolName, effectiveParams)
+      }
+      // Content Quality tools (Winston/Rytr)
+      else if (['validate_content', 'check_plagiarism', 'check_ai_content', 'generate_seo_content', 'generate_blog_section', 'generate_meta_title', 'generate_meta_description', 'improve_content', 'expand_content', 'validate_content_quality', 'analyze_seo_content', 'fact_check_content'].includes(toolName)) {
+        data = await this.executeContentQualityTool(toolName, effectiveParams)
       }
       // DataForSEO tools (via MCP or direct API)
       else {
-        data = await this.executeDataForSEOTool(toolName, params)
+        data = await this.executeDataForSEOTool(toolName, effectiveParams)
       }
 
       const result: ToolExecutionResult = {
@@ -237,6 +248,82 @@ export class WorkflowEngine {
         duration: Date.now() - startTime,
       }
     }
+  }
+
+  /**
+   * Substitute dynamic parameters from previous step results
+   */
+  private substituteDynamicParams(params: Record<string, any>): Record<string, any> {
+    const result: Record<string, any> = {}
+
+    // Flatten all previous results into a single context object
+    const contextData: Record<string, any> = {}
+
+    // Add user query and basic info
+    contextData['userQuery'] = this.context.userQuery
+
+    // Add results from previous steps
+    for (const [stepId, stepResult] of this.stepResults.entries()) {
+      if (stepResult.toolResults) {
+        // Add individual tool results
+        for (const [toolName, toolResult] of Object.entries(stepResult.toolResults)) {
+          contextData[toolName] = toolResult.data
+
+          // If result is an object, flatten its properties
+          if (toolResult.data && typeof toolResult.data === 'object') {
+            Object.assign(contextData, toolResult.data)
+          }
+        }
+      }
+    }
+
+    // Also check context.previousStepResults (for sequential tools within a step)
+    if (this.context.previousStepResults) {
+      for (const [key, value] of Object.entries(this.context.previousStepResults)) {
+        if (value && typeof value === 'object' && 'data' in value) {
+          contextData[key] = value.data
+          if (value.data && typeof value.data === 'object') {
+            Object.assign(contextData, value.data)
+          }
+        } else {
+          contextData[key] = value
+        }
+      }
+    }
+
+    // Perform substitution
+    for (const [key, value] of Object.entries(params)) {
+      if (typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}')) {
+        const varName = value.slice(2, -2).trim()
+
+        // Look up variable in context data
+        if (varName in contextData) {
+          result[key] = contextData[varName]
+        } else {
+          // Try to find nested property (e.g. toolName.property)
+          const parts = varName.split('.')
+          if (parts.length > 1) {
+            let current: Record<string, any> | undefined = contextData
+            for (const part of parts) {
+              if (current && typeof current === 'object' && part in current) {
+                current = current[part]
+              } else {
+                current = undefined
+                break
+              }
+            }
+            result[key] = current !== undefined ? current : value
+          } else {
+            console.warn(`[Workflow] Variable not found: ${varName}`)
+            result[key] = value // Keep original if not found
+          }
+        }
+      } else {
+        result[key] = value
+      }
+    }
+
+    return result
   }
 
   /**
@@ -282,6 +369,54 @@ export class WorkflowEngine {
     }
 
     return result
+  }
+
+  /**
+   * Execute Firecrawl tool
+   */
+  private async executeFirecrawlTool(toolName: string, params?: Record<string, any>): Promise<any> {
+    const { getFirecrawlTools } = await import('@/lib/mcp/firecrawl-client')
+
+    const tools = await getFirecrawlTools()
+    const tool = tools[toolName]
+
+    if (!tool) {
+      throw new Error(`Firecrawl tool ${toolName} not found`)
+    }
+
+    // Execute the tool
+    // Note: MCP tools from ai-sdk usually have an execute method
+    if (tool.execute) {
+      return await tool.execute(params || {})
+    }
+
+    throw new Error(`Firecrawl tool ${toolName} is not executable`)
+  }
+
+  /**
+   * Execute Content Quality tool (Rytr/Winston)
+   */
+  private async executeContentQualityTool(toolName: string, params?: Record<string, any>): Promise<any> {
+    const { getContentQualityTools } = await import('@/lib/ai/content-quality-tools')
+    const { getEnhancedContentQualityTools } = await import('@/lib/ai/content-quality-enhancements')
+
+    const basicTools = getContentQualityTools()
+    const enhancedTools = getEnhancedContentQualityTools()
+
+    const tool = basicTools[toolName as keyof typeof basicTools] || enhancedTools[toolName as keyof typeof enhancedTools]
+
+    if (!tool) {
+      throw new Error(`Content quality tool ${toolName} not found`)
+    }
+
+    // Execute the tool
+        if (tool.execute) {
+          return await tool.execute((params || {}) as any, {
+            toolCallId: 'workflow-exec',
+            messages: []
+          })    }
+
+    throw new Error(`Content quality tool ${toolName} is not executable`)
   }
 
   /**

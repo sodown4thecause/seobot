@@ -1,10 +1,10 @@
 import {
-  ToolLoopAgent,
-  createAgentUIStreamResponse,
+  streamText,
+  convertToCoreMessages,
   tool,
-  stepCountIs,
 } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createClient } from "@/lib/supabase/server";
 import { buildOnboardingSystemPrompt } from "@/lib/onboarding/prompts";
 import {
@@ -19,19 +19,22 @@ import {
 } from "@/lib/ai/rag-service";
 import { handleDataForSEOFunctionCall } from "@/lib/ai/dataforseo-tools";
 import { getDataForSEOTools } from "@/lib/mcp/dataforseo-client";
+import { getFirecrawlTools } from "@/lib/mcp/firecrawl-client";
+import { getJinaTools } from "@/lib/mcp/jina-client";
+import { getWinstonTools } from "@/lib/mcp/winston-client";
 import { getContentQualityTools } from "@/lib/ai/content-quality-tools";
 import { getEnhancedContentQualityTools } from "@/lib/ai/content-quality-enhancements";
-import { buildCodemodeToolRegistry, createCodemodeTool } from "@/lib/ai/codemode";
+import { searchWithPerplexity } from "@/lib/external-apis/perplexity";
+// import { buildCodemodeToolRegistry, createCodemodeTool } from "@/lib/ai/codemode"; // DISABLED
+import { OrchestratorAgent } from "@/lib/agents/orchestrator";
+import { vercelGateway } from "@/lib/ai/gateway-provider";
 import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
 import { z } from "zod";
 
 export const runtime = "edge";
 
-// Using OpenAI GPT-4.1 for chat interface with tool calling support
-const CHAT_MODEL_ID = "gpt-4.1";
-const openai = createOpenAI({
-  apiKey: serverEnv.OPENAI_API_KEY,
-});
+// Using GPT-4o via Vercel Gateway
+const CHAT_MODEL_ID = "openai/gpt-4o";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -51,7 +54,7 @@ interface ChatContext {
 }
 
 interface RequestBody {
-  messages: ChatMessage[];
+  messages: any[];
   context?: ChatContext;
 }
 
@@ -66,13 +69,6 @@ export async function POST(req: Request) {
     const body = (await req.json()) as RequestBody;
     const { messages, context } = body;
 
-    // Debug logging
-    console.log("[Chat API] Received request:", {
-      messageCount: messages?.length || 0,
-      lastMessage: messages?.[messages.length - 1],
-      hasContext: !!context,
-    });
-
     const supabase = await createClient();
 
     // Get current user
@@ -81,23 +77,16 @@ export async function POST(req: Request) {
       error: authError,
     } = await supabase.auth.getUser();
 
+    // Initialize Orchestrator
+    const orchestrator = new OrchestratorAgent();
+
     // Extract onboarding context if present
     const onboardingContext = context?.onboarding;
     const isOnboarding = context?.page === "onboarding";
 
-    // Extract message content - handle both AI SDK v5 format (parts) and legacy format (content)
-    const extractMessageContent = (msg: ChatMessage): string => {
-      if (msg.parts && Array.isArray(msg.parts)) {
-        // AI SDK v5 format
-        const textPart = msg.parts.find((p) => p.type === "text");
-        return textPart?.text || "";
-      }
-      return msg.content || "";
-    };
-
-    // Extract last user message
+    // Extract last user message content for intent detection
     const lastUserMessage = messages[messages.length - 1];
-    const lastUserMessageContent = extractMessageContent(lastUserMessage);
+    const lastUserMessageContent = lastUserMessage.content || "";
 
     // WORKFLOW DETECTION: Check if user wants to run a workflow
     const { detectWorkflow, isWorkflowRequest, extractWorkflowId } =
@@ -171,135 +160,37 @@ export async function POST(req: Request) {
       systemPrompt = buildGeneralSystemPrompt(context, retrievedFrameworks);
     }
 
-    // Convert messages to AI SDK v5 format
-    const systemMessages: Array<{
-      role: "system" | "user" | "assistant";
-      content: string;
-    }> = [];
-    const conversationMessages: Array<{
-      role: "user" | "assistant";
-      content: string;
-    }> = [];
-
-    // Add system prompt
-    systemMessages.push({ role: "system", content: systemPrompt });
-
-    // Convert user messages
-    messages.forEach((msg) => {
-      const content = extractMessageContent(msg);
-      if (content) {
-        if (msg.role === "user") {
-          conversationMessages.push({ role: "user", content });
-        } else if (msg.role === "assistant") {
-          conversationMessages.push({ role: "assistant", content });
-        }
-      }
-    });
-
     // Load tools from DataForSEO MCP server
     let seoTools: Record<string, any>;
     let mcpConnected = false;
-
-    console.log("[Chat API] Attempting to load tools from MCP server...");
-    console.log("[Chat API] MCP URL:", serverEnv.DATAFORSEO_MCP_URL);
 
     try {
       const mcpTools = await getDataForSEOTools();
       if (mcpTools && Object.keys(mcpTools).length > 0) {
         mcpConnected = true;
-        seoTools = mcpTools;
-        console.log(
-          `[Chat API] Successfully loaded ${Object.keys(seoTools).length} tools from MCP server`,
-        );
-        console.log(
-          "[Chat API] Sample MCP tools:",
-          Object.keys(seoTools).slice(0, 5),
+        
+        // Filter to only include essential tools to prevent context window overload
+        const essentialTools = [
+          'serp_google_organic_live_advanced',
+          'serp_google_maps_live_advanced',
+          'serp_google_images_live_advanced',
+          'serp_google_news_live_advanced',
+          'on_page_lighthouse',
+          'on_page_content_parsing',
+          'keywords_data_google_ads_search_volume',
+          'dataforseo_labs_google_domain_rank_overview',
+          'dataforseo_labs_google_ranked_keywords',
+          'dataforseo_labs_google_competitors_domain',
+          'backlinks_backlinks',
+          'backlinks_summary'
+        ];
+
+        seoTools = Object.fromEntries(
+          Object.entries(mcpTools).filter(([key]) => essentialTools.includes(key))
         );
       } else {
-        console.log(
-          "[Chat API] No tools returned from MCP server, using fallback",
-        );
         mcpConnected = false;
-        seoTools = {
-          ai_keyword_search_volume: tool({
-            description:
-              "Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.",
-            inputSchema: z.object({
-              keywords: z
-                .array(z.string())
-                .describe("Keywords to analyze in AI platforms"),
-              location: z
-                .string()
-                .optional()
-                .describe('Location (e.g., "United States", "United Kingdom")'),
-            }),
-            execute: async (args: {
-              keywords: string[];
-              location?: string;
-            }) => {
-              return await handleDataForSEOFunctionCall(
-                "ai_keyword_search_volume",
-                args,
-              );
-            },
-          }),
-          keyword_search_volume: tool({
-            description:
-              "Get Google search volume, CPC, and competition for keywords. Core keyword research tool.",
-            inputSchema: z.object({
-              keywords: z
-                .array(z.string())
-                .describe("Keywords to analyze (max 100)"),
-              location: z.string().optional().describe("Location for data"),
-            }),
-            execute: async (args: {
-              keywords: string[];
-              location?: string;
-            }) => {
-              return await handleDataForSEOFunctionCall(
-                "keyword_search_volume",
-                args,
-              );
-            },
-          }),
-          google_rankings: tool({
-            description:
-              "Get current Google SERP results for a keyword including position, URL, title, and SERP features.",
-            inputSchema: z.object({
-              keyword: z.string().describe("Keyword to check rankings for"),
-              location: z
-                .string()
-                .optional()
-                .describe("Location for SERP results"),
-            }),
-            execute: async (args: { keyword: string; location?: string }) => {
-              return await handleDataForSEOFunctionCall(
-                "google_rankings",
-                args,
-              );
-            },
-          }),
-          domain_overview: tool({
-            description:
-              "Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility. This is an expensive operation that requires user approval.",
-            inputSchema: z.object({
-              domain: z
-                .string()
-                .describe("Domain to analyze (without http://)"),
-              location: z.string().optional().describe("Location for metrics"),
-            }),
-            needsApproval: true,
-            execute: async (args: { domain: string; location?: string }) => {
-              return await handleDataForSEOFunctionCall(
-                "domain_overview",
-                args,
-              );
-            },
-          }),
-        };
-        console.log(
-          `[Chat API] Using fallback: ${Object.keys(seoTools).length} direct API tools`,
-        );
+        throw new Error("No tools returned");
       }
     } catch (error) {
       console.error("[Chat API] Failed to load MCP tools:", error);
@@ -308,7 +199,7 @@ export async function POST(req: Request) {
         ai_keyword_search_volume: tool({
           description:
             "Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.",
-          inputSchema: z.object({
+          parameters: z.object({
             keywords: z
               .array(z.string())
               .describe("Keywords to analyze in AI platforms"),
@@ -317,173 +208,259 @@ export async function POST(req: Request) {
               .optional()
               .describe('Location (e.g., "United States", "United Kingdom")'),
           }),
-          execute: async (args: { keywords: string[]; location?: string }) => {
-            return await handleDataForSEOFunctionCall(
+          execute: async (args: any) => {
+            const result = await handleDataForSEOFunctionCall(
               "ai_keyword_search_volume",
               args,
             );
+            return { result };
           },
-        }),
+        } as any),
         keyword_search_volume: tool({
           description:
             "Get Google search volume, CPC, and competition for keywords. Core keyword research tool.",
-          inputSchema: z.object({
+          parameters: z.object({
             keywords: z
               .array(z.string())
               .describe("Keywords to analyze (max 100)"),
             location: z.string().optional().describe("Location for data"),
           }),
-          execute: async (args: { keywords: string[]; location?: string }) => {
-            return await handleDataForSEOFunctionCall(
+          execute: async (args: any) => {
+            const result = await handleDataForSEOFunctionCall(
               "keyword_search_volume",
               args,
             );
+            return { result };
           },
-        }),
+        } as any),
         google_rankings: tool({
           description:
             "Get current Google SERP results for a keyword including position, URL, title, and SERP features.",
-          inputSchema: z.object({
+          parameters: z.object({
             keyword: z.string().describe("Keyword to check rankings for"),
             location: z
               .string()
               .optional()
               .describe("Location for SERP results"),
           }),
-          execute: async (args: { keyword: string; location?: string }) => {
-            return await handleDataForSEOFunctionCall("google_rankings", args);
+          execute: async (args: any) => {
+            const result = await handleDataForSEOFunctionCall(
+              "google_rankings",
+              args,
+            );
+            return { result };
           },
-        }),
+        } as any),
         domain_overview: tool({
           description:
             "Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility. This is an expensive operation that requires user approval.",
-          inputSchema: z.object({
-            domain: z.string().describe("Domain to analyze (without http://)"),
+          parameters: z.object({
+            domain: z
+              .string()
+              .describe("Domain to analyze (without http://)"),
             location: z.string().optional().describe("Location for metrics"),
           }),
-          needsApproval: true,
-          execute: async (args: { domain: string; location?: string }) => {
-            return await handleDataForSEOFunctionCall("domain_overview", args);
+          execute: async (args: any) => {
+            const result = await handleDataForSEOFunctionCall(
+              "domain_overview",
+              args,
+            );
+            return { result };
           },
-        }),
+        } as any),
       };
-      console.log(
-        `[Chat API] Using fallback after error: ${Object.keys(seoTools).length} direct API tools`,
-      );
+    }
+
+    // Load Firecrawl tools
+    let firecrawlTools: Record<string, any> = {};
+    try {
+      if (serverEnv.FIRECRAWL_API_KEY) {
+        const tools = await getFirecrawlTools();
+        if (tools && Object.keys(tools).length > 0) {
+          firecrawlTools = tools;
+          console.log(`[Chat API] Loaded ${Object.keys(tools).length} Firecrawl tools`);
+        }
+      }
+    } catch (error) {
+      console.warn("[Chat API] Failed to load Firecrawl tools:", error);
+    }
+
+    // Load Jina tools
+    let jinaTools: Record<string, any> = {};
+    try {
+      if (serverEnv.JINA_API_KEY) {
+        const tools = await getJinaTools();
+        if (tools && Object.keys(tools).length > 0) {
+          jinaTools = tools;
+          console.log(`[Chat API] Loaded ${Object.keys(tools).length} Jina tools`);
+        }
+      }
+    } catch (error) {
+      console.warn("[Chat API] Failed to load Jina tools:", error);
+    }
+
+    // Load Winston MCP tools
+    let winstonMCPTools: Record<string, any> = {};
+    try {
+      if (serverEnv.WINSTON_AI_API_KEY) {
+        const tools = await getWinstonTools();
+        if (tools && Object.keys(tools).length > 0) {
+          winstonMCPTools = tools;
+          console.log(`[Chat API] Loaded ${Object.keys(tools).length} Winston MCP tools`);
+        }
+      }
+    } catch (error) {
+      console.warn("[Chat API] Failed to load Winston MCP tools:", error);
     }
 
     // Add content quality tools (Winston AI + Rytr)
     const contentQualityTools = getContentQualityTools();
     // Add enhanced content quality tools (SEO analysis, readability, fact-checking)
     const enhancedContentTools = getEnhancedContentQualityTools();
-    
-    // Build codemode tool registry and create codemode tool
-    let codemodeTool: ReturnType<typeof createCodemodeTool> | null = null;
-    try {
-      const codemodeRegistry = await buildCodemodeToolRegistry();
-      codemodeTool = createCodemodeTool(codemodeRegistry);
-      console.log("[Chat API] Codemode tool created with", Object.keys(codemodeRegistry).length, "tools");
-    } catch (error) {
-      console.warn("[Chat API] Failed to create codemode tool:", error);
-    }
-    
-    const allTools = {
-      ...seoTools,
-      ...contentQualityTools,
-      ...enhancedContentTools,
-      // Add codemode tool if available
-      ...(codemodeTool ? { codemode: codemodeTool } : {}),
+
+    // Add Perplexity tool
+    const perplexityTool = {
+      perplexity_search: tool({
+        description: "Search the web using Perplexity AI for real-time, cited information. Use this for research, fact-checking, and finding authoritative sources.",
+        parameters: z.object({
+          query: z.string().describe("The search query"),
+          search_recency_filter: z.enum(["month", "week", "day", "year"]).optional().describe("Filter results by recency"),
+        }),
+        execute: async ({ query, search_recency_filter }: any) => {
+          return await searchWithPerplexity({
+            query,
+            searchRecencyFilter: search_recency_filter as "month" | "week" | "day" | "hour" | undefined,
+          });
+        },
+      } as any),
     };
 
-    // Debug logging
-    console.log("[Chat API] Streaming with:", {
-      conversationMessageCount: conversationMessages.length,
-      systemPromptLength: systemPrompt.length,
-      seoToolsCount: Object.keys(seoTools).length,
-      contentQualityToolsCount: Object.keys(contentQualityTools).length,
-      enhancedContentToolsCount: Object.keys(enhancedContentTools).length,
-      codemodeEnabled: !!codemodeTool,
-      totalToolsCount: Object.keys(allTools).length,
-      mcpConnected: mcpConnected,
-      mcpUrl: serverEnv.DATAFORSEO_MCP_URL || "not set (using default)",
-    });
+    // Orchestrator Tool - Content Generation with Research & Feedback Loop
+    const orchestratorTool = {
+      generate_researched_content: tool({
+        description:
+          "Generate high-quality, researched, and SEO-optimized content (blog posts, articles). This tool runs a comprehensive workflow: Research -> RAG (Best Practices) -> Write -> QA (Winston/Rytr) -> Feedback Loop.",
+        parameters: z.object({
+          topic: z.string().describe("The main topic of the content"),
+          type: z
+            .enum(["blog_post", "article", "social_media", "landing_page"])
+            .describe("Type of content to generate"),
+          keywords: z.array(z.string()).describe("Target keywords"),
+          tone: z.string().optional().describe("Desired tone (e.g., professional, casual)"),
+          wordCount: z.number().optional().describe("Target word count"),
+        }),
+        execute: async (args: any) => {
+          try {
+            // Pass userId for learning storage
+            const result = await orchestrator.generateContent({
+              ...args,
+              userId: user?.id,
+              targetPlatforms: ["chatgpt", "perplexity", "claude"], // Default targets
+            });
 
-    // Create ToolLoopAgent for automatic multi-step tool calling (AI SDK 6)
-    const agent = new ToolLoopAgent({
-      model: openai(CHAT_MODEL_ID),
-      instructions: systemPrompt, // AI SDK 6 uses 'instructions' parameter for system prompt
-      tools: allTools,
-      // Stop after 5 steps OR when no tools are called (prevents runaway costs)
-      // In AI SDK 6, stopWhen conditions are evaluated when the last step contains tool results
-      stopWhen: [
-        stepCountIs(5), // Stop after 5 steps max
-        ({ steps }) => {
-          // Stop if the last step had no tool calls
-          const lastStep = steps[steps.length - 1];
-          return lastStep?.toolCalls?.length === 0;
+            return {
+              success: true,
+              content: result.content,
+              metadata: result.metadata,
+              suggestions: result.suggestions,
+              message: "Content generated successfully with research and QA passed.",
+            };
+          } catch (error) {
+            console.error("[Chat API] Orchestrator error:", error);
+            return {
+              success: false,
+              error: "Failed to generate content. Please try again.",
+            };
+          }
         },
-      ],
-      // Enable telemetry for monitoring
+      } as any),
+    };
+
+    const allTools = {
+      ...seoTools,
+      ...firecrawlTools,
+      ...contentQualityTools,
+      ...enhancedContentTools,
+      ...jinaTools,
+      ...winstonMCPTools,
+      ...perplexityTool,
+      ...orchestratorTool,
+      client_ui: tool({
+        description:
+          "Display an interactive UI component to the user. Use this when you need to collect specific information or show structured data.",
+        parameters: z.object({
+          component: z
+            .enum([
+              "url_input",
+              "card_selector",
+              "location_picker",
+              "confirmation_buttons",
+              "loading_indicator",
+              "analysis_result",
+            ])
+            .describe("The type of component to display"),
+          props: z.record(z.any()).describe("The properties/data for the component"),
+        }),
+        execute: async ({ component }: any) => {
+          // The client handles the actual display via tool call rendering.
+          // We return a result to indicate the UI request was sent.
+          return { displayed: true, component };
+        },
+      } as any),
+    };
+
+    // Using streamText from AI SDK 6
+    const result = streamText({
+      model: vercelGateway.languageModel(CHAT_MODEL_ID),
+      messages: convertToCoreMessages(messages),
+      system: systemPrompt,
+      tools: allTools,
+      // maxToolRoundtrips: 10, // Removed due to type error
       experimental_telemetry: {
         isEnabled: true,
         functionId: "chat-api",
-          metadata: {
-            environment: process.env.NODE_ENV || "development",
-            runtime: "edge",
-            model: CHAT_MODEL_ID,
-            provider: "openai",
-          },
+        metadata: {
+          environment: process.env.NODE_ENV || "development",
+          runtime: "edge",
+          model: CHAT_MODEL_ID,
+          provider: "gateway",
+        },
       },
-    });
-
-    // Convert messages to UIMessage format expected by AI SDK 6
-    const uiMessages = conversationMessages.map((m) => ({
-      id:
-        (globalThis as any).crypto?.randomUUID?.() ??
-        `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      role: m.role,
-      parts: [{ type: "text" as const, text: m.content }],
-    }));
-
-    console.log("[Chat API] Starting agent stream response...");
-    console.log("[Chat API] Passing to agent:", {
-      messageCount: uiMessages.length,
-      lastMessage: uiMessages[uiMessages.length - 1]?.parts[0]?.text?.slice(
-        0,
-        100,
-      ),
-      toolCount: Object.keys(seoTools).length,
-    });
-
-    // Stream UI messages using the agent
-    return createAgentUIStreamResponse({
-      agent,
-      messages: uiMessages,
-      onFinish: async ({
-        messages: finalMessages,
-        responseMessage,
-        isAborted,
-      }) => {
-        console.log("[Chat API] Agent finished:", {
-          messageCount: finalMessages.length,
-          isAborted,
-          responseMessageId: responseMessage.id,
-        });
-
+      onFinish: async ({ response }) => {
+        const { messages: finalMessages } = response;
+        
         // Save messages after completion
         if (user && !authError) {
-          await saveChatMessages(
-            supabase,
-            user.id,
-            messages,
-            isOnboarding ? onboardingContext : undefined,
-          );
-          if (isOnboarding && onboardingContext?.data && user.id) {
-            await saveOnboardingProgress(
-              supabase,
-              user.id,
-              onboardingContext.data,
-            );
+          // We need to adapt standard messages to our DB schema
+          // This is a simplified version of saving, you might need to adjust based on exact DB schema
+          try {
+            const lastMessage = finalMessages[finalMessages.length - 1];
+            if (lastMessage && lastMessage.role === 'assistant') {
+              let content = "";
+              if (typeof lastMessage.content === 'string') {
+                content = lastMessage.content;
+              } else if (Array.isArray(lastMessage.content)) {
+                content = lastMessage.content
+                  .filter(c => c.type === 'text')
+                  .map(c => (c as any).text)
+                  .join('');
+              }
+              
+              const chatMessage = {
+                user_id: user.id,
+                role: 'assistant',
+                content: content,
+                metadata: onboardingContext ? { onboarding: onboardingContext } : {},
+              };
+              
+              await supabase.from("chat_messages").insert(chatMessage);
+              
+              if (isOnboarding && onboardingContext?.data) {
+                 await saveOnboardingProgress(supabase, user.id, onboardingContext.data);
+              }
+            }
+          } catch (error) {
+            console.error("Error saving chat messages:", error);
           }
         }
 
@@ -494,22 +471,10 @@ export async function POST(req: Request) {
           );
         }
       },
-      onError: (error) => {
-        const err = error as Error;
-        console.error("[Chat API] Stream error:", {
-          message: err?.message,
-          stack: err?.stack,
-          name: err?.name,
-        });
-
-        // Return user-friendly error message
-        const errorMessage =
-          "An error occurred while processing your request. Please try again.";
-        return process.env.NODE_ENV === "development" && err?.message
-          ? `${errorMessage} (${err.message})`
-          : errorMessage;
-      },
     });
+
+    return (result as any).toDataStreamResponse();
+
   } catch (error: unknown) {
     const err = error as Error;
     console.error("Chat API error:", err);
@@ -631,19 +596,19 @@ You have access to 40+ SEO tools through the DataForSEO MCP server. These tools 
 - On-Page Analysis (content parsing, Lighthouse audits)
 - Content Generation (optimized content creation)
 
+For high-quality article or blog post requests, use the 'generate_researched_content' tool. This specialized tool handles the entire workflow:
+1. Deep research on the topic
+2. RAG-based optimization using best practices
+3. Content writing with "human-like" quality
+4. Automated QA loop with Winston AI (detection) and Rytr (improvement)
+5. Continuous learning loop
+
 You also have access to content quality and generation tools:
 - Winston AI: Plagiarism detection, AI content detection, SEO validation
 - Rytr AI: SEO content generation, meta titles/descriptions, content improvement
 - Firecrawl: Web scraping and content extraction
 - Perplexity: Citation-based research with authoritative sources
 - OpenAI: Chat completions and embeddings
-
-CODEMODE: You have access to a powerful codemode tool that allows you to write JavaScript code to orchestrate multiple tool calls, handle errors, and perform complex workflows. Use codemode when you need to:
-- Chain multiple operations together
-- Handle conditional logic based on tool results
-- Implement retry logic or error handling
-- Combine data from multiple sources
-- Perform complex data transformations
 
 When generating or validating content:
 1. Use Rytr to generate SEO-optimized content with proper tone and keywords

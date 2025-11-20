@@ -2,9 +2,11 @@
 
 import { Workflow } from './types'
 import { rankOnChatGPTWorkflow } from './definitions/rank-on-chatgpt'
+import { competitorAnalysisWorkflow } from './definitions/competitor-analysis'
 
 export const workflows: Record<string, Workflow> = {
   'rank-on-chatgpt': rankOnChatGPTWorkflow,
+  'competitor-analysis': competitorAnalysisWorkflow,
   // More workflows will be added here
 }
 

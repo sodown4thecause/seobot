@@ -2,17 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
+  const { searchParams, origin } = new URL(req.url)
   const code = searchParams.get('code')
-  const nextPath = searchParams.get('next') || '/onboarding'
-
-  const redirectUrl = new URL(nextPath, req.url)
-  const res = NextResponse.redirect(redirectUrl)
+  const next = searchParams.get('next') ?? '/dashboard'
 
   if (!code) {
-    // No code provided, just go to login
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.redirect(`${origin}/login`)
   }
+
+  const res = NextResponse.redirect(`${origin}${next}`)
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,8 +32,7 @@ export async function GET(req: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
-    // Redirect to login with error message
-    const errUrl = new URL('/login', req.url)
+    const errUrl = new URL(`${origin}/login`)
     errUrl.searchParams.set('error', error.message)
     return NextResponse.redirect(errUrl)
   }

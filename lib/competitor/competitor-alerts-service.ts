@@ -703,7 +703,7 @@ Return as JSON with keys: summary, keyChanges, recommendations, threats, opportu
     })
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: competitorInsightsSchema,
     })

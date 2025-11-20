@@ -20,6 +20,17 @@ export function detectWorkflow(userMessage: string): string | null {
     return 'rank-on-chatgpt'
   }
 
+  // Competitor Analysis workflow triggers
+  if (
+    /competitor.*analysis/i.test(message) ||
+    /analyze.*competitors/i.test(message) ||
+    /compare.*competitors/i.test(message) ||
+    /find.*competitors/i.test(message) ||
+    /who.*ranks.*for/i.test(message)
+  ) {
+    return 'competitor-analysis'
+  }
+
   // Future workflows can be added here
   // Example:
   // if (/write.*article.*eeat/i.test(message)) {

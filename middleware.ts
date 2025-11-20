@@ -39,10 +39,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Authenticated: prevent visiting auth pages
-  if (session && isAuthPage) {
-    return NextResponse.redirect(new URL('/onboarding', req.url))
-  }
+      // If user is signed in and trying to access auth pages, redirect to dashboard
+      if (req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/signup')) {
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
 
   return res
 }

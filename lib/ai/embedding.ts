@@ -1,5 +1,5 @@
 import { embed, embedMany } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
+import { vercelGateway } from '../ai/gateway-provider'
 import pLimit from 'p-limit'
 import pRetry from 'p-retry'
 import {
@@ -8,16 +8,14 @@ import {
   CACHE_PREFIXES,
   CACHE_TTL,
 } from '../redis/client'
+import { serverEnv } from '@/lib/config/env'
 
 /**
- * OpenAI embedding model for consistent 1536-dimensional vectors
- * text-embedding-3-small offers best cost/performance ratio
+ * OpenAI embedding model (text-embedding-3-small)
+ * 1536 dimensions, cost-effective ($0.02/M tokens) and high performance
+ * Uses Vercel AI Gateway for routing/caching/monitoring
  */
-const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
-const embeddingModel = openai.embedding('text-embedding-3-small')
+const embeddingModel = vercelGateway.textEmbeddingModel('openai/text-embedding-3-small')
 
 /**
  * Configuration for embedding generation
@@ -64,7 +62,7 @@ async function withRetry<T>(
 /**
  * Generate a single embedding from text
  * @param text - Input text to embed (will be truncated if too long)
- * @returns 1536-dimensional embedding vector
+ * @returns 1536-dimensional embedding vector (OpenAI)
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   const startTime = Date.now()
@@ -180,15 +178,15 @@ export function chunkText(
   }
 
   const chunks: string[] = []
-  
+
   // Split by sentences (periods, question marks, exclamation marks)
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text]
-  
+
   let currentChunk = ''
 
   for (const sentence of sentences) {
     const trimmedSentence = sentence.trim()
-    
+
     // If adding this sentence would exceed limit, start new chunk
     if (currentChunk.length + trimmedSentence.length > maxChars) {
       if (currentChunk) {
@@ -232,11 +230,18 @@ export async function generateChunkedEmbedding(
   // Generate embeddings for all chunks
   const chunkEmbeddings = await generateEmbeddings(chunks)
 
+  if (chunkEmbeddings.length === 0) {
+    throw new Error('No embeddings generated from chunks')
+  }
+
+  // Get dimensions dynamically from first embedding
+  const dimensions = chunkEmbeddings[0].length
+
   // Average the embeddings
-  const avgEmbedding = new Array(1536).fill(0)
-  
+  const avgEmbedding = new Array(dimensions).fill(0)
+
   for (const embedding of chunkEmbeddings) {
-    for (let i = 0; i < 1536; i++) {
+    for (let i = 0; i < dimensions; i++) {
       avgEmbedding[i] += embedding[i] / chunkEmbeddings.length
     }
   }

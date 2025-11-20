@@ -7,10 +7,14 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   
-  // AI Providers
-  GOOGLE_API_KEY: z.string().min(1),
-  XAI_API_KEY: z.string().min(1).optional(), // Optional, kept for backward compatibility
-  OPENAI_API_KEY: z.string().min(1), // Required for chat interface
+  // AI Provider Keys (Optional if using Gateway)
+  OPENAI_API_KEY: z.string().optional(),
+  GOOGLE_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  
+  // Vercel AI Gateway
+  AI_GATEWAY_API_KEY: z.string().optional(),
+  AI_GATEWAY_BASE_URL: z.string().url().optional(),
 
   // External APIs
   DATAFORSEO_LOGIN: z.string().email(),
@@ -29,6 +33,7 @@ const serverEnvSchema = z.object({
   // MCP Server URLs
   WINSTON_MCP_URL: z.string().url().optional(),
   FIRECRAWL_MCP_URL: z.string().url().optional(),
+  JINA_MCP_URL: z.string().url().optional(),
   
   // Redis (optional for caching)
   UPSTASH_REDIS_REST_URL: z.preprocess(
@@ -57,6 +62,8 @@ function getServerEnv() {
       GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
       XAI_API_KEY: process.env.XAI_API_KEY,
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+      AI_GATEWAY_BASE_URL: process.env.AI_GATEWAY_BASE_URL,
       DATAFORSEO_LOGIN: process.env.DATAFORSEO_LOGIN,
       DATAFORSEO_PASSWORD: process.env.DATAFORSEO_PASSWORD,
       DATAFORSEO_MCP_URL: process.env.DATAFORSEO_MCP_URL,
@@ -69,6 +76,7 @@ function getServerEnv() {
       RYTR_API_KEY: process.env.RYTR_API_KEY,
       WINSTON_MCP_URL: process.env.WINSTON_MCP_URL,
       FIRECRAWL_MCP_URL: process.env.FIRECRAWL_MCP_URL,
+      JINA_MCP_URL: process.env.JINA_MCP_URL,
       UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
       UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     })

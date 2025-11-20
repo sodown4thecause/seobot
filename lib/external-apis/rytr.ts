@@ -109,7 +109,7 @@ export async function generateContent(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serverEnv.RYTR_API_KEY}`,
+        'Authentication': `Bearer ${serverEnv.RYTR_API_KEY}`,
       },
       body: JSON.stringify({
         languageId: language,
@@ -119,7 +119,9 @@ export async function generateContent(
           INPUT_TEXT: input,
         },
         variations,
-        creativity: creativity === 'low' ? 0 : creativity === 'high' ? 2 : 1,
+        userId: 'USER1', // Required by Rytr API
+        format: 'text',
+        creativityLevel: creativity, // 'low' | 'medium' | 'high'
       }),
     })
 
@@ -231,6 +233,34 @@ export async function improveContent(
   })
 
   return result.text
+}
+
+/**
+ * Humanize content to reduce AI detection
+ * Used by QA agent to improve content quality
+ */
+export async function humanizeContent(options: {
+  content: string
+  strategy?: 'improve' | 'expand' | 'rewrite'
+}): Promise<{ content: string }> {
+  const { content, strategy = 'improve' } = options
+  
+  const useCaseMap = {
+    improve: 'text_editing_improve' as RytrUseCase,
+    expand: 'text_editing_expand' as RytrUseCase,
+    rewrite: 'text_editing_improve' as RytrUseCase,
+  }
+  
+  const result = await generateContent({
+    useCase: useCaseMap[strategy],
+    input: content,
+    tone: 'informative',
+    creativity: 'high', // Higher creativity for more human-like output
+  })
+  
+  return {
+    content: result.text,
+  }
 }
 
 /**

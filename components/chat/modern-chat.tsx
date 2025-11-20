@@ -1,8 +1,7 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
-import type { UIMessage } from 'ai'
+import type { UIMessage as Message } from 'ai'
 import { useEffect, useRef, useState } from 'react'
 import { Send, Sparkles, Copy, Check } from 'lucide-react'
 
@@ -17,11 +16,8 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
   const [input, setInput] = useState('')
   
   const chat = useChat({
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-      body: { context },
-    }),
-    onError: (error) => {
+    body: { context },
+    onError: (error: any) => {
       console.error('[Chat] Error:', error)
       console.error('[Chat] Error details:', {
         message: error?.message,
@@ -30,10 +26,19 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
       })
       // Handle error gracefully - don't break the UI
     },
-  })
+  } as any) as any
 
-  const { messages, sendMessage, status } = chat
+  // Safely access properties
+  const messages = chat?.messages || []
+  const append = chat?.append || chat?.sendMessage
+  const status = chat?.status || 'ready'
   const isLoading = status === 'streaming' || status === 'submitted'
+
+  const sendMessage = (data: { text: string }) => {
+    if (append) {
+      append({ role: 'user', content: data.text })
+    }
+  }
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text)
@@ -78,8 +83,8 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
           </div>
         )}
 
-        {messages.map((message: UIMessage) => {
-          const textContent = message.parts.find(p => p.type === 'text')?.text || ''
+        {messages.map((message: any) => {
+          const textContent = message.content || ''
           return (
             <div
               key={message.id}

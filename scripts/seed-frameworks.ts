@@ -34,7 +34,7 @@ const CONCURRENCY_LIMIT = 5 // Max 5 concurrent embedding requests
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('❌ Missing required environment variables:')
@@ -44,8 +44,8 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1)
 }
 
-if (!OPENAI_API_KEY) {
-  console.error('❌ Missing OPENAI_API_KEY environment variable')
+if (!GOOGLE_API_KEY) {
+  console.error('❌ Missing GOOGLE_API_KEY environment variable')
   console.error('💡 Required for generating embeddings')
   process.exit(1)
 }
@@ -177,11 +177,11 @@ async function seedFrameworks() {
   const startTime = Date.now()
 
   console.log('\n🌱 Framework Seeding Started')
-  console.log('=' .repeat(60))
+  console.log('='.repeat(60))
   console.log(`📦 Total frameworks to seed: ${FRAMEWORK_SEEDS.length}`)
   console.log(`⚙️  Batch size: ${BATCH_SIZE}`)
   console.log(`🔄 Concurrency limit: ${CONCURRENCY_LIMIT}`)
-  console.log('=' .repeat(60) + '\n')
+  console.log('='.repeat(60) + '\n')
 
   // Process frameworks in batches
   const batches: FrameworkSeed[][] = []

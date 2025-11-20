@@ -225,12 +225,12 @@ function generateHeadingRecommendations({ h1Count, h2Count, h3Count }: { h1Count
  */
 export const validateContentQualityTool = tool({
   description: 'Comprehensive content quality validation including readability, style, originality, and SEO metrics. Use this to ensure content meets high quality standards.',
-  parameters: z.object({
+  inputSchema: z.object({
     content: z.string().describe('The content text to validate'),
-    targetKeywords: z.array(z.string()).optional().describe('Target keywords for SEO analysis'),
-    existingContent: z.string().optional().describe('Existing content to compare against for similarity check'),
+    targetKeywords: z.array(z.string()).optional().default([]).describe('Target keywords for SEO analysis'),
+    existingContent: z.string().optional().describe('Existing content to compare against for similarity check')
   }),
-  execute: async ({ content, targetKeywords = [], existingContent }) => {
+  execute: async ({ content, targetKeywords, existingContent }) => {
     try {
       // Readability analysis
       const readability = await calculateReadability(content)
@@ -294,6 +294,14 @@ export const validateContentQualityTool = tool({
       return {
         error: 'Failed to validate content quality',
         message: error instanceof Error ? error.message : 'Unknown error',
+        qualityScore: 0,
+        readability: null,
+        writingQuality: null,
+        keywordAnalysis: null,
+        similarityCheck: null,
+        headingStructure: null,
+        recommendations: [],
+        summary: 'Validation failed due to error.',
       }
     }
   },
@@ -304,11 +312,11 @@ export const validateContentQualityTool = tool({
  */
 export const analyzeSEOContentTool = tool({
   description: 'Analyze content for SEO optimization including keyword density, meta tags, heading structure, and overall SEO score.',
-  parameters: z.object({
+  inputSchema: z.object({
     content: z.string().describe('The content to analyze'),
     title: z.string().optional().describe('Page title (for meta analysis)'),
     metaDescription: z.string().optional().describe('Meta description (for analysis)'),
-    targetKeywords: z.array(z.string()).describe('Target keywords for SEO optimization'),
+    targetKeywords: z.array(z.string()).describe('Target keywords for SEO optimization')
   }),
   execute: async ({ content, title, metaDescription, targetKeywords }) => {
     try {
@@ -372,6 +380,13 @@ export const analyzeSEOContentTool = tool({
       return {
         error: 'Failed to analyze SEO content',
         message: error instanceof Error ? error.message : 'Unknown error',
+        seoScore: 0,
+        keywordAnalysis: null,
+        titleAnalysis: null,
+        metaAnalysis: null,
+        headingStructure: null,
+        recommendations: [],
+        summary: 'Analysis failed due to error.',
       }
     }
   },
@@ -382,9 +397,9 @@ export const analyzeSEOContentTool = tool({
  */
 export const factCheckContentTool = tool({
   description: 'Verify factual claims in content using web search and knowledge base. Returns verification results for each claim.',
-  parameters: z.object({
+  inputSchema: z.object({
     content: z.string().describe('Content to fact-check'),
-    claims: z.array(z.string()).optional().describe('Specific claims to verify (auto-extracted if not provided)'),
+    claims: z.array(z.string()).optional().describe('Specific claims to verify (auto-extracted if not provided)')
   }),
   execute: async ({ content, claims }) => {
     try {
@@ -395,6 +410,11 @@ export const factCheckContentTool = tool({
         return {
           totalClaims: 0,
           message: 'No verifiable claims found in content',
+          verifiedClaims: 0,
+          verificationRate: 0,
+          results: [],
+          summary: 'No verifiable claims found in content',
+          note: '',
         }
       }
       
@@ -423,6 +443,12 @@ export const factCheckContentTool = tool({
       return {
         error: 'Failed to fact-check content',
         message: error instanceof Error ? error.message : 'Unknown error',
+        totalClaims: 0,
+        verifiedClaims: 0,
+        verificationRate: 0,
+        results: [],
+        summary: 'Fact-checking failed due to error.',
+        note: '',
       }
     }
   },

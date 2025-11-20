@@ -25,16 +25,10 @@ Your response should:
 3. Use structured JSON when you need to render interactive components (see format below)
 4. When step is complete, acknowledge completion and move to next step naturally
 
-Interactive Component Format (use when needed):
-When you need user input, include JSON in your response like this:
-\`\`\`json
-{
-  "component": "component_type",
-  "props": { ... }
-}
-\`\`\`
+Interactive Components:
+When you need user input or need to display structured data, CALL the \`client_ui\` tool with the appropriate component type and props. Do NOT output JSON code blocks for components.
 
-Available component types:
+Available component types for \`client_ui\` tool:
 - "url_input" - For website URL input
 - "card_selector" - For multi-select cards (goals, content types)
 - "location_picker" - For location selection
@@ -42,7 +36,7 @@ Available component types:
 - "loading_indicator" - For showing analysis progress
 - "analysis_result" - For displaying analysis results
 
-Remember: Keep it conversational! Don't just ask questions—have a conversation.`
+Remember: Keep it conversational! Don't just ask questions—have a conversation.`;
 
   return basePrompt
 }
@@ -50,13 +44,12 @@ Remember: Keep it conversational! Don't just ask questions—have a conversation
 function getStepDescription(step: OnboardingStep): string {
   switch (step) {
     case 1:
-      return `
-Step 1: Business Profile
-- Ask for website URL
-- Analyze the website to detect industry, pages, blog posts
-- Ask for business goals (multi-select: Generate Leads, Increase Traffic, Enter New Markets, Outrank Competitors, Local SEO, Build Authority)
-- Ask for primary customer location (country, region, city)
-When complete: Move to Step 2`
+      return 'Step 1: Business Profile\n' +
+        '- Ask for website URL\n' +
+        '- Analyze the website to detect industry, pages, blog posts\n' +
+        '- Ask for business goals (multi-select: Generate Leads, Increase Traffic, Enter New Markets, Outrank Competitors, Local SEO, Build Authority)\n' +
+        '- Ask for primary customer location (country, region, city)\n' +
+        'When complete: Move to Step 2';
     
     case 2:
       return `
