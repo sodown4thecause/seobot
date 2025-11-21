@@ -52,13 +52,10 @@ Along with each keyword idea, you will get its search volume rate for the last m
       filters: z
         .array(
           z.union([
-            z
-              .array(z.union([z.string(), z.number(), z.boolean()]))
-              .min(3)
-              .max(3),
-            z.enum(["and", "or"]),
-            
-            z.union([z.string(), z.number()]),
+            z.string(),
+            z.number(),
+            z.boolean(),
+            z.array(z.union([z.string(), z.number(), z.boolean()])),
           ]),
         )
         .max(3)

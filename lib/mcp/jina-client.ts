@@ -17,11 +17,3 @@ export async function getJinaTools() {
   return mcpJinaTools;
 }
 
-// Deprecated functions
-export async function getJinaMCPClient() {
-  return null
-}
-
-export async function closeJinaMCPClient() {
-  // No-op
-}

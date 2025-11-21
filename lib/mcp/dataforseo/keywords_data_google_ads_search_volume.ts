@@ -11,18 +11,7 @@ export const keywords_data_google_ads_search_volumeToolWithClient = (
     description: "Get search volume data for keywords from Google Ads",
     parameters: z.object({
       location_name: z
-        .union([
-          z.string().describe(`full name of the location
-optional field
-in format "Country"
-example:
-United Kingdom`),
-          z.null().describe(`full name of the location
-optional field
-in format "Country"
-example:
-United Kingdom`),
-        ])
+        .string()
         .describe(
           `full name of the location
 optional field
@@ -30,19 +19,14 @@ in format "Country"
 example:
 United Kingdom`,
         )
-        .default(null),
+        .optional(),
       language_code: z
-        .union([
-          z.string().describe(`Language two-letter ISO code (e.g., 'en').
-optional field`),
-          z.null().describe(`Language two-letter ISO code (e.g., 'en').
-optional field`),
-        ])
+        .string()
         .describe(
           `Language two-letter ISO code (e.g., 'en').
 optional field`,
         )
-        .default(null),
+        .optional(),
       keywords: z
         .array(z.string())
         .describe("Array of keywords to get search volume for"),

@@ -16,11 +16,3 @@ export async function getDataForSEOTools() {
   return mcpDataforseoTools;
 }
 
-// Deprecated functions - kept as no-ops or removed
-export async function getDataForSEOMCPClient() {
-  return null
-}
-
-export async function closeDataForSEOMCPClient() {
-  // No-op
-}

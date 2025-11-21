@@ -11,9 +11,9 @@ export const read_urlToolWithClient = (
     description: `Extract and convert web page content to clean, readable markdown format. Perfect for reading articles, documentation, blog posts, or any web content. Use this when you need to analyze text content from websites, bypass paywalls, or get structured data.`,
     parameters: z.object({
       url: z
-        .union([z.string().url(), z.array(z.string().url())])
+        .string().url()
         .describe(
-          `The complete URL of the webpage or PDF file to read and convert (e.g., 'https://example.com/article'). Can be a single URL string or an array of URLs for parallel reading.`,
+          `The complete URL of the webpage or PDF file to read and convert (e.g., 'https://example.com/article').`,
         ),
       withAllLinks: z
         .boolean()

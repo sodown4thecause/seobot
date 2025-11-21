@@ -47,13 +47,10 @@ export const content_analysis_phrase_trendsToolWithClient = (
       initial_dataset_filters: z
         .array(
           z.union([
-            z
-              .array(z.union([z.string(), z.number(), z.boolean()]))
-              .min(3)
-              .max(3),
-            z.enum(["and", "or"]),
-            
-            z.union([z.string(), z.number()]),
+            z.string(),
+            z.number(),
+            z.boolean(),
+            z.array(z.union([z.string(), z.number(), z.boolean()])),
           ]),
         )
         .max(3)

@@ -34,13 +34,10 @@ if you specify the 10 value, the first ten pages in the results array will be om
       filters: z
         .array(
           z.union([
-            z
-              .array(z.union([z.string(), z.number(), z.boolean()]))
-              .min(3)
-              .max(3),
-            z.enum(["and", "or"]),
-            
-            z.union([z.string(), z.number()]),
+            z.string(),
+            z.number(),
+            z.boolean(),
+            z.array(z.union([z.string(), z.number(), z.boolean()])),
           ]),
         )
         .max(3)

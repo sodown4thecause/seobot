@@ -15,11 +15,3 @@ export async function getFirecrawlTools() {
   return mcpFirecrawlTools;
 }
 
-// Deprecated functions
-export async function getFirecrawlMCPClient() {
-  return null
-}
-
-export async function closeFirecrawlMCPClient() {
-  // No-op
-}

@@ -10,9 +10,6 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
 
-// No longer using MCP client for Winston
-// import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp'
-// let mcpClient: Awaited<ReturnType<typeof createMCPClient>> | null = null
 
 /**
  * Get Winston tools (Direct API version)
@@ -22,7 +19,7 @@ export async function getWinstonTools() {
   return {
     winston_check_quality: tool({
       description: 'Check content quality, plagiarism, and AI detection using Winston AI. Returns a score (0-100) where higher means more likely AI-generated.',
-      parameters: z.object({
+      inputSchema: z.object({
         content: z.string().describe('The text content to analyze'),
       }),
       execute: async ({ content }) => {
@@ -32,14 +29,6 @@ export async function getWinstonTools() {
   }
 }
 
-// Deprecated MCP functions - kept as no-ops or removed
-export async function getWinstonMCPClient() {
-  return null
-}
-
-export async function closeWinstonMCPClient() {
-  // No-op
-}
 
 /**
  * Analyze content for AI detection using Winston AI API

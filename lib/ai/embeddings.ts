@@ -1,26 +1,29 @@
 /**
  * Embeddings - Generate embeddings for vector search
+ * 
+ * Uses OpenAI text-embedding-3-small (1536 dimensions) via Vercel AI Gateway
+ * Cost: $0.02 per 1M tokens (6.5x cheaper than text-embedding-3-large)
  */
 
 import { embed } from 'ai'
 import { vercelGateway } from './gateway-provider'
-import type { GatewayModelId } from '@ai-sdk/gateway'
 
 /**
- * Generate embedding for text using OpenAI (3072 dimensions) via Vercel AI Gateway
- * Used for content_chunks table
+ * Generate embedding for text using OpenAI (1536 dimensions) via Vercel AI Gateway
+ * Using text-embedding-3-small for cost-effectiveness and performance
+ * Used for all vector search operations (content_chunks, agent_documents, etc.)
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
     // Validate input
     if (!text || text.trim().length === 0) {
       console.warn('[Embeddings] Empty text provided, returning zero vector')
-      // Return a zero vector of dimension 3072
-      return new Array(3072).fill(0)
+      // Return a zero vector of dimension 1536
+      return new Array(1536).fill(0)
     }
 
     const { embedding } = await embed({
-      model: vercelGateway.textEmbeddingModel('openai/text-embedding-3-large' as GatewayModelId),
+      model: vercelGateway.textEmbeddingModel('openai/text-embedding-3-small'),
       value: text,
     })
 
@@ -32,42 +35,11 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 /**
- * Generate embedding for text using Gemini (768 dimensions) via Vercel AI Gateway
- * Used for agent_documents table
- */
-export async function generateGeminiEmbedding(text: string): Promise<number[]> {
-  try {
-    // Validate input
-    if (!text || text.trim().length === 0) {
-      console.warn('[Embeddings] Empty text provided, returning zero vector')
-      // Return a zero vector of dimension 768
-      return new Array(768).fill(0)
-    }
-
-    const { embedding } = await embed({
-      model: vercelGateway.textEmbeddingModel('google/gemini-embedding-001' as GatewayModelId),
-      value: text,
-    })
-
-    return embedding
-  } catch (error) {
-    console.error('[Embeddings] Error generating Gemini embedding:', error)
-    throw error
-  }
-}
-
-/**
- * Generate embeddings for multiple texts
+ * Generate embeddings for multiple texts efficiently
+ * Processes all texts in parallel for better performance
  */
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   return Promise.all(texts.map(text => generateEmbedding(text)))
-}
-
-/**
- * Generate Gemini embeddings for multiple texts
- */
-export async function generateGeminiEmbeddings(texts: string[]): Promise<number[][]> {
-  return Promise.all(texts.map(text => generateGeminiEmbedding(text)))
 }
 
 

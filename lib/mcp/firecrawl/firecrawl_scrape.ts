@@ -35,49 +35,12 @@ This is the most powerful, fastest and most reliable scraper tool, if available 
       url: z.string().url(),
       formats: z
         .array(
-          z.union([
-            z.enum([
-              "markdown",
-              "html",
-              "rawHtml",
-              "screenshot",
-              "links",
-              "summary",
-              "changeTracking",
-              "branding",
-            ]),
-            z
-              .object({
-                type: z.literal("json"),
-                prompt: z.string().optional(),
-                schema: z.record(z.any()).optional(),
-              })
-              .strict(),
-            z
-              .object({
-                type: z.literal("screenshot"),
-                fullPage: z.boolean().optional(),
-                quality: z.number().optional(),
-                viewport: z
-                  .object({ width: z.number(), height: z.number() })
-                  .strict()
-                  .optional(),
-              })
-              .strict(),
-          ]),
+          z.string(), // Simplified from union
         )
         .optional(),
       parsers: z
         .array(
-          z.union([
-            z.literal("pdf"),
-            z
-              .object({
-                type: z.literal("pdf"),
-                maxPages: z.number().int().gte(1).lte(10000).optional(),
-              })
-              .strict(),
-          ]),
+          z.string(), // Simplified from union
         )
         .optional(),
       onlyMainContent: z.boolean().optional(),

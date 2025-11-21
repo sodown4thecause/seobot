@@ -70,19 +70,24 @@ export const vercelGateway = {
   },
 
   textEmbeddingModel(modelId: string): any {
-    // Use Gateway for OpenAI embeddings if configured
-    if (modelId.startsWith('openai/') && gateway) {
-      return gateway.textEmbeddingModel(modelId.replace('openai/', ''));
-    }
-
-    if (modelId.startsWith('google/')) {
-      if (google) return google.textEmbeddingModel(modelId.replace('google/', ''));
-      if (gateway) return gateway.textEmbeddingModel(modelId); // Try via gateway
-    }
+    console.log('[Gateway] Requested embedding model:', modelId);
+    
+    // Only OpenAI embeddings supported (text-embedding-3-small)
     if (modelId.startsWith('openai/')) {
-      if (openai) return openai.textEmbeddingModel(modelId.replace('openai/', ''));
+      // Prefer Gateway for OpenAI embeddings (for monitoring/caching)
+      if (gateway) {
+        console.log('[Gateway] Using gateway for embedding:', modelId);
+        return gateway.textEmbeddingModel(modelId);
+      }
+      // Fallback to direct OpenAI
+      if (openai) {
+        console.log('[Gateway] Using direct OpenAI for embedding:', modelId);
+        return openai.textEmbeddingModel(modelId.replace('openai/', ''));
+      }
+      throw new Error('Neither AI_GATEWAY_API_KEY nor OPENAI_API_KEY is configured for embeddings');
     }
-    throw new Error(`Unsupported embedding model ID: ${modelId}`);
+    
+    throw new Error(`Unsupported embedding model: ${modelId}. Only OpenAI embeddings are supported.`);
   },
 
   imageModel(modelId: string): any {

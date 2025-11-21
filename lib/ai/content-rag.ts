@@ -5,10 +5,11 @@
 
 import { retrieveSimilarLearnings, getBestPractices } from './learning-storage'
 import { createClient } from '@/lib/supabase/server'
-import { generateGeminiEmbedding } from './embeddings'
+import { generateEmbedding } from './embeddings'
 
 /**
  * Retrieve relevant agent documents from Supabase
+ * Uses OpenAI text-embedding-3-small (1536 dimensions)
  */
 async function retrieveAgentDocuments(
   topic: string,
@@ -18,8 +19,8 @@ async function retrieveAgentDocuments(
   try {
     const supabase = await createClient()
     
-    // Generate embedding for the topic
-    const embedding = await generateGeminiEmbedding(topic)
+    // Generate embedding for the topic using OpenAI
+    const embedding = await generateEmbedding(topic)
     
     // Call the vector search function
     const { data, error } = await supabase.rpc('match_agent_documents_v2', {
