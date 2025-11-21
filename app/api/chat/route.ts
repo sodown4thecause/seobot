@@ -169,7 +169,16 @@ export async function POST(req: Request) {
       }
     }
 
-    // Build system prompt based on context
+    // MULTI-AGENT ROUTING: Determine which specialized agent should handle this query
+    const routingResult = AgentRouter.routeQuery(lastUserMessageContent, context);
+    console.log('[Chat API] Agent routing result:', {
+      agent: routingResult.agent,
+      confidence: routingResult.confidence,
+      reasoning: routingResult.reasoning,
+      toolsCount: routingResult.tools.length
+    });
+
+    // Build system prompt for the selected agent
     let systemPrompt: string;
     if (isOnboarding && onboardingContext) {
       const currentStep = onboardingContext.currentStep || 1;
@@ -179,11 +188,15 @@ export async function POST(req: Request) {
         onboardingData as OnboardingData,
       );
     } else {
-      systemPrompt = buildGeneralSystemPrompt(context, retrievedFrameworks);
+      systemPrompt = AgentRouter.getAgentSystemPrompt(routingResult.agent, context);
+      // Add RAG context if available
+      if (retrievedFrameworks) {
+        systemPrompt += `\n\nRelevant frameworks and best practices:\n${retrievedFrameworks}`;
+      }
     }
 
-    // TEMPORARY: Disable MCP tools to test basic streaming
-    console.log('[Chat API] MCP tools temporarily disabled for testing');
+    // LOAD MCP TOOLS based on selected agent
+    console.log(`[Chat API] Loading MCP tools for ${routingResult.agent} agent`);
     
     const allMCPTools: Record<string, any> = {};
     const toolLoadingResults = {
@@ -193,118 +206,138 @@ export async function POST(req: Request) {
       winston: { loaded: 0, failed: false }
     };
 
-    // TEMPORARY: Skip DataForSEO MCP tools
+    // Load DataForSEO tools for SEO/AEO agent
     let seoTools: Record<string, any> = {};
-    console.log('[Chat API] Skipping DataForSEO MCP tools for testing');
-    // Fallback to manual tools if MCP loading fails
-    seoTools = {
-      ai_keyword_search_volume: tool({
-        description:
-          "Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.",
-        inputSchema: z.object({
-          keywords: z
-            .array(z.string())
-            .describe("Keywords to analyze in AI platforms"),
-          location: z
-            .string()
-            .optional()
-            .describe('Location (e.g., "United States", "United Kingdom")')
-        }),
-        execute: async (args: any) => {
-          const result = await handleDataForSEOFunctionCall(
-            "ai_keyword_search_volume",
-            args,
-          );
-          return { result };
-        },
-      } as any),
-      keyword_search_volume: tool({
-        description:
-          "Get Google search volume, CPC, and competition for keywords. Core keyword research tool.",
-        inputSchema: z.object({
-          keywords: z
-            .array(z.string())
-            .describe("Keywords to analyze (max 100)"),
-          location: z.string().optional().describe("Location for data"),
-        }),
-        execute: async (args: any) => {
-          const result = await handleDataForSEOFunctionCall(
-            "keyword_search_volume",
-            args,
-          );
-          return { result };
-        },
-      } as any),
-      google_rankings: tool({
-        description:
-          "Get current Google SERP results for a keyword including position, URL, title, and SERP features.",
-        inputSchema: z.object({
-          keyword: z.string().describe("Keyword to check rankings for"),
-          location: z
-            .string()
-            .optional()
-            .describe("Location for SERP results"),
-        }),
-        execute: async (args: any) => {
-          const result = await handleDataForSEOFunctionCall(
-            "google_rankings",
-            args,
-          );
-          return { result };
-        },
-      } as any),
-      domain_overview: tool({
-        description:
-          "Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility. This is an expensive operation that requires user approval.",
-        inputSchema: z.object({
-          domain: z
-            .string()
-            .describe("Domain to analyze (without http://)"),
-          location: z.string().optional().describe("Location for metrics"),
-        }),
-        execute: async (args: any) => {
-          const result = await handleDataForSEOFunctionCall(
-            "domain_overview",
-            args,
-          );
-          return { result };
-        },
-      } as any),
-    };
+    if (routingResult.agent === 'seo-aeo' || routingResult.agent === 'content') {
+      try {
+        console.log('[Chat API] Loading DataForSEO MCP tools for', routingResult.agent, 'agent');
+        const dataforSEOTools = await getDataForSEOTools();
+        // Apply schema fixes to MCP tools
+        const fixedSEOTools = fixAllMCPTools(dataforSEOTools);
+        Object.assign(allMCPTools, fixedSEOTools);
+        toolLoadingResults.dataforseo = { 
+          loaded: Object.keys(fixedSEOTools).length, 
+          failed: false 
+        };
+        console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedSEOTools).length} DataForSEO tools`);
+      } catch (error) {
+        console.error('[Chat API] Failed to load DataForSEO tools:', error);
+        toolLoadingResults.dataforseo = { loaded: 0, failed: true };
+        // Fallback to manual tools
+        seoTools = {
+          ai_keyword_search_volume: tool({
+            description: "Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity.",
+            inputSchema: z.object({
+              keywords: z.array(z.string()).describe("Keywords to analyze"),
+              location: z.string().optional().describe('Location')
+            }),
+            execute: async (args: any) => {
+              const result = await handleDataForSEOFunctionCall("ai_keyword_search_volume", args);
+              return { result };
+            },
+          } as any),
+          domain_overview: tool({
+            description: "Get comprehensive SEO metrics for a domain.",
+            inputSchema: z.object({
+              domain: z.string().describe("Domain to analyze (without http://)"),
+              location: z.string().optional().describe("Location for metrics"),
+            }),
+            execute: async (args: any) => {
+              const result = await handleDataForSEOFunctionCall("domain_overview", args);
+              return { result };
+            },
+          } as any),
+        };
+      }
+    }
 
-    // TEMPORARY: Skip Firecrawl tools
+    // Load Firecrawl tools for SEO/AEO and Content agents
     let firecrawlTools: Record<string, any> = {};
-    console.log('[Chat API] Skipping Firecrawl tools for testing');
+    if (routingResult.agent === 'seo-aeo' || routingResult.agent === 'content') {
+      try {
+        console.log('[Chat API] Loading Firecrawl MCP tools for', routingResult.agent, 'agent');
+        const firecrawlMCPTools = await getFirecrawlTools();
+        const fixedFirecrawlTools = fixAllMCPTools(firecrawlMCPTools);
+        Object.assign(allMCPTools, fixedFirecrawlTools);
+        toolLoadingResults.firecrawl = { 
+          loaded: Object.keys(fixedFirecrawlTools).length, 
+          failed: false 
+        };
+        console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedFirecrawlTools).length} Firecrawl tools`);
+      } catch (error) {
+        console.error('[Chat API] Failed to load Firecrawl tools:', error);
+        toolLoadingResults.firecrawl = { loaded: 0, failed: true };
+      }
+    }
 
-    // TEMPORARY: Skip Jina tools
+    // Load Jina tools for Content agent
     let jinaTools: Record<string, any> = {};
-    console.log('[Chat API] Skipping Jina tools for testing');
+    if (routingResult.agent === 'content') {
+      try {
+        console.log('[Chat API] Loading Jina MCP tools for content agent');
+        const jinaMCPTools = await getJinaTools();
+        const fixedJinaTools = fixAllMCPTools(jinaMCPTools);
+        Object.assign(allMCPTools, fixedJinaTools);
+        toolLoadingResults.jina = { 
+          loaded: Object.keys(fixedJinaTools).length, 
+          failed: false 
+        };
+        console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedJinaTools).length} Jina tools`);
+      } catch (error) {
+        console.error('[Chat API] Failed to load Jina tools:', error);
+        toolLoadingResults.jina = { loaded: 0, failed: true };
+      }
+    }
 
-    // TEMPORARY: Skip Winston tools
+    // Load Winston tools for Content agent (RAG feedback loop)
     let winstonMCPTools: Record<string, any> = {};
-    console.log('[Chat API] Skipping Winston tools for testing');
+    if (routingResult.agent === 'content') {
+      try {
+        console.log('[Chat API] Loading Winston MCP tools for content agent feedback loop');
+        const winstonTools = await getWinstonTools();
+        const fixedWinstonTools = fixAllMCPTools(winstonTools);
+        Object.assign(allMCPTools, fixedWinstonTools);
+        toolLoadingResults.winston = { 
+          loaded: Object.keys(fixedWinstonTools).length, 
+          failed: false 
+        };
+        console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedWinstonTools).length} Winston tools`);
+      } catch (error) {
+        console.error('[Chat API] Failed to load Winston tools:', error);
+        toolLoadingResults.winston = { loaded: 0, failed: true };
+      }
+    }
 
-    // Add content quality tools (Winston AI + Rytr)
-    const contentQualityTools = getContentQualityTools();
-    // Add enhanced content quality tools (SEO analysis, readability, fact-checking)
-    const enhancedContentTools = getEnhancedContentQualityTools();
+    // Add content quality tools (Winston AI + Rytr) - Load based on agent type
+    let contentQualityTools: Record<string, any> = {};
+    let enhancedContentTools: Record<string, any> = {};
+    
+    if (routingResult.agent === 'content') {
+      contentQualityTools = getContentQualityTools();
+      enhancedContentTools = getEnhancedContentQualityTools();
+      console.log(`[Chat API] ✓ Loaded ${Object.keys(contentQualityTools).length + Object.keys(enhancedContentTools).length} content quality tools`);
+    }
 
-    // Add Perplexity tool
-    const perplexityTool = {
-      perplexity_search: tool({
-        description: "Search the web using Perplexity AI for real-time, cited information. Use this for research, fact-checking, and finding authoritative sources.",
-        inputSchema: z.object({
-          query: z.string().describe("The search query"),
-          search_recency_filter: z.enum(["month", "week", "day", "year"]).optional().describe("Filter results by recency"),
-        }),
-        execute: async ({ query, search_recency_filter }: any) => {
-          return await searchWithPerplexity({
-            query,
-            searchRecencyFilter: search_recency_filter as "month" | "week" | "day" | "hour" | undefined,
-          });
-        },
-      } as any),
-    };
+    // Add Perplexity tool - Available for content and general agents via Vercel AI Gateway
+    let perplexityTool: Record<string, any> = {};
+    if (routingResult.agent === 'content' || routingResult.agent === 'general' || routingResult.agent === 'seo-aeo') {
+      perplexityTool = {
+        perplexity_search: tool({
+          description: "Search the web using Perplexity AI via Vercel AI Gateway for real-time, cited information. Use this for research, fact-checking, and finding authoritative sources.",
+          inputSchema: z.object({
+            query: z.string().describe("The search query"),
+            search_recency_filter: z.enum(["month", "week", "day", "year"]).optional().describe("Filter results by recency"),
+          }),
+          execute: async ({ query, search_recency_filter }: any) => {
+            return await searchWithPerplexity({
+              query,
+              searchRecencyFilter: search_recency_filter as "month" | "week" | "day" | "hour" | undefined,
+            });
+          },
+        } as any),
+      };
+      console.log('[Chat API] ✓ Loaded Perplexity search tool via Vercel AI Gateway');
+    }
 
     // Add web search tool for competitor analysis
     const webSearchTool = {
@@ -412,6 +445,18 @@ export async function POST(req: Request) {
     const essentialMCPTools = loadEssentialTools(allMCPTools);
     console.log(`[Chat API] Essential tools selected: ${Object.keys(essentialMCPTools).length}`);
     
+    // IMPORTANT: Always include the orchestrator tool for content creation
+    const coreTools = {
+      ...orchestratorTool, // Always include orchestrator
+      ...perplexityTool,   // Always include perplexity
+      ...webSearchTool,    // Always include web search
+    };
+    console.log(`[Chat API] ✓ Core tools included:`, Object.keys(coreTools));
+    
+    // Add content quality tools for content agent
+    const agentSpecificTools = routingResult.agent === 'content' ? 
+      { ...contentQualityTools, ...enhancedContentTools } : {};
+    
     // Log tool loading summary
     console.log('[Chat API] Tool loading summary:', {
       dataforseo: toolLoadingResults.dataforseo,
@@ -422,12 +467,9 @@ export async function POST(req: Request) {
     });
 
     const allTools = {
-      ...essentialMCPTools, // Use essential tools instead of all tools
-      ...contentQualityTools,
-      ...enhancedContentTools,
-      ...perplexityTool,
-      ...webSearchTool,
-      ...orchestratorTool,
+      ...coreTools,              // Always include core tools (orchestrator, perplexity, web search)
+      ...agentSpecificTools,     // Content quality tools for content agent
+      ...essentialMCPTools,      // Selected MCP tools (DataForSEO, Firecrawl, Jina, Winston)
       client_ui: tool({
         description:
           "Display an interactive UI component to the user. Use this when you need to collect specific information or show structured data.",
@@ -475,8 +517,48 @@ export async function POST(req: Request) {
 
     // Convert UI messages to core messages for AI SDK 6
     console.log('[Chat API] Converting messages to core messages for AI SDK 6');
-    const coreMessages = convertToCoreMessages(messages);
-    console.log('[Chat API] Converted messages count:', coreMessages.length);
+    console.log('[Chat API] Messages before conversion:', {
+      type: typeof messages,
+      isArray: Array.isArray(messages),
+      length: messages?.length,
+      sample: messages?.[0]
+    });
+    
+    // Validate messages before conversion
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      console.error('[Chat API] Invalid messages for conversion:', messages);
+      return new Response(
+        JSON.stringify({ error: "Invalid messages format for AI SDK 6" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    
+    // Convert simple messages to CoreMessage format for AI SDK 6
+    // The messages coming from frontend are already in the correct simple format
+    let coreMessages;
+    try {
+      // For AI SDK 6, we can pass simple messages directly as CoreMessage format
+      // CoreMessage format: { role: 'user' | 'assistant' | 'system', content: string }
+      coreMessages = messages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content || msg.text || '', // Handle both content and text properties
+      }));
+      
+      console.log('[Chat API] ✓ Successfully converted to CoreMessages:', {
+        count: coreMessages.length,
+        sample: coreMessages[0]
+      });
+    } catch (conversionError) {
+      console.error('[Chat API] Message conversion error:', {
+        error: conversionError,
+        messagesType: typeof messages,
+        messagesContent: messages
+      });
+      return new Response(
+        JSON.stringify({ error: "Failed to convert messages for AI SDK 6" }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
 
     const result = streamText({
       model: vercelGateway.languageModel(CHAT_MODEL_ID),
