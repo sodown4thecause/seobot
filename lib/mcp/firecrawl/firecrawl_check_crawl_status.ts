@@ -22,7 +22,7 @@ Check the status of a crawl job.
 \`\`\`
 **Returns:** Status and progress of the crawl job, including results if available.
 `,
-    inputSchema: z.object({ id: z.string() }),
+    parameters: z.object({ id: z.string() }),
     execute: async (args): Promise<string> => {
       const client = await getClient();
       const result = await client.callTool({

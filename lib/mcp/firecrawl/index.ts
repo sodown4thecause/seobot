@@ -1,13 +1,13 @@
 // Auto-generated index file for MCP tools
 // Source: https://mcp.firecrawl.dev/fc-9b271ecf3a944c3faf93489565547fc8/v2/mcp
-import { getMcpClient } from "./client.js";
+import { getMcpClient } from "./client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { firecrawl_scrapeToolWithClient } from "./firecrawl_scrape.js";
-import { firecrawl_mapToolWithClient } from "./firecrawl_map.js";
-import { firecrawl_searchToolWithClient } from "./firecrawl_search.js";
-import { firecrawl_crawlToolWithClient } from "./firecrawl_crawl.js";
-import { firecrawl_check_crawl_statusToolWithClient } from "./firecrawl_check_crawl_status.js";
-import { firecrawl_extractToolWithClient } from "./firecrawl_extract.js";
+import { firecrawl_scrapeToolWithClient } from "./firecrawl_scrape";
+import { firecrawl_mapToolWithClient } from "./firecrawl_map";
+import { firecrawl_searchToolWithClient } from "./firecrawl_search";
+import { firecrawl_crawlToolWithClient } from "./firecrawl_crawl";
+import { firecrawl_check_crawl_statusToolWithClient } from "./firecrawl_check_crawl_status";
+import { firecrawl_extractToolWithClient } from "./firecrawl_extract";
 
 // Exports using a default client
 export const mcpFirecrawlTools = {

@@ -9,7 +9,7 @@ export const dataforseo_labs_google_keywords_for_siteToolWithClient = (
 ) =>
   tool({
     description: `The Keywords For Site endpoint will provide you with a list of keywords relevant to the target domain. Each keyword is supplied with relevant, search volume data for the last month, cost-per-click, competition`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string().describe("target domain"),
       location_name: z
         .string()
@@ -54,7 +54,7 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -125,3 +125,4 @@ example:
       }
     },
   });
+

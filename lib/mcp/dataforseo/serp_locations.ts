@@ -10,7 +10,7 @@ export const serp_locationsToolWithClient = (
   tool({
     description:
       "Utility tool for serp_organic_live_advanced to get list of availible locations.",
-    inputSchema: z.object({
+    parameters: z.object({
       search_engine: z
         .string()
         .describe("search engine name, one of: google, yahoo, bing.")

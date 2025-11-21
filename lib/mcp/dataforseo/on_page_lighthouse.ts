@@ -9,7 +9,7 @@ export const on_page_lighthouseToolWithClient = (
 ) =>
   tool({
     description: `The OnPage Lighthouse API is based on Google’s open-source Lighthouse project for measuring the quality of web pages and web apps.`,
-    inputSchema: z.object({
+    parameters: z.object({
       url: z.string().describe("URL of the page to parse"),
       enable_javascript: z
         .boolean()

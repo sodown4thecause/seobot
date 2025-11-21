@@ -9,7 +9,7 @@ export const business_data_business_listings_searchToolWithClient = (
 ) =>
   tool({
     description: `Business Listings Search API provides results containing information about business entities listed on Google Maps in the specified categories. You will receive the address, contacts, rating, working hours, and other relevant data`,
-    inputSchema: z.object({
+    parameters: z.object({
       description: z
         .string()
         .describe(
@@ -75,7 +75,7 @@ if you specify the 10 value, the first ten entities in the results array will be
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -137,3 +137,4 @@ example:
       }
     },
   });
+

@@ -9,7 +9,7 @@ export const dataforseo_labs_google_competitors_domainToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a full overview of ranking and traffic data of the competitor domains from organic and paid search. In addition to that, you will get the metrics specific to the keywords both competitor domains and your domain rank for within the same SERP.`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string().describe("target domain"),
       location_name: z
         .string()
@@ -60,7 +60,7 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -134,3 +134,4 @@ example:
       }
     },
   });
+

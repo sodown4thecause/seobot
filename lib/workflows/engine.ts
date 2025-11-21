@@ -378,7 +378,7 @@ export class WorkflowEngine {
     const { getFirecrawlTools } = await import('@/lib/mcp/firecrawl-client')
 
     const tools = await getFirecrawlTools()
-    const tool = tools[toolName]
+    const tool = (tools as any)[toolName]
 
     if (!tool) {
       throw new Error(`Firecrawl tool ${toolName} not found`)

@@ -9,7 +9,7 @@ export const deduplicate_imagesToolWithClient = (
 ) =>
   tool({
     description: `Get top-k semantically unique images (URLs or base64-encoded) using Jina CLIP v2 embeddings and submodular optimization. Use this when you have many visually similar images and want the most diverse subset.`,
-    inputSchema: z.object({
+    parameters: z.object({
       images: z
         .array(z.string())
         .describe(

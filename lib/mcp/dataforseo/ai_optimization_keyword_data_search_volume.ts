@@ -9,7 +9,7 @@ export const ai_optimization_keyword_data_search_volumeToolWithClient = (
 ) =>
   tool({
     description: `This endpoint provides search volume data for your target keywords, reflecting their estimated usage in AI LLMs`,
-    inputSchema: z.object({
+    parameters: z.object({
       keywords: z
         .array(z.string())
         .describe(

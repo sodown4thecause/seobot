@@ -9,7 +9,7 @@ export const deduplicate_stringsToolWithClient = (
 ) =>
   tool({
     description: `Get top-k semantically unique strings from a list using Jina embeddings and submodular optimization. Use this when you have many similar strings and want to select the most diverse subset that covers the semantic space. Perfect for removing duplicates, selecting representative samples, or finding diverse content.`,
-    inputSchema: z.object({
+    parameters: z.object({
       strings: z.array(z.string()).describe("Array of strings to deduplicate"),
       k: z
         .number()

@@ -9,7 +9,7 @@ export const dataforseo_labs_google_domain_intersectionToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the keywords for which both specified domains rank within the same SERP. You will get search volume, competition, cost-per-click and impressions data on each intersecting keyword. Along with that, you will get data on the first and second domain's SERP element discovered for this keyword, as well as the estimated traffic volume and cost of ad traffic.`,
-    inputSchema: z.object({
+    parameters: z.object({
       target1: z.string().describe("target domain 1"),
       target2: z.string().describe("target domain 2 "),
       location_name: z
@@ -61,7 +61,7 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -139,3 +139,4 @@ default value: true`,
       }
     },
   });
+

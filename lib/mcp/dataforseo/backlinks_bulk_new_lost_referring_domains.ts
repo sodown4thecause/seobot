@@ -10,7 +10,7 @@ export const backlinks_bulk_new_lost_referring_domainsToolWithClient = (
   tool({
     description: `This endpoint will provide you with the number of referring domains pointing to the domains, subdomains and pages specified in the targets array.
 Note that if you indicate a domain as a target, you will get result for the root domain (domain with all of its subdomains), e.g. dataforseo.com and app.dataforseo.com`,
-    inputSchema: z.object({
+    parameters: z.object({
       targets: z.array(z.string())
         .describe(`domains, subdomains or webpages to get rank for
 required field

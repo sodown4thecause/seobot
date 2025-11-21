@@ -22,7 +22,7 @@ export async function getWinstonTools() {
   return {
     winston_check_quality: tool({
       description: 'Check content quality, plagiarism, and AI detection using Winston AI. Returns a score (0-100) where higher means more likely AI-generated.',
-      inputSchema: z.object({
+      parameters: z.object({
         content: z.string().describe('The text content to analyze'),
       }),
       execute: async ({ content }) => {

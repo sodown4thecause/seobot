@@ -9,7 +9,7 @@ export const keywords_data_dataforseo_trends_exploreToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the keyword popularity data from DataForSEO Trends. You can check keyword trends for Google Search, Google News, and Google Shopping`,
-    inputSchema: z.object({
+    parameters: z.object({
       location_name: z
         .union([
           z.string().describe(`full name of the location

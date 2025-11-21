@@ -9,7 +9,7 @@ export const search_imagesToolWithClient = (
 ) =>
   tool({
     description: `Search for images across the web, similar to Google Images. Use this when you need to find photos, illustrations, diagrams, charts, logos, or any visual content. Perfect for finding images to illustrate concepts, locating specific pictures, or discovering visual resources. Images are returned by default as small base64-encoded JPEG images.`,
-    inputSchema: z.object({
+    parameters: z.object({
       query: z
         .string()
         .describe(

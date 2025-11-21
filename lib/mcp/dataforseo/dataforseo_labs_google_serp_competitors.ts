@@ -9,7 +9,7 @@ export const dataforseo_labs_google_serp_competitorsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a list of domains ranking for the keywords you specify. You will also get SERP rankings, rating, estimated traffic volume, and visibility values the provided domains gain from the specified keywords.`,
-    inputSchema: z.object({
+    parameters: z.object({
       keywords: z.array(z.string()).describe(`keywords array
 required field
 the results will be based on the keywords you specify in this array
@@ -59,7 +59,7 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -123,3 +123,4 @@ example:
       }
     },
   });
+

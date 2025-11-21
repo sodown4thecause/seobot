@@ -15,7 +15,7 @@ If you would like to get the keywords several pages rank for, you need to specif
 
 Find keywords your competitors rank for but you do not:
 If you would like to receive all keywords several pages rank for, but particular pages do not, you need to use the exclude_pages array as well. This way you will receive the keywords for which the URLs from the pages object rank for, but the URLs from the exclude_pages array do not`,
-    inputSchema: z.object({
+    parameters: z.object({
       pages: z.array(z.string()).describe(`pages array
 required field
 you can set up to 20 pages in this object
@@ -111,7 +111,7 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -177,3 +177,4 @@ example:
       }
     },
   });
+

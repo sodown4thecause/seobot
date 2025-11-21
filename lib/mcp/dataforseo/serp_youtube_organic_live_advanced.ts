@@ -10,7 +10,7 @@ export const serp_youtube_organic_live_advancedToolWithClient = (
   tool({
     description:
       "provides top 20 blocks of youtube search engine results for a keyword",
-    inputSchema: z.object({
+    parameters: z.object({
       keyword: z.string().describe("Search keyword"),
       location_name: z.string().describe(`full name of the location
 required field

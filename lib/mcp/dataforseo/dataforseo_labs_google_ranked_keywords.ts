@@ -9,7 +9,7 @@ export const dataforseo_labs_google_ranked_keywordsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the list of keywords that any domain or webpage is ranking for. You will also get SERP elements related to the keyword position, as well as impressions, monthly searches and other data relevant to the returned keywords.`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string().describe(`domain name or page url
 required field
 the domain name of the target website or URL of the target webpage;
@@ -60,7 +60,6 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
             z.union([z.string(), z.number()]),
           ]),
         )

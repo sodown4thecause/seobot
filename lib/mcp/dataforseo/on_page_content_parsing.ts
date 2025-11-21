@@ -9,7 +9,7 @@ export const on_page_content_parsingToolWithClient = (
 ) =>
   tool({
     description: `This endpoint allows parsing the content on any page you specify and will return the structured content of the target page, including link URLs, anchors, headings, and textual content.`,
-    inputSchema: z.object({
+    parameters: z.object({
       url: z.string().describe("URL of the page to parse"),
       enable_javascript: z
         .boolean()

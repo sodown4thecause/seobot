@@ -9,7 +9,7 @@ export const dataforseo_labs_google_historical_rank_overviewToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with historical data on rankings and traffic of the specified domain, such as domain ranking distribution in SERPs and estimated monthly traffic volume for both organic and paid results`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string().describe("target domain"),
       location_name: z
         .string()

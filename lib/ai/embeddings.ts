@@ -73,3 +73,8 @@ export async function generateGeminiEmbeddings(texts: string[]): Promise<number[
 
 
 
+
+
+
+
+

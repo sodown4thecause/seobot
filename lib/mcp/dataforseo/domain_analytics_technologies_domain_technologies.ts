@@ -9,7 +9,7 @@ export const domain_analytics_technologies_domain_technologiesToolWithClient = (
 ) =>
   tool({
     description: `Using this endpoint you will get a list of technologies used in a particular domain`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string().describe(`target domain
 required field
 domain name of the website to analyze

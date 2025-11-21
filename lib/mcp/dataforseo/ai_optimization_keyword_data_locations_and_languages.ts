@@ -8,7 +8,7 @@ export const ai_optimization_keyword_data_locations_and_languagesToolWithClient 
   (getClient: () => Promise<Client> | Client) =>
     tool({
       description: `Utility tool for ai_keyword_data_search_volume to get list of availible locations and languages`,
-      inputSchema: z.object({}),
+      parameters: z.object({}),
       execute: async (args): Promise<string> => {
         const client = await getClient();
         const result = await client.callTool({

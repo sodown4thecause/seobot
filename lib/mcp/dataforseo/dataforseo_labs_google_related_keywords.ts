@@ -15,7 +15,7 @@ You can get up to 4680 keyword ideas by specifying the search depth. Each relate
 Datasource: DataForSEO SERPs Database
 Search algorithm: depth-first search for queries appearing in the "search related to" element of SERP for the specified seed keyword.
 `,
-    inputSchema: z.object({
+    parameters: z.object({
       keyword: z.string().describe("target keyword"),
       depth: z
         .number()
@@ -66,7 +66,7 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -139,3 +139,4 @@ example:
       }
     },
   });
+

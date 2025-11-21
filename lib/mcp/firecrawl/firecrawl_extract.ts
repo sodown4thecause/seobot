@@ -45,7 +45,7 @@ Extract structured information from web pages using LLM capabilities. Supports b
 \`\`\`
 **Returns:** Extracted structured data as defined by your schema.
 `,
-    inputSchema: z.object({
+    parameters: z.object({
       urls: z.array(z.string()),
       prompt: z.string().optional(),
       schema: z.record(z.any()).optional(),

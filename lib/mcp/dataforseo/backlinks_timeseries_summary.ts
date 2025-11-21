@@ -10,7 +10,7 @@ export const backlinks_timeseries_summaryToolWithClient = (
   tool({
     description: `This endpoint will provide you with an overview of backlink data for the target domain available during a period between the two indicated dates. Backlink metrics will be grouped by the time range that you define: day, week, month, or year.
 Data from this endpoint will be especially helpful for building time-series graphs of daily, weekly, monthly, and yearly link-building progress`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string().describe(`domain to get data for
 required field
 a domain should be specified without https:// and www.

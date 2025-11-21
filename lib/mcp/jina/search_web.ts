@@ -9,7 +9,7 @@ export const search_webToolWithClient = (
 ) =>
   tool({
     description: `Search the entire web for current information, news, articles, and websites. Use this when you need up-to-date information, want to find specific websites, research topics, or get the latest news. Ideal for answering questions about recent events, finding resources, or discovering relevant content.`,
-    inputSchema: z.object({
+    parameters: z.object({
       query: z
         .union([z.string(), z.array(z.string())])
         .describe(

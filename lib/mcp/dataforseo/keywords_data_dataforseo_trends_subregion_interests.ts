@@ -8,7 +8,7 @@ export const keywords_data_dataforseo_trends_subregion_interestsToolWithClient =
   (getClient: () => Promise<Client> | Client) =>
     tool({
       description: `This endpoint will provide you with location-specific keyword popularity data from DataForSEO Trends`,
-      inputSchema: z.object({
+      parameters: z.object({
         location_name: z
           .union([
             z.string().describe(`full name of the location

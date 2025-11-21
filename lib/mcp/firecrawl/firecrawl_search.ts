@@ -69,7 +69,7 @@ The query also supports search operators, that you can use if needed to refine t
 \`\`\`
 **Returns:** Array of search results (with optional scraped content).
 `,
-    inputSchema: z.object({
+    parameters: z.object({
       query: z.string().min(1),
       limit: z.number().optional(),
       tbs: z.string().optional(),

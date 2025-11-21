@@ -9,7 +9,7 @@ export const dataforseo_labs_google_subdomainsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a list of subdomains of the specified domain, along with the ranking distribution across organic and paid search. In addition to that, you will also get the estimated traffic volume of subdomains based on search volume.`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string().describe("target domain"),
       location_name: z
         .string()
@@ -60,7 +60,7 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -137,3 +137,4 @@ default rule:
       }
     },
   });
+

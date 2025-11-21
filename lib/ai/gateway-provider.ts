@@ -1,5 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createGateway } from '@ai-sdk/gateway';
 import { serverEnv } from '@/lib/config/env';
 
 // Initialize providers conditionally
@@ -15,35 +16,54 @@ const openai = serverEnv.OPENAI_API_KEY
     })
   : null;
 
-// Vercel AI Gateway client (OpenAI-compatible)
+// Vercel AI Gateway client (use @ai-sdk/gateway, not @ai-sdk/openai)
 const gateway = serverEnv.AI_GATEWAY_API_KEY
-  ? createOpenAI({
-      baseURL: serverEnv.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1',
+  ? createGateway({
       apiKey: serverEnv.AI_GATEWAY_API_KEY,
-      headers: {
-        'Authorization': `Bearer ${serverEnv.AI_GATEWAY_API_KEY}`,
-      },
+      baseURL: serverEnv.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1',
     })
   : null;
 
 export const vercelGateway = {
   languageModel(modelId: string): any {
-    // 1. Use Gateway if configured and explicitly requested or for supported models
-    if (gateway && (modelId.includes('gemini-2.0-pro') || modelId === 'openai/gpt-4o' || serverEnv.AI_GATEWAY_API_KEY)) {
-       return gateway(modelId);
+    console.log('[Gateway] Requested model:', modelId);
+    console.log('[Gateway] Gateway configured:', !!gateway);
+    console.log('[Gateway] OpenAI configured:', !!openai);
+    console.log('[Gateway] Google configured:', !!google);
+    
+    // TEMP: Prefer direct providers over gateway for testing streaming
+    if (modelId.startsWith('openai/')) {
+      // Try direct OpenAI first
+      if (openai) {
+        console.log('[Gateway] Using direct OpenAI provider for:', modelId);
+        return openai(modelId.replace('openai/', ''));
+      }
+      // Fallback to Gateway if OpenAI key missing
+      if (gateway) {
+        console.log('[Gateway] Using gateway for:', modelId);
+        return gateway(modelId);
+      }
+      throw new Error('Neither OPENAI_API_KEY nor AI_GATEWAY_API_KEY is configured');
     }
 
-    // 2. Use Google provider directly for other Gemini models
+    // Google provider
     if (modelId.startsWith('google/')) {
-      if (google) return google(modelId.replace('google/', ''));
+      if (google) {
+        console.log('[Gateway] Using Google provider for:', modelId);
+        return google(modelId.replace('google/', ''));
+      }
       // Fallback to Gateway if Google key missing but Gateway exists
-      if (gateway) return gateway(modelId);
+      if (gateway) {
+        console.log('[Gateway] Falling back to gateway for Google model:', modelId);
+        return gateway(modelId);
+      }
+      throw new Error('Neither GOOGLE_API_KEY nor AI_GATEWAY_API_KEY is configured');
     }
     
-    if (modelId.startsWith('openai/')) {
-      if (openai) return openai(modelId.replace('openai/', ''));
-      // Fallback to Gateway if OpenAI key missing but Gateway exists
-      if (gateway) return gateway(modelId);
+    // Try gateway for other models
+    if (gateway) {
+       console.log('[Gateway] Using gateway for:', modelId);
+       return gateway(modelId);
     }
     
     throw new Error(`Unsupported model ID: ${modelId} or missing configuration (Gateway/API Keys)`);
@@ -66,13 +86,15 @@ export const vercelGateway = {
   },
 
   imageModel(modelId: string): any {
+    // Image generation is not supported through Gateway, only through direct providers
     if (modelId.startsWith('openai/')) {
       if (openai) return openai.image(modelId.replace('openai/', ''));
-      if (gateway) return gateway.image(modelId.replace('openai/', ''));
+      throw new Error('OpenAI API key required for image generation');
     }
     
     if (modelId.startsWith('google/')) {
        if (google) return google(modelId.replace('google/', '')) as any;
+       throw new Error('Google API key required for image generation');
     }
     throw new Error(`Unsupported image model ID: ${modelId}`);
   }

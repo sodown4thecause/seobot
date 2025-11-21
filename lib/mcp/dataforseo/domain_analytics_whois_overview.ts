@@ -9,7 +9,7 @@ export const domain_analytics_whois_overviewToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with Whois data enriched with backlink stats, and ranking and traffic info from organic and paid search results. Using this endpoint you will be able to get all these data for the domains matching the parameters you specify in the request`,
-    inputSchema: z.object({
+    parameters: z.object({
       limit: z
         .number()
         .gte(1)
@@ -34,7 +34,7 @@ if you specify the 10 value, the first ten entities in the results array will be
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -96,3 +96,4 @@ example:
       }
     },
   });
+

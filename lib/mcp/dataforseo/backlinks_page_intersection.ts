@@ -9,7 +9,7 @@ export const backlinks_page_intersectionToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the list of domains pointing to the specified websites. This endpoint is especially useful for creating a Link Gap feature that shows what domains link to your competitors but do not link out to your website`,
-    inputSchema: z.object({
+    parameters: z.object({
       targets: z.array(z.string())
         .describe(`domains, subdomains or webpages to get links for
 required field
@@ -40,7 +40,7 @@ if you specify the 10 value, the first ten backlinks in the results array will b
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -104,3 +104,4 @@ example:
       }
     },
   });
+

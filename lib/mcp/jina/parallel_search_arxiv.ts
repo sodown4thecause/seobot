@@ -9,7 +9,7 @@ export const parallel_search_arxivToolWithClient = (
 ) =>
   tool({
     description: `Run multiple arXiv searches in parallel for comprehensive research coverage and diverse academic angles. For best results, provide multiple search queries that explore different research angles and methodologies. You can use expand_query to help generate diverse queries, or create them yourself.`,
-    inputSchema: z.object({
+    parameters: z.object({
       searches: z
         .array(
           z

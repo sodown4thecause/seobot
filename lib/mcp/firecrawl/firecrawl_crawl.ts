@@ -33,7 +33,7 @@ export const firecrawl_crawlToolWithClient = (
  **Returns:** Operation ID for status checking; use firecrawl_check_crawl_status to check progress.
  **Safe Mode:** Read-only crawling. Webhooks and interactive actions are disabled for security.
  `,
-    inputSchema: z.object({
+    parameters: z.object({
       url: z.string(),
       prompt: z.string().optional(),
       excludePaths: z.array(z.string()).optional(),

@@ -10,7 +10,7 @@ export const keywords_data_google_trends_categoriesToolWithClient = (
   tool({
     description:
       "This endpoint will provide you list of Google Trends Categories",
-    inputSchema: z.object({}),
+    parameters: z.object({}),
     execute: async (args): Promise<string> => {
       const client = await getClient();
       const result = await client.callTool({

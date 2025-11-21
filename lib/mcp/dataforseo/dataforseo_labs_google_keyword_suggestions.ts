@@ -17,7 +17,7 @@ As a result, you will get a list of long-tail keywords with each keyword in the 
 Along with each suggested keyword, you will get its search volume rate for the last month, search volume trend for the previous 12 months, as well as current cost-per-click and competition values. Moreover, this endpoint supplies minimum, maximum and average values of daily impressions, clicks and CPC for each result.
 
 `,
-    inputSchema: z.object({
+    parameters: z.object({
       keyword: z.string().describe("target keyword"),
       location_name: z
         .string()
@@ -62,7 +62,7 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -133,3 +133,4 @@ example:
       }
     },
   });
+

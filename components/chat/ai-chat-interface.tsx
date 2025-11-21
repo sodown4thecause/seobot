@@ -33,7 +33,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const [input, setInput] = useState('')
 
   const chat = useChat({
-    body: { context },
+    api: '/api/chat', // Explicit API endpoint for AI SDK 6
+    body: { context }, // Pass context to backend
+    streamProtocol: 'ui-message', // AI SDK 6 default protocol
     initialMessages: initialMessage ? [{ role: 'assistant', content: initialMessage, id: 'initial' }] : undefined,
     onFinish: (message: any) => {
       console.log('[Chat] Message finished:', message)
@@ -43,7 +45,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       parseComponentsFromMessage(textContent, message.id)
     },
     onError: (error: any) => {
-      console.error('[Chat] Error:', error)
+      console.error('[Chat] Stream error:', error)
       console.error('[Chat] Error details:', {
         message: error?.message,
         stack: error?.stack,

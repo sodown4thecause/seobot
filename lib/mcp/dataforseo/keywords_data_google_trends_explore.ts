@@ -9,7 +9,7 @@ export const keywords_data_google_trends_exploreToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the keyword popularity data from the ‘Explore’ feature of Google Trends. You can check keyword trends for Google Search, Google News, Google Images, Google Shopping, and YouTube`,
-    inputSchema: z.object({
+    parameters: z.object({
       location_name: z
         .union([
           z.string().describe(`full name of the location

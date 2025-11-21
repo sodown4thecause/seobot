@@ -9,7 +9,7 @@ export const search_arxivToolWithClient = (
 ) =>
   tool({
     description: `Search academic papers and preprints on arXiv repository. Perfect for finding research papers, scientific studies, technical papers, and academic literature. Use this when researching scientific topics, looking for papers by specific authors, or finding the latest research in fields like AI, physics, mathematics, computer science, etc.`,
-    inputSchema: z.object({
+    parameters: z.object({
       query: z
         .union([z.string(), z.array(z.string())])
         .describe(

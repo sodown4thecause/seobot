@@ -1,6 +1,6 @@
 import {
   streamText,
-  convertToCoreMessages,
+  convertToModelMessages,
   tool,
 } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -33,8 +33,8 @@ import { z } from "zod";
 
 export const runtime = "edge";
 
-// Using GPT-4o via Vercel Gateway
-const CHAT_MODEL_ID = "openai/gpt-4o";
+// Using Claude Haiku 4.5 via Vercel Gateway
+const CHAT_MODEL_ID = "anthropic/claude-haiku-4.5";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -59,6 +59,8 @@ interface RequestBody {
 }
 
 export async function POST(req: Request) {
+  console.log('[Chat API] POST handler called');
+  
   // Check rate limit
   const rateLimitResponse = await rateLimitMiddleware(req as any, "CHAT");
   if (rateLimitResponse) {
@@ -66,8 +68,25 @@ export async function POST(req: Request) {
   }
 
   try {
+    console.log('[Chat API] About to parse request body');
     const body = (await req.json()) as RequestBody;
+    console.log('[Chat API] Body parsed successfully');
     const { messages, context } = body;
+
+    // Debug logging
+    console.log('[Chat API] Request body:', JSON.stringify(body, null, 2));
+    console.log('[Chat API] Messages type:', typeof messages);
+    console.log('[Chat API] Messages is array:', Array.isArray(messages));
+    console.log('[Chat API] Messages length:', messages?.length);
+    console.log('[Chat API] First message:', messages?.[0]);
+
+    // Validate messages
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Messages array is required and must not be empty" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
 
     const supabase = await createClient();
 
@@ -171,10 +190,6 @@ export async function POST(req: Request) {
         
         // Filter to only include essential tools to prevent context window overload
         const essentialTools = [
-          'serp_google_organic_live_advanced',
-          'serp_google_maps_live_advanced',
-          'serp_google_images_live_advanced',
-          'serp_google_news_live_advanced',
           'on_page_lighthouse',
           'on_page_content_parsing',
           'keywords_data_google_ads_search_volume',
@@ -409,13 +424,23 @@ export async function POST(req: Request) {
       } as any),
     };
 
+    // Log before calling streamText
+    console.log('[Chat API] About to call streamText with:', {
+      messagesCount: messages.length,
+      systemPromptLength: systemPrompt?.length,
+      toolsCount: Object.keys(allTools).length,
+    });
+    console.log('[Chat API] Messages before conversion:', JSON.stringify(messages, null, 2));
+
     // Using streamText from AI SDK 6
+    // Try passing messages directly - the format from useChat should be compatible
+    console.log('[Chat API] Passing messages directly to streamText');
+
     const result = streamText({
       model: vercelGateway.languageModel(CHAT_MODEL_ID),
-      messages: convertToCoreMessages(messages),
+      messages: messages as any,
       system: systemPrompt,
       tools: allTools,
-      // maxToolRoundtrips: 10, // Removed due to type error
       experimental_telemetry: {
         isEnabled: true,
         functionId: "chat-api",
@@ -425,6 +450,9 @@ export async function POST(req: Request) {
           model: CHAT_MODEL_ID,
           provider: "gateway",
         },
+      },
+      onError: (error) => {
+        console.error('[Chat API] Streaming error:', error);
       },
       onFinish: async ({ response }) => {
         const { messages: finalMessages } = response;
@@ -473,7 +501,13 @@ export async function POST(req: Request) {
       },
     });
 
-    return (result as any).toDataStreamResponse();
+    // AI SDK v6 uses toUIMessageStreamResponse instead of toDataStreamResponse
+    return result.toUIMessageStreamResponse({
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
 
   } catch (error: unknown) {
     const err = error as Error;

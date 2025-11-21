@@ -9,7 +9,7 @@ export const keywords_data_dataforseo_trends_demographyToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the demographic breakdown (by age and gender) of keyword popularity per each specified term based on DataForSEO Trends data`,
-    inputSchema: z.object({
+    parameters: z.object({
       location_name: z
         .union([
           z.string().describe(`full name of the location

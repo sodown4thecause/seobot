@@ -9,7 +9,7 @@ export const content_analysis_phrase_trendsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with data on all citations of the target keyword for the indicated date range`,
-    inputSchema: z.object({
+    parameters: z.object({
       keyword: z.string().describe(`target keyword
         Note: to match an exact phrase instead of a stand-alone keyword, use double quotes and backslashes;`),
       keyword_fields: z
@@ -52,7 +52,7 @@ export const content_analysis_phrase_trendsToolWithClient = (
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -120,3 +120,4 @@ export const content_analysis_phrase_trendsToolWithClient = (
       }
     },
   });
+

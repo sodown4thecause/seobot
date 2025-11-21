@@ -9,7 +9,7 @@ export const backlinks_referring_domainsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a detailed overview of referring domains pointing to the target you specify`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string()
         .describe(`domain, subdomain or webpage to get backlinks for
         required field
@@ -39,7 +39,7 @@ if you specify the 10 value, the first ten pages in the results array will be om
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -103,3 +103,4 @@ example:
       }
     },
   });
+

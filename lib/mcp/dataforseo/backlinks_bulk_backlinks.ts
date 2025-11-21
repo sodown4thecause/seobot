@@ -10,7 +10,7 @@ export const backlinks_bulk_backlinksToolWithClient = (
   tool({
     description: `This endpoint will provide you with the number of backlinks pointing to domains, subdomains, and pages specified in the targets array. The returned numbers correspond to all live backlinks, that is, total number of referring links with all attributes (e.g., nofollow, noreferrer, ugc, sponsored etc) that were found during the latest check.
 Note that if you indicate a domain as a target, you will get results for the root domain (domain with all of its subdomains), e.g. dataforseo.com and app.dataforseo.com`,
-    inputSchema: z.object({
+    parameters: z.object({
       targets: z.array(z.string())
         .describe(`domains, subdomains or webpages to get rank for
 required field

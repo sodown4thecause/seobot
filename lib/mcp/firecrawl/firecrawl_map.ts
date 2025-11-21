@@ -26,7 +26,7 @@ Map a website to discover all indexed URLs on the site.
 \`\`\`
 **Returns:** Array of URLs found on the site.
 `,
-    inputSchema: z.object({
+    parameters: z.object({
       url: z.string().url(),
       search: z.string().optional(),
       sitemap: z.enum(["include", "skip", "only"]).optional(),

@@ -9,7 +9,7 @@ export const dataforseo_labs_google_keyword_overviewToolWithClient = (
 ) =>
   tool({
     description: `This endpoint provides Google keyword data for specified keywords. For each keyword, you will receive current cost-per-click, competition values for paid search, search volume, search intent, monthly searches`,
-    inputSchema: z.object({
+    parameters: z.object({
       keywords: z.array(z.string()).describe(`keywords
 required field
 The maximum number of keywords you can specify: 700

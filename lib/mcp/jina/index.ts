@@ -1,22 +1,22 @@
 // Auto-generated index file for MCP tools
 // Source: https://mcp.jina.ai/sse
-import { getMcpClient } from "./client.js";
+import { getMcpClient } from "./client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { show_api_keyToolWithClient } from "./show_api_key.js";
-import { primerToolWithClient } from "./primer.js";
-import { guess_datetime_urlToolWithClient } from "./guess_datetime_url.js";
-import { capture_screenshot_urlToolWithClient } from "./capture_screenshot_url.js";
-import { read_urlToolWithClient } from "./read_url.js";
-import { search_webToolWithClient } from "./search_web.js";
-import { expand_queryToolWithClient } from "./expand_query.js";
-import { search_arxivToolWithClient } from "./search_arxiv.js";
-import { search_imagesToolWithClient } from "./search_images.js";
-import { parallel_search_webToolWithClient } from "./parallel_search_web.js";
-import { parallel_search_arxivToolWithClient } from "./parallel_search_arxiv.js";
-import { parallel_read_urlToolWithClient } from "./parallel_read_url.js";
-import { sort_by_relevanceToolWithClient } from "./sort_by_relevance.js";
-import { deduplicate_stringsToolWithClient } from "./deduplicate_strings.js";
-import { deduplicate_imagesToolWithClient } from "./deduplicate_images.js";
+import { show_api_keyToolWithClient } from "./show_api_key";
+import { primerToolWithClient } from "./primer";
+import { guess_datetime_urlToolWithClient } from "./guess_datetime_url";
+import { capture_screenshot_urlToolWithClient } from "./capture_screenshot_url";
+import { read_urlToolWithClient } from "./read_url";
+import { search_webToolWithClient } from "./search_web";
+import { expand_queryToolWithClient } from "./expand_query";
+import { search_arxivToolWithClient } from "./search_arxiv";
+import { search_imagesToolWithClient } from "./search_images";
+import { parallel_search_webToolWithClient } from "./parallel_search_web";
+import { parallel_search_arxivToolWithClient } from "./parallel_search_arxiv";
+import { parallel_read_urlToolWithClient } from "./parallel_read_url";
+import { sort_by_relevanceToolWithClient } from "./sort_by_relevance";
+import { deduplicate_stringsToolWithClient } from "./deduplicate_strings";
+import { deduplicate_imagesToolWithClient } from "./deduplicate_images";
 
 // Exports using a default client
 export const mcpJinaTools = {

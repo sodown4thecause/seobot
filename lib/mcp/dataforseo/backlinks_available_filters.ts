@@ -11,7 +11,7 @@ export const backlinks_available_filtersToolWithClient = (
     description: `Here you will find all the necessary information about filters that can be used with DataForSEO Backlinks API endpoints.
 
 Please, keep in mind that filters are associated with a certain object in the result array, and should be specified accordingly.`,
-    inputSchema: z.object({
+    parameters: z.object({
       tool: z
         .string()
         .describe("The name of the tool to get filters for")

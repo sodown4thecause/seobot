@@ -9,7 +9,7 @@ export const serp_youtube_locationsToolWithClient = (
 ) =>
   tool({
     description: `Utility tool to get list of available locations for: serp_youtube_organic_live_advanced, serp_youtube_video_info_live_advanced, serp_youtube_video_comments_live_advanced, serp_youtube_video_subtitles_live_advanced.`,
-    inputSchema: z.object({
+    parameters: z.object({
       country_iso_code: z
         .string()
         .describe("ISO 3166-1 alpha-2 country code, for example: US, GB, MT"),

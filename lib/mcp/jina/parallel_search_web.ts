@@ -9,7 +9,7 @@ export const parallel_search_webToolWithClient = (
 ) =>
   tool({
     description: `Run multiple web searches in parallel for comprehensive topic coverage and diverse perspectives. For best results, provide multiple search queries that explore different aspects of your topic. You can use expand_query to help generate diverse queries, or create them yourself.`,
-    inputSchema: z.object({
+    parameters: z.object({
       searches: z
         .array(
           z

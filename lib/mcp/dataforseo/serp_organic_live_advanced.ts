@@ -10,7 +10,7 @@ export const serp_organic_live_advancedToolWithClient = (
   tool({
     description:
       "Get organic search results for a keyword in specified search engine",
-    inputSchema: z.object({
+    parameters: z.object({
       search_engine: z
         .string()
         .describe("search engine name, one of: google, yahoo, bing.")

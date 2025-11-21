@@ -9,7 +9,7 @@ export const serp_youtube_video_info_live_advancedToolWithClient = (
 ) =>
   tool({
     description: "provides data on the video you specify",
-    inputSchema: z.object({
+    parameters: z.object({
       video_id: z.string().describe("ID of the video"),
       location_name: z.string().describe(`full name of the location
 required field

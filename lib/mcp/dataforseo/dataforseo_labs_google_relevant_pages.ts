@@ -9,7 +9,7 @@ export const dataforseo_labs_google_relevant_pagesToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with rankings and traffic data for the web pages of the specified domain. You will be able to review each page’s ranking distribution and estimated monthly traffic volume from both organic and paid searches.`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string().describe("target domain"),
       location_name: z
         .string()
@@ -60,7 +60,7 @@ example:
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -149,3 +149,4 @@ set to true if you want to get highly-relevant competitors excluding the top web
       }
     },
   });
+

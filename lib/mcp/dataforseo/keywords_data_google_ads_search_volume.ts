@@ -9,7 +9,7 @@ export const keywords_data_google_ads_search_volumeToolWithClient = (
 ) =>
   tool({
     description: "Get search volume data for keywords from Google Ads",
-    inputSchema: z.object({
+    parameters: z.object({
       location_name: z
         .union([
           z.string().describe(`full name of the location

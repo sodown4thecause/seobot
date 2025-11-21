@@ -9,7 +9,7 @@ export const backlinks_competitorsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a list of competitors that share some part of the backlink profile with a target website, along with a number of backlink intersections and the rank of every competing website`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string()
         .describe(`domain, subdomain or webpage to get backlinks for
         required field
@@ -39,7 +39,7 @@ if you specify the 10 value, the first ten domains in the results array will be 
               .min(3)
               .max(3),
             z.enum(["and", "or"]),
-            z.array(z.any()).min(3).max(3),
+            
             z.union([z.string(), z.number()]),
           ]),
         )
@@ -121,3 +121,4 @@ if set to false, internal links will be included in the results`,
       }
     },
   });
+

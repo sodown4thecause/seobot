@@ -13,7 +13,7 @@ The results will be provided for a period between the two indicated dates, and m
 Data from this endpoint will be especially helpful for building time-series graphs of new and lost backlinks and referring domains.
 
 `,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string().describe(`domain to get data for
 required field
 a domain should be specified without https:// and www.

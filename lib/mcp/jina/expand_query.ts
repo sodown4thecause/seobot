@@ -9,7 +9,7 @@ export const expand_queryToolWithClient = (
 ) =>
   tool({
     description: `Expand and rewrite search queries based on an up-to-date query expansion model. This tool takes an initial query and returns multiple expanded queries that can be used for more diversed and deeper searches. Useful for improving deep research results by searching broader and deeper.`,
-    inputSchema: z.object({
+    parameters: z.object({
       query: z
         .string()
         .describe(

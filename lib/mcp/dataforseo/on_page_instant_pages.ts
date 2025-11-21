@@ -9,7 +9,7 @@ export const on_page_instant_pagesToolWithClient = (
 ) =>
   tool({
     description: `Using this function you will get page-specific data with detailed information on how well a particular page is optimized for organic search`,
-    inputSchema: z.object({
+    parameters: z.object({
       url: z.string().describe("URL to analyze"),
       enable_javascript: z
         .boolean()

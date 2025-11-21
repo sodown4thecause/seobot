@@ -9,7 +9,7 @@ export const parallel_read_urlToolWithClient = (
 ) =>
   tool({
     description: `Read multiple web pages in parallel to extract clean content efficiently. For best results, provide multiple URLs that you need to extract simultaneously. This is useful for comparing content across multiple sources or gathering information from multiple pages at once.`,
-    inputSchema: z.object({
+    parameters: z.object({
       urls: z
         .array(
           z

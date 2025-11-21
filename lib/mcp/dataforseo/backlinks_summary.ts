@@ -9,7 +9,7 @@ export const backlinks_summaryToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with an overview of backlinks data available for a given domain, subdomain, or webpage`,
-    inputSchema: z.object({
+    parameters: z.object({
       target: z.string()
         .describe(`domain, subdomain or webpage to get backlinks for
         required field
