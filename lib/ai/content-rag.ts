@@ -26,7 +26,7 @@ async function retrieveAgentDocuments(
     const { data, error } = await supabase.rpc('match_agent_documents_v2', {
       query_embedding: embedding,
       agent_type_param: agentType,
-      match_threshold: 0.5,
+      match_threshold: 0.3, // Lowered from 0.5 - semantic similarity typically ranges 0.3-0.7
       max_results: limit,
     })
 
