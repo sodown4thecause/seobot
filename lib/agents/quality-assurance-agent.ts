@@ -4,7 +4,7 @@
 
 import { analyzeContent } from '@/lib/mcp/winston-client'
 import { humanizeContent } from '@/lib/external-apis/rytr'
-import { storeContentLearning } from '@/lib/ai/learning-storage'
+import { storeAndLearn, getCrossUserInsights } from '@/lib/ai/learning-storage'
 
 export interface QAReviewParams {
   content: string
@@ -83,10 +83,10 @@ export class QualityAssuranceAgent {
       }
     }
 
-    // Store learning for future content (global learning loop)
+    // GLOBAL LEARNING: Store and immediately share with all users
     if (params.userId) {
       try {
-        await storeContentLearning({
+        const learning = {
           userId: params.userId,
           contentType: params.contentType,
           topic: params.topic,
@@ -96,7 +96,15 @@ export class QualityAssuranceAgent {
           successful: bestScore <= this.TARGET_AI_SCORE,
           techniques: this.extractTechniques(bestContent),
           feedback: lastAnalysis?.feedback || null,
-        })
+        }
+        
+        // Store learning and trigger real-time global knowledge update
+        await storeAndLearn(learning)
+        
+        // Log cross-user learning insights
+        const insights = await getCrossUserInsights(params.contentType)
+        console.log(`[QA Agent] 🌍 Global learning: ${insights.uniqueUsers} users contributed, ${insights.successfulLearnings} successful patterns`)
+        
       } catch (error) {
         console.error('[QA Agent] Failed to store learning:', error)
         // Non-blocking - continue

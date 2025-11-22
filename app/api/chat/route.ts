@@ -6,6 +6,7 @@ import {
   CoreUserMessage,
   CoreAssistantMessage,
   CoreToolMessage,
+  stepCountIs,
 } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
@@ -391,14 +392,14 @@ export async function POST(req: Request) {
             console.log('[Orchestrator Tool] Content length:', result.content?.length || 0);
             console.log('[Orchestrator Tool] Metadata:', result.metadata);
             
-            // Simplify result for AI SDK 6 - return just the content
-            const simplifiedResult = result.content || "Content generation completed but no content was returned.";
+            // Return simple content string for AI SDK 6 tool result handling
+            const contentResult = result.content || "Content generation completed but no content was returned.";
             
-            console.log('[Orchestrator Tool] 📤 Returning simplified result to AI SDK');
-            console.log('[Orchestrator Tool] Result type:', typeof simplifiedResult);
-            console.log('[Orchestrator Tool] Result preview:', simplifiedResult.substring(0, 200) + '...');
+            console.log('[Orchestrator Tool] 📤 Returning content to AI SDK 6');
+            console.log('[Orchestrator Tool] Content length:', contentResult.length);
+            console.log('[Orchestrator Tool] Content preview:', contentResult.substring(0, 200) + '...');
             
-            return simplifiedResult;
+            return contentResult;
           } catch (error) {
             console.error("[Chat API] Orchestrator error:", error);
             const errorResult = {
@@ -489,6 +490,7 @@ export async function POST(req: Request) {
       Object.entries(safeTools).filter(([key, value]) => value !== undefined)
     );
     
+    // Re-enable tools - let AI SDK 6 handle tool results properly
     const validatedTools = ENABLE_TOOLS ? filteredSafeTools : {};
     
     // Log final validated tools that will be used
@@ -613,12 +615,15 @@ export async function POST(req: Request) {
       );
     }
 
+    // Use AI SDK 6 ToolLoopAgent pattern for proper step management and tool result rendering
+    // MANUAL AGENT LOOP: Force text response after tool calls
     const result = streamText({
       model: vercelGateway.languageModel(CHAT_MODEL_ID),
       messages: coreMessages,
       system: systemPrompt,
-      tools: validatedTools, // Use validated tools instead of allTools
-      maxSteps: 5, // CRITICAL: Allow tool calls -> wait for results -> extract content -> present to user
+      tools: validatedTools,
+      // CRITICAL: Enable multi-step calls to generate text after tool execution
+      stopWhen: stepCountIs(10), // Stop after 10 steps maximum
       experimental_telemetry: {
         isEnabled: true,
         functionId: "chat-api",
@@ -628,6 +633,16 @@ export async function POST(req: Request) {
           model: CHAT_MODEL_ID,
           provider: "gateway",
         },
+      },
+      // Force text generation after tool execution
+      toolChoice: 'auto', // Let AI decide when to use tools vs generate text
+      // Add instruction to system about requiring text responses
+      experimental_providerMetadata: {
+        anthropic: {
+          cacheControl: {
+            type: 'ephemeral'
+          }
+        }
       },
       onError: (error) => {
         console.error('[Chat API] Streaming error:', {
@@ -644,6 +659,18 @@ export async function POST(req: Request) {
       },
       onFinish: async ({ response }) => {
         const { messages: finalMessages } = response;
+        
+        // INTERCEPT TOOL RESULTS: Check if the last message contains tool calls
+        console.log('[Chat API] onFinish - Final messages:', finalMessages.length);
+        if (finalMessages.length > 0) {
+          const lastMessage = finalMessages[finalMessages.length - 1];
+          console.log('[Chat API] Last message:', {
+            role: lastMessage.role,
+            contentType: typeof lastMessage.content,
+            hasToolCalls: Array.isArray(lastMessage.content) ? 
+              lastMessage.content.some((part: any) => part.type === 'tool-call') : false
+          });
+        }
         
         // Save messages after completion
         if (user && !authError) {

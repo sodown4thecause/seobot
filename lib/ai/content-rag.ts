@@ -3,7 +3,7 @@
  * Combines cross-user learnings with uploaded expert documents
  */
 
-import { retrieveSimilarLearnings, getBestPractices } from './learning-storage'
+import { retrieveSimilarLearnings, getBestPractices, getCrossUserInsights } from './learning-storage'
 import { createClient } from '@/lib/supabase/server'
 import { generateEmbedding } from './embeddings'
 
@@ -53,15 +53,18 @@ export async function getContentGuidance(
   try {
     console.log('[Content RAG] Retrieving guidance for:', contentType, topic)
 
-    // Get similar learnings, best practices, and agent documents in parallel
-    const [similarLearnings, bestPractices, agentDocs] = await Promise.all([
+    // Get similar learnings, best practices, agent documents, and cross-user insights in parallel
+    const [similarLearnings, bestPractices, agentDocs, crossUserInsights] = await Promise.all([
       retrieveSimilarLearnings(topic, contentType, 5),
       getBestPractices(contentType),
       retrieveAgentDocuments(topic, 'content_writer'),
+      getCrossUserInsights(contentType),
     ])
 
-    // Format guidance
-    const guidance = formatGuidance(similarLearnings, bestPractices, agentDocs, keywords)
+    console.log(`[Content RAG] 🌐 Cross-user insights: ${crossUserInsights.uniqueUsers} users, ${crossUserInsights.successfulLearnings} successful patterns`)
+
+    // Format guidance with cross-user insights
+    const guidance = formatGuidance(similarLearnings, bestPractices, agentDocs, keywords, crossUserInsights)
 
     console.log('[Content RAG] ✓ Guidance retrieved')
     return guidance
@@ -78,9 +81,26 @@ function formatGuidance(
   similarLearnings: any[],
   bestPractices: any[],
   agentDocs: any[] | undefined,
-  keywords: string[]
+  keywords: string[],
+  crossUserInsights?: any
 ): string {
   const parts: string[] = []
+
+  // Cross-user learning insights
+  if (crossUserInsights && crossUserInsights.uniqueUsers > 1) {
+    parts.push('## Global Learning Insights')
+    parts.push(`Learned from ${crossUserInsights.uniqueUsers} users across ${crossUserInsights.totalLearnings} content pieces:`)
+    
+    if (crossUserInsights.topTechniques.length > 0) {
+      parts.push('\nTop performing techniques across all users:')
+      crossUserInsights.topTechniques.slice(0, 5).forEach((technique: any, i: number) => {
+        parts.push(`${i + 1}. ${technique.technique} (used ${technique.usage}x, avg score: ${technique.avgScore.toFixed(1)}%)`)
+      })
+    }
+    
+    parts.push(`\nCommunity success rate: ${((crossUserInsights.successfulLearnings / crossUserInsights.totalLearnings) * 100).toFixed(1)}%`)
+    parts.push('')
+  }
 
   // Expert Knowledge from Uploaded Documents
   if (agentDocs && agentDocs.length > 0) {
