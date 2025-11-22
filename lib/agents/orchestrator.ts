@@ -56,14 +56,12 @@ export class OrchestratorAgent {
     console.log('[Orchestrator] Starting content generation for:', params.topic)
 
     try {
-      // TEMPORARILY DISABLE CACHING - Force full workflow execution for debugging
-      // const cacheKey = `${AEO_CACHE_PREFIXES.WORKFLOW}:${params.type}:${params.topic}`
+      // Cache the full workflow to improve performance
+      const cacheKey = `${AEO_CACHE_PREFIXES.WORKFLOW}:${params.type}:${params.topic}`
 
-      // return await cachedAEOCall(
-      //   cacheKey,
-      //   async () => {
-      
-      // Execute full workflow without caching
+      return await cachedAEOCall(
+        cacheKey,
+        async () => {
           // Step 1: Research Phase
           console.log('[Orchestrator] Phase 1: Research')
           const researchResult = await this.researchAgent.research({
@@ -129,9 +127,9 @@ export class OrchestratorAgent {
             },
             suggestions: qaResult.suggestions,
           }
-        // },
-        // AEO_CACHE_TTL.WORKFLOW
-      // )
+        },
+        AEO_CACHE_TTL.WORKFLOW
+      )
     } catch (error) {
       console.error('[Orchestrator] Error in content generation:', error)
       throw error

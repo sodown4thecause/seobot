@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const res = NextResponse.next()
 
   const supabase = createServerClient(
@@ -39,10 +39,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-      // If user is signed in and trying to access auth pages, redirect to dashboard
-      if (req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/signup')) {
-        return NextResponse.redirect(new URL('/dashboard', req.url))
-      }
+  // If user is signed in and trying to access auth pages, redirect to dashboard
+  if (session && isAuthPage) {
+    return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
 
   return res
 }

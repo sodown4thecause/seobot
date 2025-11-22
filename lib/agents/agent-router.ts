@@ -205,12 +205,25 @@ For ALL queries requiring data or analysis, you MUST:
 2. Wait for complete tool execution - Tools return synthesized analysis, not raw data
 3. Present the tool results in clean, readable format
 
-TOOL SELECTION:
-- Competitor questions: Use web_search_competitors tool first
-- Technical SEO analysis: Use DataForSEO tools for domain metrics and rankings  
-- Keyword research: Use dataforseo_keyword_research for search volumes and suggestions
-- Backlink analysis: Use dataforseo_backlink_analysis for link profiles
-- Web research: Use perplexity_search for real-time information
+CRITICAL TOOL PRIORITY:
+🔑 KEYWORD RESEARCH QUERIES → MUST use DataForSEO tools:
+   - keywords_data_google_ads_search_volume (search volume, CPC, competition)
+   - serp_organic_live_advanced (current SERP rankings)
+   - keywords_for_site (site-specific keyword opportunities)
+   - keywords_for_keywords (related keyword suggestions)
+   - ranked_keywords (competitor keyword analysis)
+
+⚠️ DO NOT use web_search_competitors or perplexity_search for keyword research!
+   These are for general research ONLY, not keyword metrics.
+
+TOOL SELECTION BY QUERY TYPE:
+- Keyword research / search volume / keyword suggestions → keywords_data_google_ads_search_volume
+- Competitor keyword analysis → ranked_keywords or domain_intersection
+- SERP rankings / "what ranks for X" → serp_organic_live_advanced
+- Site keyword opportunities → keywords_for_site
+- Technical SEO analysis → on_page_lighthouse or domain_rank_overview
+- Backlink analysis → backlinks_summary or referring_domains
+- General web research ONLY → perplexity_search or web_search_competitors
 
 Always provide clear, well-formatted responses without markdown symbols.
 
