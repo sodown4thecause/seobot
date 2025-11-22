@@ -37,7 +37,7 @@ Focus on information that would be valuable for creating SEO/AEO optimized conte
 
     try {
       const { text } = await generateText({
-        model: perplexity('llama-3.1-sonar-large-128k-online'),
+        model: perplexity('sonar-pro'),
         prompt,
         temperature: 0.3, // Lower temperature for factual research
       })

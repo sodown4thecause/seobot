@@ -303,7 +303,7 @@ export async function POST(req: Request) {
       perplexityTool = {
         perplexity_search: tool({
           description: "Search the web using Perplexity AI via Vercel AI Gateway for real-time, cited information. Use this for research, fact-checking, and finding authoritative sources.",
-          parameters: z.object({
+          inputSchema: z.object({
             query: z.string().describe("The search query"),
             search_recency_filter: z.enum(["month", "week", "day", "year"]).optional().describe("Filter results by recency"),
           }),
@@ -322,7 +322,7 @@ export async function POST(req: Request) {
     const webSearchTool = {
       web_search_competitors: tool({
         description: "Search for competitor analysis and market research information. Use this when users ask about competitors in the SEO/AEO space.",
-        parameters: z.object({
+        inputSchema: z.object({
           query: z.string().describe("Search query for competitor or industry information"),
         }),
         execute: async ({ query }: any) => {
@@ -367,7 +367,7 @@ export async function POST(req: Request) {
       generate_researched_content: tool({
         description:
           "Generate high-quality, researched, and SEO-optimized content (blog posts, articles). This tool runs a comprehensive workflow: Research -> RAG (Best Practices) -> Write -> QA (Winston/Rytr) -> Feedback Loop.",
-        parameters: z.object({
+        inputSchema: z.object({
           topic: z.string().describe("The main topic of the content"),
           type: z
             .enum(["blog_post", "article", "social_media", "landing_page"])
@@ -378,6 +378,8 @@ export async function POST(req: Request) {
         }),
         execute: async (args: any) => {
           try {
+            console.log('[Orchestrator Tool] 🚀 Starting execution with args:', args);
+            
             // Pass userId for learning storage
             const result = await orchestrator.generateContent({
               ...args,
@@ -385,19 +387,26 @@ export async function POST(req: Request) {
               targetPlatforms: ["chatgpt", "perplexity", "claude"], // Default targets
             });
 
-            return {
-              success: true,
-              content: result.content,
-              metadata: result.metadata,
-              suggestions: result.suggestions,
-              message: "Content generated successfully with research and QA passed.",
-            };
+            console.log('[Orchestrator Tool] ✓ Orchestrator completed successfully');
+            console.log('[Orchestrator Tool] Content length:', result.content?.length || 0);
+            console.log('[Orchestrator Tool] Metadata:', result.metadata);
+            
+            // Simplify result for AI SDK 6 - return just the content
+            const simplifiedResult = result.content || "Content generation completed but no content was returned.";
+            
+            console.log('[Orchestrator Tool] 📤 Returning simplified result to AI SDK');
+            console.log('[Orchestrator Tool] Result type:', typeof simplifiedResult);
+            console.log('[Orchestrator Tool] Result preview:', simplifiedResult.substring(0, 200) + '...');
+            
+            return simplifiedResult;
           } catch (error) {
             console.error("[Chat API] Orchestrator error:", error);
-            return {
+            const errorResult = {
               success: false,
               error: "Failed to generate content. Please try again.",
             };
+            console.log('[Orchestrator Tool] ❌ Returning error result to AI SDK');
+            return errorResult;
           }
         },
       } as any),
@@ -436,7 +445,7 @@ export async function POST(req: Request) {
       client_ui: tool({
         description:
           "Display an interactive UI component to the user. Use this when you need to collect specific information or show structured data.",
-        parameters: z.object({
+        inputSchema: z.object({
           component: z
             .enum([
               "url_input",
@@ -457,17 +466,36 @@ export async function POST(req: Request) {
       } as any),
     };
 
-    // Log before calling streamText
-    console.log('[Chat API] About to call streamText with:', {
-      messagesCount: messages.length,
-      systemPromptLength: systemPrompt?.length,
+    // Log before filtering tools
+    console.log('[Chat API] All tools loaded:', {
       totalToolsCount: Object.keys(allTools).length,
       toolNames: Object.keys(allTools)
     });
     
-    // TEMPORARY: Completely disable all tools to test streaming
-    const ENABLE_TOOLS = false; // Set to true once schema issues are resolved
-    const validatedTools = ENABLE_TOOLS ? allTools : {};
+    // Implement selective tool loading - only enable core tools that pass validation
+    const ENABLE_TOOLS = true;
+    
+    // Create a safe tool set with only known-good tools
+    const safeTools = {
+      // Only enable the core tools we know have correct schemas
+      web_search_competitors: webSearchTool.web_search_competitors,
+      perplexity_search: perplexityTool.perplexity_search,
+      generate_researched_content: orchestratorTool.generate_researched_content,
+      client_ui: allTools.client_ui,
+    };
+    
+    // Filter out any undefined tools
+    const filteredSafeTools = Object.fromEntries(
+      Object.entries(safeTools).filter(([key, value]) => value !== undefined)
+    );
+    
+    const validatedTools = ENABLE_TOOLS ? filteredSafeTools : {};
+    
+    // Log final validated tools that will be used
+    console.log('[Chat API] ✓ Final validated tools for streamText:', {
+      count: Object.keys(validatedTools).length,
+      tools: Object.keys(validatedTools)
+    });
 
     // Convert UI messages to core messages for AI SDK 6
     console.log('[Chat API] Converting messages to core messages for AI SDK 6');
@@ -526,78 +554,38 @@ export async function POST(req: Request) {
           continue;
         }
 
-        // 3. Handle Assistant Messages (and merge consecutive ones)
+        // 3. Handle Assistant Messages - Convert complex tool call format to simple text for AI SDK 6
         if (msg.role === 'assistant') {
-          const contentParts: Array<any> = [];
-          const toolResults: Array<any> = [];
+          let textContent = '';
 
-          // Extract content and tool calls
+          // Extract text content from various formats
           if (typeof msg.content === 'string' && msg.content) {
-            contentParts.push({ type: 'text', text: msg.content });
+            textContent = msg.content;
+          } else if (Array.isArray(msg.content)) {
+            // Handle AI SDK 6 content parts format
+            const textParts = msg.content
+              .filter((part: any) => part.type === 'text')
+              .map((part: any) => part.text || '');
+            textContent = textParts.join(' ');
           } else if (msg.parts && Array.isArray(msg.parts)) {
-            for (const part of msg.parts) {
-              if (part.type === 'text') {
-                contentParts.push({ type: 'text', text: part.text });
-              } else if (part.type.startsWith('tool-')) {
-                const toolName = part.type.replace('tool-', '');
-                
-                // Add tool call to assistant message
-                contentParts.push({
-                  type: 'tool-call',
-                  toolCallId: part.toolCallId,
-                  toolName: toolName,
-                  args: part.input || {} 
-                });
-
-                // Collect tool result if available
-                if (part.output || part.state === 'result' || part.state === 'output-available') {
-                   toolResults.push({
-                     type: 'tool-result',
-                     toolCallId: part.toolCallId,
-                     toolName: toolName,
-                     result: part.output
-                   });
-                }
-              }
-            }
+            // Handle parts format - extract only text, ignore tool calls for simplicity
+            const textParts = msg.parts
+              .filter((part: any) => part.type === 'text')
+              .map((part: any) => part.text || '');
+            textContent = textParts.join(' ');
           }
 
-          // Handle Assistant Message Merging
-          if (contentParts.length > 0) {
-            const lastMsg = coreMessages[coreMessages.length - 1];
-            
+          // Only add assistant message if it has meaningful text content
+          if (textContent && textContent.trim()) {
             // Check if we can merge with previous assistant message
-            // We can merge if last message is assistant AND there is no tool result intervening
-            // BUT here we are processing a new input message. If previous input message generated tool results,
-            // those tool results would be in coreMessages (as 'tool' role).
-            // So we check if lastMsg.role is 'assistant'.
-            if (lastMsg && lastMsg.role === 'assistant') {
-               console.log('[Chat API] Merging consecutive assistant message');
-               // Merge content parts
-               if (Array.isArray(lastMsg.content)) {
-                 lastMsg.content.push(...contentParts);
-               } else if (typeof lastMsg.content === 'string') {
-                 // Convert string content to parts array to support mixed content
-                 lastMsg.content = [
-                   { type: 'text', text: lastMsg.content },
-                   ...contentParts
-                 ];
-               }
-            } else {
-               coreMessages.push({ role: 'assistant', content: contentParts });
-            }
-          }
-
-          // Push tool message (results) - These MUST follow the assistant message
-          // And we should merge consecutive tool result messages as well
-          if (toolResults.length > 0) {
             const lastMsg = coreMessages[coreMessages.length - 1];
-            if (lastMsg && lastMsg.role === 'tool') {
-               console.log('[Chat API] Merging consecutive tool message');
-               // CoreToolMessage content is an array of tool results
-               (lastMsg.content as any[]).push(...toolResults);
+            if (lastMsg && lastMsg.role === 'assistant') {
+              console.log('[Chat API] Merging consecutive assistant message');
+              if (typeof lastMsg.content === 'string') {
+                lastMsg.content += '\n' + textContent.trim();
+              }
             } else {
-               coreMessages.push({ role: 'tool', content: toolResults });
+              coreMessages.push({ role: 'assistant', content: textContent.trim() });
             }
           }
         }
@@ -630,7 +618,7 @@ export async function POST(req: Request) {
       messages: coreMessages,
       system: systemPrompt,
       tools: validatedTools, // Use validated tools instead of allTools
-      maxSteps: 3, // CRITICAL: Allow tool calls -> wait for results -> synthesize response
+      maxSteps: 5, // CRITICAL: Allow tool calls -> wait for results -> extract content -> present to user
       experimental_telemetry: {
         isEnabled: true,
         functionId: "chat-api",
