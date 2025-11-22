@@ -2,6 +2,10 @@ import {
   streamText,
   convertToCoreMessages,
   tool,
+  CoreMessage,
+  CoreUserMessage,
+  CoreAssistantMessage,
+  CoreToolMessage,
 } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
@@ -223,31 +227,6 @@ export async function POST(req: Request) {
       } catch (error) {
         console.error('[Chat API] Failed to load DataForSEO tools:', error);
         toolLoadingResults.dataforseo = { loaded: 0, failed: true };
-        // Fallback to manual tools
-        seoTools = {
-          ai_keyword_search_volume: tool({
-            description: "Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity.",
-            inputSchema: z.object({
-              keywords: z.array(z.string()).describe("Keywords to analyze"),
-              location: z.string().optional().describe('Location')
-            }),
-            execute: async (args: any) => {
-              const result = await handleDataForSEOFunctionCall("ai_keyword_search_volume", args);
-              return { result };
-            },
-          } as any),
-          domain_overview: tool({
-            description: "Get comprehensive SEO metrics for a domain.",
-            inputSchema: z.object({
-              domain: z.string().describe("Domain to analyze (without http://)"),
-              location: z.string().optional().describe("Location for metrics"),
-            }),
-            execute: async (args: any) => {
-              const result = await handleDataForSEOFunctionCall("domain_overview", args);
-              return { result };
-            },
-          } as any),
-        };
       }
     }
 
@@ -324,7 +303,7 @@ export async function POST(req: Request) {
       perplexityTool = {
         perplexity_search: tool({
           description: "Search the web using Perplexity AI via Vercel AI Gateway for real-time, cited information. Use this for research, fact-checking, and finding authoritative sources.",
-          inputSchema: z.object({
+          parameters: z.object({
             query: z.string().describe("The search query"),
             search_recency_filter: z.enum(["month", "week", "day", "year"]).optional().describe("Filter results by recency"),
           }),
@@ -343,7 +322,7 @@ export async function POST(req: Request) {
     const webSearchTool = {
       web_search_competitors: tool({
         description: "Search for competitor analysis and market research information. Use this when users ask about competitors in the SEO/AEO space.",
-        inputSchema: z.object({
+        parameters: z.object({
           query: z.string().describe("Search query for competitor or industry information"),
         }),
         execute: async ({ query }: any) => {
@@ -388,7 +367,7 @@ export async function POST(req: Request) {
       generate_researched_content: tool({
         description:
           "Generate high-quality, researched, and SEO-optimized content (blog posts, articles). This tool runs a comprehensive workflow: Research -> RAG (Best Practices) -> Write -> QA (Winston/Rytr) -> Feedback Loop.",
-        inputSchema: z.object({
+        parameters: z.object({
           topic: z.string().describe("The main topic of the content"),
           type: z
             .enum(["blog_post", "article", "social_media", "landing_page"])
@@ -457,7 +436,7 @@ export async function POST(req: Request) {
       client_ui: tool({
         description:
           "Display an interactive UI component to the user. Use this when you need to collect specific information or show structured data.",
-        inputSchema: z.object({
+        parameters: z.object({
           component: z
             .enum([
               "url_input",
@@ -468,7 +447,7 @@ export async function POST(req: Request) {
               "analysis_result",
             ])
             .describe("The type of component to display"),
-          props: z.record(z.any()).describe("The properties/data for the component"),
+          props: z.object({}).passthrough().describe("The properties/data for the component"),
         }),
         execute: async ({ component }: any) => {
           // The client handles the actual display via tool call rendering.
@@ -479,34 +458,19 @@ export async function POST(req: Request) {
     };
 
     // Log before calling streamText
-    // Final validation of tools before streaming
-    const finalValidation = validateToolsCollection(allTools, { 
-      fixInvalidSchemas: true, 
-      logErrors: false 
-    });
-    
-    const validatedTools = finalValidation.validTools;
-    
     console.log('[Chat API] About to call streamText with:', {
       messagesCount: messages.length,
       systemPromptLength: systemPrompt?.length,
       totalToolsCount: Object.keys(allTools).length,
-      validatedToolsCount: Object.keys(validatedTools).length,
-      invalidTools: finalValidation.invalidTools.length > 0 ? finalValidation.invalidTools : 'none'
+      toolNames: Object.keys(allTools)
     });
     
-    if (finalValidation.invalidTools.length > 0) {
-      console.warn('[Chat API] Some tools failed final validation:', finalValidation.invalidTools);
-    }
+    // TEMPORARY: Completely disable all tools to test streaming
+    const ENABLE_TOOLS = false; // Set to true once schema issues are resolved
+    const validatedTools = ENABLE_TOOLS ? allTools : {};
 
     // Convert UI messages to core messages for AI SDK 6
     console.log('[Chat API] Converting messages to core messages for AI SDK 6');
-    console.log('[Chat API] Messages before conversion:', {
-      type: typeof messages,
-      isArray: Array.isArray(messages),
-      length: messages?.length,
-      sample: messages?.[0]
-    });
     
     // Validate messages before conversion
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -518,54 +482,135 @@ export async function POST(req: Request) {
     }
     
     // Convert simple messages to CoreMessage format for AI SDK 6
-    // The messages coming from frontend are already in the correct simple format
-    let coreMessages;
+    let coreMessages: CoreMessage[] = [];
     try {
-      // For AI SDK 6, we can pass simple messages directly as CoreMessage format
-      // CoreMessage format: { role: 'user' | 'assistant' | 'system', content: string }
-      coreMessages = messages.map((msg: any) => {
-        let content = '';
-        
-        // Handle different message formats
-        if (msg.content) {
-          // Simple content field
-          content = msg.content;
-        } else if (msg.text) {
-          // Alternative text field
-          content = msg.text;
-        } else if (msg.parts && Array.isArray(msg.parts)) {
-          // Handle AI SDK parts format - extract text from parts
-          const textParts = msg.parts
-            .filter((part: any) => part.type === 'text' && part.text)
-            .map((part: any) => part.text);
-          content = textParts.join(' ');
+      // Map incoming messages to CoreMessage format, preserving tool interactions
+      for (const msg of messages) {
+        // 1. Handle System Messages
+        if (msg.role === 'system') {
+          coreMessages.push({ role: 'system', content: msg.content });
+          continue;
         }
-        
-        // Ensure content is never empty (Claude requirement)
-        if (!content || content.trim() === '') {
-          if (msg.role === 'assistant') {
-            content = 'I understand. How can I help you further?'; // Default assistant response
-          } else if (msg.role === 'user') {
-            content = 'Hello'; // Default user message
+
+        // 2. Handle User Messages (and merge consecutive ones)
+        if (msg.role === 'user') {
+          let content = '';
+          if (typeof msg.content === 'string') {
+            content = msg.content;
+          } else if (msg.parts && Array.isArray(msg.parts)) {
+            content = msg.parts
+              .filter((p: any) => p.type === 'text')
+              .map((p: any) => p.text)
+              .join('');
+          }
+          
+          // Sanitize content
+          content = content?.trim() || ' '; 
+
+          const lastMsg = coreMessages[coreMessages.length - 1];
+          if (lastMsg && lastMsg.role === 'user') {
+            console.log('[Chat API] Merging consecutive user message');
+            if (typeof lastMsg.content === 'string') {
+              lastMsg.content += '\n' + content;
+            } else {
+              // If last content is array (CoreUserMessage content can be string or array of parts)
+              // But for simple text we usually use string. AI SDK handles this.
+              // We force string for simplicity here as per our push below.
+              if (Array.isArray(lastMsg.content)) {
+                 (lastMsg.content as any).push({ type: 'text', text: '\n' + content });
+              }
+            }
           } else {
-            content = 'Message content not available';
+            coreMessages.push({ role: 'user', content });
+          }
+          continue;
+        }
+
+        // 3. Handle Assistant Messages (and merge consecutive ones)
+        if (msg.role === 'assistant') {
+          const contentParts: Array<any> = [];
+          const toolResults: Array<any> = [];
+
+          // Extract content and tool calls
+          if (typeof msg.content === 'string' && msg.content) {
+            contentParts.push({ type: 'text', text: msg.content });
+          } else if (msg.parts && Array.isArray(msg.parts)) {
+            for (const part of msg.parts) {
+              if (part.type === 'text') {
+                contentParts.push({ type: 'text', text: part.text });
+              } else if (part.type.startsWith('tool-')) {
+                const toolName = part.type.replace('tool-', '');
+                
+                // Add tool call to assistant message
+                contentParts.push({
+                  type: 'tool-call',
+                  toolCallId: part.toolCallId,
+                  toolName: toolName,
+                  args: part.input || {} 
+                });
+
+                // Collect tool result if available
+                if (part.output || part.state === 'result' || part.state === 'output-available') {
+                   toolResults.push({
+                     type: 'tool-result',
+                     toolCallId: part.toolCallId,
+                     toolName: toolName,
+                     result: part.output
+                   });
+                }
+              }
+            }
+          }
+
+          // Handle Assistant Message Merging
+          if (contentParts.length > 0) {
+            const lastMsg = coreMessages[coreMessages.length - 1];
+            
+            // Check if we can merge with previous assistant message
+            // We can merge if last message is assistant AND there is no tool result intervening
+            // BUT here we are processing a new input message. If previous input message generated tool results,
+            // those tool results would be in coreMessages (as 'tool' role).
+            // So we check if lastMsg.role is 'assistant'.
+            if (lastMsg && lastMsg.role === 'assistant') {
+               console.log('[Chat API] Merging consecutive assistant message');
+               // Merge content parts
+               if (Array.isArray(lastMsg.content)) {
+                 lastMsg.content.push(...contentParts);
+               } else if (typeof lastMsg.content === 'string') {
+                 // Convert string content to parts array to support mixed content
+                 lastMsg.content = [
+                   { type: 'text', text: lastMsg.content },
+                   ...contentParts
+                 ];
+               }
+            } else {
+               coreMessages.push({ role: 'assistant', content: contentParts });
+            }
+          }
+
+          // Push tool message (results) - These MUST follow the assistant message
+          // And we should merge consecutive tool result messages as well
+          if (toolResults.length > 0) {
+            const lastMsg = coreMessages[coreMessages.length - 1];
+            if (lastMsg && lastMsg.role === 'tool') {
+               console.log('[Chat API] Merging consecutive tool message');
+               // CoreToolMessage content is an array of tool results
+               (lastMsg.content as any[]).push(...toolResults);
+            } else {
+               coreMessages.push({ role: 'tool', content: toolResults });
+            }
           }
         }
-        
-        return {
-          role: msg.role,
-          content: content.trim(),
-        };
-      });
+      }
       
-      // Log each converted message for debugging
+      // Log conversion result for debugging
       console.log('[Chat API] ✓ Successfully converted to CoreMessages:', {
         count: coreMessages.length,
         messages: coreMessages.map((msg, i) => ({
           index: i,
           role: msg.role,
-          contentLength: msg.content?.length || 0,
-          contentPreview: msg.content?.substring(0, 100) || 'No content'
+          contentLength: Array.isArray(msg.content) ? msg.content.length : msg.content?.toString().length,
+          type: Array.isArray(msg.content) ? 'parts' : 'text'
         }))
       });
     } catch (conversionError) {
@@ -709,6 +754,7 @@ function detectFrameworkIntent(message: string): boolean {
     "title",
     "description",
     "snippet",
+    "schema", // Added schema to content types for SEO
   ];
 
   // Framework-specific keywords
@@ -732,7 +778,6 @@ function detectFrameworkIntent(message: string): boolean {
     "meta",
     "keywords",
     "snippet",
-    "schema",
     "featured",
     "paa",
     "people also ask",

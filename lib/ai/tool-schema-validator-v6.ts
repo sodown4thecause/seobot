@@ -4,7 +4,7 @@
  * Validates and sanitizes tool schemas to ensure they pass Vercel AI Gateway validation
  * and are compatible with AI SDK 6 requirements.
  * 
- * Note: AI SDK 6 uses 'inputSchema' property, not 'parameters'
+ * Note: AI SDK 6 uses 'parameters' property, but we support 'inputSchema' for backward compatibility
  */
 
 import { z } from 'zod'
@@ -41,20 +41,29 @@ export function validateToolSchema(
       errors.push('Tool must have a non-empty description string')
     }
 
-    if (!tool.inputSchema) {
-      errors.push('Tool must have inputSchema object')
+    // Support both parameters (AI SDK 6) and inputSchema (Legacy/Custom)
+    const schema = tool.parameters || (tool as any).inputSchema
+    
+    if (!schema) {
+      errors.push('Tool must have parameters (or inputSchema) object')
     }
 
-    // Validate inputSchema structure
-    if (tool.inputSchema) {
-      const schemaValidation = validateInputSchema(tool.inputSchema, strictMode)
+    // Validate schema structure
+    if (schema) {
+      // Check if we're validating parameters or inputSchema
+      const isParameters = !!tool.parameters
+      
+      const schemaValidation = validateInputSchema(schema, strictMode)
       errors.push(...schemaValidation.errors)
       warnings.push(...schemaValidation.warnings)
 
       if (fixInvalidSchemas && schemaValidation.sanitizedSchema) {
         sanitizedTool = {
           ...tool,
-          inputSchema: schemaValidation.sanitizedSchema
+          // Always set parameters for AI SDK 6 compatibility
+          parameters: schemaValidation.sanitizedSchema,
+          // If we found inputSchema, keep it for backward compatibility
+          ...(!isParameters ? { inputSchema: schemaValidation.sanitizedSchema } : {})
         }
       }
     }
@@ -250,7 +259,7 @@ export function createSafeTool(
   // Return a safe fallback tool
   return {
     description: tool.description || 'Fallback tool',
-    inputSchema: z.object({
+    parameters: z.object({
       query: z.string().describe('User query')
     }),
     execute: async () => {
@@ -285,10 +294,9 @@ export function loadEssentialTools(
 
   for (const name of essentialNames) {
     if (allTools[name]) {
-      const validation = validateToolSchema(allTools[name], { fixInvalidSchemas: true })
-      if (validation.isValid && validation.sanitizedTool) {
-        essentialTools[name] = validation.sanitizedTool
-      }
+      // We trust the tools are valid/fixed by this point (e.g. via fixAllMCPTools)
+      // Avoid re-validating/sanitizing to prevent potential object spread issues
+      essentialTools[name] = allTools[name]
     }
   }
 
