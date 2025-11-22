@@ -9,7 +9,7 @@ const serverEnvSchema = z.object({
   
   // AI Provider Keys (Optional if using Gateway)
   OPENAI_API_KEY: z.string().optional(),
-  GOOGLE_API_KEY: z.string().optional(),
+  GOOGLE_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   
   // Vercel AI Gateway

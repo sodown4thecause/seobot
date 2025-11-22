@@ -9,7 +9,7 @@ export interface PerplexitySearchOptions {
   searchRecencyFilter?: 'month' | 'week' | 'day' | 'hour'
   returnCitations?: boolean
   returnImages?: boolean
-  model?: 'llama-3.1-sonar-small-128k-online' | 'llama-3.1-sonar-large-128k-online' | 'llama-3.1-sonar-huge-128k-online'
+  model?: 'sonar' | 'sonar-pro' | 'sonar-reasoning' | 'sonar-reasoning-pro'
 }
 
 export interface PerplexityCitation {
@@ -43,7 +43,7 @@ export async function searchWithPerplexity(
     searchRecencyFilter = 'month',
     returnCitations = true,
     returnImages = false,
-    model = 'llama-3.1-sonar-large-128k-online',
+    model = 'sonar-pro',
   } = options
 
   if (!PERPLEXITY_API_KEY) {

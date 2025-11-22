@@ -43,7 +43,7 @@ Format as JSON.`
 
     try {
       const { text } = await generateText({
-        model: vercelGateway.languageModel('google/gemini-3-pro-preview' as GatewayModelId),
+        model: vercelGateway.languageModel('anthropic/claude-haiku-4.5' as GatewayModelId),
         prompt,
         temperature: 0.4,
       })

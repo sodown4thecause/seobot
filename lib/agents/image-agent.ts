@@ -5,6 +5,7 @@
 
 import { experimental_generateImage as generateImage } from 'ai';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
+import { serverEnv } from '@/lib/config/env';
 import type { GatewayModelId } from '@ai-sdk/gateway';
 
 export interface ImageGenerationParams {
@@ -18,6 +19,12 @@ export class ImageAgent {
    */
   async generate(params: ImageGenerationParams): Promise<string> {
     console.log('[Image Agent] Generating image for:', params.prompt);
+
+    // Check if Google API key is available for image generation
+    if (!serverEnv.GOOGLE_API_KEY) {
+      console.warn('[Image Agent] Google API key not available, skipping image generation');
+      throw new Error('Google API key required for image generation');
+    }
 
     try {
       const { image } = await generateImage({

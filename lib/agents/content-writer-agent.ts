@@ -42,10 +42,10 @@ export class ContentWriterAgent {
     // Build the writing prompt
     const prompt = this.buildPrompt(params)
 
-    // Generate content using Gemini 3 Pro via Vercel AI Gateway for superior quality
+    // Generate content using Claude via Vercel AI Gateway for superior quality
     try {
       const { text } = await generateText({
-        model: vercelGateway.languageModel('google/gemini-3-pro-preview' as GatewayModelId),
+        model: vercelGateway.languageModel('anthropic/claude-haiku-4.5' as GatewayModelId),
         system: this.buildSystemPrompt(guidance),
         prompt: prompt,
         temperature: 0.7,
