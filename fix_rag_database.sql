@@ -74,8 +74,12 @@ BEGIN
     END IF;
 END $$;
 
--- 5. Create or update the vector search function for 1536 dimensions
-CREATE OR REPLACE FUNCTION match_agent_documents_v2(
+-- 5. Drop existing function and create new one with correct dimensions
+DROP FUNCTION IF EXISTS match_agent_documents_v2(vector, text, double precision, integer);
+DROP FUNCTION IF EXISTS match_agent_documents_v2(vector, text, float, integer);
+DROP FUNCTION IF EXISTS match_agent_documents_v2;
+
+CREATE FUNCTION match_agent_documents_v2(
     query_embedding vector(1536),
     agent_type_param text DEFAULT NULL,
     match_threshold float DEFAULT 0.5,
