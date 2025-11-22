@@ -44,15 +44,16 @@ Format as JSON.`
     try {
       console.log('[SEO/AEO Agent] Starting SEO strategy creation with timeout...')
       
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging - AI SDK 6 best practice: 60s for complex generation
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('SEO agent timeout after 10s')), 10000)
+        setTimeout(() => reject(new Error('SEO agent timeout after 60s')), 60000)
       })
       
       const generatePromise = generateText({
         model: vercelGateway.languageModel('anthropic/claude-haiku-4.5' as GatewayModelId),
         prompt,
         temperature: 0.4,
+        maxRetries: 2, // AI SDK 6: Add retries for transient failures
       })
       
       const { text } = await Promise.race([generatePromise, timeoutPromise]) as { text: string }

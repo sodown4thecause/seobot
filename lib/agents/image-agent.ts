@@ -5,7 +5,6 @@
 
 import { experimental_generateImage as generateImage } from 'ai';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
-import { serverEnv } from '@/lib/config/env';
 import type { GatewayModelId } from '@ai-sdk/gateway';
 
 export interface ImageGenerationParams {
@@ -15,16 +14,11 @@ export interface ImageGenerationParams {
 
 export class ImageAgent {
   /**
-   * Generate an image based on a prompt
+   * Generate an image based on a prompt using Gemini via Vercel AI Gateway
+   * Falls back to Google API if gateway is not available
    */
   async generate(params: ImageGenerationParams): Promise<string> {
     console.log('[Image Agent] Generating image for:', params.prompt);
-
-    // Check if Google API key is available for image generation
-    if (!serverEnv.GOOGLE_API_KEY) {
-      console.warn('[Image Agent] Google API key not available, skipping image generation');
-      throw new Error('Google API key required for image generation');
-    }
 
     try {
       const { image } = await generateImage({
@@ -33,7 +27,7 @@ export class ImageAgent {
         aspectRatio: params.aspectRatio || "16:9",
       });
 
-      console.log('[Image Agent] ✓ Image generated');
+      console.log('[Image Agent] ✓ Image generated via Gemini');
       return image.base64; 
     } catch (error) {
       console.error('[Image Agent] Error generating image:', error);

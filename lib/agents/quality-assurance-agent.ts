@@ -34,12 +34,14 @@ export class QualityAssuranceAgent {
    */
   async reviewAndImprove(params: QAReviewParams): Promise<QAReviewResult> {
     console.log('[QA Agent] Starting quality review for:', params.topic)
+    console.log('[QA Agent] Initial content length:', params.content?.length ?? 0)
 
     let currentContent = params.content
     let iterations = 0
     let bestScore = 100
     let bestContent = currentContent
     let lastAnalysis: any = null
+    let rytrImproved = false
 
     while (iterations < this.MAX_ITERATIONS) {
       iterations++
@@ -68,13 +70,26 @@ export class QualityAssuranceAgent {
 
       // Step 2: Improve with Rytr if needed
       if (iterations < this.MAX_ITERATIONS) {
+        if (!currentContent || currentContent.trim().length === 0) {
+          console.warn('[QA Agent] Skipping Rytr improvement – empty content')
+          break
+        }
+
+        console.log('[QA Agent] Current content length before Rytr:', currentContent.length)
         console.log('[QA Agent] Improving content with Rytr...')
         try {
           const improved = await humanizeContent({
             content: currentContent,
             strategy: 'improve',
+            userId: params.userId,
           })
-          currentContent = improved.content
+
+          if (!improved.content || improved.content.trim().length === 0) {
+            console.warn('[QA Agent] Rytr returned empty content – keeping original draft')
+          } else {
+            currentContent = improved.content
+            rytrImproved = true
+          }
         } catch (error) {
           console.warn('[QA Agent] Rytr improvement failed:', error)
           // Continue with current content
@@ -97,9 +112,14 @@ export class QualityAssuranceAgent {
           techniques: this.extractTechniques(bestContent),
           feedback: lastAnalysis?.feedback || null,
         }
-        
-        // Store learning and trigger real-time global knowledge update
-        await storeAndLearn(learning)
+
+        // Only learn from runs where we actually improved content and achieved target AI score
+        if (learning.successful && rytrImproved) {
+          // Store learning and trigger real-time global knowledge update
+          await storeAndLearn(learning)
+        } else {
+          console.log('[QA Agent] Skipping learning storage – unsuccessful or no Rytr improvement')
+        }
         
         // Log cross-user learning insights
         const insights = await getCrossUserInsights(params.contentType)

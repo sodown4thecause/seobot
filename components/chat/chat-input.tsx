@@ -63,7 +63,7 @@ export function ChatInput({
   }, [value])
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full max-w-4xl mx-auto">
       {/* Quick Actions */}
       <AnimatePresence>
         {showQuickActions && (
@@ -71,7 +71,7 @@ export function ChatInput({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.2 }}
             className="mb-4 flex flex-wrap gap-2 justify-center"
           >
             {QUICK_ACTIONS.map((action, index) => (
@@ -79,15 +79,15 @@ export function ChatInput({
                 key={action}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, duration: 0.3 }}
+                transition={{ delay: index * 0.05, duration: 0.2 }}
                 onClick={() => handleQuickAction(action)}
                 disabled={disabled}
                 className={cn(
-                  'glass px-3 py-1.5 rounded-full text-sm text-white/90',
-                  'hover:-translate-y-0.5 hover:text-white hover:shadow-purple',
-                  'transition-all duration-300',
+                  'bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-md text-sm text-zinc-300',
+                  'border border-zinc-700 hover:border-zinc-600',
+                  'transition-all duration-200',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-bright/60'
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500'
                 )}
               >
                 {action}
@@ -98,7 +98,7 @@ export function ChatInput({
       </AnimatePresence>
 
       {/* Input Container */}
-      <div className="glass rounded-xl p-3 md:p-4 shadow-purple">
+      <div className="bg-zinc-900 rounded-lg p-3 md:p-4 border border-zinc-800 shadow-sm focus-within:ring-1 focus-within:ring-zinc-700 transition-all">
         <div className="flex items-end gap-2">
           {/* Left Controls */}
           <div className="flex items-center gap-1 mb-1">
@@ -106,7 +106,7 @@ export function ChatInput({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"
+              className="h-8 w-8 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
               disabled={disabled}
               title="Attach file"
             >
@@ -116,7 +116,7 @@ export function ChatInput({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"
+              className="h-8 w-8 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
               disabled={disabled}
               title="Settings"
             >
@@ -126,7 +126,7 @@ export function ChatInput({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"
+              className="h-8 w-8 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
               disabled={disabled}
               title="More options"
             >
@@ -148,10 +148,10 @@ export function ChatInput({
               rows={1}
               className={cn(
                 'w-full bg-transparent border-none outline-none resize-none',
-                'text-white placeholder:text-white/60',
+                'text-zinc-100 placeholder:text-zinc-600',
                 'min-h-[52px] max-h-[200px]',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
-                'focus:outline-none'
+                'focus:outline-none font-normal text-sm leading-relaxed py-3'
               )}
             />
           </div>
@@ -164,18 +164,18 @@ export function ChatInput({
               onClick={onSubmit}
               disabled={disabled || !value.trim()}
               className={cn(
-                'purple-gradient text-white rounded-lg px-4 py-2',
-                'shadow-purple hover:scale-105 transition-transform duration-300',
-                'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-bright/60'
+                'bg-zinc-100 text-zinc-900 rounded-md px-4 py-2',
+                'hover:bg-zinc-200 transition-colors duration-200',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500'
               )}
             >
               <Send className="h-4 w-4" />
             </Button>
 
             {/* User Avatar */}
-            <Avatar className="h-8 w-8 ring-2 ring-white/20">
-              <AvatarFallback className="bg-primary text-white text-xs font-medium">
+            <Avatar className="h-8 w-8 ring-1 ring-zinc-800">
+              <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs font-medium">
                 {userInitial}
               </AvatarFallback>
             </Avatar>

@@ -64,6 +64,7 @@ export type RytrUseCase =
   | 'text_editing_shorten'
   | 'video_description'
   | 'video_idea'
+  | 'humanize'
 
 export interface RytrGenerateOptions {
   useCase: RytrUseCase
@@ -72,6 +73,7 @@ export interface RytrGenerateOptions {
   language?: string // Default: 'en'
   variations?: number // Number of variations to generate (1-3)
   creativity?: 'low' | 'medium' | 'high' // Default: 'medium'
+  userId?: string // Rytr requires a unique user ID per end user
 }
 
 export interface RytrGenerateResult {
@@ -98,6 +100,7 @@ export async function generateContent(
     language = 'en',
     variations = 1,
     creativity = 'medium',
+    userId,
   } = options
 
   if (!input || input.trim().length === 0) {
@@ -109,17 +112,19 @@ export async function generateContent(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authentication': `Bearer ${serverEnv.RYTR_API_KEY}`,
+        // Rytr docs accept the API key directly in the Authentication header
+        Authentication: serverEnv.RYTR_API_KEY,
       },
       body: JSON.stringify({
-        languageId: language,
-        toneId: tone,
-        useCaseId: useCase,
-        inputContexts: {
-          INPUT_TEXT: input,
-        },
+        languageId: language, // e.g. 'en'
+        toneId: tone, // e.g. 'conversational'
+        useCaseId: useCase, // e.g. 'humanize'
+        inputContexts:
+          useCase === 'humanize'
+            ? { CONTEXT_LABEL: input }
+            : { INPUT_TEXT: input },
         variations,
-        userId: 'USER1', // Required by Rytr API
+        userId: userId || 'ANON_USER',
         format: 'text',
         creativityLevel: creativity, // 'low' | 'medium' | 'high'
       }),
@@ -127,14 +132,27 @@ export async function generateContent(
 
     if (!response.ok) {
       const error = await response.text()
+      console.error('[Rytr] API error response:', response.status, error)
       throw new Error(`Rytr API error: ${response.status} - ${error}`)
     }
 
     const data = await response.json()
 
+    const mainText: string = data.data?.[0]?.text || ''
+    const variationsArr: string[] = data.data?.map((item: any) => item.text) || []
+
+    if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
+      console.warn('[Rytr] Empty or missing data field in response:', JSON.stringify(data).slice(0, 1000))
+    }
+
+    console.log('[Rytr] Generation result lengths:', {
+      mainTextLength: mainText.length,
+      variations: variationsArr.length,
+    })
+
     return {
-      text: data.data?.[0]?.text || '',
-      variations: data.data?.map((item: any) => item.text) || [],
+      text: mainText,
+      variations: variationsArr,
       metadata: {
         useCase,
         tone,
@@ -242,20 +260,17 @@ export async function improveContent(
 export async function humanizeContent(options: {
   content: string
   strategy?: 'improve' | 'expand' | 'rewrite'
+  userId?: string
 }): Promise<{ content: string }> {
-  const { content, strategy = 'improve' } = options
+  const { content, strategy = 'improve', userId } = options
   
-  const useCaseMap = {
-    improve: 'text_editing_improve' as RytrUseCase,
-    expand: 'text_editing_expand' as RytrUseCase,
-    rewrite: 'text_editing_improve' as RytrUseCase,
-  }
-  
+  // For humanization we use Rytr's dedicated 'humanize' use case
   const result = await generateContent({
-    useCase: useCaseMap[strategy],
+    useCase: 'humanize',
     input: content,
-    tone: 'informative',
+    tone: 'conversational',
     creativity: 'high', // Higher creativity for more human-like output
+    userId,
   })
   
   return {

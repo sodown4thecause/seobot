@@ -61,7 +61,10 @@ export async function getContentGuidance(
       getCrossUserInsights(contentType),
     ])
 
-    console.log(`[Content RAG] 🌐 Cross-user insights: ${crossUserInsights.uniqueUsers} users, ${crossUserInsights.successfulLearnings} successful patterns`)
+    console.log(
+      `[Content RAG] 🌐 Cross-user insights: ${crossUserInsights.uniqueUsers} users, ${crossUserInsights.successfulLearnings} successful patterns`
+    )
+    console.log('[Content RAG] Agent docs retrieved:', agentDocs?.length ?? 0)
 
     // Format guidance with cross-user insights
     const guidance = formatGuidance(similarLearnings, bestPractices, agentDocs, keywords, crossUserInsights)

@@ -58,8 +58,8 @@ export function CardSelector({
               key={option.id}
               onClick={() => handleSelect(option.id)}
               className={cn(
-                "p-4 cursor-pointer transition-all hover:border-primary/50",
-                isSelected && "border-primary bg-primary/10"
+                "p-4 cursor-pointer transition-all bg-zinc-900 border-zinc-800 hover:border-zinc-600",
+                isSelected && "border-blue-500 bg-blue-900/10 ring-1 ring-blue-500/20"
               )}
             >
               <div className="flex items-start justify-between">
@@ -67,14 +67,14 @@ export function CardSelector({
                   {option.icon && (
                     <div className="text-2xl mb-2">{option.icon}</div>
                   )}
-                  <h4 className="font-semibold text-sm mb-1">{option.label}</h4>
+                  <h4 className={cn("font-semibold text-sm mb-1", isSelected ? "text-blue-400" : "text-zinc-200")}>{option.label}</h4>
                   {option.description && (
-                    <p className="text-xs text-muted-foreground">{option.description}</p>
+                    <p className="text-xs text-zinc-500">{option.description}</p>
                   )}
                 </div>
                 {isSelected && (
                   <div className="ml-2 flex-shrink-0">
-                    <Check className="w-5 h-5 text-primary" />
+                    <Check className="w-5 h-5 text-blue-500" />
                   </div>
                 )}
               </div>
@@ -86,7 +86,7 @@ export function CardSelector({
         <Button 
           onClick={handleSubmit} 
           disabled={selected.length === 0}
-          className="w-full"
+          className="w-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
         >
           {submitLabel} {selected.length > 0 && `(${selected.length} selected)`}
         </Button>
@@ -94,4 +94,3 @@ export function CardSelector({
     </div>
   )
 }
-

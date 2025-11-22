@@ -34,6 +34,7 @@ export async function storeContentLearning(learning: ContentLearning): Promise<v
       successful: learning.successful,
       techniques_used: learning.techniques,
       feedback: learning.feedback,
+      content_sample: learning.feedback || learning.topic,
       created_at: new Date().toISOString(),
     })
 
@@ -66,14 +67,15 @@ export async function retrieveSimilarLearnings(
   try {
     const supabase = await createClient()
 
-    // CRITICAL: Use service role to access ALL users' successful learnings
-    // This enables cross-user learning where User 1 benefits from User 2's success
+    // Match by topic using ILIKE; keyword matching can be added later with safer filters
+    const topicPattern = `%${topic.replace('%', '\\%').replace('_', '\\_')}%`
+
     const { data, error } = await supabase
       .from('content_learnings')
       .select('user_id, topic, keywords, ai_detection_score, human_probability, techniques_used, feedback, created_at')
       .eq('content_type', contentType)
       .eq('successful', true)
-      .or(`topic.ilike.%${topic}%, keywords.cs.{${topic}}`) // Match topic OR keywords
+      .ilike('topic', topicPattern)
       .order('ai_detection_score', { ascending: true }) // Best scores first
       .limit(limit)
 

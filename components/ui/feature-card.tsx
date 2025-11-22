@@ -23,14 +23,12 @@ export function FeatureCard({
 }: FeatureCardProps) {
   return (
     <motion.div
-      whileHover={{ y: -4, scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.3 }}
+      whileHover={{ y: -2 }}
       className={cn(
         'relative group cursor-pointer',
-        'glass shadow-purple rounded-xl p-6 md:p-8',
-        'text-white transition-all duration-300',
-        'hover:ring-1 hover:ring-cyan-bright/30 hover:shadow-purple-lg',
+        'bg-zinc-900 border border-zinc-800 rounded-lg p-6 md:p-8',
+        'transition-all duration-200',
+        'hover:border-zinc-600',
         className
       )}
       {...props}
@@ -39,7 +37,7 @@ export function FeatureCard({
       {badge && (
         <div className="absolute top-4 right-4">
           {typeof badge === 'string' ? (
-            <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+            <Badge variant="secondary" className="bg-zinc-800 text-zinc-300 border-zinc-700">
               {badge}
             </Badge>
           ) : (
@@ -49,22 +47,17 @@ export function FeatureCard({
       )}
 
       {/* Icon */}
-      <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full glass-dark">
-        <Icon className="w-6 h-6 text-white" />
+      <div className="mb-4 inline-flex items-center justify-center w-10 h-10 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 group-hover:text-zinc-100 group-hover:border-zinc-600 transition-colors">
+        <Icon className="w-5 h-5" />
       </div>
 
       {/* Content */}
-      <h3 className="text-xl md:text-2xl font-semibold mb-3 text-white">
+      <h3 className="text-xl font-semibold mb-3 text-zinc-100 group-hover:text-white transition-colors">
         {title}
       </h3>
-      <p className="text-sm md:text-base text-white/80 leading-relaxed">
+      <p className="text-sm text-zinc-400 leading-relaxed group-hover:text-zinc-300 transition-colors">
         {description}
       </p>
-
-      {/* Hover glow effect */}
-      <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-bright/5 to-primary/5" />
-      </div>
     </motion.div>
   )
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { GradientOrb } from '@/components/ui/gradient-orb'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { WorkflowSelector, WorkflowProgress } from '@/components/workflows'
 import { motion } from 'framer-motion'
