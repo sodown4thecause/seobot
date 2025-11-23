@@ -43,20 +43,22 @@ Format as JSON.`
 
     try {
       console.log('[SEO/AEO Agent] Starting SEO strategy creation with timeout...')
-      
-      // Add timeout to prevent hanging - AI SDK 6 best practice: 60s for complex generation
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('SEO agent timeout after 60s')), 60000)
-      })
-      
-      const generatePromise = generateText({
+
+      const controller = new AbortController()
+      const timeoutMs = 90000
+      const timeout = setTimeout(() => {
+        controller.abort()
+      }, timeoutMs)
+
+      const { text } = (await generateText({
         model: vercelGateway.languageModel('anthropic/claude-haiku-4.5' as GatewayModelId),
         prompt,
         temperature: 0.4,
         maxRetries: 2, // AI SDK 6: Add retries for transient failures
-      })
-      
-      const { text } = await Promise.race([generatePromise, timeoutPromise]) as { text: string }
+        signal: controller.signal,
+      })) as { text: string }
+
+      clearTimeout(timeout)
       console.log('[SEO/AEO Agent] ✓ Strategy generation completed')
 
       // Try to parse as JSON, fallback to structured object
@@ -74,37 +76,43 @@ Format as JSON.`
 
       console.log('[SEO/AEO Agent] ✓ Strategy created successfully')
       return strategy
-    } catch (error) {
-      console.error('[SEO/AEO Agent] Strategy creation failed:', error)
-      // Return comprehensive fallback strategy
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        console.error('[SEO/AEO Agent] Strategy creation aborted due to timeout')
+      } else {
+        console.error('[SEO/AEO Agent] Strategy creation failed:', error)
+      }
+
       const fallbackStrategy = {
         contentStructure: {
           structure: 'Introduction > Key Points > Tools Overview > Conclusion',
           sections: ['intro', 'tools-overview', 'comparison', 'conclusion'],
-          wordCount: 200
+          wordCount: 200,
         },
         keywordPlacement: {
           primary: ['SEO tools', 'content writing'],
           secondary: ['optimization', 'AI tools', 'writing assistant'],
-          density: '2-3%'
+          density: '2-3%',
         },
         citationStrategy: {
           format: 'inline citations',
           sources: 'tool websites and reviews',
-          authority: 'focus on established SEO platforms'
+          authority: 'focus on established SEO platforms',
         },
         platformOptimizations: {
           chatgpt: 'clear section headers and bullet points',
           perplexity: 'include tool comparisons and statistics',
-          claude: 'structured format with actionable insights'
-        }
+          claude: 'structured format with actionable insights',
+        },
       }
-      
+
       console.log('[SEO/AEO Agent] ✓ Using fallback strategy due to error')
       return fallbackStrategy
     }
   }
 }
+
+
 
 
 

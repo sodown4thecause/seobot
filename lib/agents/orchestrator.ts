@@ -91,10 +91,15 @@ export class OrchestratorAgent {
             userId: params.userId,
           })
 
+          const maxWords = params.wordCount ? Math.ceil(params.wordCount * 1.2) : null
+          const cappedDraft = maxWords
+            ? this.trimToWordCount(draftContent.content, maxWords)
+            : draftContent.content
+
           // Step 4: Quality Assurance Loop
           console.log('[Orchestrator] Phase 4: Quality Assurance')
           const qaResult = await this.qaAgent.reviewAndImprove({
-            content: draftContent.content,
+            content: cappedDraft,
             contentType: params.type,
             topic: params.topic,
             keywords: params.keywords,
@@ -113,11 +118,15 @@ export class OrchestratorAgent {
             console.warn('[Orchestrator] Image generation failed:', error)
           }
 
+          let finalContent = maxWords
+            ? this.trimToWordCount(qaResult.content, maxWords)
+            : qaResult.content
+
           console.log('[Orchestrator] ✓ Content generation complete')
           console.log('[Orchestrator] Final AI Score:', qaResult.metadata.aiDetectionScore)
 
           return {
-            content: qaResult.content,
+            content: finalContent,
             featuredImage,
             metadata: {
               ...qaResult.metadata,
@@ -134,6 +143,13 @@ export class OrchestratorAgent {
       console.error('[Orchestrator] Error in content generation:', error)
       throw error
     }
+  }
+
+  private trimToWordCount(content: string, maxWords: number): string {
+    if (!content || !maxWords) return content
+    const words = content.split(/\s+/)
+    if (words.length <= maxWords) return content
+    return words.slice(0, maxWords).join(' ') + '…'
   }
 }
 

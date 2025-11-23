@@ -3,7 +3,7 @@
  */
 
 import { analyzeContent } from '@/lib/mcp/winston-client'
-import { humanizeContent } from '@/lib/external-apis/rytr'
+import { humanizeContent } from '@/lib/external-apis/humanization-service'
 import { storeAndLearn, getCrossUserInsights } from '@/lib/ai/learning-storage'
 
 export interface QAReviewParams {
@@ -42,6 +42,7 @@ export class QualityAssuranceAgent {
     let bestContent = currentContent
     let lastAnalysis: any = null
     let rytrImproved = false
+    let rytrAttempted = false
 
     while (iterations < this.MAX_ITERATIONS) {
       iterations++
@@ -68,30 +69,34 @@ export class QualityAssuranceAgent {
         break
       }
 
-      // Step 2: Improve with Rytr if needed
+      // Step 2: Humanize content with multi-provider fallback
       if (iterations < this.MAX_ITERATIONS) {
         if (!currentContent || currentContent.trim().length === 0) {
-          console.warn('[QA Agent] Skipping Rytr improvement – empty content')
+          console.warn('[QA Agent] Skipping humanization – empty content')
           break
         }
 
-        console.log('[QA Agent] Current content length before Rytr:', currentContent.length)
-        console.log('[QA Agent] Improving content with Rytr...')
+        console.log('[QA Agent] Current content length before humanization:', currentContent.length)
+        console.log('[QA Agent] Humanizing content (multi-provider)...')
         try {
-          const improved = await humanizeContent({
+          const result = await humanizeContent({
             content: currentContent,
-            strategy: 'improve',
             userId: params.userId,
+            disableRytr: rytrAttempted,
           })
 
-          if (!improved.content || improved.content.trim().length === 0) {
-            console.warn('[QA Agent] Rytr returned empty content – keeping original draft')
+          if (!result.content || result.content.trim().length === 0) {
+            console.warn('[QA Agent] Humanization returned empty content – keeping original draft')
           } else {
-            currentContent = improved.content
-            rytrImproved = true
+            console.log(`[QA Agent] ✓ Humanization successful using: ${result.provider}`)
+            currentContent = result.content
+            rytrImproved = true // Keep this flag for analytics (even if not Rytr)
+            if (!rytrAttempted) {
+              rytrAttempted = true
+            }
           }
         } catch (error) {
-          console.warn('[QA Agent] Rytr improvement failed:', error)
+          console.warn('[QA Agent] Humanization failed:', error)
           // Continue with current content
           break
         }

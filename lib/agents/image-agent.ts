@@ -3,9 +3,8 @@
  * Generates relevant images for content using Google Gemini Flash Image
  */
 
-import { experimental_generateImage as generateImage } from 'ai';
-import { vercelGateway } from '@/lib/ai/gateway-provider';
-import type { GatewayModelId } from '@ai-sdk/gateway';
+import { Buffer } from 'node:buffer';
+import { generateImageWithGemini } from '@/lib/ai/image-generation';
 
 export interface ImageGenerationParams {
   prompt: string;
@@ -21,20 +20,23 @@ export class ImageAgent {
     console.log('[Image Agent] Generating image for:', params.prompt);
 
     try {
-      const { image } = await generateImage({
-        model: vercelGateway.imageModel('google/gemini-2.5-flash-image' as GatewayModelId),
+      const geminiImage = await generateImageWithGemini({
         prompt: params.prompt,
-        aspectRatio: params.aspectRatio || "16:9",
+        type: 'blog',
+        style: 'artistic',
+        size: 'large',
       });
 
       console.log('[Image Agent] ✓ Image generated via Gemini');
-      return image.base64; 
+      return Buffer.from(geminiImage.data).toString('base64');
     } catch (error) {
       console.error('[Image Agent] Error generating image:', error);
       throw error;
     }
   }
 }
+
+
 
 
 

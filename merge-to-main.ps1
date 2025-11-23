@@ -27,3 +27,5 @@ if ($conflicts -match "conflict") {
     git status
 }
 
+
+

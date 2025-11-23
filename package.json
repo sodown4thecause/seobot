@@ -82,6 +82,7 @@
   },
   "devDependencies": {
     "@ai-sdk/openai": "^2.0.71",
+    "@gradio/client": "^2.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -1,1675 +1,657 @@
-> seo-platform@0.1.0 dev
-> next dev
-
- ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
- We detected multiple lockfiles and selected the directory of C:\Users\User\package-lock.json as the root directory.
- To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
-   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
- Detected additional lockfiles: 
-   * C:\Users\User\Documents\seo ragbot\seo-platform\package-lock.json
-
-   ▲ Next.js 16.0.1 (Turbopack)
-   - Local:        http://localhost:3000
-   - Network:      http://10.101.56.51:3000
-   - Environments: .env.local, .env
-
  ✓ Starting...
- ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
- ✓ Ready in 3.3s
+ ○ Compiling proxy ...
+ ✓ Ready in 16.1s
  ○ Compiling /dashboard ...
 [Agent Registry] Initialized 4 agents
- GET /dashboard 200 in 12.5s (compile: 9.9s, proxy.ts: 1900ms, render: 645ms)
- GET /api/admin/profile 404 in 1347ms (compile: 1139ms, render: 208ms)
- GET /api/conversations?status=active&limit=50 404 in 1265ms (compile: 1162ms, render: 103ms)
+ GET /dashboard 200 in 27.6s (compile: 27.2s, proxy.ts: 27ms, render: 389ms)
+ GET /api/admin/profile 404 in 3.8s (compile: 3.2s, render: 608ms)
+ GET /api/conversations?status=active&limit=50 404 in 3.7s (compile: 3.4s, render: 358ms)
+ ○ Compiling /api/chat ...
+[Gateway] Requested embedding model: openai/text-embedding-3-small
+[Gateway] Using gateway for embedding: openai/text-embedding-3-small
+[Chat API] POST handler called
 [Redis] Client initialized
-[MCP] Connecting to DataForSEO MCP server at: https://mcp.dataforseo.com/http
-[MCP] Connected to DataForSEO MCP server
-[MCP] Loaded 67 tools from DataForSEO MCP server
-[MCP] Connecting to Firecrawl MCP server at: https://mcp.firecrawl.dev/***/v2/mcp
-[MCP] Connected to Firecrawl MCP server
-[MCP] Loaded 6 tools from Firecrawl MCP server
-[Chat API] Loaded 6 Firecrawl tools
-[MCP] Connecting to Jina MCP server at: https://mcp.jina.ai/sse
-[MCP] Connected to Jina MCP server
-[MCP] Loaded 15 tools from Jina MCP server
-[Chat API] Loaded 15 Jina tools
-[Chat API] Loaded 1 Winston MCP tools
-AI_APICallError: Method Not Allowed
-    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_69042624._.js:3290:24)
-    at async postToApi (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_69042624._.js:3182:36)
-    at async Proxy.doStream (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_@ai-sdk_openai_dist_index_mjs_46c6ed8d._.js:3652:54)
-    at async fn (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:5741:45)
-    at async (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:1883:28)
-    at async _retryWithExponentialBackoff (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:2020:16)
-    at async streamStep (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:5699:112)
-    at async fn (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:6043:17)
-    at async (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:1883:28) {
-  cause: undefined,
-  url: 'https://ai-gateway.vercel.sh/v1/ai/responses/responses',
-  requestBodyValues: {
-  model: 'openai/gpt-4o',
-  input: [
-  {
-  role: 'developer',
-  content: 'You are an expert SEO assistant helping users improve their search rankings and create optimized content. You are friendly, professional, and provide actionable advice.\n\nYour capabilities include:\n- Analyzing websites and competitors\n- Finding keyword opportunities\n- Creating SEO-optimized content\n- Validating content quality and originality\n- Providing strategic recommendations\n- Guiding users through setup processes\n\nYou have access to 40+ SEO tools through the DataForSEO MCP server. These tools use simplified filter schemas optimized for LLM usage, making them easy to use. The tools cover:\n- AI Optimization (ChatGPT, Claude, Perplexity analysis)\n- Keyword Research (search volume, suggestions, difficulty)\n- SERP Analysis (Google rankings, SERP features)\n- Competitor Analysis (domain overlap, competitor discovery)\n- Domain Analysis (traffic, keywords, rankings, technologies)\n- On-Page Analysis (content parsing, Lighthouse audits)\n- Content Generation (optimized content creation)\n\nFor high-quality article or blog post requests, use the \'generate_researched_content\' tool. This specialized tool handles the entire workflow:\n1. Deep research on the topic\n2. RAG-based optimization using best practices\n3. Content writing with "human-like" quality\n4. Automated QA loop with Winston AI (detection) and Rytr (improvement)\n5. Continuous learning loop\n\nYou also have access to content quality and generation tools:\n- Winston AI: Plagiarism detection, AI content detection, SEO validation\n- Rytr AI: SEO content generation, meta titles/descriptions, content improvement\n- Firecrawl: Web scraping and content extraction\n- Perplexity: Citation-based research with authoritative sources\n- OpenAI: Chat completions and embeddings\n\nWhen generating or validating content:\n1. Use Rytr to generate SEO-optimized content with proper tone and keywords\n2. Use Winston AI to validate content for plagiarism and AI detection\n3. Ensure all content is original, engaging, and SEO-compliant\n4. Provide recommendations for improving content quality\n\nBe conversational and helpful. Ask clarifying questions when needed. Keep responses concise but informative.'
-},
-  { role: 'user', content: [ { type: 'input_text', text: 'hey' } ] }
-],
-  temperature: undefined,
-  top_p: undefined,
-  max_output_tokens: undefined,
-  conversation: undefined,
-  max_tool_calls: undefined,
-  metadata: undefined,
-  parallel_tool_calls: undefined,
-  previous_response_id: undefined,
-  store: undefined,
-  user: undefined,
-  instructions: undefined,
-  service_tier: undefined,
-  include: undefined,
-  prompt_cache_key: undefined,
-  prompt_cache_retention: undefined,
-  safety_identifier: undefined,
-  top_logprobs: undefined,
-  truncation: undefined,
+[Chat API] About to parse request body
+[Chat API] Body parsed successfully
+[Chat API] Request body: {
+  "id": "saHYhKiEtT0PZ5o6",
+  "messages": [
+    {
+      "role": "user",
+      "content": "write a 200 word article about AI and web development",
+      "id": "n653tgYvIkPGJs54"
+    }
+  ],
+  "trigger": "submit-message"
+}
+[Chat API] Messages type: object
+[Chat API] Messages is array: true
+[Chat API] Messages length: 1
+[Chat API] First message: {
+  role: 'user',
+  content: 'write a 200 word article about AI and web development',
+  id: 'n653tgYvIkPGJs54'
+}
+[RAG] Cache miss, performing retrieval for "write a 200 word article about AI and web developm..."
+[Embedding] Generated embedding for text (53 chars) in 1180ms
+[RAG] No results found (1509ms)
+[RAG] Retrying with lower threshold...
+[RAG] Cache miss, performing retrieval for "write a 200 word article about AI and web developm..."
+[Embedding] Cache hit for text (53 chars) in 133ms
+[RAG] No results found (418ms)
+[Chat API] Agent routing result: {
+  agent: 'content',
+  confidence: 0.9,
+  reasoning: 'Query requires content creation with research, optimization, and humanization',
+  toolsCount: 11
+}
+[Chat API] Loading MCP tools for content agent
+[Chat API] Loading DataForSEO MCP tools for content agent
+[Schema Fixer] Starting to fix 67 MCP tools
+[Schema Fixer] Fixed 67/67 tools
+[Schema Validator] 67/67 tools have valid object schemas
+[Chat API] ✓ Loaded 67 DataForSEO tools
+[Chat API] Loading Firecrawl MCP tools for content agent
+[Schema Fixer] Starting to fix 6 MCP tools
+[Schema Fixer] Fixed 6/6 tools
+[Schema Validator] 6/6 tools have valid object schemas
+[Chat API] ✓ Loaded 6 Firecrawl tools
+[Chat API] Loading Jina MCP tools for content agent
+[Schema Fixer] Starting to fix 15 MCP tools
+[Schema Fixer] Fixed 15/15 tools
+[Schema Validator] 15/15 tools have valid object schemas
+[Chat API] ✓ Loaded 15 Jina tools
+[Chat API] Loading Winston MCP tools for content agent feedback loop
+[Schema Fixer] Starting to fix 1 MCP tools
+[Schema Fixer] Tool winston_check_quality has no parameters
+[Schema Fixer] Fixed 1/1 tools
+[Schema Validator] 1/1 tools have valid object schemas
+[Chat API] ✓ Loaded 1 Winston tools
+[Chat API] ✓ Loaded 12 content quality tools
+[Chat API] ✓ Loaded Perplexity search tool via Vercel AI Gateway
+[Chat API] Total MCP tools loaded: 89
+[Essential Tools] Loaded 6/9 essential tools
+[Chat API] Essential tools selected: 6
+[Chat API] ✓ Core tools included: [
+  'generate_researched_content',
+  'perplexity_search',
+  'web_search_competitors'
+]
+[Chat API] Tool loading summary: {
+  dataforseo: { loaded: 67, failed: false },
+  firecrawl: { loaded: 6, failed: false },
+  jina: { loaded: 15, failed: false },
+  winston: { loaded: 1, failed: false },
+  essential_selected: 6
+}
+[Chat API] All tools loaded: {
+  totalToolsCount: 22,
+  toolNames: [
+  'generate_researched_content',
+  'perplexity_search',
+  'web_search_competitors',
+  'validate_content',
+  'check_plagiarism',
+  'check_ai_content',
+  'generate_seo_content',
+  'generate_blog_section',
+  'generate_meta_title',
+  'generate_meta_description',
+  'improve_content',
+  'expand_content',
+  'validate_content_quality',
+  'analyze_seo_content',
+  'fact_check_content',
+  'search_web',
+  'read_url',
+  'on_page_lighthouse',
+  'keywords_data_google_ads_search_volume',
+  'serp_organic_live_advanced',
+  'firecrawl_scrape',
+  'client_ui'
+]
+}
+[Chat API] ✓ Final validated tools for streamText: {
+  count: 4,
   tools: [
-  {
-  type: 'function',
-  name: 'keywords_data_google_ads_search_volume',
-  description: 'Get search volume data for keywords from Google Ads',
-  parameters: {
-  type: 'object',
-  properties: {
-  location_name: {
-  type: [ 'string', 'null' ],
-  default: null,
-  description: 'full name of the location\noptional field\nin format "Country"\nexample:\nUnited Kingdom'
-},
-  language_code: {
-  type: [ 'string', 'null' ],
-  default: null,
-  description: 'Language two-letter ISO code (e.g., \'en\').\noptional field'
-},
-  keywords: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Array of keywords to get search volume for'
-}
-},
-  required: [ 'keywords' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'on_page_content_parsing',
-  description: 'This endpoint allows parsing the content on any page you specify and will return the structured content of the target page, including link URLs, anchors, headings, and textual content.',
-  parameters: {
-  type: 'object',
-  properties: {
-  url: { type: 'string', description: 'URL of the page to parse' },
-  enable_javascript: { type: 'boolean', description: 'Enable JavaScript rendering' },
-  custom_js: { type: 'string', description: 'Custom JavaScript code to execute' },
-  custom_user_agent: { type: 'string', description: 'Custom User-Agent header' },
-  accept_language: { type: 'string', description: 'Accept-Language header value' }
-},
-  required: [ 'url' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'on_page_lighthouse',
-  description: 'The OnPage Lighthouse API is based on Google’s open-source Lighthouse project for measuring the quality of web pages and web apps.',
-  parameters: {
-  type: 'object',
-  properties: {
-  url: { type: 'string', description: 'URL of the page to parse' },
-  enable_javascript: { type: 'boolean', description: 'Enable JavaScript rendering' },
-  custom_js: { type: 'string', description: 'Custom JavaScript code to execute' },
-  custom_user_agent: { type: 'string', description: 'Custom User-Agent header' },
-  accept_language: { type: 'string', description: 'Accept-Language header value' }
-},
-  required: [ 'url' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'dataforseo_labs_google_ranked_keywords',
-  description: 'This endpoint will provide you with the list of keywords that any domain or webpage is ranking for. You will also get SERP elements related to the keyword position, as well as impressions, monthly searches and other data relevant to the returned keywords.',
-  parameters: {
-  type: 'object',
-  properties: {
-  target: {
-  type: 'string',
-  description: 'domain name or page url\nrequired field\nthe domain name of the target website or URL of the target webpage;\nthe domain name must be specified without https:// or www.;\nthe webpage URL must be specified with https:// or www.\nNote: if you specify the webpage URL without https:// or www., the result will be returned for the entire domain rather than the specific page\n'
-},
-  location_name: {
-  type: 'string',
-  default: 'United States',
-  description: 'full name of the location\nrequired field\nonly in format "Country" (not "City" or "Region")\nexample:\n\'United Kingdom\', \'United States\', \'Canada\''
-},
-  language_code: {
-  type: 'string',
-  default: 'en',
-  description: 'language code\n        required field\n        example:\n        en'
-},
-  limit: {
-  type: 'number',
-  minimum: 1,
-  maximum: 1000,
-  default: 10,
-  description: 'Maximum number of keywords to return'
-},
-  offset: {
-  type: 'number',
-  minimum: 0,
-  description: 'offset in the results array of returned keywords\n        optional field\n        default value: 0\n        if you specify the 10 value, the first ten keywords in the results array will be omitted and the data will be provided for the successive keywords'
-},
-  filters: {
-  type: 'array',
-  items: {
-  anyOf: [
-  {
-  type: 'array',
-  items: { type: [ 'string', 'number', 'boolean' ] },
-  minItems: 3,
-  maxItems: 3
-},
-  { type: 'string', enum: [ 'and', 'or' ] },
-  { type: 'array', items: {}, minItems: 3, maxItems: 3 },
-  { anyOf: [ { type: 'string' }, { type: 'number' } ] }
-]
-},
-  maxItems: 3,
-  description: 'Array of filter conditions and logical operators. Each filter condition is an array of [field, operator, value].\n        Maximum 8 filters allowed.\n        Available operators: =, <>, <, <=, >, >=, in, not_in, like, not_like, ilike, not_ilike, regex, not_regex, match, not_match\n        Logical operators: "and", "or"\n        Examples:\n        Simple filter: [["ranked_serp_element.serp_item.rank_group","<=",10]]\n        With logical operator: [["ranked_serp_element.serp_item.rank_group","<=",10],"or",["ranked_serp_element.serp_item.type","<>","paid"]]\n        Complex filter: [["keyword_data.keyword_info.search_volume","<>",0],"and",[["ranked_serp_element.serp_item.type","<>","paid"],"or",["ranked_serp_element.serp_item.is_malicious","=",false]]]'
-},
-  order_by: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'results sorting rules\noptional field\nyou can use the same values as in the filters array to sort the results\npossible sorting types:\nasc – results will be sorted in the ascending order\ndesc – results will be sorted in the descending order\nyou should use a comma to set up a sorting type\nexample:\n["keyword_data.keyword_info.competition,desc"]\ndefault rule:\n["ranked_serp_element.serp_item.rank_group,asc"]\nnote that you can set no more than three sorting rules in a single request\nyou should use a comma to separate several sorting rules\nexample:\n["keyword_data.keyword_info.search_volume,desc","keyword_data.keyword_info.cpc,desc"]'
-},
-  include_subdomains: { type: 'boolean', description: 'Include keywords from subdomains' },
-  include_clickstream_data: {
-  type: 'boolean',
-  default: false,
-  description: 'Include or exclude data from clickstream-based metrics in the result'
-}
-},
-  required: [ 'target' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'dataforseo_labs_google_competitors_domain',
-  description: 'This endpoint will provide you with a full overview of ranking and traffic data of the competitor domains from organic and paid search. In addition to that, you will get the metrics specific to the keywords both competitor domains and your domain rank for within the same SERP.',
-  parameters: {
-  type: 'object',
-  properties: {
-  target: { type: 'string', description: 'target domain' },
-  location_name: {
-  type: 'string',
-  default: 'United States',
-  description: 'full name of the location\nrequired field\nonly in format "Country" (not "City" or "Region")\nexample:\n\'United Kingdom\', \'United States\', \'Canada\''
-},
-  language_code: {
-  type: 'string',
-  default: 'en',
-  description: 'language code\n        required field\n        example:\n        en'
-},
-  ignore_synonyms: {
-  type: 'boolean',
-  default: true,
-  description: 'ignore highly similar keywords, if set to true, results will be more accurate'
-},
-  limit: {
-  type: 'number',
-  minimum: 1,
-  maximum: 1000,
-  default: 10,
-  description: 'Maximum number of keywords to return'
-},
-  offset: {
-  type: 'number',
-  minimum: 0,
-  description: 'offset in the results array of returned keywords\n        optional field\n        default value: 0\n        if you specify the 10 value, the first ten keywords in the results array will be omitted and the data will be provided for the successive keywords'
-},
-  filters: {
-  type: 'array',
-  items: {
-  anyOf: [
-  {
-  type: 'array',
-  items: { type: [ 'string', 'number', 'boolean' ] },
-  minItems: 3,
-  maxItems: 3
-},
-  { type: 'string', enum: [ 'and', 'or' ] },
-  { type: 'array', items: {}, minItems: 3, maxItems: 3 },
-  { anyOf: [ { type: 'string' }, { type: 'number' } ] }
-]
-},
-  maxItems: 3,
-  description: 'you can add several filters at once (8 filters maximum)\n        you should set a logical operator and, or between the conditions\n        the following operators are supported:\n        regex, not_regex, <, <=, >, >=, =, <>, in, not_in, match, not_match, ilike, not_ilike, like, not_like\n        you can use the % operator with like and not_like, as well as ilike and not_ilike to match any string of zero or more characters\n        merge operator must be a string and connect two other arrays, availible values: or, and.\n        example:\n        ["metrics.organic.count",">",50]\n        [["metrics.organic.pos_1","<>",0],"and",["metrics.organic.impressions_etv",">=","10"]]\n\n        [[["metrics.organic.count",">=",50],"and",["metrics.organic.pos_1","in",[1,5]]],\n        "or",\n        ["metrics.organic.etv",">=","100"]]'
-},
-  order_by: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'results sorting rules\noptional field\nyou can use the same values as in the filters array to sort the results\npossible sorting types:\nasc – results will be sorted in the ascending order\ndesc – results will be sorted in the descending order\nyou should use a comma to set up a sorting parameter\ndefault rule:\n["relevance,desc"]\nexample:\n["relevance,desc","keyword_info.search_volume,desc"]'
-},
-  exclude_top_domains: {
-  type: 'boolean',
-  default: true,
-  description: 'indicates whether to exclude world\'s largest websites\n        optional field\n        default value: false\n        set to true if you want to get highly-relevant competitors excluding the top websites'
-},
-  include_clickstream_data: {
-  type: 'boolean',
-  default: false,
-  description: 'Include or exclude data from clickstream-based metrics in the result'
-}
-},
-  required: [ 'target' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'dataforseo_labs_google_domain_rank_overview',
-  description: 'This endpoint will provide you with ranking and traffic data from organic and paid search for the specified domain. You will be able to review the domain ranking distribution in SERPs as well as estimated monthly traffic volume for both organic and paid results.',
-  parameters: {
-  type: 'object',
-  properties: {
-  target: { type: 'string', description: 'target domain' },
-  location_name: {
-  type: 'string',
-  default: 'United States',
-  description: 'full name of the location\nrequired field\nonly in format "Country" (not "City" or "Region")\nexample:\n\'United Kingdom\', \'United States\', \'Canada\''
-},
-  language_code: {
-  type: 'string',
-  default: 'en',
-  description: 'language code\n        required field\n        example:\n        en'
-},
-  ignore_synonyms: {
-  type: 'boolean',
-  default: true,
-  description: 'ignore highly similar keywords, if set to true, results will be more accurate'
-}
-},
-  required: [ 'target' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'backlinks_backlinks',
-  description: 'This endpoint will provide you with a list of backlinks and relevant data for the specified domain, subdomain, or webpage',
-  parameters: {
-  type: 'object',
-  properties: {
-  target: {
-  type: 'string',
-  description: 'domain, subdomain or webpage to get backlinks for\n        required field\na domain or a subdomain should be specified without https:// and www.\na page should be specified with absolute URL (including http:// or https://)'
-},
-  mode: {
-  type: 'string',
-  default: 'as_is',
-  description: 'results grouping type\noptional field\npossible grouping types:\nas_is – returns all backlinks\none_per_domain – returns one backlink per domain\none_per_anchor – returns one backlink per anchor\ndefault value: as_is'
-},
-  limit: {
-  type: 'number',
-  minimum: 1,
-  maximum: 1000,
-  default: 10,
-  description: 'the maximum number of returned backlinks'
-},
-  offset: {
-  type: 'number',
-  minimum: 0,
-  description: 'offset in the results array of the returned backlinks\noptional field\ndefault value: 0\nif you specify the 10 value, the first ten backlinks in the results array will be omitted and the data will be provided for the successive backlinks'
-},
-  filters: {
-  type: 'array',
-  items: {
-  anyOf: [
-  {
-  type: 'array',
-  items: { type: [ 'string', 'number', 'boolean' ] },
-  minItems: 3,
-  maxItems: 3
-},
-  { type: 'string', enum: [ 'and', 'or' ] },
-  { type: 'array', items: {}, minItems: 3, maxItems: 3 },
-  { anyOf: [ { type: 'string' }, { type: 'number' } ] }
-]
-},
-  maxItems: 3,
-  description: 'array of results filtering parameters\noptional field\nyou can add several filters at once (8 filters maximum)\nyou should set a logical operator and, or between the conditions\nthe following operators are supported:\n=, <>, in, not_in, like, not_like, ilike, not_ilike, regex, not_regex, match, not_match\nyou can use the % operator with like and not_like to match any string of zero or more characters\nexample:\n["rank",">","80"]\n[["page_from_rank",">","55"],\n"and",\n["dofollow","=",true]]\n\n[["first_seen",">","2017-10-23 11:31:45 +00:00"],\n"and",\n[["anchor","like","%seo%"],"or",["text_pre","like","%seo%"]]]'
-},
-  order_by: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'results sorting rules\noptional field\nyou can use the same values as in the filters array to sort the results\npossible sorting types:\nasc – results will be sorted in the ascending order\ndesc – results will be sorted in the descending order\nyou should use a comma to set up a sorting type\nexample:\n["rank,desc"]\nnote that you can set no more than three sorting rules in a single request\nyou should use a comma to separate several sorting rules\nexample:\n["domain_from_rank,desc","page_from_rank,asc"]'
-}
-},
-  required: [ 'target' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'backlinks_summary',
-  description: 'This endpoint will provide you with an overview of backlinks data available for a given domain, subdomain, or webpage',
-  parameters: {
-  type: 'object',
-  properties: {
-  target: {
-  type: 'string',
-  description: 'domain, subdomain or webpage to get backlinks for\n        required field\na domain or a subdomain should be specified without https:// and www.\na page should be specified with absolute URL (including http:// or https://)'
-},
-  include_subdomains: {
-  type: 'boolean',
-  description: 'indicates if indirect links to the target will be included in the results\nif set to true, the results will include data on indirect links pointing to a page that either redirects to the target, or points to a canonical page\nif set to false, indirect links will be ignored',
-  default: true
-},
-  exclude_internal_backlinks: {
-  type: 'boolean',
-  description: 'indicates if internal backlinks from subdomains to the target will be excluded from the results\nif set to true, the results will not include data on internal backlinks from subdomains of the same domain as target\nif set to false, internal links will be included in the results',
-  default: true
-}
-},
-  required: [ 'target' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'firecrawl_scrape',
-  description: '\nScrape content from a single URL with advanced options. \nThis is the most powerful, fastest and most reliable scraper tool, if available you should always default to using this tool for any web scraping needs.\n\n**Best for:** Single page content extraction, when you know exactly which page contains the information.\n**Not recommended for:** Multiple pages (use batch_scrape), unknown page (use search), structured data (use extract).\n**Common mistakes:** Using scrape for a list of URLs (use batch_scrape instead). If batch scrape doesnt work, just use scrape and call it multiple times.\n**Prompt Example:** "Get the content of the page at https://example.com."\n**Usage Example:**\n```json\n{\n  "name": "firecrawl_scrape",\n  "arguments": {\n    "url": "https://example.com",\n    "formats": ["markdown"],\n    "maxAge": 172800000\n  }\n}\n```\n**Performance:** Add maxAge parameter for 500% faster scrapes using cached data.\n**Returns:** Markdown, HTML, or other formats as specified.\n**Safe Mode:** Read-only content extraction. Interactive actions (click, write, executeJavascript) are disabled for security.\n',
-  parameters: {
-  type: 'object',
-  properties: {
-  url: { type: 'string', format: 'uri' },
-  formats: {
-  type: 'array',
-  items: {
-  anyOf: [
-  {
-  type: 'string',
-  enum: [
-  'markdown',
-  'html',
-  'rawHtml',
-  'screenshot',
-  'links',
-  'summary',
-  'changeTracking',
-  'branding'
-]
-},
-  {
-  type: 'object',
-  properties: {
-  type: { type: 'string', const: 'json' },
-  prompt: { type: 'string' },
-  schema: {
-  type: 'object',
-  propertyNames: { type: 'string' },
-  additionalProperties: {}
-}
-},
-  required: [ 'type' ],
-  additionalProperties: false
-},
-  {
-  type: 'object',
-  properties: {
-  type: { type: 'string', const: 'screenshot' },
-  fullPage: { type: 'boolean' },
-  quality: { type: 'number' },
-  viewport: {
-  type: 'object',
-  properties: { width: { type: 'number' }, height: { type: 'number' } },
-  required: [ 'width', 'height' ],
-  additionalProperties: false
-}
-},
-  required: [ 'type' ],
-  additionalProperties: false
-}
+  'web_search_competitors',
+  'perplexity_search',
+  'generate_researched_content',
+  'client_ui'
 ]
 }
-},
-  parsers: {
-  type: 'array',
-  items: {
-  anyOf: [
-  { type: 'string', enum: [ 'pdf' ] },
-  {
-  type: 'object',
-  properties: {
-  type: { type: 'string', enum: [ 'pdf' ] },
-  maxPages: { type: 'integer', minimum: 1, maximum: 10000 }
-},
-  required: [ 'type' ],
-  additionalProperties: false
+[Chat API] Converting messages to core messages for AI SDK 6
+[Chat API] ✓ Successfully converted to CoreMessages: {
+  count: 1,
+  messages: [ { index: 0, role: 'user', contentLength: 53, type: 'text' } ]
 }
-]
-}
-},
-  onlyMainContent: { type: 'boolean' },
-  includeTags: { type: 'array', items: { type: 'string' } },
-  excludeTags: { type: 'array', items: { type: 'string' } },
-  waitFor: { type: 'number' },
-  mobile: { type: 'boolean' },
-  skipTlsVerification: { type: 'boolean' },
-  removeBase64Images: { type: 'boolean' },
-  location: {
-  type: 'object',
-  properties: {
-  country: { type: 'string' },
-  languages: { type: 'array', items: { type: 'string' } }
-},
-  additionalProperties: false
-},
-  storeInCache: { type: 'boolean' },
-  maxAge: { type: 'number' }
-},
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  required: [ 'url' ],
-  additionalProperties: false
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'firecrawl_map',
-  description: '\nMap a website to discover all indexed URLs on the site.\n\n**Best for:** Discovering URLs on a website before deciding what to scrape; finding specific sections of a website.\n**Not recommended for:** When you already know which specific URL you need (use scrape or batch_scrape); when you need the content of the pages (use scrape after mapping).\n**Common mistakes:** Using crawl to discover URLs instead of map.\n**Prompt Example:** "List all URLs on example.com."\n**Usage Example:**\n```json\n{\n  "name": "firecrawl_map",\n  "arguments": {\n    "url": "https://example.com"\n  }\n}\n```\n**Returns:** Array of URLs found on the site.\n',
-  parameters: {
-  type: 'object',
-  properties: {
-  url: { type: 'string', format: 'uri' },
-  search: { type: 'string' },
-  sitemap: { type: 'string', enum: [ 'include', 'skip', 'only' ] },
-  includeSubdomains: { type: 'boolean' },
-  limit: { type: 'number' },
-  ignoreQueryParameters: { type: 'boolean' }
-},
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  required: [ 'url' ],
-  additionalProperties: false
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'firecrawl_search',
-  description: '\nSearch the web and optionally extract content from search results. This is the most powerful web search tool available, and if available you should always default to using this tool for any web search needs.\n\nThe query also supports search operators, that you can use if needed to refine the search:\n| Operator | Functionality | Examples |\n---|-|-|\n| `""` | Non-fuzzy matches a string of text | `"Firecrawl"`\n| `-` | Excludes certain keywords or negates other operators | `-bad`, `-site:firecrawl.dev`\n| `site:` | Only returns results from a specified website | `site:firecrawl.dev`\n| `inurl:` | Only returns results that include a word in the URL | `inurl:firecrawl`\n| `allinurl:` | Only returns results that include multiple words in the URL | `allinurl:git firecrawl`\n| `intitle:` | Only returns results that include a word in the title of the page | `intitle:Firecrawl`\n| `allintitle:` | Only returns results that include multiple words in the title of the page | `allintitle:firecrawl playground`\n| `related:` | Only returns results that are related to a specific domain | `related:firecrawl.dev`\n| `imagesize:` | Only returns images with exact dimensions | `imagesize:1920x1080`\n| `larger:` | Only returns images larger than specified dimensions | `larger:1920x1080`\n\n**Best for:** Finding specific information across multiple websites, when you don\'t know which website has the information; when you need the most relevant content for a query.\n**Not recommended for:** When you need to search the filesystem. When you already know which website to scrape (use scrape); when you need comprehensive coverage of a single website (use map or crawl.\n**Common mistakes:** Using crawl or map for open-ended questions (use search instead).\n**Prompt Example:** "Find the latest research papers on AI published in 2023."\n**Sources:** web, images, news, default to web unless needed images or news.\n**Scrape Options:** Only use scrapeOptions when you think it is absolutely necessary. When you do so default to a lower limit to avoid timeouts, 5 or lower.\n**Optimal Workflow:** Search first using firecrawl_search without formats, then after fetching the results, use the scrape tool to get the content of the relevantpage(s) that you want to scrape\n\n**Usage Example without formats (Preferred):**\n```json\n{\n  "name": "firecrawl_search",\n  "arguments": {\n    "query": "top AI companies",\n    "limit": 5,\n    "sources": [\n      "web"\n    ]\n  }\n}\n```\n**Usage Example with formats:**\n```json\n{\n  "name": "firecrawl_search",\n  "arguments": {\n    "query": "latest AI research papers 2023",\n    "limit": 5,\n    "lang": "en",\n    "country": "us",\n    "sources": [\n      "web",\n      "images",\n      "news"\n    ],\n    "scrapeOptions": {\n      "formats": ["markdown"],\n      "onlyMainContent": true\n    }\n  }\n}\n```\n**Returns:** Array of search results (with optional scraped content).\n',
-  parameters: {
-  type: 'object',
-  properties: {
-  query: { type: 'string', minLength: 1 },
-  limit: { type: 'number' },
-  tbs: { type: 'string' },
-  filter: { type: 'string' },
-  location: { type: 'string' },
-  sources: {
-  type: 'array',
-  items: {
-  type: 'object',
-  properties: { type: { type: 'string', enum: [ 'web', 'images', 'news' ] } },
-  required: [ 'type' ],
-  additionalProperties: false
-}
-},
-  scrapeOptions: {
-  type: 'object',
-  properties: {
-  formats: {
-  type: 'array',
-  items: {
-  anyOf: [
-  {
-  type: 'string',
-  enum: [
-  'markdown',
-  'html',
-  'rawHtml',
-  'screenshot',
-  'links',
-  'summary',
-  'changeTracking',
-  'branding'
-]
-},
-  {
-  type: 'object',
-  properties: {
-  type: { type: 'string', const: 'json' },
-  prompt: { type: 'string' },
-  schema: {
-  type: 'object',
-  propertyNames: { type: 'string' },
-  additionalProperties: {}
-}
-},
-  required: [ 'type' ],
-  additionalProperties: false
-},
-  {
-  type: 'object',
-  properties: {
-  type: { type: 'string', const: 'screenshot' },
-  fullPage: { type: 'boolean' },
-  quality: { type: 'number' },
-  viewport: {
-  type: 'object',
-  properties: { width: { type: 'number' }, height: { type: 'number' } },
-  required: [ 'width', 'height' ],
-  additionalProperties: false
-}
-},
-  required: [ 'type' ],
-  additionalProperties: false
-}
-]
-}
-},
-  parsers: {
-  type: 'array',
-  items: {
-  anyOf: [
-  { type: 'string', enum: [ 'pdf' ] },
-  {
-  type: 'object',
-  properties: {
-  type: { type: 'string', enum: [ 'pdf' ] },
-  maxPages: { type: 'integer', minimum: 1, maximum: 10000 }
-},
-  required: [ 'type' ],
-  additionalProperties: false
-}
-]
-}
-},
-  onlyMainContent: { type: 'boolean' },
-  includeTags: { type: 'array', items: { type: 'string' } },
-  excludeTags: { type: 'array', items: { type: 'string' } },
-  waitFor: { type: 'number' },
-  mobile: { type: 'boolean' },
-  skipTlsVerification: { type: 'boolean' },
-  removeBase64Images: { type: 'boolean' },
-  location: {
-  type: 'object',
-  properties: {
-  country: { type: 'string' },
-  languages: { type: 'array', items: { type: 'string' } }
-},
-  additionalProperties: false
-},
-  storeInCache: { type: 'boolean' },
-  maxAge: { type: 'number' }
-},
-  additionalProperties: false
-}
-},
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  required: [ 'query' ],
-  additionalProperties: false
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'firecrawl_crawl',
-  description: '\n Starts a crawl job on a website and extracts content from all pages.\n \n **Best for:** Extracting content from multiple related pages, when you need comprehensive coverage.\n **Not recommended for:** Extracting content from a single page (use scrape); when token limits are a concern (use map + batch_scrape); when you need fast results (crawling can be slow).\n **Warning:** Crawl responses can be very large and may exceed token limits. Limit the crawl depth and number of pages, or use map + batch_scrape for better control.\n **Common mistakes:** Setting limit or maxDiscoveryDepth too high (causes token overflow) or too low (causes missing pages); using crawl for a single page (use scrape instead). Using a /* wildcard is not recommended.\n **Prompt Example:** "Get all blog posts from the first two levels of example.com/blog."\n **Usage Example:**\n ```json\n {\n   "name": "firecrawl_crawl",\n   "arguments": {\n     "url": "https://example.com/blog/*",\n     "maxDiscoveryDepth": 5,\n     "limit": 20,\n     "allowExternalLinks": false,\n     "deduplicateSimilarURLs": true,\n     "sitemap": "include"\n   }\n }\n ```\n **Returns:** Operation ID for status checking; use firecrawl_check_crawl_status to check progress.\n **Safe Mode:** Read-only crawling. Webhooks and interactive actions are disabled for security.\n ',
-  parameters: {
-  type: 'object',
-  properties: {
-  url: { type: 'string' },
-  prompt: { type: 'string' },
-  excludePaths: { type: 'array', items: { type: 'string' } },
-  includePaths: { type: 'array', items: { type: 'string' } },
-  maxDiscoveryDepth: { type: 'number' },
-  sitemap: { type: 'string', enum: [ 'skip', 'include', 'only' ] },
-  limit: { type: 'number' },
-  allowExternalLinks: { type: 'boolean' },
-  allowSubdomains: { type: 'boolean' },
-  crawlEntireDomain: { type: 'boolean' },
-  delay: { type: 'number' },
-  maxConcurrency: { type: 'number' },
-  deduplicateSimilarURLs: { type: 'boolean' },
-  ignoreQueryParameters: { type: 'boolean' },
-  scrapeOptions: {
-  type: 'object',
-  properties: {
-  formats: {
-  type: 'array',
-  items: {
-  anyOf: [
-  {
-  type: 'string',
-  enum: [
-  'markdown',
-  'html',
-  'rawHtml',
-  'screenshot',
-  'links',
-  'summary',
-  'changeTracking',
-  'branding'
-]
-},
-  {
-  type: 'object',
-  properties: {
-  type: { type: 'string', const: 'json' },
-  prompt: { type: 'string' },
-  schema: {
-  type: 'object',
-  propertyNames: { type: 'string' },
-  additionalProperties: {}
-}
-},
-  required: [ 'type' ],
-  additionalProperties: false
-},
-  {
-  type: 'object',
-  properties: {
-  type: { type: 'string', const: 'screenshot' },
-  fullPage: { type: 'boolean' },
-  quality: { type: 'number' },
-  viewport: {
-  type: 'object',
-  properties: { width: { type: 'number' }, height: { type: 'number' } },
-  required: [ 'width', 'height' ],
-  additionalProperties: false
-}
-},
-  required: [ 'type' ],
-  additionalProperties: false
-}
-]
-}
-},
-  parsers: {
-  type: 'array',
-  items: {
-  anyOf: [
-  { type: 'string', enum: [ 'pdf' ] },
-  {
-  type: 'object',
-  properties: {
-  type: { type: 'string', enum: [ 'pdf' ] },
-  maxPages: { type: 'integer', minimum: 1, maximum: 10000 }
-},
-  required: [ 'type' ],
-  additionalProperties: false
-}
-]
-}
-},
-  onlyMainContent: { type: 'boolean' },
-  includeTags: { type: 'array', items: { type: 'string' } },
-  excludeTags: { type: 'array', items: { type: 'string' } },
-  waitFor: { type: 'number' },
-  mobile: { type: 'boolean' },
-  skipTlsVerification: { type: 'boolean' },
-  removeBase64Images: { type: 'boolean' },
-  location: {
-  type: 'object',
-  properties: {
-  country: { type: 'string' },
-  languages: { type: 'array', items: { type: 'string' } }
-},
-  additionalProperties: false
-},
-  storeInCache: { type: 'boolean' },
-  maxAge: { type: 'number' }
-},
-  additionalProperties: false
-}
-},
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  required: [ 'url' ],
-  additionalProperties: false
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'firecrawl_check_crawl_status',
-  description: '\nCheck the status of a crawl job.\n\n**Usage Example:**\n```json\n{\n  "name": "firecrawl_check_crawl_status",\n  "arguments": {\n    "id": "550e8400-e29b-41d4-a716-446655440000"\n  }\n}\n```\n**Returns:** Status and progress of the crawl job, including results if available.\n',
-  parameters: {
-  type: 'object',
-  properties: { id: { type: 'string' } },
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  required: [ 'id' ],
-  additionalProperties: false
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'firecrawl_extract',
-  description: '\nExtract structured information from web pages using LLM capabilities. Supports both cloud AI and self-hosted LLM extraction.\n\n**Best for:** Extracting specific structured data like prices, names, details from web pages.\n**Not recommended for:** When you need the full content of a page (use scrape); when you\'re not looking for specific structured data.\n**Arguments:**\n- urls: Array of URLs to extract information from\n- prompt: Custom prompt for the LLM extraction\n- schema: JSON schema for structured data extraction\n- allowExternalLinks: Allow extraction from external links\n- enableWebSearch: Enable web search for additional context\n- includeSubdomains: Include subdomains in extraction\n**Prompt Example:** "Extract the product name, price, and description from these product pages."\n**Usage Example:**\n```json\n{\n  "name": "firecrawl_extract",\n  "arguments": {\n    "urls": ["https://example.com/page1", "https://example.com/page2"],\n    "prompt": "Extract product information including name, price, and description",\n    "schema": {\n      "type": "object",\n      "properties": {\n        "name": { "type": "string" },\n        "price": { "type": "number" },\n        "description": { "type": "string" }\n      },\n      "required": ["name", "price"]\n    },\n    "allowExternalLinks": false,\n    "enableWebSearch": false,\n    "includeSubdomains": false\n  }\n}\n```\n**Returns:** Extracted structured data as defined by your schema.\n',
-  parameters: {
-  type: 'object',
-  properties: {
-  urls: { type: 'array', items: { type: 'string' } },
-  prompt: { type: 'string' },
-  schema: {
-  type: 'object',
-  propertyNames: { type: 'string' },
-  additionalProperties: {}
-},
-  allowExternalLinks: { type: 'boolean' },
-  enableWebSearch: { type: 'boolean' },
-  includeSubdomains: { type: 'boolean' }
-},
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  required: [ 'urls' ],
-  additionalProperties: false
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'validate_content',
-  description: 'Validate content for SEO compliance, checking plagiarism and AI detection. Use this to ensure content is original and SEO-friendly.',
-  parameters: {
-  type: 'object',
-  properties: {
-  text: { type: 'string', description: 'The content text to validate' }
-},
-  required: [ 'text' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'check_plagiarism',
-  description: 'Check content for plagiarism and duplicate sources. Returns plagiarism score and matching sources.',
-  parameters: {
-  type: 'object',
-  properties: {
-  text: {
-  type: 'string',
-  description: 'The content text to check for plagiarism'
-},
-  language: {
-  type: 'string',
-  default: 'en',
-  description: 'Language code (default: en)'
-}
-},
-  required: [ 'text' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'check_ai_content',
-  description: 'Detect if content is AI-generated. Returns AI detection score and confidence level.',
-  parameters: {
-  type: 'object',
-  properties: { text: { type: 'string', description: 'The content text to check' } },
-  required: [ 'text' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'generate_seo_content',
-  description: 'Generate complete SEO-optimized content including main content, meta title, and meta description. Use this for creating new blog posts or articles.',
-  parameters: {
-  type: 'object',
-  properties: {
-  topic: { type: 'string', description: 'The topic or subject to write about' },
-  keywords: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Target keywords to include'
-},
-  tone: {
-  type: 'string',
-  enum: [
-  'informative',
-  'casual',
-  'formal',
-  'enthusiastic',
-  'professional',
-  'friendly',
-  'urgent',
-  'inspirational',
-  'humorous',
-  'convincing'
+[Gateway] Requested model: anthropic/claude-haiku-4.5
+[Gateway] Gateway configured: true
+[Gateway] OpenAI configured: true
+[Gateway] Google configured: true
+[Gateway] Using gateway for: anthropic/claude-haiku-4.5
+[Orchestrator Tool] 🚀 Starting execution with args: {
+  topic: 'AI and web development',
+  type: 'article',
+  keywords: [
+  'AI web development',
+  'artificial intelligence development',
+  'web development tools',
+  'machine learning',
+  'AI automation'
 ],
-  default: 'informative',
-  description: 'Writing tone'
+  tone: 'professional',
+  wordCount: 200
+}
+[Orchestrator] Starting content generation for: AI and web development
+[AEO Cache] MISS: aeo:workflow::article:AI and web development
+[Orchestrator] Phase 1: Research
+[Research Agent] Researching: AI and web development
+[Research Agent] ✓ Research complete
+[Orchestrator] Phase 2: SEO/AEO Strategy
+[SEO/AEO Agent] Creating optimization strategy for: AI and web development
+[SEO/AEO Agent] Starting SEO strategy creation with timeout...
+[Gateway] Requested model: anthropic/claude-haiku-4.5
+[Gateway] Gateway configured: true
+[Gateway] OpenAI configured: true
+[Gateway] Google configured: true
+[Gateway] Using gateway for: anthropic/claude-haiku-4.5
+[SEO/AEO Agent] Strategy creation failed: Error: SEO agent timeout after 60s
+    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\[root-of-the-server]__33bd85ec._.js:9673:39) {
+  
+}
+[SEO/AEO Agent] ✓ Using fallback strategy due to error
+[Orchestrator] Phase 3: Content Generation
+[Content Writer] Generating content for: AI and web development
+[Content RAG] Retrieving guidance for: article AI and web development
+[Gateway] Requested embedding model: openai/text-embedding-3-small
+[Gateway] Using gateway for embedding: openai/text-embedding-3-small
+[Learning Storage] Retrieved 0 cross-user learnings for: AI and web development
+[Learning Storage] Cross-user insights: 1 users, 0/4 successful
+[Content RAG] 🌐 Cross-user insights: 1 users, 0 successful patterns
+[Content RAG] Agent docs retrieved: 3
+[Content RAG] ✓ Guidance retrieved
+[Gateway] Requested model: anthropic/claude-haiku-4.5
+[Gateway] Gateway configured: true
+[Gateway] OpenAI configured: true
+[Gateway] Google configured: true
+[Gateway] Using gateway for: anthropic/claude-haiku-4.5
+[Content Writer] ✓ Content generated
+[Orchestrator] Phase 4: Quality Assurance
+[QA Agent] Starting quality review for: AI and web development
+[QA Agent] Initial content length: 2503
+[QA Agent] Iteration 1/3
+[Gradio AI] Detecting AI content...
+[Gradio AI] Detection complete: { aiLikelihood: 99.92, humanLikelihood: 0.08 }
+[QA Agent] AI Detection Score: 99.92%
+[QA Agent] Human Probability: 0.0799999999999983%
+[QA Agent] Current content length before humanization: 2503
+[QA Agent] Humanizing content (multi-provider)...
+[Humanization] Starting multi-provider humanization
+[Humanization] Content length: 2503
+[Humanization] Attempting Rytr...
+Failed to set fetch cache  {
+  next: undefined,
+  [Symbol(dispatcher)]: undefined,
+  [Symbol(state)]: {
+  method: 'GET',
+  localURLsOnly: false,
+  unsafeRequest: false,
+  body: null,
+  client: EnvironmentSettingsObjectBase {
+  policyContainer: { referrerPolicy: 'strict-origin-when-cross-origin' }
+},
+  reservedClient: null,
+  replacesClientId: '',
+  window: 'client',
+  keepalive: false,
+  serviceWorkers: 'all',
+  initiator: '',
+  destination: '',
+  priority: null,
+  origin: 'client',
+  policyContainer: 'client',
+  referrer: URL {  },
+  referrerPolicy: '',
+  mode: 'cors',
+  useCORSPreflightFlag: false,
+  credentials: 'include',
+  useCredentials: false,
+  cache: 'default',
+  redirect: 'follow',
+  integrity: '',
+  cryptoGraphicsNonceMetadata: '',
+  parserMetadata: '',
+  reloadNavigation: false,
+  historyNavigation: false,
+  userActivation: false,
+  taintedOrigin: false,
+  redirectCount: 0,
+  responseTainting: 'basic',
+  preventNoCacheCacheControlHeaderModification: false,
+  done: false,
+  timingAllowFailed: false,
+  urlList: [ URL {  } ],
+  url: URL {  },
+  headersList: HeadersList {
+  cookies: null,
+  [Symbol(headers map)]: Map(2) {
+  'accept' => { name: 'Accept', value: 'text/event-stream' },
+  'content-type' => { name: 'Content-Type', value: 'application/json' }
+},
+  [Symbol(headers map sorted)]: [
+  [ 'accept', 'text/event-stream' ],
+  [ 'content-type', 'application/json' ]
+]
 }
 },
-  required: [ 'topic', 'keywords' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
+  [Symbol(signal)]: AbortSignal {
+  [Symbol(kEvents)]: SafeMap(1) {
+  'abort' => { size: 0, next: undefined, resistStopPropagation: false }
 },
-  strict: false
+  [Symbol(events.maxEventTargetListeners)]: 0,
+  [Symbol(events.maxEventTargetListenersWarned)]: false,
+  [Symbol(kHandlers)]: SafeMap(0) {},
+  [Symbol(kAborted)]: true,
+  [Symbol(kReason)]: AbortError: This operation was aborted
+    at pe (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12829:27)
+    at Ft.a.onmessage (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12805:13)
+    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12898:54) {
+  
 },
-  {
-  type: 'function',
-  name: 'generate_blog_section',
-  description: 'Generate a blog section or paragraph about a specific topic with target keywords.',
-  parameters: {
-  type: 'object',
-  properties: {
-  topic: { type: 'string', description: 'The topic to write about' },
-  keywords: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Keywords to include naturally'
+  [Symbol(kComposite)]: false
 },
-  tone: {
-  type: 'string',
-  enum: [ 'informative', 'casual', 'formal', 'enthusiastic', 'professional' ],
-  description: 'Writing tone'
+  [Symbol(abortController)]: AbortController {  },
+  [Symbol(headers)]: Headers {  }
+} AbortError: This operation was aborted
+    at pe (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12829:27)
+    at Ft.a.onmessage (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12805:13)
+    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12898:54) {
+  
+}
+[Rytr] Request: {
+  "languageId": "607adac76f8fe5000c1e636d",
+  "toneId": "60ff8d3afc873e000c08e8b2",
+  "useCaseId": "658f05802d65a8ea6b328069",
+  "inputContexts": {
+    "INPUT_TEXT_LABEL": "# How AI Is Revolutionizing Web Development in 2025\n\nArtificial intelligence has moved from the sidelines into the heart of web development. Whether you're building a simple landing page or a complex e-commerce platform, AI web development tools are reshaping how developers work, what they create, and how users experience websites.\n\n## The Transformation is Already Here\n\n**Artificial intelligence development** isn't just about automating repetitive tasks anymore. It's fundamentally changing the entire development lifecycle. According to recent data, 72% of businesses are actively leveraging AI to transform their digital presence, with the global AI market projected to reach $243.71 billion by 2025.\n\nWhat does this mean in practical terms? Developers are spending less time on boilerplate code and more time solving complex problems. **AI automation** tools like GitHub Copilot and Tabnine now handle coding, debugging, and testing—reducing errors while accelerating development cycles. But that's only part of the story.\n\n## Where AI Web Development Creates Real Value\n\n**Machine learning** capabilities enable personalization at scale. Modern websites adapt content, layouts, and recommendations in real-time based on individual user behavior. E-commerce sites see measurable improvements in conversion rates. Healthcare platforms provide more relevant information to patients. Educational websites deliver customized learning paths.\n\nAI-powered chatbots deliver 24/7 customer support, while performance optimization tools proactively detect issues and enhance site speed—directly impacting both SEO rankings and user retention.\n\n## The Bigger Picture: The \"Agentic Web\"\n\nHere's what's fascinating: websites are becoming \"agent-visible.\" Autonomous AI agents need to interact with your site via APIs. This isn't science fiction—it's happening now. By mid-2025, 2.5% of websites were already published using AI, and that number continues climbing.\n\n## The Bottom Line\n\nAI web development tools aren't replacing developers—they're empowering them. The developers winning in 2025 are those who view AI as a strategic partner for creativity and innovation, not just automation.\n\nThe future of web development is here. The question isn't whether to adopt AI, but how quickly you can integrate it into your workflow.\n\n---\n\n**Word Count: 318** | **Target Keywords Naturally Integrated:** AI web development, artificial intelligence development, machine learning, AI automation, web development tools"
+  },
+  "variations": 1,
+  "userId": "5ff6b0c8-1ad4-4a6f-9d2a-302bc709bc43",
+  "format": "text",
+  "creativityLevel": "high"
+}
+[Rytr] Response: {"success":true,"data":["How AI Is Revolutionizing Web Development in 2025\n\nArtificial intelligence (AI) has become central to web development in 2025. No longer limited to automating simple tasks, AI now drives the evolution of how websites are built, experienced, and maintained. Across a spectrum that ranges from basic landing pages to advanced e-commerce platforms, AI web development tools are transforming both developer workflows and user interactions.\n\nThe Transformation is Already Unde
+[Rytr] Generation result lengths: { mainTextLength: 0, variations: 1 }
+[Humanization] Attempting Claude humanization...
+[Gateway] Requested model: anthropic/claude-3-5-sonnet-20241022
+[Gateway] Gateway configured: true
+[Gateway] OpenAI configured: true
+[Gateway] Google configured: true
+[Gateway] Using gateway for: anthropic/claude-3-5-sonnet-20241022
+[Humanization] ✓ Claude succeeded
+[QA Agent] ✓ Humanization successful using: claude
+[QA Agent] Iteration 2/3
+[Gradio AI] Detecting AI content...
+[Gradio AI] Detection complete: { aiLikelihood: 99.93, humanLikelihood: 0.07 }
+[QA Agent] AI Detection Score: 99.93%
+[QA Agent] Human Probability: 0.06999999999999318%
+[QA Agent] Current content length before humanization: 2801
+[QA Agent] Humanizing content (multi-provider)...
+[Humanization] Starting multi-provider humanization
+[Humanization] Content length: 2801
+[Humanization] Attempting Rytr...
+[Rytr] Request: {
+  "languageId": "607adac76f8fe5000c1e636d",
+  "toneId": "60ff8d3afc873e000c08e8b2",
+  "useCaseId": "658f05802d65a8ea6b328069",
+  "inputContexts": {
+    "INPUT_TEXT_LABEL": "Here's a more humanized version that maintains the professional insights while feeling more conversational and authentic:\n\n# How AI Is Revolutionizing Web Development in 2025\n\nLet's talk about something that's completely changing the game in web development: AI. It's not just another buzzy tech trend - we're seeing AI move from \"nice to have\" to \"can't work without it,\" whether you're putting together a basic landing page or building the next big e-commerce platform.\n\n## This Isn't Your Standard Tech Evolution\n\nHere's the thing about AI in web development - it's not just about making our lives easier (though that's definitely a sweet bonus). The numbers tell an incredible story: 72% of companies are already jumping on the AI bandwagon to transform their digital presence. And get this - experts predict the global AI market will hit a mind-boggling $243.71 billion by 2025.\n\nBut what does this actually mean for developers like us? Well, we're finally breaking free from the mundane stuff. Thanks to tools like GitHub Copilot and Tabnine, we're spending way less time debugging and more time tackling the interesting challenges that actually need human creativity. Pretty cool, right?\n\n## Where AI Really Shines in Web Development\n\nThink about how websites used to be static, one-size-fits-all experiences. Not anymore! With machine learning, we're creating sites that practically read users' minds - adjusting layouts, content, and recommendations on the fly. E-commerce sites are seeing real results, healthcare platforms are getting smarter about patient needs, and educational websites? They're basically becoming personal tutors.\n\nAnd let's not forget about those AI chatbots handling customer support 24/7 (because let's face it, we all need sleep) and performance tools that catch issues before they become problems.\n\n## The Next Big Thing: Welcome to the \"Agentic Web\"\n\nHere's something that'll blow your mind: websites aren't just for humans anymore. They're being built to interact with AI agents through APIs. By mid-2025, 2.5% of websites were already AI-published - and that number's only going up.\n\n## What This Really Means for You\n\nDon't worry - AI isn't coming for developers' jobs. Instead, it's like getting a super-powered assistant who handles the tedious stuff while you focus on the creative, strategic work that humans do best.\n\nThe web development landscape is shifting fast, and here's my take: it's not about whether you should embrace AI - it's about how quickly you can make it work for you. Because trust me, your competitors definitely are.\n\n---\n\n**Word Count: 372** | _Keywords naturally woven throughout the content_\n\nWant to stay competitive in web development? This is your wake-up call. The future isn't coming - it's already here, and it's powered by AI."
+  },
+  "variations": 1,
+  "userId": "5ff6b0c8-1ad4-4a6f-9d2a-302bc709bc43",
+  "format": "text",
+  "creativityLevel": "high"
+}
+Failed to set fetch cache  {
+  next: undefined,
+  [Symbol(dispatcher)]: undefined,
+  [Symbol(state)]: {
+  method: 'GET',
+  localURLsOnly: false,
+  unsafeRequest: false,
+  body: null,
+  client: EnvironmentSettingsObjectBase {
+  policyContainer: { referrerPolicy: 'strict-origin-when-cross-origin' }
+},
+  reservedClient: null,
+  replacesClientId: '',
+  window: 'client',
+  keepalive: false,
+  serviceWorkers: 'all',
+  initiator: '',
+  destination: '',
+  priority: null,
+  origin: 'client',
+  policyContainer: 'client',
+  referrer: URL {  },
+  referrerPolicy: '',
+  mode: 'cors',
+  useCORSPreflightFlag: false,
+  credentials: 'include',
+  useCredentials: false,
+  cache: 'default',
+  redirect: 'follow',
+  integrity: '',
+  cryptoGraphicsNonceMetadata: '',
+  parserMetadata: '',
+  reloadNavigation: false,
+  historyNavigation: false,
+  userActivation: false,
+  taintedOrigin: false,
+  redirectCount: 0,
+  responseTainting: 'basic',
+  preventNoCacheCacheControlHeaderModification: false,
+  done: false,
+  timingAllowFailed: false,
+  urlList: [ URL {  } ],
+  url: URL {  },
+  headersList: HeadersList {
+  cookies: null,
+  [Symbol(headers map)]: Map(2) {
+  'accept' => { name: 'Accept', value: 'text/event-stream' },
+  'content-type' => { name: 'Content-Type', value: 'application/json' }
+},
+  [Symbol(headers map sorted)]: [
+  [ 'accept', 'text/event-stream' ],
+  [ 'content-type', 'application/json' ]
+]
 }
 },
-  required: [ 'topic', 'keywords' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
+  [Symbol(signal)]: AbortSignal {
+  [Symbol(kEvents)]: SafeMap(1) {
+  'abort' => { size: 0, next: undefined, resistStopPropagation: false }
 },
-  strict: false
+  [Symbol(events.maxEventTargetListeners)]: 0,
+  [Symbol(events.maxEventTargetListenersWarned)]: false,
+  [Symbol(kHandlers)]: SafeMap(0) {},
+  [Symbol(kAborted)]: true,
+  [Symbol(kReason)]: AbortError: This operation was aborted
+    at pe (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12829:27)
+    at Ft.a.onmessage (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12805:13)
+    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12898:54) {
+  
 },
-  {
-  type: 'function',
-  name: 'generate_meta_title',
-  description: 'Generate an SEO-optimized meta title (50-60 characters) for a page.',
-  parameters: {
-  type: 'object',
-  properties: {
-  topic: { type: 'string', description: 'The page topic' },
-  primaryKeyword: { type: 'string', description: 'Primary keyword to include' }
+  [Symbol(kComposite)]: false
 },
-  required: [ 'topic', 'primaryKeyword' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
+  [Symbol(abortController)]: AbortController {  },
+  [Symbol(headers)]: Headers {  }
+} AbortError: This operation was aborted
+    at pe (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12829:27)
+    at Ft.a.onmessage (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12805:13)
+    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12898:54) {
+  
+}
+[Rytr] Response: {"success":true,"data":["How AI Is Transforming Web Development in 2025\n\nArtificial intelligence (AI) is rapidly reshaping the field of web development. No longer just a trending technology, AI has become an essential tool for developers working on projects ranging from simple landing pages to complex e-commerce platforms. Its integration marks a significant shift in how digital experiences are created and delivered.\n\nRecent statistics highlight this transformation: 72% of companies have alr
+[Rytr] Generation result lengths: { mainTextLength: 0, variations: 1 }
+[Humanization] Attempting Claude humanization...
+[Gateway] Requested model: anthropic/claude-3-5-sonnet-20241022
+[Gateway] Gateway configured: true
+[Gateway] OpenAI configured: true
+[Gateway] Google configured: true
+[Gateway] Using gateway for: anthropic/claude-3-5-sonnet-20241022
+[Humanization] ✓ Claude succeeded
+[QA Agent] ✓ Humanization successful using: claude
+[QA Agent] Iteration 3/3
+[Gradio AI] Detecting AI content...
+[Gradio AI] Detection complete: { aiLikelihood: 99.95, humanLikelihood: 0.05 }
+[QA Agent] AI Detection Score: 99.95%
+[QA Agent] Human Probability: 0.04999999999999716%
+[QA Agent] Skipping learning storage – unsuccessful or no Rytr improvement
+Failed to set fetch cache  {
+  next: undefined,
+  [Symbol(dispatcher)]: undefined,
+  [Symbol(state)]: {
+  method: 'GET',
+  localURLsOnly: false,
+  unsafeRequest: false,
+  body: null,
+  client: EnvironmentSettingsObjectBase {
+  policyContainer: { referrerPolicy: 'strict-origin-when-cross-origin' }
 },
-  strict: false
+  reservedClient: null,
+  replacesClientId: '',
+  window: 'client',
+  keepalive: false,
+  serviceWorkers: 'all',
+  initiator: '',
+  destination: '',
+  priority: null,
+  origin: 'client',
+  policyContainer: 'client',
+  referrer: URL {  },
+  referrerPolicy: '',
+  mode: 'cors',
+  useCORSPreflightFlag: false,
+  credentials: 'include',
+  useCredentials: false,
+  cache: 'default',
+  redirect: 'follow',
+  integrity: '',
+  cryptoGraphicsNonceMetadata: '',
+  parserMetadata: '',
+  reloadNavigation: false,
+  historyNavigation: false,
+  userActivation: false,
+  taintedOrigin: false,
+  redirectCount: 0,
+  responseTainting: 'basic',
+  preventNoCacheCacheControlHeaderModification: false,
+  done: false,
+  timingAllowFailed: false,
+  urlList: [ URL {  } ],
+  url: URL {  },
+  headersList: HeadersList {
+  cookies: null,
+  [Symbol(headers map)]: Map(2) {
+  'accept' => { name: 'Accept', value: 'text/event-stream' },
+  'content-type' => { name: 'Content-Type', value: 'application/json' }
 },
-  {
-  type: 'function',
-  name: 'generate_meta_description',
-  description: 'Generate an SEO-optimized meta description (155-160 characters) for a page.',
-  parameters: {
-  type: 'object',
-  properties: {
-  pageTitle: { type: 'string', description: 'The page title' },
-  keywords: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Keywords to include'
+  [Symbol(headers map sorted)]: [
+  [ 'accept', 'text/event-stream' ],
+  [ 'content-type', 'application/json' ]
+]
 }
 },
-  required: [ 'pageTitle', 'keywords' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
+  [Symbol(signal)]: AbortSignal {
+  [Symbol(kEvents)]: SafeMap(1) {
+  'abort' => { size: 0, next: undefined, resistStopPropagation: false }
 },
-  strict: false
+  [Symbol(events.maxEventTargetListeners)]: 0,
+  [Symbol(events.maxEventTargetListenersWarned)]: false,
+  [Symbol(kHandlers)]: SafeMap(0) {},
+  [Symbol(kAborted)]: true,
+  [Symbol(kReason)]: AbortError: This operation was aborted
+    at pe (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12829:27)
+    at Ft.a.onmessage (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12805:13)
+    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12898:54) {
+  
 },
-  {
-  type: 'function',
-  name: 'improve_content',
-  description: 'Improve existing content to make it more engaging, clear, and SEO-friendly.',
-  parameters: {
-  type: 'object',
-  properties: {
-  text: { type: 'string', description: 'The content to improve' },
-  tone: {
-  type: 'string',
-  enum: [ 'informative', 'casual', 'formal', 'enthusiastic', 'professional' ],
-  description: 'Desired tone'
+  [Symbol(kComposite)]: false
+},
+  [Symbol(abortController)]: AbortController {  },
+  [Symbol(headers)]: Headers {  }
+} AbortError: This operation was aborted
+    at pe (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12829:27)
+    at Ft.a.onmessage (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12805:13)
+    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:12898:54) {
+  
 }
-},
-  required: [ 'text' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'expand_content',
-  description: 'Expand content with more details, examples, and explanations.',
-  parameters: {
-  type: 'object',
-  properties: {
-  text: { type: 'string', description: 'The content to expand' },
-  tone: {
-  type: 'string',
-  enum: [ 'informative', 'casual', 'formal', 'enthusiastic', 'professional' ],
-  description: 'Writing tone'
-}
-},
-  required: [ 'text' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'validate_content_quality',
-  description: 'Comprehensive content quality validation including readability, style, originality, and SEO metrics. Use this to ensure content meets high quality standards.',
-  parameters: {
-  type: 'object',
-  properties: {
-  content: { type: 'string', description: 'The content text to validate' },
-  targetKeywords: {
-  type: 'array',
-  items: { type: 'string' },
-  default: [],
-  description: 'Target keywords for SEO analysis'
-},
-  existingContent: {
-  type: 'string',
-  description: 'Existing content to compare against for similarity check'
-}
-},
-  required: [ 'content' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'analyze_seo_content',
-  description: 'Analyze content for SEO optimization including keyword density, meta tags, heading structure, and overall SEO score.',
-  parameters: {
-  type: 'object',
-  properties: {
-  content: { type: 'string', description: 'The content to analyze' },
-  title: { type: 'string', description: 'Page title (for meta analysis)' },
-  metaDescription: { type: 'string', description: 'Meta description (for analysis)' },
-  targetKeywords: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Target keywords for SEO optimization'
-}
-},
-  required: [ 'content', 'targetKeywords' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'fact_check_content',
-  description: 'Verify factual claims in content using web search and knowledge base. Returns verification results for each claim.',
-  parameters: {
-  type: 'object',
-  properties: {
-  content: { type: 'string', description: 'Content to fact-check' },
-  claims: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Specific claims to verify (auto-extracted if not provided)'
-}
-},
-  required: [ 'content' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'show_api_key',
-  description: 'Return the bearer token from the Authorization header of the MCP settings, which is used to debug.',
-  parameters: {
-  type: 'object',
-  properties: {},
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'primer',
-  description: 'Get up-to-date contextual information of the current session to provide localized, time-aware responses. Use this when you need to know the current time, user\'s location, or network environment to give more relevant and personalized information.',
-  parameters: {
-  type: 'object',
-  properties: {},
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'guess_datetime_url',
-  description: 'Guess the last updated or published datetime of a web page. This tool examines HTTP headers, HTML metadata, Schema.org data, visible dates, JavaScript timestamps, HTML comments, Git information, RSS/Atom feeds, sitemaps, and international date formats to provide the most accurate update time with confidence scores. Returns the best guess timestamp and confidence level.',
-  parameters: {
-  type: 'object',
-  properties: {
-  url: {
-  type: 'string',
-  format: 'uri',
-  description: 'The complete HTTP/HTTPS URL of the webpage to guess datetime information'
-}
-},
-  required: [ 'url' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'capture_screenshot_url',
-  description: 'Capture high-quality screenshots of web pages in base64 encoded JPEG format. Use this tool when you need to visually inspect a website, take a snapshot for analysis, or show users what a webpage looks like.',
-  parameters: {
-  type: 'object',
-  properties: {
-  url: {
-  type: 'string',
-  format: 'uri',
-  description: 'The complete HTTP/HTTPS URL of the webpage to capture (e.g., \'https://example.com\')'
-},
-  firstScreenOnly: {
-  type: 'boolean',
-  default: false,
-  description: 'Set to true for a single screen capture (faster), false for full page capture including content below the fold'
-},
-  return_url: {
-  type: 'boolean',
-  default: false,
-  description: 'Set to true to return screenshot URLs instead of downloading images as base64'
-}
-},
-  required: [ 'url' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'read_url',
-  description: 'Extract and convert web page content to clean, readable markdown format. Perfect for reading articles, documentation, blog posts, or any web content. Use this when you need to analyze text content from websites, bypass paywalls, or get structured data.',
-  parameters: {
-  type: 'object',
-  properties: {
-  url: {
-  anyOf: [
-  { type: 'string', format: 'uri' },
-  { type: 'array', items: { type: 'string', format: 'uri' } }
-],
-  description: 'The complete URL of the webpage or PDF file to read and convert (e.g., \'https://example.com/article\'). Can be a single URL string or an array of URLs for parallel reading.'
-},
-  withAllLinks: {
-  type: 'boolean',
-  description: 'Set to true to extract and return all hyperlinks found on the page as structured data'
-},
-  withAllImages: {
-  type: 'boolean',
-  description: 'Set to true to extract and return all images found on the page as structured data'
-}
-},
-  required: [ 'url' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'search_web',
-  description: 'Search the entire web for current information, news, articles, and websites. Use this when you need up-to-date information, want to find specific websites, research topics, or get the latest news. Ideal for answering questions about recent events, finding resources, or discovering relevant content.',
-  parameters: {
-  type: 'object',
-  properties: {
-  query: {
-  anyOf: [ { type: 'string' }, { type: 'array', items: { type: 'string' } } ],
-  description: 'Search terms or keywords to find relevant web content (e.g., \'climate change news 2024\', \'best pizza recipe\'). Can be a single query string or an array of queries for parallel search.'
-},
-  num: {
-  type: 'number',
-  default: 30,
-  description: 'Maximum number of search results to return, between 1-100'
-},
-  tbs: {
-  type: 'string',
-  description: 'Time-based search parameter, e.g., \'qdr:h\' for past hour, can be qdr:h, qdr:d, qdr:w, qdr:m, qdr:y'
-},
-  location: {
-  type: 'string',
-  description: 'Location for search results, e.g., \'London\', \'New York\', \'Tokyo\''
-},
-  gl: {
-  type: 'string',
-  description: 'Country code, e.g., \'dz\' for Algeria'
-},
-  hl: {
-  type: 'string',
-  description: 'Language code, e.g., \'zh-cn\' for Simplified Chinese'
-}
-},
-  required: [ 'query' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'expand_query',
-  description: 'Expand and rewrite search queries based on an up-to-date query expansion model. This tool takes an initial query and returns multiple expanded queries that can be used for more diversed and deeper searches. Useful for improving deep research results by searching broader and deeper.',
-  parameters: {
-  type: 'object',
-  properties: {
-  query: {
-  type: 'string',
-  description: 'The search query to expand (e.g., \'machine learning\', \'climate change\')'
-}
-},
-  required: [ 'query' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'search_arxiv',
-  description: 'Search academic papers and preprints on arXiv repository. Perfect for finding research papers, scientific studies, technical papers, and academic literature. Use this when researching scientific topics, looking for papers by specific authors, or finding the latest research in fields like AI, physics, mathematics, computer science, etc.',
-  parameters: {
-  type: 'object',
-  properties: {
-  query: {
-  anyOf: [ { type: 'string' }, { type: 'array', items: { type: 'string' } } ],
-  description: 'Academic search terms, author names, or research topics (e.g., \'transformer neural networks\', \'Einstein relativity\', \'machine learning optimization\'). Can be a single query string or an array of queries for parallel search.'
-},
-  num: {
-  type: 'number',
-  default: 30,
-  description: 'Maximum number of academic papers to return, between 1-100'
-},
-  tbs: {
-  type: 'string',
-  description: 'Time-based search parameter, e.g., \'qdr:h\' for past hour, can be qdr:h, qdr:d, qdr:w, qdr:m, qdr:y'
-}
-},
-  required: [ 'query' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'search_images',
-  description: 'Search for images across the web, similar to Google Images. Use this when you need to find photos, illustrations, diagrams, charts, logos, or any visual content. Perfect for finding images to illustrate concepts, locating specific pictures, or discovering visual resources. Images are returned by default as small base64-encoded JPEG images.',
-  parameters: {
-  type: 'object',
-  properties: {
-  query: {
-  type: 'string',
-  description: 'Image search terms describing what you want to find (e.g., \'sunset over mountains\', \'vintage car illustration\', \'data visualization chart\')'
-},
-  return_url: {
-  type: 'boolean',
-  default: false,
-  description: 'Set to true to return image URLs, title, shapes, and other metadata. By default, images are downloaded as base64 and returned as rendered images.'
-},
-  tbs: {
-  type: 'string',
-  description: 'Time-based search parameter, e.g., \'qdr:h\' for past hour, can be qdr:h, qdr:d, qdr:w, qdr:m, qdr:y'
-},
-  location: {
-  type: 'string',
-  description: 'Location for search results, e.g., \'London\', \'New York\', \'Tokyo\''
-},
-  gl: {
-  type: 'string',
-  description: 'Country code, e.g., \'dz\' for Algeria'
-},
-  hl: {
-  type: 'string',
-  description: 'Language code, e.g., \'zh-cn\' for Simplified Chinese'
-}
-},
-  required: [ 'query' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'parallel_search_web',
-  description: 'Run multiple web searches in parallel for comprehensive topic coverage and diverse perspectives. For best results, provide multiple search queries that explore different aspects of your topic. You can use expand_query to help generate diverse queries, or create them yourself.',
-  parameters: {
-  type: 'object',
-  properties: {
-  searches: {
-  type: 'array',
-  items: {
-  type: 'object',
-  properties: {
-  query: {
-  type: 'string',
-  description: 'Search terms or keywords to find relevant web content'
-},
-  num: {
-  type: 'number',
-  default: 30,
-  description: 'Maximum number of search results to return, between 1-100'
-},
-  tbs: {
-  type: 'string',
-  description: 'Time-based search parameter, e.g., \'qdr:h\' for past hour'
-},
-  location: {
-  type: 'string',
-  description: 'Location for search results, e.g., \'London\', \'New York\', \'Tokyo\''
-},
-  gl: {
-  type: 'string',
-  description: 'Country code, e.g., \'dz\' for Algeria'
-},
-  hl: {
-  type: 'string',
-  description: 'Language code, e.g., \'zh-cn\' for Simplified Chinese'
-}
-},
-  required: [ 'query' ],
-  additionalProperties: false
-},
-  maxItems: 5,
-  description: 'Array of search configurations to execute in parallel (maximum 5 searches for optimal performance)'
-},
-  timeout: {
-  type: 'number',
-  default: 30000,
-  description: 'Timeout in milliseconds for all searches'
-}
-},
-  required: [ 'searches' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'parallel_search_arxiv',
-  description: 'Run multiple arXiv searches in parallel for comprehensive research coverage and diverse academic angles. For best results, provide multiple search queries that explore different research angles and methodologies. You can use expand_query to help generate diverse queries, or create them yourself.',
-  parameters: {
-  type: 'object',
-  properties: {
-  searches: {
-  type: 'array',
-  items: {
-  type: 'object',
-  properties: {
-  query: {
-  type: 'string',
-  description: 'Academic search terms, author names, or research topics'
-},
-  num: {
-  type: 'number',
-  default: 30,
-  description: 'Maximum number of academic papers to return, between 1-100'
-},
-  tbs: {
-  type: 'string',
-  description: 'Time-based search parameter, e.g., \'qdr:h\' for past hour'
-}
-},
-  required: [ 'query' ],
-  additionalProperties: false
-},
-  maxItems: 5,
-  description: 'Array of arXiv search configurations to execute in parallel (maximum 5 searches for optimal performance)'
-},
-  timeout: {
-  type: 'number',
-  default: 30000,
-  description: 'Timeout in milliseconds for all searches'
-}
-},
-  required: [ 'searches' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'parallel_read_url',
-  description: 'Read multiple web pages in parallel to extract clean content efficiently. For best results, provide multiple URLs that you need to extract simultaneously. This is useful for comparing content across multiple sources or gathering information from multiple pages at once.',
-  parameters: {
-  type: 'object',
-  properties: {
-  urls: {
-  type: 'array',
-  items: {
-  type: 'object',
-  properties: {
-  url: {
-  type: 'string',
-  format: 'uri',
-  description: 'The complete URL of the webpage or PDF file to read and convert'
-},
-  withAllLinks: {
-  type: 'boolean',
-  default: false,
-  description: 'Set to true to extract and return all hyperlinks found on the page as structured data'
-},
-  withAllImages: {
-  type: 'boolean',
-  default: false,
-  description: 'Set to true to extract and return all images found on the page as structured data'
-}
-},
-  required: [ 'url' ],
-  additionalProperties: false
-},
-  maxItems: 5,
-  description: 'Array of URL configurations to read in parallel (maximum 5 URLs for optimal performance)'
-},
-  timeout: {
-  type: 'number',
-  default: 30000,
-  description: 'Timeout in milliseconds for all URL reads'
-}
-},
-  required: [ 'urls' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'sort_by_relevance',
-  description: 'Rerank a list of documents by relevance to a query using Jina Reranker API. Use this when you have multiple documents and want to sort them by how well they match a specific query or topic. Perfect for document retrieval, content filtering, or finding the most relevant information from a collection.',
-  parameters: {
-  type: 'object',
-  properties: {
-  query: {
-  type: 'string',
-  description: 'The query or topic to rank documents against (e.g., \'machine learning algorithms\', \'climate change solutions\')'
-},
-  documents: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Array of document texts to rerank by relevance'
-},
-  top_n: {
-  type: 'number',
-  description: 'Maximum number of top results to return'
-}
-},
-  required: [ 'query', 'documents' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'deduplicate_strings',
-  description: 'Get top-k semantically unique strings from a list using Jina embeddings and submodular optimization. Use this when you have many similar strings and want to select the most diverse subset that covers the semantic space. Perfect for removing duplicates, selecting representative samples, or finding diverse content.',
-  parameters: {
-  type: 'object',
-  properties: {
-  strings: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Array of strings to deduplicate'
-},
-  k: {
-  type: 'number',
-  description: 'Number of unique strings to return. If not provided, automatically finds optimal k by looking at diminishing return'
-}
-},
-  required: [ 'strings' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'deduplicate_images',
-  description: 'Get top-k semantically unique images (URLs or base64-encoded) using Jina CLIP v2 embeddings and submodular optimization. Use this when you have many visually similar images and want the most diverse subset.',
-  parameters: {
-  type: 'object',
-  properties: {
-  images: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Array of image inputs to deduplicate. Each item can be either an HTTP(S) URL or a raw base64-encoded image string (without data URI prefix).'
-},
-  k: {
-  type: 'number',
-  description: 'Number of unique images to return. If not provided, automatically finds optimal k by looking at diminishing return'
-}
-},
-  required: [ 'images' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'winston_check_quality',
-  description: 'Check content quality, plagiarism, and AI detection using Winston AI. Returns a score (0-100) where higher means more likely AI-generated.',
-  parameters: {
-  type: 'object',
-  properties: {
-  content: { type: 'string', description: 'The text content to analyze' }
-},
-  required: [ 'content' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'perplexity_search',
-  description: 'Search the web using Perplexity AI for real-time, cited information. Use this for research, fact-checking, and finding authoritative sources.',
-  parameters: {
-  type: 'object',
-  properties: {
-  query: { type: 'string', description: 'The search query' },
-  search_recency_filter: {
-  type: 'string',
-  enum: [ 'month', 'week', 'day', 'year' ],
-  description: 'Filter results by recency'
-}
-},
-  required: [ 'query' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'generate_researched_content',
-  description: 'Generate high-quality, researched, and SEO-optimized content (blog posts, articles). This tool runs a comprehensive workflow: Research -> RAG (Best Practices) -> Write -> QA (Winston/Rytr) -> Feedback Loop.',
-  parameters: {
-  type: 'object',
-  properties: {
-  topic: { type: 'string', description: 'The main topic of the content' },
-  type: {
-  type: 'string',
-  enum: [ 'blog_post', 'article', 'social_media', 'landing_page' ],
-  description: 'Type of content to generate'
-},
-  keywords: {
-  type: 'array',
-  items: { type: 'string' },
-  description: 'Target keywords'
-},
-  tone: {
-  type: 'string',
-  description: 'Desired tone (e.g., professional, casual)'
-},
-  wordCount: { type: 'number', description: 'Target word count' }
-},
-  required: [ 'topic', 'type', 'keywords' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-},
-  {
-  type: 'function',
-  name: 'client_ui',
-  description: 'Display an interactive UI component to the user. Use this when you need to collect specific information or show structured data.',
-  parameters: {
-  type: 'object',
-  properties: {
-  component: {
-  type: 'string',
-  enum: [
-  'url_input',
-  'card_selector',
-  'location_picker',
-  'confirmation_buttons',
-  'loading_indicator',
-  'analysis_result'
-],
-  description: 'The type of component to display'
-},
-  props: {
-  type: 'object',
-  additionalProperties: {},
-  description: 'The properties/data for the component'
-}
-},
-  required: [ 'component', 'props' ],
-  additionalProperties: false,
-  $schema: 'http://json-schema.org/draft-07/schema#'
-},
-  strict: false
-}
-],
-  tool_choice: 'auto',
-  stream: true
-},
-  statusCode: 405,
+[Learning Storage] Cross-user insights: 1 users, 0/4 successful
+[QA Agent] 🌍 Global learning: 1 users contributed, 0 successful patterns
+[QA Agent] ✓ Review complete after 3 iterations
+[Orchestrator] Phase 5: Image Generation
+[Image Agent] Generating image for: Professional, high-quality feature image for a blog post about AI and web development. Keywords: AI web development, artificial intelligence development, web development tools, machine learning, AI automation. Style: modern, digital art, minimalist.
+[Gateway] Image generation requested for: google/gemini-2.5-flash-image
+[Gateway] Note: Image generation requires direct provider (Gateway not supported)
+[Gateway] Using direct Google for image: google/gemini-2.5-flash-image
+[Image Agent] Error generating image: AI_APICallError: * GenerateContentRequest.contents: contents is not specified
+
+    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_7355a48d._.js:3308:24)
+    at async postToApi (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_7355a48d._.js:3182:36)
+    at async Proxy.doGenerate (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:7319:77)
+    at async _retryWithExponentialBackoff (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:2046:16)
+    at async generateImage (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:7755:21)
+    at async ImageAgent.generate (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\[root-of-the-server]__33bd85ec._.js:10569:31)
+    at async (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\[root-of-the-server]__33bd85ec._.js:10705:37)
+    at async cachedAEOCall (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\[root-of-the-server]__33bd85ec._.js:10615:20) {
+  cause: undefined,
+  url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent',
+  requestBodyValues: {
+  generationConfig: {
+  maxOutputTokens: undefined,
+  temperature: undefined,
+  topK: undefined,
+  topP: undefined,
+  frequencyPenalty: undefined,
+  presencePenalty: undefined,
+  stopSequences: undefined,
+  seed: undefined,
+  responseMimeType: undefined,
+  responseSchema: undefined,
+  responseModalities: undefined,
+  thinkingConfig: undefined
+},
+  contents: [],
+  systemInstruction: undefined,
+  safetySettings: undefined,
+  tools: undefined,
+  toolConfig: undefined,
+  cachedContent: undefined,
+  labels: undefined
+},
+  statusCode: 400,
   responseHeaders: {
-  cache-control: 'public, max-age=0, must-revalidate',
-  content-disposition: 'inline; filename="404"',
-  content-type: 'text/html; charset=utf-8',
-  date: 'Thu, 20 Nov 2025 04:13:39 GMT',
-  server: 'Vercel',
-  strict-transport-security: 'max-age=63072000; includeSubDomains; preload',
+  alt-svc: 'h3=":443"; ma=2592000,h3-29=":443"; ma=2592000',
+  content-encoding: 'gzip',
+  content-type: 'application/json; charset=UTF-8',
+  date: 'Sun, 23 Nov 2025 03:11:06 GMT',
+  server: 'scaffolding on HTTPServer2',
+  server-timing: 'gfet4t7; dur=115',
   transfer-encoding: 'chunked',
-  x-matched-path: '/404',
-  x-vercel-cache: 'BYPASS',
-  x-vercel-id: 'syd1::r6g5w-1763612018840-35a0b82f436c'
+  vary: 'Origin, X-Origin, Referer',
+  x-content-type-options: 'nosniff',
+  x-frame-options: 'SAMEORIGIN',
+  x-xss-protection: '0'
 },
-  responseBody: '',
+  responseBody: '{\n  "error": {\n    "code": 400,\n    "message": "* GenerateContentRequest.contents: contents is not specified\\n",\n    "status": "INVALID_ARGUMENT"\n  }\n}\n',
   isRetryable: false,
-  data: undefined
+  data: {
+  error: {
+  code: 400,
+  message: '* GenerateContentRequest.contents: contents is not specified\n',
+  status: 'INVALID_ARGUMENT'
 }
-[Chat API] Stream error: {
-  message: 'Method Not Allowed',
-  stack: 'AI_APICallError: Method Not Allowed\n    at C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_69042624._.js:3290:24\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async postToApi (C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_69042624._.js:3182:36)\n    at async Proxy.doStream (C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_@ai-sdk_openai_dist_index_mjs_46c6ed8d._.js:3652:54)\n    at async fn (C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_ai_dist_index_mjs_a768fe1a._.js:5741:45)\n    at async C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_ai_dist_index_mjs_a768fe1a._.js:1883:28\n    at async _retryWithExponentialBackoff (C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_ai_dist_index_mjs_a768fe1a._.js:2020:16)\n    at async streamStep (C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_ai_dist_index_mjs_a768fe1a._.js:5699:112)\n    at async fn (C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_ai_dist_index_mjs_a768fe1a._.js:6043:17)\n    at async C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_ai_dist_index_mjs_a768fe1a._.js:1883:28',
-  name: 'AI_APICallError'
 }
-[Chat API] Stream error: {
-  message: 'An error occurred while processing your request. Please try again. (Method Not Allowed)',
-  stack: 'Error: An error occurred while processing your request. Please try again. (Method Not Allowed)\n    at C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_ai_dist_index_mjs_a768fe1a._.js:4594:64\n    at runUpdateMessageJob (C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_ai_dist_index_mjs_a768fe1a._.js:4658:15)\n    at Object.transform (C:\\Users\\User\\Documents\\seo ragbot\\seo-platform\\.next\\dev\\server\\edge\\chunks\\60d90_ai_dist_index_mjs_a768fe1a._.js:4167:19)\n    at invokePromiseCallback (node:internal/webstreams/util:172:10)\n    at Object.transformAlgorithm (node:internal/webstreams/util:177:23)\n    at transformStreamDefaultControllerPerformTransform (node:internal/webstreams/transformstream:527:37)\n    at transformStreamDefaultSinkWriteAlgorithm (node:internal/webstreams/transformstream:573:10)\n    at node:internal/webstreams/transformstream:378:16\n    at writableStreamDefaultControllerProcessWrite (node:internal/webstreams/writablestream:1129:5)\n    at writableStreamDefaultControllerAdvanceQueueIfNeeded (node:internal/webstreams/writablestream:1255:5)',
-  name: 'Error'
 }
-[Chat API] Agent finished: { messageCount: 1, isAborted: false, responseMessageId: '' }
- POST /api/chat 200 in 17.3s
-Error: aborted
-    at ignore-listed frames {
-  code: 'ECONNRESET'
+[Orchestrator] Image generation failed: AI_APICallError: * GenerateContentRequest.contents: contents is not specified
+
+    at <unknown> (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_7355a48d._.js:3308:24)
+    at async postToApi (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_7355a48d._.js:3182:36)
+    at async Proxy.doGenerate (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_49e001db._.js:7319:77)
+    at async _retryWithExponentialBackoff (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:2046:16)
+    at async generateImage (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:7755:21)
+    at async ImageAgent.generate (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\[root-of-the-server]__33bd85ec._.js:10569:31)
+    at async (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\[root-of-the-server]__33bd85ec._.js:10705:37)
+    at async cachedAEOCall (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\[root-of-the-server]__33bd85ec._.js:10615:20) {
+  cause: undefined,
+  url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent',
+  requestBodyValues: {
+  generationConfig: {
+  maxOutputTokens: undefined,
+  temperature: undefined,
+  topK: undefined,
+  topP: undefined,
+  frequencyPenalty: undefined,
+  presencePenalty: undefined,
+  stopSequences: undefined,
+  seed: undefined,
+  responseMimeType: undefined,
+  responseSchema: undefined,
+  responseModalities: undefined,
+  thinkingConfig: undefined
+},
+  contents: [],
+  systemInstruction: undefined,
+  safetySettings: undefined,
+  tools: undefined,
+  toolConfig: undefined,
+  cachedContent: undefined,
+  labels: undefined
+},
+  statusCode: 400,
+  responseHeaders: {
+  alt-svc: 'h3=":443"; ma=2592000,h3-29=":443"; ma=2592000',
+  content-encoding: 'gzip',
+  content-type: 'application/json; charset=UTF-8',
+  date: 'Sun, 23 Nov 2025 03:11:06 GMT',
+  server: 'scaffolding on HTTPServer2',
+  server-timing: 'gfet4t7; dur=115',
+  transfer-encoding: 'chunked',
+  vary: 'Origin, X-Origin, Referer',
+  x-content-type-options: 'nosniff',
+  x-frame-options: 'SAMEORIGIN',
+  x-xss-protection: '0'
+},
+  responseBody: '{\n  "error": {\n    "code": 400,\n    "message": "* GenerateContentRequest.contents: contents is not specified\\n",\n    "status": "INVALID_ARGUMENT"\n  }\n}\n',
+  isRetryable: false,
+  data: {
+  error: {
+  code: 400,
+  message: '* GenerateContentRequest.contents: contents is not specified\n',
+  status: 'INVALID_ARGUMENT'
 }
- ⨯ uncaughtException: Error: aborted
-    at ignore-listed frames {
-  code: 'ECONNRESET'
 }
- ⨯ uncaughtException:  Error: aborted
-    at ignore-listed frames {
-  code: 'ECONNRESET'
 }
-Failed to set fetch cache https://mcp.jina.ai/sse TypeError: terminated                    at _Fetch.onAborted (C:\Users\User\Documents\seo ragbot\seo-platform\node_modules\next\dist\compiled\edge-runtime\index.js:1:396938)
-    at _Fetch.emit (node:events:508:28)
-    at _Fetch.terminate (C:\Users\User\Documents\seo ragbot\seo-platform\node_modules\next\dist\compiled\edge-runtime\index.js:1:381605)
-    at Object.onError (C:\Users\User\Documents\seo ragbot\seo-platform\node_modules\next\dist\compiled\edge-runtime\index.js:1:399299)
-    at Request.onError (node:internal/deps/undici/undici:2567:31)
-    at Object.errorRequest (node:internal/deps/undici/undici:1482:17)
-    at TLSSocket.onHttpSocketClose (node:internal/deps/undici/undici:6953:14)
-    at TLSSocket.emit (node:events:520:35)
-    at node:net:346:12
-    at TCP.done (node:_tls_wrap:649:7)
-    at TCP.callbackTrampoline (node:internal/async_hooks:130:17) {
-  
+[Orchestrator] ✓ Content generation complete
+[Orchestrator] Final AI Score: 99.92
+[Orchestrator Tool] ✓ Orchestrator completed successfully
+[Orchestrator Tool] Content length: 2503
+[Orchestrator Tool] Metadata: {
+  aiDetectionScore: 99.92,
+  humanProbability: 0.0799999999999983,
+  seoScore: 0,
+  iterations: 3,
+  learningsApplied: 3,
+  researchSummary: '**Artificial intelligence (AI) is fundamentally transforming web development in 2025, driving automation, personalization, and efficiency across the industry.** AI is now integral to both the development process and the user experience, with widespread adoption by businesses seeking to optimize their digital presence[1][3][5].\n\n---\n\n### Comprehensive Summary\n\nAI in web development encompasses the use of machine learning, natural language processing, and generative models to automate coding, pers',
+  seoStrategy: {
+  contentStructure: {
+  structure: 'Introduction > Key Points > Tools Overview > Conclusion',
+  sections: [ 'intro', 'tools-overview', 'comparison', 'conclusion' ],
+  wordCount: 200
+},
+  keywordPlacement: {
+  primary: [ 'SEO tools', 'content writing' ],
+  secondary: [ 'optimization', 'AI tools', 'writing assistant' ],
+  density: '2-3%'
+},
+  citationStrategy: {
+  format: 'inline citations',
+  sources: 'tool websites and reviews',
+  authority: 'focus on established SEO platforms'
+},
+  platformOptimizations: {
+  chatgpt: 'clear section headers and bullet points',
+  perplexity: 'include tool comparisons and statistics',
+  claude: 'structured format with actionable insights'
 }
- GET /dashboard 200 in 197ms (compile: 16ms, proxy.ts: 30ms, render: 150ms)
- GET /api/admin/profile 404 in 200ms (compile: 10ms, render: 190ms)
- GET /api/conversations?status=active&limit=50 404 in 106ms (compile: 14ms, render: 92ms)
-[Redis] Client initialized
-[MCP] Connecting to DataForSEO MCP server at: https://mcp.dataforseo.com/http
-[MCP] Connected to DataForSEO MCP server
-[MCP] Loaded 67 tools from DataForSEO MCP server
-[MCP] Connecting to Firecrawl MCP server at: https://mcp.firecrawl.dev/***/v2/mcp
-[MCP] Connected to Firecrawl MCP server
-[MCP] Loaded 6 tools from Firecrawl MCP server
-[Chat API] Loaded 6 Firecrawl tools
-[MCP] Connecting to Jina MCP server at: https://mcp.jina.ai/sse
-[MCP] Connected to Jina MCP server
-[MCP] Loaded 15 tools from Jina MCP server
-[Chat API] Loaded 15 Jina tools
-[Chat API] Loaded 1 Winston MCP tools
-Chat API error: TypeError: Cannot read properties of undefined (reading 'map')
-    at convertToModelMessages (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_ai_dist_index_mjs_a768fe1a._.js:6780:48)
-    at POST (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\[root-of-the-server]__14c51f53._.js:6385:258)
-    at async AppRouteRouteModule.do (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_next_dist_esm_28213090._.js:16188:23)
-    at async AppRouteRouteModule.handle (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_next_dist_esm_28213090._.js:16279:26)
-    at async EdgeRouteModuleWrapper.handler (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_next_dist_esm_28213090._.js:10378:19)
-    at async adapter (C:\Users\User\Documents\seo ragbot\seo-platform\.next\dev\server\edge\chunks\60d90_next_dist_esm_28213090._.js:4803:16) {
-  
 }
- POST /api/chat 500 in 9.4s
 }
+[Orchestrator Tool] 📤 Returning content to AI SDK 6
+[Orchestrator Tool] Content length: 2503
+[Orchestrator Tool] Content preview: # How AI Is Revolutionizing Web Development in 2025
+
+Artificial intelligence has moved from the sidelines into the heart of web development. Whether you're building a simple landing page or a complex ...
+[Chat API] onFinish - Final messages: 3
+[Chat API] Last message: { role: 'assistant', contentType: 'object', hasToolCalls: false }
+ POST /api/chat 200 in 2.5min
