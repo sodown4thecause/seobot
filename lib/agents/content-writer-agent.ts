@@ -78,6 +78,7 @@ Key principles:
 - Balance keywords naturally without stuffing
 - Structure content for both humans and AI answer engines
 - Add personality and voice to avoid generic AI tone
+- If guidance mentions "Patterns Triggering AI Detectors", radically change the voice: use first-person anecdotes, rhetorical questions, and abrupt short sentences to avoid matching previous drafts.
 
 Focus on creating content that:
 1. Passes AI detection as human-written (target < 30% AI probability)

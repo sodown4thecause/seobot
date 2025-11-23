@@ -8,6 +8,8 @@ import { ContentWriterAgent } from './content-writer-agent'
 import { QualityAssuranceAgent } from './quality-assurance-agent'
 import { ImageAgent } from './image-agent'
 import { cachedAEOCall, AEO_CACHE_PREFIXES, AEO_CACHE_TTL } from '@/lib/ai/aeo-cache'
+import { analyzeContent } from '@/lib/mcp/winston-client'
+import { storeAndLearn, getCrossUserInsights } from '@/lib/ai/learning-storage'
 
 export interface ContentGenerationParams {
   type: 'blog_post' | 'article' | 'social_media' | 'landing_page'
@@ -124,14 +126,31 @@ export class OrchestratorAgent {
             ? this.trimToWordCount(qaResult.content, maxWords)
             : qaResult.content
 
+          const finalAnalysis = await analyzeContent(finalContent)
+
+          if (params.userId) {
+            await this.storeFinalLearning({
+              userId: params.userId,
+              contentType: params.type,
+              topic: params.topic,
+              keywords: params.keywords,
+              aiDetectionScore: finalAnalysis.score,
+              humanProbability: finalAnalysis.humanProbability,
+              techniques: qaResult.techniques,
+              feedback: finalAnalysis.feedback || null,
+            })
+          }
+
           console.log('[Orchestrator] ✓ Content generation complete')
-          console.log('[Orchestrator] Final AI Score:', qaResult.metadata.aiDetectionScore)
+          console.log('[Orchestrator] Final AI Score:', finalAnalysis.score)
 
           return {
             content: finalContent,
             featuredImage,
             metadata: {
               ...qaResult.metadata,
+              aiDetectionScore: finalAnalysis.score,
+              humanProbability: finalAnalysis.humanProbability,
               learningsApplied: draftContent.metadata.learningsApplied,
               researchSummary: researchResult.summary,
               seoStrategy,
@@ -152,6 +171,38 @@ export class OrchestratorAgent {
     const words = content.split(/\s+/)
     if (words.length <= maxWords) return content
     return words.slice(0, maxWords).join(' ') + '…'
+  }
+
+  private async storeFinalLearning(params: {
+    userId: string
+    contentType: string
+    topic: string
+    keywords: string[]
+    aiDetectionScore: number
+    humanProbability: number
+    techniques: string[]
+    feedback?: string | null
+  }) {
+    try {
+      await storeAndLearn({
+        userId: params.userId,
+        contentType: params.contentType,
+        topic: params.topic,
+        keywords: params.keywords,
+        aiDetectionScore: params.aiDetectionScore,
+        humanProbability: params.humanProbability,
+        successful: params.aiDetectionScore <= 30,
+        techniques: params.techniques,
+        feedback: params.feedback || null,
+      })
+
+      const insights = await getCrossUserInsights(params.contentType)
+      console.log(
+        `[Learning Storage] 🌍 Global learning: ${insights.uniqueUsers} users, ${insights.successfulLearnings}/${insights.totalLearnings} successful patterns`,
+      )
+    } catch (error) {
+      console.error('[Learning Storage] Failed to store learning:', error)
+    }
   }
 }
 

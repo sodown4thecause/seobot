@@ -3,7 +3,12 @@
  * Combines cross-user learnings with uploaded expert documents
  */
 
-import { retrieveSimilarLearnings, getBestPractices, getCrossUserInsights } from './learning-storage'
+import {
+  retrieveSimilarLearnings,
+  getBestPractices,
+  getCrossUserInsights,
+  getRecentHighScores,
+} from './learning-storage'
 import { createClient } from '@/lib/supabase/server'
 import { generateEmbedding } from './embeddings'
 
@@ -54,11 +59,12 @@ export async function getContentGuidance(
     console.log('[Content RAG] Retrieving guidance for:', contentType, topic)
 
     // Get similar learnings, best practices, agent documents, and cross-user insights in parallel
-    const [similarLearnings, bestPractices, agentDocs, crossUserInsights] = await Promise.all([
+    const [similarLearnings, bestPractices, agentDocs, crossUserInsights, highScores] = await Promise.all([
       retrieveSimilarLearnings(topic, contentType, 5),
       getBestPractices(contentType),
       retrieveAgentDocuments(topic, 'content_writer'),
       getCrossUserInsights(contentType),
+      getRecentHighScores(contentType),
     ])
 
     console.log(
@@ -67,7 +73,14 @@ export async function getContentGuidance(
     console.log('[Content RAG] Agent docs retrieved:', agentDocs?.length ?? 0)
 
     // Format guidance with cross-user insights
-    const guidance = formatGuidance(similarLearnings, bestPractices, agentDocs, keywords, crossUserInsights)
+    const guidance = formatGuidance(
+      similarLearnings,
+      bestPractices,
+      agentDocs,
+      keywords,
+      crossUserInsights,
+      highScores,
+    )
 
     console.log('[Content RAG] ✓ Guidance retrieved')
     return guidance
@@ -86,7 +99,8 @@ function formatGuidance(
   bestPractices: any[],
   agentDocs: any[] | undefined,
   keywords: string[],
-  crossUserInsights?: any
+  crossUserInsights: any,
+  highScores: any[],
 ): string {
   const parts: string[] = []
 
@@ -158,6 +172,24 @@ function formatGuidance(
     parts.push(`- Naturally incorporate keywords: ${keywords.join(', ')}`)
     parts.push('- Use specific data points and statistics')
     parts.push('- Add rhetorical questions to engage readers')
+  }
+
+  if (highScores.length > 0) {
+    parts.push('## Patterns Triggering AI Detectors')
+    parts.push('These recent drafts were flagged above 90% AI likelihood. Do not mimic their tone or structure:')
+    highScores.forEach((entry: any, index: number) => {
+      parts.push(
+        `\n${index + 1}. Topic: "${entry.topic}" – Score: ${entry.ai_detection_score.toFixed(
+          1,
+        )}% (${new Date(entry.created_at).toLocaleDateString()})`,
+      )
+      if (entry.techniques_used?.length) {
+        parts.push(`   Techniques used: ${entry.techniques_used.join(', ')}`)
+      }
+    })
+    parts.push(
+      '\nPivot to first-person anecdotes, rhetorical questions, and uneven sentence lengths to avoid repeating these failures.',
+    )
   }
 
   return parts.join('\n')

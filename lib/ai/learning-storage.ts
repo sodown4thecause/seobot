@@ -92,6 +92,34 @@ export async function retrieveSimilarLearnings(
   }
 }
 
+export async function getRecentHighScores(
+  contentType: string,
+  threshold: number = 90,
+  limit: number = 5,
+): Promise<any[]> {
+  try {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from('content_learnings')
+      .select('topic, techniques_used, ai_detection_score, created_at')
+      .eq('content_type', contentType)
+      .gte('ai_detection_score', threshold)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      console.error('[Learning Storage] Error retrieving high-score learnings:', error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('[Learning Storage] Failed to fetch high scores:', error)
+    return []
+  }
+}
+
 /**
  * Get aggregated best practices for a content type
  */

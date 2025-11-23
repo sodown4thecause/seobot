@@ -4,7 +4,6 @@
 
 import { analyzeContent } from '@/lib/mcp/winston-client'
 import { humanizeContent } from '@/lib/external-apis/humanization-service'
-import { storeAndLearn, getCrossUserInsights } from '@/lib/ai/learning-storage'
 
 export interface QAReviewParams {
   content: string
@@ -23,6 +22,7 @@ export interface QAReviewResult {
     iterations: number
   }
   suggestions: string[]
+  techniques: string[]
 }
 
 export class QualityAssuranceAgent {
@@ -103,39 +103,6 @@ export class QualityAssuranceAgent {
       }
     }
 
-    // GLOBAL LEARNING: Store and immediately share with all users
-    if (params.userId) {
-      try {
-        const learning = {
-          userId: params.userId,
-          contentType: params.contentType,
-          topic: params.topic,
-          keywords: params.keywords,
-          aiDetectionScore: bestScore,
-          humanProbability: 100 - bestScore,
-          successful: bestScore <= this.TARGET_AI_SCORE,
-          techniques: this.extractTechniques(bestContent),
-          feedback: lastAnalysis?.feedback || null,
-        }
-
-        // Only learn from runs where we actually improved content and achieved target AI score
-        if (learning.successful && rytrImproved) {
-          // Store learning and trigger real-time global knowledge update
-          await storeAndLearn(learning)
-        } else {
-          console.log('[QA Agent] Skipping learning storage – unsuccessful or no Rytr improvement')
-        }
-        
-        // Log cross-user learning insights
-        const insights = await getCrossUserInsights(params.contentType)
-        console.log(`[QA Agent] 🌍 Global learning: ${insights.uniqueUsers} users contributed, ${insights.successfulLearnings} successful patterns`)
-        
-      } catch (error) {
-        console.error('[QA Agent] Failed to store learning:', error)
-        // Non-blocking - continue
-      }
-    }
-
     console.log(`[QA Agent] ✓ Review complete after ${iterations} iterations`)
 
     return {
@@ -147,6 +114,7 @@ export class QualityAssuranceAgent {
         iterations,
       },
       suggestions: this.generateSuggestions(bestScore, iterations),
+      techniques: this.extractTechniques(bestContent),
     }
   }
 
