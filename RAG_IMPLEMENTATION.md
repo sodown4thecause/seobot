@@ -16,7 +16,7 @@ Successfully implemented a production-ready RAG (Retrieval-Augmented Generation)
 - `generateEmbeddings()` - Batch processing with concurrency control (8 concurrent)
 - `chunkText()` - Sentence-based chunking for long content
 - Exponential backoff retry (3 attempts, 1-10s)
-- Using `text-embedding-3-small` (1536 dimensions)
+- Using `text-embedding-004` (Gemini, 768 dimensions)
 
 ### Phase 2: Framework Seeds ✅
 **File:** `lib/ai/framework-seeds.ts`

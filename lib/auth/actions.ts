@@ -48,7 +48,7 @@ export async function signUp(prevState: AuthState, formData: FormData): Promise<
 
   // If you have email-confirmation disabled, you may get a session immediately.
   if (data.session) {
-    redirect('/onboarding')
+    redirect('/dashboard')
   }
 
   // Otherwise prompt the user to check their email.

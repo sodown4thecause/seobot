@@ -23,7 +23,7 @@ export function UrlInput({ onSubmit, placeholder = 'https://yourwebsite.com' }: 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="relative">
-        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
         <Input
           id="url-input"
           name="url-input"
@@ -31,13 +31,12 @@ export function UrlInput({ onSubmit, placeholder = 'https://yourwebsite.com' }: 
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder={placeholder}
-          className="pl-10 pr-4"
+          className="pl-10 pr-4 bg-zinc-900 border-zinc-800 text-zinc-100 placeholder:text-zinc-600 focus-visible:ring-zinc-700"
         />
       </div>
-      <Button type="submit" disabled={!url.trim()}>
+      <Button type="submit" disabled={!url.trim()} className="bg-zinc-100 text-zinc-900 hover:bg-zinc-200 w-full font-medium">
         Analyze Website
       </Button>
     </form>
   )
 }
-

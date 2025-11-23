@@ -19,7 +19,7 @@ export default function DashboardLayout({
   return (
     <ChatModeProvider>
       <AgentProvider>
-        <div className="min-h-screen purple-gradient flex">
+        <div className="min-h-screen bg-background flex text-foreground">
           {/* Sidebar */}
           <Sidebar
             collapsed={sidebarCollapsed}
@@ -30,7 +30,7 @@ export default function DashboardLayout({
           {/* Main Content Area */}
           <main
             className={cn(
-              'flex-1 min-h-screen p-6 md:p-8 transition-all duration-300',
+              'flex-1 min-h-screen transition-all duration-300 bg-background',
               sidebarCollapsed ? 'ml-[72px]' : 'ml-[250px]'
             )}
           >

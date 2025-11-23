@@ -7,10 +7,14 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   
-  // AI Providers
-  GOOGLE_API_KEY: z.string().min(1),
-  XAI_API_KEY: z.string().min(1).optional(), // Optional, kept for backward compatibility
-  OPENAI_API_KEY: z.string().min(1), // Required for chat interface
+  // AI Provider Keys (Optional if using Gateway)
+  OPENAI_API_KEY: z.string().optional(),
+  GOOGLE_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  
+  // Vercel AI Gateway
+  AI_GATEWAY_API_KEY: z.string().optional(),
+  AI_GATEWAY_BASE_URL: z.string().url().optional(),
 
   // External APIs
   DATAFORSEO_LOGIN: z.string().email(),
@@ -61,6 +65,8 @@ function getServerEnv() {
       GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
       XAI_API_KEY: process.env.XAI_API_KEY,
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+      AI_GATEWAY_BASE_URL: process.env.AI_GATEWAY_BASE_URL,
       DATAFORSEO_LOGIN: process.env.DATAFORSEO_LOGIN,
       DATAFORSEO_PASSWORD: process.env.DATAFORSEO_PASSWORD,
       DATAFORSEO_MCP_URL: process.env.DATAFORSEO_MCP_URL,

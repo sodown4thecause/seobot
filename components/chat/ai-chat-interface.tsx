@@ -1,15 +1,23 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
-import type { UIMessage } from 'ai'
-import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import type { UIMessage as Message } from 'ai'
+import { useEffect, useState, forwardRef } from 'react'
 import { Sparkles, Copy, Check, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
 import { renderMessageComponent, type MessageComponent } from './message-types'
 import { ExportButton } from '@/components/ui/export-button'
+
+// AI Elements Imports
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from '@/components/ai-elements/conversation'
+import { Message, MessageAvatar, MessageContent } from '@/components/ai-elements/message'
+import { Response } from '@/components/ai-elements/response'
 
 interface AIChatInterfaceProps {
   context?: any
@@ -20,77 +28,66 @@ interface AIChatInterfaceProps {
   workflowResults?: any
 }
 
-export function AIChatInterface({
+export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(({
   context,
   className,
   placeholder = "Type your message...",
   onComponentSubmit,
   initialMessage,
   workflowResults
-}: AIChatInterfaceProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+}, ref) => {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [pendingComponents, setPendingComponents] = useState<Map<string, MessageComponent>>(new Map())
   const [input, setInput] = useState('')
-  
+
   const chat = useChat({
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-      body: { context },
-    }),
-    messages: initialMessage ? [{ role: 'assistant', parts: [{ type: 'text', text: initialMessage }], id: 'initial' }] : undefined,
-    onFinish: ({ message }) => {
+    api: '/api/chat',
+    body: { context },
+    streamProtocol: 'ui-message',
+    initialMessages: initialMessage ? [{ role: 'assistant', content: initialMessage, id: 'initial' }] : undefined,
+    onFinish: (message: any) => {
       console.log('[Chat] Message finished:', message)
-      scrollToBottom()
-      // Parse components from message
-      const textContent = message.parts.find(p => p.type === 'text')?.text || ''
+      const textContent: string = message.content || ''
       parseComponentsFromMessage(textContent, message.id)
     },
-    onError: (error) => {
-      console.error('[Chat] Error:', error)
-      console.error('[Chat] Error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        error
-      })
-      // Handle error gracefully - don't break the UI
+    onError: (error: any) => {
+      console.error('[Chat] Stream error:', error)
     },
-  })
+  } as any) as any
 
-  const { messages, sendMessage, status, setMessages } = chat
+  const messages = chat?.messages || []
+  const append = chat?.append || chat?.sendMessage
+  const status = chat?.status || 'ready'
+  const setMessages = chat?.setMessages
+  
   const isLoading = status === 'streaming' || status === 'submitted'
 
-  // Inject workflow results as a message when they arrive
+  const sendMessage = (data: { text: string }) => {
+    if (append) {
+      append({ role: 'user', content: data.text })
+    } else {
+      console.error('[Chat] No send function available')
+    }
+  }
+
   useEffect(() => {
     if (workflowResults && workflowResults.components) {
-      console.log('[Chat] Injecting workflow results:', workflowResults)
-
-      // Create a message with workflow results
-      const workflowMessage: typeof messages[number] = {
+      const workflowMessage: any = {
         id: `workflow-${Date.now()}`,
         role: 'assistant',
-        parts: [
-          {
-            type: 'text',
-            text: workflowResults.summary || 'Workflow completed successfully!'
-          }
-        ]
+        content: workflowResults.summary || 'Workflow completed successfully!',
+        parts: [{ type: 'text', text: workflowResults.summary || 'Workflow completed successfully!' }],
       }
 
-      // Add the message to chat
-      setMessages((prev) => [...prev, workflowMessage])
+      setMessages((prev: any[]) => [...prev, workflowMessage])
 
-      // Add components to pending components for rendering
       workflowResults.components.forEach((comp: any) => {
         setPendingComponents(prev => new Map(prev.set(workflowMessage.id, comp)))
       })
-
-      scrollToBottom()
     }
-  }, [workflowResults])
+  }, [workflowResults, setMessages])
 
   const parseComponentsFromMessage = (content: string, messageId: string) => {
-    // Look for JSON code blocks in the message
     const jsonRegex = /```json\n([\s\S]*?)\n```/g
     const matches = Array.from(content.matchAll(jsonRegex))
 
@@ -109,21 +106,17 @@ export function AIChatInterface({
   }
 
   const handleComponentSubmit = (messageId: string, component: MessageComponent, data: any) => {
-    // Remove pending component
     setPendingComponents(prev => {
       const newMap = new Map(prev)
       newMap.delete(messageId)
       return newMap
     })
-    
-    // Send data to chat
+
     if (onComponentSubmit) {
       onComponentSubmit(component.component, data)
     }
-    
-    // Append user message with component data
+
     const message = formatComponentData(component.component, data)
-    console.log('[Chat] Sending component message:', message)
     sendMessage({ text: message })
   }
 
@@ -147,98 +140,100 @@ export function AIChatInterface({
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
   }
-  
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-  
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages, pendingComponents])
 
-  const renderMessageContent = (message: UIMessage, messageId: string) => {
-    const textContent = message.parts.find(p => p.type === 'text')?.text || ''
-    // Remove JSON code blocks from display
+  const renderMessageContent = (message: any, messageId: string) => {
+    let textContent: string = message.content || ''
+
+    if (!textContent && message.parts && Array.isArray(message.parts)) {
+      textContent = message.parts
+        .filter((p: any) => p.type === 'text')
+        .map((p: any) => p.text)
+        .join('')
+    }
+
     const cleanedContent = textContent.replace(/```json\n[\s\S]*?\n```/g, '').trim()
     const component = pendingComponents.get(messageId)
-    
-    // Find tool calls
-    const toolCalls = message.parts.filter(p => p.type && p.type.startsWith('tool-'))
-    
+    const toolCalls = message.toolInvocations || []
+
     return (
       <>
         {cleanedContent && (
-          <div className="whitespace-pre-wrap break-words prose prose-invert prose-sm max-w-none">
-            <div className="text-white/90 leading-relaxed">
-              {cleanedContent.split('\n').map((line, i) => (
-                <span key={i}>
-                  {line}
-                  {i < cleanedContent.split('\n').length - 1 && <br />}
-                </span>
-              ))}
+          message.role === 'assistant' ? (
+            <Response className="prose prose-invert prose-sm max-w-none">{cleanedContent}</Response>
+          ) : (
+            <div className="whitespace-pre-wrap break-words">
+              {cleanedContent}
             </div>
-          </div>
+          )
         )}
         {toolCalls.length > 0 && (
           <div className="mt-4 space-y-3">
             {toolCalls.map((toolCall: any, index: number) => {
-              const toolName = toolCall.type.replace('tool-', '')
-              const toolInput = toolCall.input || toolCall.rawInput
-              const toolOutput = toolCall.output
+              const toolName = toolCall.toolName
+              const toolInput = toolCall.args
+              const toolOutput = toolCall.result
               const toolState = toolCall.state
-              const isLoading = toolState === 'submitted' || toolState === 'streaming'
-              const isSuccess = toolState === 'output-available' || toolState === 'done'
-              const isError = !!toolCall.errorText
-              
+              const isLoading = toolState !== 'result'
+              const isSuccess = toolState === 'result'
+              const isError = false 
+
+              if (toolName === 'client_ui') {
+                const componentData = {
+                  component: toolInput.component,
+                  props: toolInput.props || {}
+                }
+
+                return (
+                  <div key={index} className="mt-4 w-full">
+                    {renderMessageComponent(componentData, (data) => handleComponentSubmit(messageId, componentData, data))}
+                  </div>
+                )
+              }
+
               return (
-                <motion.div
+                <div
                   key={index}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
                   className={cn(
-                    "bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm",
-                    "border rounded-xl p-4 space-y-3",
-                    "transition-all duration-200",
-                    isError ? "border-red-500/30" : "border-white/10",
-                    isSuccess && !isError && "border-green-500/30"
+                    "bg-zinc-900",
+                    "border rounded-md p-4 space-y-3",
+                    isError ? "border-red-500/30" : "border-zinc-800",
+                    isSuccess && !isError && "border-green-900/50"
                   )}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center",
-                        isLoading && "bg-blue-500/20 animate-pulse",
-                        isSuccess && !isError && "bg-green-500/20",
-                        isError && "bg-red-500/20"
+                        "w-8 h-8 rounded-md flex items-center justify-center bg-zinc-800",
+                        isLoading && "animate-pulse",
                       )}>
-                        {isLoading && <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />}
-                        {isSuccess && !isError && <CheckCircle2 className="w-4 h-4 text-green-400" />}
-                        {isError && <XCircle className="w-4 h-4 text-red-400" />}
+                        {isLoading && <Loader2 className="w-4 h-4 text-zinc-400 animate-spin" />}
+                        {isSuccess && !isError && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                        {isError && <XCircle className="w-4 h-4 text-red-500" />}
                         {!isLoading && !isSuccess && !isError && (
-                          <AlertCircle className="w-4 h-4 text-yellow-400" />
+                          <AlertCircle className="w-4 h-4 text-yellow-500" />
                         )}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-white">
-                          {toolName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        <span className="text-sm font-semibold text-zinc-100 font-mono">
+                          {toolName}
                         </span>
                         {toolState && (
                           <span className={cn(
                             "text-xs mt-0.5",
-                            isSuccess && !isError ? 'text-green-400' :
-                            isError ? 'text-red-400' :
-                            'text-blue-400'
+                            isSuccess && !isError ? 'text-green-500' :
+                              isError ? 'text-red-500' :
+                                'text-zinc-500'
                           )}>
-                            {toolState.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                            {toolState}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
                   {toolInput && (
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                      <div className="text-xs font-medium text-white/70 mb-1.5">Input</div>
-                      <div className="text-sm text-white/90 font-mono">
+                    <div className="bg-black rounded-md p-3 border border-zinc-800">
+                      <div className="text-xs font-medium text-zinc-500 mb-1.5 font-mono">Input</div>
+                      <div className="text-sm text-zinc-300 font-mono">
                         {typeof toolInput === 'object' ? (
                           <pre className="whitespace-pre-wrap break-words text-xs">
                             {JSON.stringify(toolInput, null, 2)}
@@ -251,27 +246,27 @@ export function AIChatInterface({
                   )}
                   {toolOutput && (isSuccess || isError) && (
                     <div className={cn(
-                      "rounded-lg p-3 border max-h-48 overflow-y-auto",
-                      isError ? "bg-red-500/10 border-red-500/30" : "bg-green-500/10 border-green-500/30"
+                      "rounded-md p-3 border max-h-48 overflow-y-auto",
+                      isError ? "bg-red-900/10 border-red-500/30" : "bg-green-900/10 border-green-900/30"
                     )}>
                       <div className={cn(
-                        "text-xs font-medium mb-1.5",
+                        "text-xs font-medium mb-1.5 font-mono",
                         isError ? "text-red-400" : "text-green-400"
                       )}>
                         {isError ? "Error" : "Output"}
                       </div>
-                      <pre className="text-xs text-white/90 whitespace-pre-wrap break-words font-mono">
+                      <pre className="text-xs text-zinc-300 whitespace-pre-wrap break-words font-mono">
                         {typeof toolOutput === 'string' ? toolOutput : JSON.stringify(toolOutput, null, 2)}
                       </pre>
                     </div>
                   )}
                   {toolCall.errorText && (
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                      <div className="text-xs font-medium text-red-400 mb-1">Error</div>
-                      <div className="text-sm text-red-300">{toolCall.errorText}</div>
+                    <div className="bg-red-900/10 border border-red-500/30 rounded-md p-3">
+                      <div className="text-xs font-medium text-red-400 mb-1 font-mono">Error</div>
+                      <div className="text-sm text-red-300 font-mono">{toolCall.errorText}</div>
                     </div>
                   )}
-                </motion.div>
+                </div>
               )
             })}
           </div>
@@ -284,112 +279,82 @@ export function AIChatInterface({
       </>
     )
   }
-  
+
   return (
-    <div className={cn("flex flex-col h-full min-h-0", className)}>
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
-            <div className="w-16 h-16 rounded-full glass flex items-center justify-center mb-4">
-              <Sparkles className="w-8 h-8 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Ready to Create Something New?</h2>
-            <p className="text-white/80 max-w-md mb-6">
-              I'm your AI SEO assistant. I can help you analyze competitors, find keyword opportunities, 
-              and create optimized content.
-            </p>
-          </div>
-        )}
-        <AnimatePresence>
-          {messages.map((message: UIMessage) => {
-            const isUser = message.role === 'user'
-            const isAssistant = message.role === 'assistant'
-            return (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className={cn(
-                "group flex items-start gap-3",
-                isUser ? 'justify-end' : 'justify-start'
-              )}
-            >
-              {isAssistant && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full glass flex items-center justify-center mt-1">
-                  <Sparkles className="w-4 h-4 text-white" />
-                </div>
-              )}
-              <div className="flex flex-col gap-1.5 max-w-[85%]">
-                <div
-                  className={cn(
-                    "rounded-2xl px-5 py-4 shadow-2xl transition-all duration-200",
-                    isUser
-                      ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-md border border-white/20 text-white rounded-tr-sm hover:border-white/30'
-                      : 'bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 text-white rounded-tl-sm hover:border-white/20'
-                  )}
-                >
-                  {renderMessageContent(message, message.id)}
-                </div>
-                {isAssistant && (
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const textContent = message.parts.find(p => p.type === 'text')?.text || ''
-                        copyToClipboard(textContent, message.id)
-                      }}
-                      className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 rounded hover:bg-muted"
-                      title="Copy to clipboard"
-                    >
-                      {copiedId === message.id ? (
-                        <>
-                          <Check className="w-3 h-3 text-primary" />
-                          <span className="text-primary">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
-                    <ExportButton
-                      content={message.parts.find(p => p.type === 'text')?.text || ''}
-                      size="sm"
-                      className="text-xs"
-                    />
-                  </div>
+    <div className={cn("flex flex-col h-full min-h-0 bg-background", className)}>
+      <Conversation>
+        <ConversationContent>
+          {messages.length === 0 && (
+             <ConversationEmptyState
+               icon={
+                 <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
+                   <Sparkles className="w-8 h-8 text-zinc-50" />
+                 </div>
+               }
+               title="Ready to Create?"
+               description="I'm your AI assistant. How can I help you today?"
+             />
+          )}
+          
+          {messages.map((message: any) => (
+            <Message key={message.id} from={message.role}>
+              <MessageAvatar 
+                src=""
+                name={message.role === 'user' ? "You" : "AI"} 
+              />
+              <MessageContent variant={message.role === 'user' ? 'contained' : 'flat'}>
+                {renderMessageContent(message, message.id)}
+                
+                {/* Actions for assistant */}
+                {message.role === 'assistant' && (
+                   <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => {
+                          const textContent = message.content || ''
+                          copyToClipboard(textContent, message.id)
+                        }}
+                        className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 rounded hover:bg-zinc-800"
+                        title="Copy to clipboard"
+                      >
+                        {copiedId === message.id ? (
+                          <>
+                            <Check className="w-3 h-3 text-green-500" />
+                            <span className="text-green-500">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                      <ExportButton
+                        content={message.content || ''}
+                        size="sm"
+                        className="text-xs text-zinc-500 hover:text-zinc-300"
+                      />
+                   </div>
                 )}
-              </div>
-            </motion.div>
-          )})}
-        </AnimatePresence>
-        
-        {isLoading && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-3 justify-start"
-          >
-            <div className="flex-shrink-0 w-8 h-8 rounded-full glass flex items-center justify-center mt-1">
-              <Sparkles className="w-4 h-4 text-white animate-pulse" />
-            </div>
-            <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 rounded-2xl rounded-tl-sm px-5 py-4">
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                <span className="text-sm text-white/70">Thinking...</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-      
-      {/* Input Area */}
-      <div className="p-4">
+              </MessageContent>
+            </Message>
+          ))}
+          
+          {isLoading && (
+            <Message from="assistant">
+               <MessageAvatar src="" name="AI" />
+               <MessageContent variant="flat">
+                 <div className="flex items-center gap-2">
+                   <Loader2 className="w-4 h-4 animate-spin" />
+                   <span>Thinking...</span>
+                 </div>
+               </MessageContent>
+            </Message>
+          )}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
+
+      <div className="p-4 bg-background border-t border-zinc-800">
         <ChatInput
           value={input}
           onChange={(value) => {
@@ -413,4 +378,4 @@ export function AIChatInterface({
       </div>
     </div>
   )
-}
+})

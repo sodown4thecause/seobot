@@ -17,6 +17,166 @@ import { serverEnv } from '@/lib/config/env'
 
 const RYTR_API_BASE = 'https://api.rytr.me/v1'
 
+// Caches to avoid repeated API lookups
+let cachedUseCases:
+  | Array<{
+      _id: string
+      key: string
+      slug?: string
+      name?: string
+      contextInputs?: Array<{ keyLabel: string; isRequired: boolean }>
+    }>
+  | null = null
+let cachedLanguages:
+  | Array<{
+      _id: string
+      slug: string
+      name: string
+    }>
+  | null = null
+let cachedTones:
+  | Array<{
+      _id: string
+      slug: string
+      name: string
+    }>
+  | null = null
+
+const DEFAULT_LANGUAGE_SLUG = 'english'
+const DEFAULT_TONE_SLUG = 'informative'
+
+const USE_CASE_ALIASES: Record<string, string> = {
+  blog_section_writing: 'blog-paragraph',
+  meta_description: 'seo-description',
+  seo_meta_title: 'seo-title',
+  text_editing_improve: 'text-improver',
+  text_editing_expand: 'text-expand',
+  text_editing_paragraph: 'text-paragraph',
+  text_editing_shorten: 'text-shorten',
+  humanize: 'text-change-tone',
+}
+
+const isMongoId = (value: string | undefined): boolean =>
+  !!value && /^[a-f\d]{24}$/i.test(value)
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const response = await fetch(`${RYTR_API_BASE}/${path}`, {
+    headers: {
+      'Authentication': `Bearer ${serverEnv.RYTR_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Rytr API fetch failed (${path}): ${response.status} - ${error}`)
+  }
+
+  return response.json()
+}
+
+async function getUseCases() {
+  if (cachedUseCases) return cachedUseCases
+  const data = await fetchJson<{ success: boolean; data: typeof cachedUseCases }>('use-cases')
+  cachedUseCases = data.data || []
+  return cachedUseCases
+}
+
+async function getLanguages() {
+  if (cachedLanguages) return cachedLanguages
+  const data = await fetchJson<{ success: boolean; data: typeof cachedLanguages }>('languages')
+  cachedLanguages = data.data || []
+  return cachedLanguages
+}
+
+async function getTones() {
+  if (cachedTones) return cachedTones
+  const data = await fetchJson<{ success: boolean; data: typeof cachedTones }>('tones')
+  cachedTones = data.data || []
+  return cachedTones
+}
+
+async function resolveUseCase(identifier: string) {
+  const useCases = await getUseCases()
+  const normalizedInput = identifier?.toLowerCase()
+  const aliasTarget = USE_CASE_ALIASES[normalizedInput] || identifier
+  const normalizedAlias = aliasTarget?.toLowerCase().replace(/_/g, '-')
+
+  const found = useCases.find((useCase) => {
+    if (isMongoId(aliasTarget) && useCase._id === aliasTarget) return true
+    const keysToCheck = [
+      useCase.key?.toLowerCase(),
+      useCase.slug?.toLowerCase(),
+      useCase.name?.toLowerCase(),
+    ]
+    return keysToCheck.some((key) => key === normalizedAlias || key === normalizedInput)
+  })
+
+  if (!found) {
+    throw new Error(`Unknown Rytr use case: ${identifier}`)
+  }
+
+  const inputKey =
+    found.contextInputs?.find((input) => input.isRequired)?.keyLabel ||
+    found.contextInputs?.[0]?.keyLabel ||
+    'CONTEXT_LABEL'
+
+  return {
+    id: found._id,
+    inputKey,
+  }
+}
+
+async function resolveLanguageId(language: string) {
+  if (isMongoId(language)) return language
+  const languages = await getLanguages()
+  const normalized = language?.toLowerCase()
+  const fallback = languages.find((item) => item.slug === DEFAULT_LANGUAGE_SLUG)
+  const match = languages.find(
+    (item) =>
+      item.slug?.toLowerCase() === normalized || item.name?.toLowerCase() === normalized,
+  )
+  return match?._id || fallback?._id || language
+}
+
+async function resolveToneId(tone: string) {
+  if (isMongoId(tone)) return tone
+  const tones = await getTones()
+  const normalized = tone?.toLowerCase()
+  const fallback = tones.find((item) => item.slug === DEFAULT_TONE_SLUG)
+  const match = tones.find(
+    (item) =>
+      item.slug?.toLowerCase() === normalized || item.name?.toLowerCase() === normalized,
+  )
+  return match?._id || fallback?._id || tone
+}
+
+function extractTextFromRytrItem(item: any): string {
+  if (!item) return ''
+  if (typeof item === 'string') return item
+  if (typeof item.text === 'string') return item.text
+  if (typeof item.output === 'string') return item.output
+  if (typeof item.content === 'string') return item.content
+
+  // Sometimes text/output can be arrays of strings
+  if (Array.isArray(item.text)) return item.text.join('\n')
+  if (Array.isArray(item.output)) return item.output.join('\n')
+  if (Array.isArray(item.content)) return item.content.join('\n')
+
+  // Fallback: look for any string values inside object
+  if (typeof item === 'object') {
+    for (const value of Object.values(item)) {
+      if (typeof value === 'string') return value
+      if (Array.isArray(value)) {
+        const flattened = value.filter((v) => typeof v === 'string')
+        if (flattened.length) return flattened.join('\n')
+      }
+    }
+  }
+
+  return ''
+}
+
 export type RytrTone = 
   | 'appreciative'
   | 'assertive'
@@ -41,29 +201,7 @@ export type RytrTone =
   | 'urgent'
   | 'worried'
 
-export type RytrUseCase =
-  | 'blog_idea_outline'
-  | 'blog_section_writing'
-  | 'business_idea_pitch'
-  | 'copywriting_framework_aida'
-  | 'copywriting_framework_pas'
-  | 'email_marketing'
-  | 'facebook_ad'
-  | 'google_ad'
-  | 'instagram_caption'
-  | 'job_description'
-  | 'linkedin_ad'
-  | 'meta_description'
-  | 'product_description'
-  | 'seo_meta_title'
-  | 'social_media_post'
-  | 'text_editing_continue'
-  | 'text_editing_expand'
-  | 'text_editing_improve'
-  | 'text_editing_paragraph'
-  | 'text_editing_shorten'
-  | 'video_description'
-  | 'video_idea'
+export type RytrUseCase = string
 
 export interface RytrGenerateOptions {
   useCase: RytrUseCase
@@ -72,11 +210,12 @@ export interface RytrGenerateOptions {
   language?: string // Default: 'en'
   variations?: number // Number of variations to generate (1-3)
   creativity?: 'low' | 'medium' | 'high' // Default: 'medium'
+  userId?: string // Rytr requires a unique user ID per end user
 }
 
 export interface RytrGenerateResult {
   text: string
-  variations?: string[]
+  variations: string[]
   metadata: {
     useCase: string
     tone: string
@@ -98,41 +237,101 @@ export async function generateContent(
     language = 'en',
     variations = 1,
     creativity = 'medium',
+    userId,
   } = options
 
   if (!input || input.trim().length === 0) {
     throw new Error('Input context is required for content generation')
   }
 
+  // Rytr has a character limit - truncate if needed (typically 5000-10000 chars)
+  const MAX_RYTR_INPUT_LENGTH = 5000;
+  const truncatedInput = input.length > MAX_RYTR_INPUT_LENGTH 
+    ? input.substring(0, MAX_RYTR_INPUT_LENGTH) + '...'
+    : input;
+  
+  if (input.length > MAX_RYTR_INPUT_LENGTH) {
+    console.warn(`[Rytr] Input truncated from ${input.length} to ${MAX_RYTR_INPUT_LENGTH} characters`);
+  }
+
   try {
+    const [{ id: useCaseId, inputKey }, languageId, toneId] = await Promise.all([
+      resolveUseCase(useCase),
+      resolveLanguageId(language),
+      resolveToneId(tone),
+    ])
+
+    const inputContexts: Record<string, string> = {
+      [inputKey]: truncatedInput
+    };
+    
+    const requestBody = {
+      languageId,
+      toneId,
+      useCaseId,
+      inputContexts,
+      variations,
+      userId: userId || 'ANON_USER',
+      format: 'text',
+      creativityLevel: creativity, // 'low' | 'medium' | 'high'
+    };
+    
+    console.log('[Rytr] Request:', JSON.stringify(requestBody, null, 2));
+    
     const response = await fetch(`${RYTR_API_BASE}/ryte`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serverEnv.RYTR_API_KEY}`,
+        // Rytr uses custom "Authentication: Bearer <token>" header (not standard Authorization)
+        'Authentication': `Bearer ${serverEnv.RYTR_API_KEY}`,
       },
-      body: JSON.stringify({
-        languageId: language,
-        toneId: tone,
-        useCaseId: useCase,
-        inputContexts: {
-          INPUT_TEXT: input,
-        },
-        variations,
-        creativity: creativity === 'low' ? 0 : creativity === 'high' ? 2 : 1,
-      }),
+      body: JSON.stringify(requestBody),
     })
 
     if (!response.ok) {
       const error = await response.text()
+      console.error('[Rytr] API error response:', response.status, error)
+      console.error('[Rytr] Failed request body:', JSON.stringify(requestBody, null, 2))
       throw new Error(`Rytr API error: ${response.status} - ${error}`)
     }
 
     const data = await response.json()
+    console.log('[Rytr] Response:', JSON.stringify(data).slice(0, 500));
+    
+    // Check if Rytr returned an error in the response body
+    if (data.success === false || data.error) {
+      console.error('[Rytr] API returned error in response body:', data);
+      console.error('[Rytr] Request that caused error:', JSON.stringify(requestBody, null, 2));
+      throw new Error(`Rytr API error: ${data.message || data.error || 'Unknown error'}`);
+    }
+
+    const dataItems = Array.isArray(data.data)
+      ? data.data
+      : data.data
+        ? [data.data]
+        : []
+
+    const normalizedVariations = dataItems
+      .map((item: any) => extractTextFromRytrItem(item))
+      .filter((text: string) => typeof text === 'string' && text.trim().length > 0)
+
+    const mainText: string = normalizedVariations[0] || ''
+
+    if (!normalizedVariations.length) {
+      console.warn(
+        '[Rytr] Empty or missing data field in response:',
+        JSON.stringify(data).slice(0, 1000),
+      )
+    }
+
+    console.log('[Rytr] Generation result lengths:', {
+      mainTextLength: mainText.length,
+      variations: normalizedVariations.length,
+    })
 
     return {
-      text: data.data?.[0]?.text || '',
-      variations: data.data?.map((item: any) => item.text) || [],
+      text: mainText,
+      variations: normalizedVariations,
       metadata: {
         useCase,
         tone,
@@ -231,6 +430,31 @@ export async function improveContent(
   })
 
   return result.text
+}
+
+/**
+ * Humanize content to reduce AI detection
+ * Used by QA agent to improve content quality
+ */
+export async function humanizeContent(options: {
+  content: string
+  strategy?: 'improve' | 'expand' | 'rewrite'
+  userId?: string
+}): Promise<{ content: string }> {
+  const { content, strategy = 'improve', userId } = options
+  
+  // For humanization we use Rytr's dedicated 'humanize' use case
+  const result = await generateContent({
+    useCase: 'humanize',
+    input: content,
+    tone: 'conversational',
+    creativity: 'high', // Higher creativity for more human-like output
+    userId,
+  })
+  
+  return {
+    content: result.text,
+  }
 }
 
 /**

@@ -177,7 +177,7 @@ Requirements for variations:
 Return only the variations as a JSON array of strings, no explanations.`
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: z.array(z.string()),
     })

@@ -614,7 +614,7 @@ Return as JSON with keys: suggestedReviewers, potentialIssues, optimizationTips`
     })
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: collaborationInsightsSchema,
     })

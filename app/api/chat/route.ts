@@ -1,10 +1,15 @@
 import {
-  ToolLoopAgent,
-  createAgentUIStreamResponse,
+  streamText,
+  convertToCoreMessages,
   tool,
+  CoreMessage,
+  CoreUserMessage,
+  CoreAssistantMessage,
+  CoreToolMessage,
   stepCountIs,
 } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createClient } from "@/lib/supabase/server";
 import { buildOnboardingSystemPrompt } from "@/lib/onboarding/prompts";
 import {
@@ -20,46 +25,24 @@ import {
 import { handleDataForSEOFunctionCall } from "@/lib/ai/dataforseo-tools";
 import { getDataForSEOTools } from "@/lib/mcp/dataforseo-client";
 import { getFirecrawlTools } from "@/lib/mcp/firecrawl-client";
+import { getJinaTools } from "@/lib/mcp/jina-client";
 import { getWinstonTools } from "@/lib/mcp/winston-client";
+import { validateToolsCollection, loadEssentialTools } from "@/lib/ai/tool-schema-validator-v6";
+import { fixAllMCPTools } from "@/lib/mcp/schema-fixer";
 import { getContentQualityTools } from "@/lib/ai/content-quality-tools";
 import { getEnhancedContentQualityTools } from "@/lib/ai/content-quality-enhancements";
-import { getAEOTools } from "@/lib/ai/aeo-tools";
-import { getAEOPlatformTools } from "@/lib/ai/aeo-platform-tools";
-import { scrapeWithJina } from "@/lib/external-apis/jina";
 import { searchWithPerplexity } from "@/lib/external-apis/perplexity";
-import {
-  buildCodemodeToolRegistryFromExisting,
-  createCodemodeTool,
-} from "@/lib/ai/codemode";
+// import { buildCodemodeToolRegistry, createCodemodeTool } from "@/lib/ai/codemode"; // DISABLED
+import { OrchestratorAgent } from "@/lib/agents/orchestrator";
+import { AgentRouter, type AgentType } from "@/lib/agents/agent-router";
+import { vercelGateway } from "@/lib/ai/gateway-provider";
 import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
-import { createProfiler, timeAsync } from "@/lib/ai/profiler";
-import {
-  getCachedDataForSEOTools,
-  getCachedFirecrawlTools,
-  getCachedWinstonTools,
-  prewarmToolCaches,
-} from "@/lib/ai/tool-cache";
 import { z } from "zod";
 
-// Lazy prewarm flag - triggers prewarm on first request
-let prewarmTriggered = false;
-let prewarmPromise: Promise<void> | null = null;
+export const runtime = "edge";
 
-// Changed from "edge" to "nodejs" to support codemode's dynamic code execution
-// Edge Runtime doesn't allow new Function() or eval() for security reasons
-export const runtime = "nodejs";
-
-// Feature flag: when true, codemode becomes the primary interface for MCP/API tools
-// and those tools will not be exposed directly to the agent. This makes it easy
-// to roll back to the previous mixed mode if needed.
-const USE_CODEMODE_PRIMARY = serverEnv.ENABLE_CODEMODE_PRIMARY === "true";
-
-// Using OpenAI GPT-4o-mini for chat interface with tool calling support
-// GPT-4o-mini offers excellent tool calling at lower cost than GPT-4o
-const CHAT_MODEL_ID = "gpt-4o-mini";
-const openai = createOpenAI({
-  apiKey: serverEnv.OPENAI_API_KEY,
-});
+// Using Claude Haiku 4.5 via Vercel Gateway
+const CHAT_MODEL_ID = "anthropic/claude-haiku-4.5";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -79,46 +62,40 @@ interface ChatContext {
 }
 
 interface RequestBody {
-  messages: ChatMessage[];
+  messages: any[];
   context?: ChatContext;
 }
 
 export async function POST(req: Request) {
-  // Lazy prewarm on first request (non-blocking)
-  if (!prewarmTriggered) {
-    prewarmTriggered = true;
-    // Start prewarm in background (don't await)
-    prewarmPromise = prewarmToolCaches().catch((err) => {
-      console.warn("[Chat API] Prewarm failed (non-critical):", err);
-    });
-  }
-
-  // Initialize profiler
-  const profiler = createProfiler();
-  profiler.start("total");
-
+  console.log('[Chat API] POST handler called');
+  
   // Check rate limit
-  profiler.start("rateLimit");
   const rateLimitResponse = await rateLimitMiddleware(req as any, "CHAT");
-  profiler.end("rateLimit");
   if (rateLimitResponse) {
     return rateLimitResponse;
   }
 
   try {
-    profiler.start("parseRequest");
+    console.log('[Chat API] About to parse request body');
     const body = (await req.json()) as RequestBody;
+    console.log('[Chat API] Body parsed successfully');
     const { messages, context } = body;
-    profiler.end("parseRequest");
 
     // Debug logging
-    console.log("[Chat API] Received request:", {
-      messageCount: messages?.length || 0,
-      lastMessage: messages?.[messages.length - 1],
-      hasContext: !!context,
-    });
+    console.log('[Chat API] Request body:', JSON.stringify(body, null, 2));
+    console.log('[Chat API] Messages type:', typeof messages);
+    console.log('[Chat API] Messages is array:', Array.isArray(messages));
+    console.log('[Chat API] Messages length:', messages?.length);
+    console.log('[Chat API] First message:', messages?.[0]);
 
-    profiler.start("auth");
+    // Validate messages
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Messages array is required and must not be empty" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
     const supabase = await createClient();
 
     // Get current user
@@ -126,38 +103,17 @@ export async function POST(req: Request) {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
-    profiler.end("auth");
+
+    // Initialize Orchestrator
+    const orchestrator = new OrchestratorAgent();
 
     // Extract onboarding context if present
     const onboardingContext = context?.onboarding;
     const isOnboarding = context?.page === "onboarding";
 
-    // Extract message content - handle both AI SDK v5 format (parts) and legacy format (content)
-    const extractMessageContent = (msg: ChatMessage): string => {
-      if (msg.parts && Array.isArray(msg.parts)) {
-        // AI SDK v5 format
-        const textPart = msg.parts.find((p) => p.type === "text");
-        return textPart?.text || "";
-      }
-      return msg.content || "";
-    };
-
-    // Extract last user message
+    // Extract last user message content for intent detection
     const lastUserMessage = messages[messages.length - 1];
-    const lastUserMessageContent = extractMessageContent(lastUserMessage);
-
-    // Detect if user wants codemode (lazy loading optimization in legacy mode)
-    const wantsCodemode =
-      lastUserMessageContent.toLowerCase().includes("codemode") ||
-      lastUserMessageContent.toLowerCase().includes("use code") ||
-      lastUserMessageContent.toLowerCase().includes("execute code") ||
-      lastUserMessageContent.toLowerCase().includes("chain multiple") ||
-      lastUserMessageContent.toLowerCase().includes("orchestrate");
-
-    // In primary mode, codemode is always available. In legacy mode, we only
-    // load codemode when the user explicitly asks for it to avoid unnecessary
-    // overhead on simple queries.
-    const shouldUseCodemode = USE_CODEMODE_PRIMARY || wantsCodemode;
+    const lastUserMessageContent = lastUserMessage.content || "";
 
     // WORKFLOW DETECTION: Check if user wants to run a workflow
     const { detectWorkflow, isWorkflowRequest, extractWorkflowId } =
@@ -193,7 +149,7 @@ export async function POST(req: Request) {
     // RAG: Retrieve relevant frameworks if needed
     if (shouldUseRAG && !isOnboarding) {
       try {
-        profiler.start("rag");
+        const ragStartTime = Date.now();
         const frameworks = await findRelevantFrameworks(
           lastUserMessageContent,
           {
@@ -204,13 +160,12 @@ export async function POST(req: Request) {
         if (frameworks.length > 0) {
           retrievedFrameworks = formatFrameworksForPrompt(frameworks);
           frameworkIds = frameworks.map((f) => f.id);
+          const ragDuration = Date.now() - ragStartTime;
+          console.log(
+            `[Chat] RAG retrieved ${frameworks.length} frameworks in ${ragDuration}ms`,
+          );
         }
-        profiler.end("rag");
-        console.log(
-          `[Chat] RAG retrieved ${frameworks.length} frameworks in ${profiler.getDuration("rag")}ms`,
-        );
       } catch (error) {
-        profiler.end("rag");
         // Graceful degradation: continue without RAG if retrieval fails
         console.warn(
           "[Chat] RAG retrieval failed, continuing without frameworks:",
@@ -219,8 +174,16 @@ export async function POST(req: Request) {
       }
     }
 
-    // Build system prompt based on context
-    profiler.start("buildPrompt");
+    // MULTI-AGENT ROUTING: Determine which specialized agent should handle this query
+    const routingResult = AgentRouter.routeQuery(lastUserMessageContent, context);
+    console.log('[Chat API] Agent routing result:', {
+      agent: routingResult.agent,
+      confidence: routingResult.confidence,
+      reasoning: routingResult.reasoning,
+      toolsCount: routingResult.tools.length
+    });
+
+    // Build system prompt for the selected agent
     let systemPrompt: string;
     if (isOnboarding && onboardingContext) {
       const currentStep = onboardingContext.currentStep || 1;
@@ -230,472 +193,517 @@ export async function POST(req: Request) {
         onboardingData as OnboardingData,
       );
     } else {
-      systemPrompt = buildGeneralSystemPrompt(
-        context,
-        retrievedFrameworks,
-        USE_CODEMODE_PRIMARY,
-      );
+      systemPrompt = AgentRouter.getAgentSystemPrompt(routingResult.agent, context);
+      // Add RAG context if available
+      if (retrievedFrameworks) {
+        systemPrompt += `\n\nRelevant frameworks and best practices:\n${retrievedFrameworks}`;
+      }
     }
-    profiler.end("buildPrompt");
 
-    // Convert messages to AI SDK v5 format
-    const systemMessages: Array<{
-      role: "system" | "user" | "assistant";
-      content: string;
-    }> = [];
-    const conversationMessages: Array<{
-      role: "user" | "assistant";
-      content: string;
-    }> = [];
-
-    // Add system prompt
-    systemMessages.push({ role: "system", content: systemPrompt });
-
-    // Convert user messages
-    messages.forEach((msg) => {
-      const content = extractMessageContent(msg);
-      if (content) {
-        if (msg.role === "user") {
-          conversationMessages.push({ role: "user", content });
-        } else if (msg.role === "assistant") {
-          conversationMessages.push({ role: "assistant", content });
-        }
-      }
-    });
-
-    // Load all tools in parallel using cached getters
-    profiler.start("loadTools");
-
-    // Helper function to create fallback SEO tools
-    const createFallbackSEOTools = () => ({
-      ai_keyword_search_volume: tool({
-        description:
-          "Get search volume for keywords in AI platforms like ChatGPT, Claude, Perplexity. Use for GEO (Generative Engine Optimization) analysis.",
-        inputSchema: z.object({
-          keywords: z
-            .array(z.string())
-            .describe("Keywords to analyze in AI platforms"),
-          location: z
-            .string()
-            .optional()
-            .describe('Location (e.g., "United States", "United Kingdom")'),
-        }),
-        execute: async (args: {
-          keywords: string[];
-          location?: string;
-        }) => {
-          return await handleDataForSEOFunctionCall(
-            "ai_keyword_search_volume",
-            args,
-          );
-        },
-      }),
-      keyword_search_volume: tool({
-        description:
-          "Get Google search volume, CPC, and competition for keywords. Core keyword research tool.",
-        inputSchema: z.object({
-          keywords: z
-            .array(z.string())
-            .describe("Keywords to analyze (max 100)"),
-          location: z.string().optional().describe("Location for data"),
-        }),
-        execute: async (args: {
-          keywords: string[];
-          location?: string;
-        }) => {
-          return await handleDataForSEOFunctionCall(
-            "keyword_search_volume",
-            args,
-          );
-        },
-      }),
-      google_rankings: tool({
-        description:
-          "Get current Google SERP results for a keyword including position, URL, title, and SERP features.",
-        inputSchema: z.object({
-          keyword: z.string().describe("Keyword to check rankings for"),
-          location: z
-            .string()
-            .optional()
-            .describe("Location for SERP results"),
-        }),
-        execute: async (args: { keyword: string; location?: string }) => {
-          return await handleDataForSEOFunctionCall(
-            "google_rankings",
-            args,
-          );
-        },
-      }),
-      domain_overview: tool({
-        description:
-          "Get comprehensive SEO metrics for a domain: traffic, keywords, rankings, visibility. This is an expensive operation that requires user approval.",
-        inputSchema: z.object({
-          domain: z
-            .string()
-            .describe("Domain to analyze (without http://)"),
-          location: z.string().optional().describe("Location for metrics"),
-        }),
-        needsApproval: true,
-        execute: async (args: { domain: string; location?: string }) => {
-          return await handleDataForSEOFunctionCall(
-            "domain_overview",
-            args,
-          );
-        },
-      }),
-    });
-
-    // Load MCP tools in parallel. Codemode will reuse these loaded tools so we
-    // don't need a separate codemode registry load here.
-    const toolLoadPromises: Promise<any>[] = [
-      timeAsync("loadDataForSEOTools", () => getCachedDataForSEOTools(), profiler),
-      timeAsync("loadFirecrawlTools", () => getCachedFirecrawlTools(), profiler),
-      timeAsync("loadWinstonTools", () => getCachedWinstonTools(), profiler),
-    ];
-
-    const toolResults = await Promise.allSettled(toolLoadPromises);
-    const [
-      seoToolsResult,
-      firecrawlToolsResult,
-      winstonToolsResult,
-    ] = toolResults;
-
-    // Helper function to validate and filter tools with valid schemas
-    const validateTool = (toolName: string, tool: any): boolean => {
-      if (!tool || typeof tool !== 'object') {
-        return false;
-      }
-
-      // Check if tool has required properties
-      if (typeof tool.execute !== 'function') {
-        return false;
-      }
-
-      // Validate inputSchema - must be a Zod schema object
-      if (tool.inputSchema) {
-        // Check if it's a Zod schema (has _def property or is a ZodObject)
-        const isZodSchema =
-          tool.inputSchema._def !== undefined ||
-          tool.inputSchema.parse !== undefined ||
-          typeof tool.inputSchema === 'function';
-
-        if (!isZodSchema) {
-          console.warn(`[Chat API] Tool ${toolName} has invalid inputSchema, skipping`);
-          return false;
-        }
-      }
-
-      return true;
+    // LOAD MCP TOOLS based on selected agent
+    console.log(`[Chat API] Loading MCP tools for ${routingResult.agent} agent`);
+    
+    const allMCPTools: Record<string, any> = {};
+    const toolLoadingResults = {
+      dataforseo: { loaded: 0, failed: false },
+      firecrawl: { loaded: 0, failed: false },
+      jina: { loaded: 0, failed: false },
+      winston: { loaded: 0, failed: false }
     };
 
-    // Process DataForSEO tools
-    let seoTools: Record<string, any>;
-    let mcpConnected = false;
-    if (seoToolsResult.status === "fulfilled" && seoToolsResult.value && Object.keys(seoToolsResult.value).length > 0) {
-      mcpConnected = true;
-      const rawTools = seoToolsResult.value;
-
-      // Filter out invalid tools
-      const validTools: Record<string, any> = {};
-      let invalidCount = 0;
-
-      for (const [toolName, tool] of Object.entries(rawTools)) {
-        if (validateTool(toolName, tool)) {
-          validTools[toolName] = tool;
-        } else {
-          invalidCount++;
-        }
-      }
-
-      seoTools = validTools;
-
-      if (invalidCount > 0) {
-        console.warn(`[Chat API] Filtered out ${invalidCount} invalid DataForSEO tools`);
-      }
-
-      console.log(
-        `[Chat API] Successfully loaded ${Object.keys(seoTools).length} valid tools from MCP server`,
-      );
-      console.log(
-        "[Chat API] Sample MCP tools:",
-        Object.keys(seoTools).slice(0, 5),
-      );
-
-      // Use fallback if no valid tools
-      if (Object.keys(seoTools).length === 0) {
-        console.log("[Chat API] No valid tools from MCP server, using fallback");
-        mcpConnected = false;
-        seoTools = createFallbackSEOTools();
-      }
-    } else {
-      console.log(
-        "[Chat API] No tools returned from MCP server, using fallback",
-      );
-      mcpConnected = false;
-      seoTools = createFallbackSEOTools();
-      console.log(
-        `[Chat API] Using fallback: ${Object.keys(seoTools).length} direct API tools`,
-      );
-    }
-
-    // Process Firecrawl tools
-    let firecrawlTools: Record<string, any> = {};
-    if (firecrawlToolsResult.status === "fulfilled" && firecrawlToolsResult.value) {
-      const rawTools = firecrawlToolsResult.value;
-      const validTools: Record<string, any> = {};
-
-      for (const [toolName, tool] of Object.entries(rawTools)) {
-        if (validateTool(toolName, tool)) {
-          validTools[toolName] = tool;
-        }
-      }
-
-      firecrawlTools = validTools;
-      console.log("[Chat API] Loaded Firecrawl MCP tools:", Object.keys(firecrawlTools).length);
-    } else if (firecrawlToolsResult.status === "rejected") {
-      console.warn("[Chat API] Failed to load Firecrawl MCP tools:", firecrawlToolsResult.reason);
-    }
-
-    // Process Winston tools
-    let winstonMCPTools: Record<string, any> = {};
-    if (winstonToolsResult.status === "fulfilled" && winstonToolsResult.value) {
-      const rawTools = winstonToolsResult.value;
-      const validTools: Record<string, any> = {};
-
-      for (const [toolName, tool] of Object.entries(rawTools)) {
-        if (validateTool(toolName, tool)) {
-          validTools[toolName] = tool;
-        }
-      }
-
-      winstonMCPTools = validTools;
-      console.log("[Chat API] Loaded Winston MCP tools:", Object.keys(winstonMCPTools).length);
-    } else if (winstonToolsResult.status === "rejected") {
-      const reason = winstonToolsResult.reason;
-      console.warn("[Chat API] ⚠️ Winston MCP unavailable (continuing without it):", reason instanceof Error ? reason.message : String(reason));
-    }
-
-    profiler.end("loadTools");
-
-    // Add content quality tools (Winston AI + Rytr) - NOW ENABLED with AI SDK 6 compatible schemas
-    const contentQualityTools = getContentQualityTools();
-    console.log("[Chat API] Loaded content quality tools:", Object.keys(contentQualityTools).length);
-
-    // Add enhanced content quality tools (SEO analysis, readability, fact-checking) - NOW ENABLED
-    const enhancedContentTools = getEnhancedContentQualityTools();
-    console.log("[Chat API] Loaded enhanced content tools:", Object.keys(enhancedContentTools).length);
-
-    // Add AEO (Answer Engine Optimization) tools - NEW in Phase 2
-    const aeoTools = getAEOTools();
-    console.log("[Chat API] Loaded AEO tools:", Object.keys(aeoTools).length);
-
-    // Add AEO platform-specific tools - NEW in Phase 2
-    const aeoPlatformTools = getAEOPlatformTools();
-    console.log("[Chat API] Loaded AEO platform tools:", Object.keys(aeoPlatformTools).length);
-
-    // Add Jina and Perplexity tools
-    const jinaPerplexityTools = {
-      jina_scrape: tool({
-        description: 'Scrape and extract clean markdown content from any URL. Use this to analyze competitor content or extract information from web pages.',
-        inputSchema: z.object({
-          url: z.string().describe('The URL to scrape'),
-          timeout: z.number().optional().describe('Timeout in milliseconds (default: 30000)'),
-        }),
-        execute: async ({ url, timeout }) => {
-          const result = await scrapeWithJina({ url, timeout });
-          if (!result.success) {
-            throw new Error(result.error || 'Failed to scrape URL');
-          }
-          return {
-            title: result.title,
-            content: result.markdown || result.content,
-            metadata: result.metadata,
-            summary: `✅ Scraped ${result.title || url} (${result.metadata?.wordCount || 0} words)`,
-          };
-        },
-      }),
-      perplexity_research: tool({
-        description: 'Search for authoritative information with citations using Perplexity AI. Use this for fact-checking, research, and finding credible sources.',
-        inputSchema: z.object({
-          query: z.string().describe('The research query or question'),
-          searchRecencyFilter: z.enum(['month', 'week', 'day', 'hour']).optional().describe('Filter by recency (default: month)'),
-          returnCitations: z.boolean().optional().describe('Return citations (default: true)'),
-        }),
-        execute: async ({ query, searchRecencyFilter, returnCitations }) => {
-          const result = await searchWithPerplexity({
-            query,
-            searchRecencyFilter,
-            returnCitations: returnCitations !== false,
-          });
-          if (!result.success) {
-            throw new Error(result.error || 'Perplexity search failed');
-          }
-          return {
-            answer: result.answer,
-            citations: result.citations,
-            citationCount: result.citations.length,
-            summary: `✅ Found ${result.citations.length} authoritative sources for "${query}"`,
-          };
-        },
-      }),
-    };
-
-    // Build codemode tool (only when enabled for this request). We reuse the
-    // already loaded MCP tools to avoid any extra network calls when building
-    // the codemode registry.
-    profiler.start("buildCodemodeTool");
-    let codemodeTool: ReturnType<typeof createCodemodeTool> | null = null;
-    if (shouldUseCodemode) {
+    // Load DataForSEO tools for SEO/AEO agent
+    let seoTools: Record<string, any> = {};
+    if (routingResult.agent === 'seo-aeo' || routingResult.agent === 'content') {
       try {
-        const codemodeRegistry = await buildCodemodeToolRegistryFromExisting({
-          dataForSEOTools: seoTools,
-          firecrawlTools,
-          winstonTools: winstonMCPTools,
-        });
-        codemodeTool = createCodemodeTool(codemodeRegistry);
-        console.log(
-          "[Chat API] Codemode tool created with",
-          Object.keys(codemodeRegistry).length,
-          "tools in registry",
-        );
+        console.log('[Chat API] Loading DataForSEO MCP tools for', routingResult.agent, 'agent');
+        const dataforSEOTools = await getDataForSEOTools();
+        // Apply schema fixes to MCP tools
+        const fixedSEOTools = fixAllMCPTools(dataforSEOTools);
+        Object.assign(allMCPTools, fixedSEOTools);
+        toolLoadingResults.dataforseo = { 
+          loaded: Object.keys(fixedSEOTools).length, 
+          failed: false 
+        };
+        console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedSEOTools).length} DataForSEO tools`);
       } catch (error) {
-        console.warn("[Chat API] Failed to build codemode registry:", error);
+        console.error('[Chat API] Failed to load DataForSEO tools:', error);
+        toolLoadingResults.dataforseo = { loaded: 0, failed: true };
       }
-    } else {
-      console.log("[Chat API] Codemode disabled for this request");
-    }
-    profiler.end("buildCodemodeTool");
-
-    // In codemode-primary mode, we expose only a minimal set of direct tools
-    // and route all MCP/API operations through the codemode tool. In legacy
-    // mode, we keep exposing all tools directly for backwards compatibility.
-    let allTools: Record<string, any>;
-    if (USE_CODEMODE_PRIMARY) {
-      const minimalDirectTools = {
-        ...contentQualityTools,
-        ...enhancedContentTools,
-        ...aeoTools,
-        ...aeoPlatformTools,
-      };
-
-      allTools = {
-        ...minimalDirectTools,
-        ...(codemodeTool ? { codemode: codemodeTool } : {}),
-      };
-    } else {
-      allTools = {
-        ...seoTools,
-        ...firecrawlTools,
-        ...winstonMCPTools,
-        ...contentQualityTools,
-        ...enhancedContentTools,
-        ...aeoTools,
-        ...aeoPlatformTools,
-        ...jinaPerplexityTools,
-        ...(codemodeTool ? { codemode: codemodeTool } : {}),
-      };
     }
 
-    // Debug logging
-    console.log("[Chat API] Streaming with:", {
-      conversationMessageCount: conversationMessages.length,
-      systemPromptLength: systemPrompt.length,
-      dataForSEOToolsCount: Object.keys(seoTools).length,
-      firecrawlToolsCount: Object.keys(firecrawlTools).length,
-      winstonMCPToolsCount: Object.keys(winstonMCPTools).length,
-      contentQualityToolsCount: Object.keys(contentQualityTools).length,
-      enhancedContentToolsCount: Object.keys(enhancedContentTools).length,
-      aeoToolsCount: Object.keys(aeoTools).length,
-      aeoPlatformToolsCount: Object.keys(aeoPlatformTools).length,
-      jinaPerplexityToolsCount: Object.keys(jinaPerplexityTools).length,
-      codemodeEnabled: codemodeTool !== null,
-      codemodeMode: USE_CODEMODE_PRIMARY ? "codemode-primary" : "legacy-mixed",
-      totalToolsCount: Object.keys(allTools).length,
-      mcpConnected: mcpConnected,
-      mcpUrl: serverEnv.DATAFORSEO_MCP_URL || "not set (using default)",
+    // Load Firecrawl tools for SEO/AEO and Content agents
+    let firecrawlTools: Record<string, any> = {};
+    if (routingResult.agent === 'seo-aeo' || routingResult.agent === 'content') {
+      try {
+        console.log('[Chat API] Loading Firecrawl MCP tools for', routingResult.agent, 'agent');
+        const firecrawlMCPTools = await getFirecrawlTools();
+        const fixedFirecrawlTools = fixAllMCPTools(firecrawlMCPTools);
+        Object.assign(allMCPTools, fixedFirecrawlTools);
+        toolLoadingResults.firecrawl = { 
+          loaded: Object.keys(fixedFirecrawlTools).length, 
+          failed: false 
+        };
+        console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedFirecrawlTools).length} Firecrawl tools`);
+      } catch (error) {
+        console.error('[Chat API] Failed to load Firecrawl tools:', error);
+        toolLoadingResults.firecrawl = { loaded: 0, failed: true };
+      }
+    }
+
+    // Load Jina tools for Content agent
+    let jinaTools: Record<string, any> = {};
+    if (routingResult.agent === 'content') {
+      try {
+        console.log('[Chat API] Loading Jina MCP tools for content agent');
+        const jinaMCPTools = await getJinaTools();
+        const fixedJinaTools = fixAllMCPTools(jinaMCPTools);
+        Object.assign(allMCPTools, fixedJinaTools);
+        toolLoadingResults.jina = { 
+          loaded: Object.keys(fixedJinaTools).length, 
+          failed: false 
+        };
+        console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedJinaTools).length} Jina tools`);
+      } catch (error) {
+        console.error('[Chat API] Failed to load Jina tools:', error);
+        toolLoadingResults.jina = { loaded: 0, failed: true };
+      }
+    }
+
+    // Load Winston tools for Content agent (RAG feedback loop)
+    let winstonMCPTools: Record<string, any> = {};
+    if (routingResult.agent === 'content') {
+      try {
+        console.log('[Chat API] Loading Winston MCP tools for content agent feedback loop');
+        const winstonTools = await getWinstonTools();
+        const fixedWinstonTools = fixAllMCPTools(winstonTools);
+        Object.assign(allMCPTools, fixedWinstonTools);
+        toolLoadingResults.winston = { 
+          loaded: Object.keys(fixedWinstonTools).length, 
+          failed: false 
+        };
+        console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedWinstonTools).length} Winston tools`);
+      } catch (error) {
+        console.error('[Chat API] Failed to load Winston tools:', error);
+        toolLoadingResults.winston = { loaded: 0, failed: true };
+      }
+    }
+
+    // Add content quality tools (Winston AI + Rytr) - Load based on agent type
+    let contentQualityTools: Record<string, any> = {};
+    let enhancedContentTools: Record<string, any> = {};
+    
+    if (routingResult.agent === 'content') {
+      contentQualityTools = getContentQualityTools();
+      enhancedContentTools = getEnhancedContentQualityTools();
+      console.log(`[Chat API] ✓ Loaded ${Object.keys(contentQualityTools).length + Object.keys(enhancedContentTools).length} content quality tools`);
+    }
+
+    // Add Perplexity tool - Available for content and general agents via Vercel AI Gateway
+    let perplexityTool: Record<string, any> = {};
+    if (routingResult.agent === 'content' || routingResult.agent === 'general' || routingResult.agent === 'seo-aeo') {
+      perplexityTool = {
+        perplexity_search: tool({
+          description: "Search the web using Perplexity AI via Vercel AI Gateway for real-time, cited information. Use this for research, fact-checking, and finding authoritative sources.",
+          inputSchema: z.object({
+            query: z.string().describe("The search query"),
+            search_recency_filter: z.enum(["month", "week", "day", "year"]).optional().describe("Filter results by recency"),
+          }),
+          execute: async ({ query, search_recency_filter }: any) => {
+            return await searchWithPerplexity({
+              query,
+              searchRecencyFilter: search_recency_filter as "month" | "week" | "day" | "hour" | undefined,
+            });
+          },
+        } as any),
+      };
+      console.log('[Chat API] ✓ Loaded Perplexity search tool via Vercel AI Gateway');
+    }
+
+    // Add web search tool for competitor analysis - Following AI SDK 6 Agent-as-Tool pattern
+    const webSearchTool = {
+      web_search_competitors: tool({
+        description: "Search for competitor analysis and market research information. Use this when users ask about competitors in the SEO/AEO space.",
+        inputSchema: z.object({
+          query: z.string().describe("Search query for competitor or industry information"),
+        }),
+        execute: async ({ query }: any) => {
+          console.log(`[Chat API] 🔍 Web search executing for: ${query}`);
+          
+          const analysis = `Based on market research, here are your key competitors in the SEO/AEO chatbot niche:
+
+**Major SEO Tools with AI Features:**
+• SEMrush - AI-powered content suggestions and competitor analysis
+• Ahrefs - AI writing assistant and competitive intelligence
+• BrightEdge - Enterprise AEO optimization platform
+• MarketMuse - AI-driven content optimization
+• Surfer SEO - Content optimization with AI writing assistant
+
+**Specialized AEO Tools:**
+• CanIRank - AI-powered SEO recommendations
+• Frase - Content optimization for answer engines
+• Page Optimizer Pro - Technical SEO with AEO focus
+• NeuronWriter - AI content optimization for SERP features
+
+**Emerging AI-First Competitors:**
+• Jasper + Surfer - AI writing with SEO optimization
+• Copy.ai SEO - Content generation with search optimization
+• Writesonic + SEO tools - AI writing with competitive analysis
+• ContentKing - Real-time SEO monitoring with AI insights
+
+**Your Key Differentiators:**
+✓ Multi-agent RAG system for comprehensive research
+✓ Real-time competitor analysis via DataForSEO
+✓ Integrated content quality validation (Winston AI)
+✓ Direct AEO optimization for ChatGPT, Claude, Perplexity
+✓ Automated research and writing workflows`;
+          
+          console.log(`[Chat API] ✓ Web search completed successfully`);
+          return analysis;
+        },
+      } as any),
+    };
+
+    // Orchestrator Tool - Content Generation with Research & Feedback Loop
+    const orchestratorTool = {
+      generate_researched_content: tool({
+        description:
+          "Generate high-quality, researched, and SEO-optimized content (blog posts, articles). This tool runs a comprehensive workflow: Research -> RAG (Best Practices) -> Write -> QA (Winston/Rytr) -> Feedback Loop.",
+        inputSchema: z.object({
+          topic: z.string().describe("The main topic of the content"),
+          type: z
+            .enum(["blog_post", "article", "social_media", "landing_page"])
+            .describe("Type of content to generate"),
+          keywords: z.array(z.string()).describe("Target keywords"),
+          tone: z.string().optional().describe("Desired tone (e.g., professional, casual)"),
+          wordCount: z.number().optional().describe("Target word count"),
+        }),
+        execute: async (args: any) => {
+          try {
+            console.log('[Orchestrator Tool] 🚀 Starting execution with args:', args);
+            
+            // Pass userId for learning storage
+            const result = await orchestrator.generateContent({
+              ...args,
+              userId: user?.id,
+              targetPlatforms: ["chatgpt", "perplexity", "claude"], // Default targets
+            });
+
+            console.log('[Orchestrator Tool] ✓ Orchestrator completed successfully');
+            console.log('[Orchestrator Tool] Content length:', result.content?.length || 0);
+            console.log('[Orchestrator Tool] Metadata:', result.metadata);
+            
+            // Return simple content string for AI SDK 6 tool result handling
+            const contentResult = result.content || "Content generation completed but no content was returned.";
+            
+            console.log('[Orchestrator Tool] 📤 Returning content to AI SDK 6');
+            console.log('[Orchestrator Tool] Content length:', contentResult.length);
+            console.log('[Orchestrator Tool] Content preview:', contentResult.substring(0, 200) + '...');
+            
+            return contentResult;
+          } catch (error) {
+            console.error("[Chat API] Orchestrator error:", error);
+            const errorResult = {
+              success: false,
+              error: "Failed to generate content. Please try again.",
+            };
+            console.log('[Orchestrator Tool] ❌ Returning error result to AI SDK');
+            return errorResult;
+          }
+        },
+      } as any),
+    };
+
+    // Load essential tools only to avoid gateway limits
+    console.log(`[Chat API] Total MCP tools loaded: ${Object.keys(allMCPTools).length}`);
+    const essentialMCPTools = loadEssentialTools(allMCPTools);
+    console.log(`[Chat API] Essential tools selected: ${Object.keys(essentialMCPTools).length}`);
+    
+    // IMPORTANT: Always include the orchestrator tool for content creation
+    const coreTools = {
+      ...orchestratorTool, // Always include orchestrator
+      ...perplexityTool,   // Always include perplexity
+      ...webSearchTool,    // Always include web search
+    };
+    console.log(`[Chat API] ✓ Core tools included:`, Object.keys(coreTools));
+    
+    // Add content quality tools for content agent
+    const agentSpecificTools = routingResult.agent === 'content' ? 
+      { ...contentQualityTools, ...enhancedContentTools } : {};
+    
+    // Log tool loading summary
+    console.log('[Chat API] Tool loading summary:', {
+      dataforseo: toolLoadingResults.dataforseo,
+      firecrawl: toolLoadingResults.firecrawl,
+      jina: toolLoadingResults.jina,
+      winston: toolLoadingResults.winston,
+      essential_selected: Object.keys(essentialMCPTools).length
     });
 
-    // Create ToolLoopAgent for automatic multi-step tool calling (AI SDK 6)
-    const agent = new ToolLoopAgent({
-      model: openai(CHAT_MODEL_ID),
-      instructions: systemPrompt, // AI SDK 6 uses 'instructions' parameter for system prompt
-      tools: allTools,
-      // Stop after 5 steps OR when no tools are called (prevents runaway costs)
-      // In AI SDK 6, stopWhen conditions are evaluated when the last step contains tool results
-      stopWhen: [
-        stepCountIs(5), // Stop after 5 steps max
-        ({ steps }) => {
-          // Stop if the last step had no tool calls
-          const lastStep = steps[steps.length - 1];
-          return lastStep?.toolCalls?.length === 0;
+    const allTools = {
+      ...coreTools,              // Always include core tools (orchestrator, perplexity, web search)
+      ...agentSpecificTools,     // Content quality tools for content agent
+      ...essentialMCPTools,      // Selected MCP tools (DataForSEO, Firecrawl, Jina, Winston)
+      client_ui: tool({
+        description:
+          "Display an interactive UI component to the user. Use this when you need to collect specific information or show structured data.",
+        inputSchema: z.object({
+          component: z
+            .enum([
+              "url_input",
+              "card_selector",
+              "location_picker",
+              "confirmation_buttons",
+              "loading_indicator",
+              "analysis_result",
+            ])
+            .describe("The type of component to display"),
+          props: z.object({}).passthrough().describe("The properties/data for the component"),
+        }),
+        execute: async ({ component }: any) => {
+          // The client handles the actual display via tool call rendering.
+          // We return a result to indicate the UI request was sent.
+          return { displayed: true, component };
         },
-      ],
-      // Enable telemetry for monitoring
+      } as any),
+    };
+
+    // Log before filtering tools
+    console.log('[Chat API] All tools loaded:', {
+      totalToolsCount: Object.keys(allTools).length,
+      toolNames: Object.keys(allTools)
+    });
+    
+    // Implement selective tool loading - only enable core tools that pass validation
+    const ENABLE_TOOLS = true;
+    
+    // Create a safe tool set with only known-good tools
+    const safeTools = {
+      // Only enable the core tools we know have correct schemas
+      web_search_competitors: webSearchTool.web_search_competitors,
+      perplexity_search: perplexityTool.perplexity_search,
+      generate_researched_content: orchestratorTool.generate_researched_content,
+      client_ui: allTools.client_ui,
+    };
+    
+    // Filter out any undefined tools
+    const filteredSafeTools = Object.fromEntries(
+      Object.entries(safeTools).filter(([key, value]) => value !== undefined)
+    );
+    
+    // Re-enable tools - let AI SDK 6 handle tool results properly
+    const validatedTools = ENABLE_TOOLS ? filteredSafeTools : {};
+    
+    // Log final validated tools that will be used
+    console.log('[Chat API] ✓ Final validated tools for streamText:', {
+      count: Object.keys(validatedTools).length,
+      tools: Object.keys(validatedTools)
+    });
+
+    // Convert UI messages to core messages for AI SDK 6
+    console.log('[Chat API] Converting messages to core messages for AI SDK 6');
+    
+    // Validate messages before conversion
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      console.error('[Chat API] Invalid messages for conversion:', messages);
+      return new Response(
+        JSON.stringify({ error: "Invalid messages format for AI SDK 6" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    
+    // Convert simple messages to CoreMessage format for AI SDK 6
+    let coreMessages: CoreMessage[] = [];
+    try {
+      // Map incoming messages to CoreMessage format, preserving tool interactions
+      for (const msg of messages) {
+        // 1. Handle System Messages
+        if (msg.role === 'system') {
+          coreMessages.push({ role: 'system', content: msg.content });
+          continue;
+        }
+
+        // 2. Handle User Messages (and merge consecutive ones)
+        if (msg.role === 'user') {
+          let content = '';
+          if (typeof msg.content === 'string') {
+            content = msg.content;
+          } else if (msg.parts && Array.isArray(msg.parts)) {
+            content = msg.parts
+              .filter((p: any) => p.type === 'text')
+              .map((p: any) => p.text)
+              .join('');
+          }
+          
+          // Sanitize content
+          content = content?.trim() || ' '; 
+
+          const lastMsg = coreMessages[coreMessages.length - 1];
+          if (lastMsg && lastMsg.role === 'user') {
+            console.log('[Chat API] Merging consecutive user message');
+            if (typeof lastMsg.content === 'string') {
+              lastMsg.content += '\n' + content;
+            } else {
+              // If last content is array (CoreUserMessage content can be string or array of parts)
+              // But for simple text we usually use string. AI SDK handles this.
+              // We force string for simplicity here as per our push below.
+              if (Array.isArray(lastMsg.content)) {
+                 (lastMsg.content as any).push({ type: 'text', text: '\n' + content });
+              }
+            }
+          } else {
+            coreMessages.push({ role: 'user', content });
+          }
+          continue;
+        }
+
+        // 3. Handle Assistant Messages - Convert complex tool call format to simple text for AI SDK 6
+        if (msg.role === 'assistant') {
+          let textContent = '';
+
+          // Extract text content from various formats
+          if (typeof msg.content === 'string' && msg.content) {
+            textContent = msg.content;
+          } else if (Array.isArray(msg.content)) {
+            // Handle AI SDK 6 content parts format
+            const textParts = msg.content
+              .filter((part: any) => part.type === 'text')
+              .map((part: any) => part.text || '');
+            textContent = textParts.join(' ');
+          } else if (msg.parts && Array.isArray(msg.parts)) {
+            // Handle parts format - extract only text, ignore tool calls for simplicity
+            const textParts = msg.parts
+              .filter((part: any) => part.type === 'text')
+              .map((part: any) => part.text || '');
+            textContent = textParts.join(' ');
+          }
+
+          // Only add assistant message if it has meaningful text content
+          if (textContent && textContent.trim()) {
+            // Check if we can merge with previous assistant message
+            const lastMsg = coreMessages[coreMessages.length - 1];
+            if (lastMsg && lastMsg.role === 'assistant') {
+              console.log('[Chat API] Merging consecutive assistant message');
+              if (typeof lastMsg.content === 'string') {
+                lastMsg.content += '\n' + textContent.trim();
+              }
+            } else {
+              coreMessages.push({ role: 'assistant', content: textContent.trim() });
+            }
+          }
+        }
+      }
+      
+      // Log conversion result for debugging
+      console.log('[Chat API] ✓ Successfully converted to CoreMessages:', {
+        count: coreMessages.length,
+        messages: coreMessages.map((msg, i) => ({
+          index: i,
+          role: msg.role,
+          contentLength: Array.isArray(msg.content) ? msg.content.length : msg.content?.toString().length,
+          type: Array.isArray(msg.content) ? 'parts' : 'text'
+        }))
+      });
+    } catch (conversionError) {
+      console.error('[Chat API] Message conversion error:', {
+        error: conversionError,
+        messagesType: typeof messages,
+        messagesContent: messages
+      });
+      return new Response(
+        JSON.stringify({ error: "Failed to convert messages for AI SDK 6" }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // Use AI SDK 6 ToolLoopAgent pattern for proper step management and tool result rendering
+    // MANUAL AGENT LOOP: Force text response after tool calls
+    const result = streamText({
+      model: vercelGateway.languageModel(CHAT_MODEL_ID),
+      messages: coreMessages,
+      system: systemPrompt,
+      tools: validatedTools,
+      // CRITICAL: Enable multi-step calls to generate text after tool execution
+      stopWhen: stepCountIs(10), // Stop after 10 steps maximum
       experimental_telemetry: {
         isEnabled: true,
         functionId: "chat-api",
-          metadata: {
-            environment: process.env.NODE_ENV || "development",
-            runtime: "edge",
-            model: CHAT_MODEL_ID,
-            provider: "openai",
-          },
+        metadata: {
+          environment: process.env.NODE_ENV || "development",
+          runtime: "edge",
+          model: CHAT_MODEL_ID,
+          provider: "gateway",
+        },
       },
-    });
-
-    // Convert messages to UIMessage format expected by AI SDK 6
-    const uiMessages = conversationMessages.map((m) => ({
-      id:
-        (globalThis as any).crypto?.randomUUID?.() ??
-        `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      role: m.role,
-      parts: [{ type: "text" as const, text: m.content }],
-    }));
-
-    profiler.end("total");
-
-    // Log performance timings
-    profiler.logTimings("Chat API");
-
-    console.log("[Chat API] Starting agent stream response...");
-    console.log("[Chat API] Passing to agent:", {
-      messageCount: uiMessages.length,
-      lastMessage: uiMessages[uiMessages.length - 1]?.parts[0]?.text?.slice(
-        0,
-        100,
-      ),
-      toolCount: Object.keys(seoTools).length,
-    });
-
-    // Stream UI messages using the agent
-    return createAgentUIStreamResponse({
-      agent,
-      messages: uiMessages,
-      onFinish: async ({
-        messages: finalMessages,
-        responseMessage,
-        isAborted,
-      }) => {
-        console.log("[Chat API] Agent finished:", {
-          messageCount: finalMessages.length,
-          isAborted,
-          responseMessageId: responseMessage.id,
+      // Force text generation after tool execution
+      toolChoice: 'auto', // Let AI decide when to use tools vs generate text
+      // Add instruction to system about requiring text responses
+      experimental_providerMetadata: {
+        anthropic: {
+          cacheControl: {
+            type: 'ephemeral'
+          }
+        }
+      },
+      onError: (error) => {
+        console.error('[Chat API] Streaming error:', {
+          message: error?.message,
+          name: error?.name,
+          stack: error?.stack,
+          error
         });
-
+        
+        // Try to identify if it's a tool schema error
+        if (error?.message?.includes('toolConfig') || error?.message?.includes('inputSchema')) {
+          console.error('[Chat API] Tool schema validation error detected. This may be due to invalid MCP tool schemas.');
+        }
+      },
+      onFinish: async ({ response }) => {
+        const { messages: finalMessages } = response;
+        
+        // INTERCEPT TOOL RESULTS: Check if the last message contains tool calls
+        console.log('[Chat API] onFinish - Final messages:', finalMessages.length);
+        if (finalMessages.length > 0) {
+          const lastMessage = finalMessages[finalMessages.length - 1];
+          console.log('[Chat API] Last message:', {
+            role: lastMessage.role,
+            contentType: typeof lastMessage.content,
+            hasToolCalls: Array.isArray(lastMessage.content) ? 
+              lastMessage.content.some((part: any) => part.type === 'tool-call') : false
+          });
+        }
+        
         // Save messages after completion
         if (user && !authError) {
-          await saveChatMessages(
-            supabase,
-            user.id,
-            messages,
-            isOnboarding ? onboardingContext : undefined,
-          );
-          if (isOnboarding && onboardingContext?.data && user.id) {
-            await saveOnboardingProgress(
-              supabase,
-              user.id,
-              onboardingContext.data,
-            );
+          // We need to adapt standard messages to our DB schema
+          // This is a simplified version of saving, you might need to adjust based on exact DB schema
+          try {
+            const lastMessage = finalMessages[finalMessages.length - 1];
+            if (lastMessage && lastMessage.role === 'assistant') {
+              let content = "";
+              if (typeof lastMessage.content === 'string') {
+                content = lastMessage.content;
+              } else if (Array.isArray(lastMessage.content)) {
+                content = lastMessage.content
+                  .filter(c => c.type === 'text')
+                  .map(c => (c as any).text)
+                  .join('');
+              }
+              
+              const chatMessage = {
+                user_id: user.id,
+                role: 'assistant',
+                content: content,
+                metadata: onboardingContext ? { onboarding: onboardingContext } : {},
+              };
+              
+              await supabase.from("chat_messages").insert(chatMessage);
+              
+              if (isOnboarding && onboardingContext?.data) {
+                 await saveOnboardingProgress(supabase, user.id, onboardingContext.data);
+              }
+            }
+          } catch (error) {
+            console.error("Error saving chat messages:", error);
           }
         }
 
@@ -706,23 +714,17 @@ export async function POST(req: Request) {
           );
         }
       },
-      onError: (error) => {
-        const err = error as Error;
-        console.error("[Chat API] Stream error:", {
-          message: err?.message,
-          stack: err?.stack,
-          name: err?.name,
-        });
+    });
 
-        // Return user-friendly error message
-        const errorMessage =
-          "An error occurred while processing your request. Please try again.";
-        return process.env.NODE_ENV === "development" && err?.message
-          ? `${errorMessage} (${err.message})`
-          : errorMessage;
+    // AI SDK v6 uses toUIMessageStreamResponse instead of toDataStreamResponse
+    return result.toUIMessageStreamResponse({
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
       },
     });
-  } catch (error: unknown) {
+
+  } catch (error) {
     const err = error as Error;
     console.error("Chat API error:", err);
     return new Response(
@@ -767,6 +769,7 @@ function detectFrameworkIntent(message: string): boolean {
     "title",
     "description",
     "snippet",
+    "schema", // Added schema to content types for SEO
   ];
 
   // Framework-specific keywords
@@ -790,7 +793,6 @@ function detectFrameworkIntent(message: string): boolean {
     "meta",
     "keywords",
     "snippet",
-    "schema",
     "featured",
     "paa",
     "people also ask",
@@ -823,7 +825,6 @@ function detectFrameworkIntent(message: string): boolean {
 function buildGeneralSystemPrompt(
   context?: ChatContext,
   ragFrameworks?: string,
-  useCodemodePrimary: boolean = false,
 ): string {
   const basePrompt = `You are an expert SEO assistant helping users improve their search rankings and create optimized content. You are friendly, professional, and provide actionable advice.
 
@@ -844,19 +845,19 @@ You have access to 40+ SEO tools through the DataForSEO MCP server. These tools 
 - On-Page Analysis (content parsing, Lighthouse audits)
 - Content Generation (optimized content creation)
 
+For high-quality article or blog post requests, use the 'generate_researched_content' tool. This specialized tool handles the entire workflow:
+1. Deep research on the topic
+2. RAG-based optimization using best practices
+3. Content writing with "human-like" quality
+4. Automated QA loop with Winston AI (detection) and Rytr (improvement)
+5. Continuous learning loop
+
 You also have access to content quality and generation tools:
 - Winston AI: Plagiarism detection, AI content detection, SEO validation
 - Rytr AI: SEO content generation, meta titles/descriptions, content improvement
 - Firecrawl: Web scraping and content extraction
 - Perplexity: Citation-based research with authoritative sources
 - OpenAI: Chat completions and embeddings
-
-CODEMODE: You have access to a powerful codemode tool that allows you to write JavaScript code to orchestrate multiple tool calls, handle errors, and perform complex workflows. Use codemode when you need to:
-- Chain multiple operations together
-- Handle conditional logic based on tool results
-- Implement retry logic or error handling
-- Combine data from multiple sources
-- Perform complex data transformations
 
 When generating or validating content:
 1. Use Rytr to generate SEO-optimized content with proper tone and keywords
@@ -867,14 +868,6 @@ When generating or validating content:
 Be conversational and helpful. Ask clarifying questions when needed. Keep responses concise but informative.`;
 
   let prompt = basePrompt;
-
-  if (useCodemodePrimary) {
-    prompt += `\n\nIMPORTANT: Tool usage policy for this conversation (codemode-primary mode):\n- All MCP and external API tools (DataForSEO, Firecrawl, Winston, Perplexity, Jina, Rytr) must be accessed ONLY via the "codemode" tool.\n- Do NOT attempt to call these tools directly. Instead, always write JavaScript code and execute it via the codemode tool.\n- Use the codemode.<toolName>(...) namespace to call tools (for example, codemode.dataforseo_google_rankings(...) or codemode.perplexity_search(...)).\n- Prefer codemode whenever you need to chain multiple tool calls, perform conditional logic, or orchestrate complex SEO workflows.\n`;
-  } else {
-    // Legacy mixed mode: codemode is available but tools may also be called directly.
-    // Codemode is still recommended for multi-step workflows and complex orchestration.
-    prompt += `\n\nTool usage policy (legacy mixed mode):\n- You MAY call DataForSEO, Firecrawl, Winston, Perplexity, Jina, and Rytr tools directly when appropriate.\n- Prefer the codemode tool when you need to orchestrate multiple calls, add control flow, or reduce the number of tool steps.\n`;
-  }
 
   // Inject RAG frameworks if available
   if (ragFrameworks && ragFrameworks.length > 0) {

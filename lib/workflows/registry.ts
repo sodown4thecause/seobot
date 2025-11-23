@@ -5,12 +5,14 @@ import { rankOnChatGPTWorkflow } from './definitions/rank-on-chatgpt'
 import { aeoComprehensiveAuditWorkflow } from './definitions/aeo-comprehensive-audit'
 import { aeoCitationOptimizationWorkflow } from './definitions/aeo-citation-optimization'
 import { aeoMultiPlatformOptimizationWorkflow } from './definitions/aeo-multi-platform-optimization'
+import { competitorAnalysisWorkflow } from './definitions/competitor-analysis'
 
 export const workflows: Record<string, Workflow> = {
   'rank-on-chatgpt': rankOnChatGPTWorkflow,
   'aeo-comprehensive-audit': aeoComprehensiveAuditWorkflow,
   'aeo-citation-optimization': aeoCitationOptimizationWorkflow,
   'aeo-multi-platform-optimization': aeoMultiPlatformOptimizationWorkflow,
+  'competitor-analysis': competitorAnalysisWorkflow,
 }
 
 export function getWorkflow(id: string): Workflow | undefined {

@@ -5,7 +5,7 @@ const BASE_URL = 'https://api.perplexity.ai'
 
 async function perplexityFetch(
   messages: Array<{ role: string; content: string }>,
-  model: string = 'llama-3.1-sonar-small-128k-online'
+  model: string = 'sonar-pro'
 ): Promise<ApiResult<PerplexityResponse>> {
   try {
     const res = await fetch(`${BASE_URL}/chat/completions`, {

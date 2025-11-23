@@ -32,17 +32,26 @@ export const validateContentTool = tool({
   inputSchema: z.object({
     text: z.string().describe('The content text to validate'),
   }),
-  execute: async ({ text }) => {
-    const result = await validateContentForSEO(text)
-    return {
-      isValid: result.isValid,
-      plagiarismScore: result.plagiarismScore,
-      aiScore: result.aiScore,
-      issues: result.issues,
-      recommendations: result.recommendations,
-      summary: result.isValid
-        ? '✅ Content is SEO-compliant and original'
-        : `⚠️ Content has ${result.issues.length} issue(s): ${result.issues.join(', ')}`,
+  execute: async ({ text }: { text: string }) => {
+    try {
+      const result = await validateContentForSEO(text)
+      return {
+        isValid: result.isValid,
+        plagiarismScore: result.plagiarismScore,
+        aiScore: result.aiScore,
+        issues: result.issues,
+        recommendations: result.recommendations,
+        summary: result.isValid
+          ? '✅ Content is SEO-compliant and original'
+          : `⚠️ Content has ${result.issues.length} issue(s): ${result.issues.join(', ')}`,
+      }
+    } catch (error) {
+      console.error('[Content Tools] Validate content error:', error);
+      return {
+        isValid: false,
+        error: 'Validation failed',
+        summary: '⚠️ Validation failed due to an error',
+      }
     }
   },
 })
@@ -51,9 +60,9 @@ export const checkPlagiarismTool = tool({
   description: 'Check content for plagiarism and duplicate sources. Returns plagiarism score and matching sources.',
   inputSchema: z.object({
     text: z.string().describe('The content text to check for plagiarism'),
-    language: z.string().optional().describe('Language code (default: en)'),
+    language: z.string().default('en').describe('Language code (default: en)')
   }),
-  execute: async ({ text, language }) => {
+  execute: async ({ text, language }: { text: string, language?: string }) => {
     const result = await checkPlagiarism({
       text,
       language,
@@ -79,9 +88,9 @@ export const checkPlagiarismTool = tool({
 export const checkAiContentTool = tool({
   description: 'Detect if content is AI-generated. Returns AI detection score and confidence level.',
   inputSchema: z.object({
-    text: z.string().describe('The content text to check'),
+    text: z.string().describe('The content text to check')
   }),
-  execute: async ({ text }) => {
+  execute: async ({ text }: { text: string }) => {
     const result = await checkAiContent(text)
     return {
       aiScore: result.score,
@@ -103,12 +112,9 @@ export const generateSEOContentTool = tool({
   inputSchema: z.object({
     topic: z.string().describe('The topic or subject to write about'),
     keywords: z.array(z.string()).describe('Target keywords to include'),
-    tone: z.enum([
-      'informative', 'casual', 'formal', 'enthusiastic', 'professional',
-      'friendly', 'urgent', 'inspirational', 'humorous', 'convincing'
-    ]).optional().describe('Writing tone (default: informative)'),
+    tone: z.enum(['informative', 'casual', 'formal', 'enthusiastic', 'professional', 'friendly', 'urgent', 'inspirational', 'humorous', 'convincing']).default('informative').describe('Writing tone')
   }),
-  execute: async ({ topic, keywords, tone }) => {
+  execute: async ({ topic, keywords, tone }: { topic: string; keywords: string[]; tone?: string }) => {
     const result = await generateSEOContent({
       topic,
       keywords,
@@ -129,11 +135,9 @@ export const generateBlogSectionTool = tool({
   inputSchema: z.object({
     topic: z.string().describe('The topic to write about'),
     keywords: z.array(z.string()).describe('Keywords to include naturally'),
-    tone: z.enum([
-      'informative', 'casual', 'formal', 'enthusiastic', 'professional'
-    ]).optional().describe('Writing tone'),
+    tone: z.enum(['informative', 'casual', 'formal', 'enthusiastic', 'professional']).optional().describe('Writing tone')
   }),
-  execute: async ({ topic, keywords, tone }) => {
+  execute: async ({ topic, keywords, tone }: { topic: string; keywords: string[]; tone?: string }) => {
     const content = await generateBlogSection(
       topic,
       keywords,
@@ -151,9 +155,9 @@ export const generateMetaTitleTool = tool({
   description: 'Generate an SEO-optimized meta title (50-60 characters) for a page.',
   inputSchema: z.object({
     topic: z.string().describe('The page topic'),
-    primaryKeyword: z.string().describe('Primary keyword to include'),
+    primaryKeyword: z.string().describe('Primary keyword to include')
   }),
-  execute: async ({ topic, primaryKeyword }) => {
+  execute: async ({ topic, primaryKeyword }: { topic: string, primaryKeyword: string }) => {
     const metaTitle = await generateMetaTitle(topic, primaryKeyword)
     return {
       metaTitle,
@@ -167,9 +171,9 @@ export const generateMetaDescriptionTool = tool({
   description: 'Generate an SEO-optimized meta description (155-160 characters) for a page.',
   inputSchema: z.object({
     pageTitle: z.string().describe('The page title'),
-    keywords: z.array(z.string()).describe('Keywords to include'),
+    keywords: z.array(z.string()).describe('Keywords to include')
   }),
-  execute: async ({ pageTitle, keywords }) => {
+  execute: async ({ pageTitle, keywords }: { pageTitle: string, keywords: string[] }) => {
     const metaDescription = await generateMetaDescription(pageTitle, keywords)
     return {
       metaDescription,
@@ -183,11 +187,9 @@ export const improveContentTool = tool({
   description: 'Improve existing content to make it more engaging, clear, and SEO-friendly.',
   inputSchema: z.object({
     text: z.string().describe('The content to improve'),
-    tone: z.enum([
-      'informative', 'casual', 'formal', 'enthusiastic', 'professional'
-    ]).optional().describe('Desired tone'),
+    tone: z.enum(['informative', 'casual', 'formal', 'enthusiastic', 'professional']).optional().describe('Desired tone')
   }),
-  execute: async ({ text, tone }) => {
+  execute: async ({ text, tone }: { text: string; tone?: string }) => {
     const improved = await improveContent(text, (tone as RytrTone) || 'informative')
     return {
       originalLength: text.split(/\s+/).length,
@@ -202,11 +204,9 @@ export const expandContentTool = tool({
   description: 'Expand content with more details, examples, and explanations.',
   inputSchema: z.object({
     text: z.string().describe('The content to expand'),
-    tone: z.enum([
-      'informative', 'casual', 'formal', 'enthusiastic', 'professional'
-    ]).optional().describe('Writing tone'),
+    tone: z.enum(['informative', 'casual', 'formal', 'enthusiastic', 'professional']).optional().describe('Writing tone')
   }),
-  execute: async ({ text, tone }) => {
+  execute: async ({ text, tone }: { text: string; tone?: string }) => {
     const expanded = await expandContent(text, (tone as RytrTone) || 'informative')
     return {
       originalLength: text.split(/\s+/).length,

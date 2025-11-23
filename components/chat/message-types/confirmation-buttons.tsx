@@ -21,7 +21,12 @@ export function ConfirmationButtons({
           key={option.value}
           variant={variant}
           onClick={() => onSubmit(option.value)}
-          className="min-w-[100px]"
+          className={cn(
+            "min-w-[100px]",
+            variant === 'default' && "bg-zinc-100 text-zinc-900 hover:bg-zinc-200",
+            variant === 'outline' && "border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100",
+            variant === 'ghost' && "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+          )}
         >
           {option.label}
         </Button>
@@ -29,4 +34,3 @@ export function ConfirmationButtons({
     </div>
   )
 }
-

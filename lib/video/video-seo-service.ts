@@ -240,7 +240,7 @@ Return as JSON array of suggestions.`
     )
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: optimizationSuggestionsSchema,
     })
@@ -375,7 +375,7 @@ Requirements:
 Return only the titles as a JSON array, no explanations.`
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: z.array(z.string()),
     })
@@ -416,7 +416,7 @@ Create an optimized description that:
 Return only the optimized description, no explanations.`
 
     const result = await generateText({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
     })
 
@@ -455,7 +455,7 @@ Include:
 Return only the tags as a JSON array, no explanations.`
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: z.array(z.string()),
     })

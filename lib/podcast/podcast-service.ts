@@ -314,7 +314,7 @@ Return as JSON with keys: summary, keyTopics, guestSpeakers, mainPoints, actionI
     })
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: podcastAnalysisSchema,
     })
@@ -409,7 +409,7 @@ Return as JSON with proper structure for all content types.`
     })
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: seoOptimizedContentSchema,
     })
@@ -493,7 +493,7 @@ Return as JSON with detailed ideas for each format.`
     })
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: contentRepurposingSchema,
     })
@@ -571,7 +571,7 @@ Write a 1500-2000 word blog post that:
 Return only the blog post content, no explanations.`
 
     const result = await generateText({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
     })
 
@@ -636,7 +636,7 @@ Return as JSON with daily breakdowns and platform-specific content.`
     })
 
     const { object } = await generateObject({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-3-pro-preview'),
       prompt,
       schema: socialMediaCalendarSchema,
     })

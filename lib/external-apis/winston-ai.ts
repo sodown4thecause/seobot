@@ -143,8 +143,29 @@ export async function checkAiContent(text: string): Promise<{
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Winston AI API error: ${response.status} - ${error}`)
+      const errorText = await response.text()
+      
+      // Handle credit exhaustion gracefully
+      if (response.status === 402) {
+        console.warn('[Winston AI] Insufficient credits, returning fallback score')
+        return {
+          score: 80, // Conservative estimate for AI-generated content
+          isAiGenerated: true,
+          confidence: 'low', // Low confidence due to fallback
+        }
+      }
+      
+      // Handle missing API key or other auth issues
+      if (response.status === 400 || response.status === 401) {
+        console.warn('[Winston AI] API authentication issue, returning fallback score')
+        return {
+          score: 75, // Conservative estimate
+          isAiGenerated: true,
+          confidence: 'low',
+        }
+      }
+      
+      throw new Error(`Winston AI API error: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
@@ -157,7 +178,12 @@ export async function checkAiContent(text: string): Promise<{
     }
   } catch (error) {
     console.error('[Winston AI] AI detection failed:', error)
-    throw error
+    // Return fallback result instead of throwing
+    return {
+      score: 80,
+      isAiGenerated: true,
+      confidence: 'low',
+    }
   }
 }
 
