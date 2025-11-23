@@ -77,9 +77,10 @@ export async function getContentGuidance(
   }
 }
 
-/**
- * Format learnings into structured guidance
- */
+const MAX_AGENT_DOCS = 2
+const MAX_AGENT_DOC_CHARS = 320
+const MAX_BEST_PRACTICES = 3
+
 function formatGuidance(
   similarLearnings: any[],
   bestPractices: any[],
@@ -109,9 +110,9 @@ function formatGuidance(
   if (agentDocs && agentDocs.length > 0) {
     parts.push('## Expert Writing Guidelines')
     parts.push('Apply these proven content writing strategies:')
-    agentDocs.forEach((doc, i) => {
+    agentDocs.slice(0, MAX_AGENT_DOCS).forEach((doc, i) => {
       parts.push(`\n### ${i + 1}. ${doc.title}`)
-      parts.push(doc.content.substring(0, 500)) // First 500 chars
+      parts.push(summarizeDocContent(doc.content, MAX_AGENT_DOC_CHARS))
     })
     parts.push('')
   }
@@ -119,12 +120,8 @@ function formatGuidance(
   // Best practices for this content type
   if (bestPractices.length > 0) {
     parts.push('## Proven Techniques')
-    parts.push('These techniques have consistently produced human-like content:')
-    bestPractices.forEach((practice) => {
-      parts.push(`\n- ${practice.techniques?.join(', ')}`)
-      parts.push(`  Success rate: ${(practice.success_rate * 100).toFixed(1)}%`)
-      parts.push(`  Avg AI detection: ${practice.avg_ai_score?.toFixed(1)}%`)
-    })
+    const summaries = summarizeBestPractices(bestPractices, MAX_BEST_PRACTICES)
+    summaries.forEach((summary) => parts.push(`- ${summary}`))
     parts.push('')
   }
 
@@ -164,6 +161,34 @@ function formatGuidance(
   }
 
   return parts.join('\n')
+}
+
+function summarizeDocContent(content: string, maxChars: number): string {
+  if (!content) return ''
+  const sentences = content
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(' ')
+  if (sentences.length <= maxChars) return sentences
+  return sentences.slice(0, maxChars).trimEnd() + '…'
+}
+
+function summarizeBestPractices(practices: any[], limit: number): string[] {
+  if (!practices || practices.length === 0) return []
+  return practices.slice(0, limit).map((practice) => {
+    const techniques = Array.isArray(practice.techniques)
+      ? practice.techniques.slice(0, 3).join(', ')
+      : practice.techniques
+    const successRate = practice.success_rate
+      ? `${(practice.success_rate * 100).toFixed(1)}% success`
+      : ''
+    const aiScore = practice.avg_ai_score
+      ? `${practice.avg_ai_score.toFixed(1)}% avg AI score`
+      : ''
+    return [techniques, successRate, aiScore].filter(Boolean).join(' • ')
+  })
 }
 
 

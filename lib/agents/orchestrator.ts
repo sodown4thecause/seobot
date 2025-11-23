@@ -91,7 +91,9 @@ export class OrchestratorAgent {
             userId: params.userId,
           })
 
-          const maxWords = params.wordCount ? Math.ceil(params.wordCount * 1.2) : null
+          const maxWords = params.wordCount
+            ? Math.max(Math.ceil(params.wordCount * 1.2), 120)
+            : null
           const cappedDraft = maxWords
             ? this.trimToWordCount(draftContent.content, maxWords)
             : draftContent.content

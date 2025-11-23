@@ -8,6 +8,7 @@
 import { humanizeContent as rytrHumanize } from './rytr';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
 import { generateText } from 'ai';
+import { applyStylisticPass, applyLexicalVariation } from '@/lib/ai/style/postprocess';
 
 export interface HumanizationResult {
   content: string;
@@ -246,9 +247,11 @@ export async function humanizeContent(options: {
   }
 
   const polishedContent = applyReadabilityPolish(humanizedChunks.join('\n\n'));
+  const stylizedContent = applyStylisticPass(polishedContent);
+  const variedContent = applyLexicalVariation(stylizedContent);
 
   return {
-    content: polishedContent,
+    content: variedContent,
     provider: providerUsed,
     success: true,
   };
