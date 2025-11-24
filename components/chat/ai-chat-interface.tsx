@@ -1,13 +1,14 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import type { UIMessage as Message } from 'ai'
-import { useEffect, useState, forwardRef } from 'react'
-import { Sparkles, Copy, Check, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { DefaultChatTransport } from 'ai'
+import { useEffect, useState, forwardRef, useMemo } from 'react'
+import { Sparkles, Copy, Check, Loader2, CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Terminal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
 import { renderMessageComponent, type MessageComponent } from './message-types'
 import { ExportButton } from '@/components/ui/export-button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 // AI Elements Imports
 import {
@@ -28,6 +29,94 @@ interface AIChatInterfaceProps {
   workflowResults?: any
 }
 
+const formatToolName = (name: string) => {
+  return name
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComponentSubmit: (data: any) => void }) => {
+  const { toolName, args, state, result } = toolCall
+  const isLoading = state !== 'result'
+  const isSuccess = state === 'result'
+  // In AI SDK 6, error state might be different, but we can infer from result or lack thereof if needed.
+  // For now assuming result presence = success.
+  const [isOpen, setIsOpen] = useState(false)
+
+  if (toolName === 'client_ui') {
+    const componentData = {
+      component: args.component,
+      props: args.props || {}
+    }
+    return (
+      <div className="mt-4 w-full">
+        {renderMessageComponent(componentData, onComponentSubmit)}
+      </div>
+    )
+  }
+
+  // For technical tools (Search, SEO analysis, etc.)
+  return (
+    <div className={cn(
+      "bg-zinc-900/50 border rounded-md my-2 overflow-hidden transition-all",
+      isSuccess ? "border-zinc-800" : "border-zinc-700",
+      isLoading && "animate-pulse border-zinc-700"
+    )}>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center justify-between p-3">
+          <div className="flex items-center gap-2.5">
+            <div className={cn(
+              "w-6 h-6 rounded flex items-center justify-center",
+              isLoading ? "bg-blue-500/10 text-blue-400" : "bg-zinc-800 text-zinc-400"
+            )}>
+              {isLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Terminal className="w-3.5 h-3.5" />
+              )}
+            </div>
+            <span className="text-sm font-medium text-zinc-200">
+              {formatToolName(toolName)}
+            </span>
+          </div>
+          <CollapsibleTrigger asChild>
+            <button className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-zinc-300">
+              {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
+          <div className="border-t border-zinc-800 p-3 space-y-3 bg-black/20">
+            {/* Input */}
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1.5">Input</div>
+              <div className="bg-zinc-950 rounded p-2 border border-zinc-800/50">
+                <pre className="text-xs text-zinc-400 whitespace-pre-wrap font-mono overflow-x-auto">
+                  {JSON.stringify(args, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            {/* Output */}
+            {result && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1.5">Output</div>
+                <div className="bg-zinc-950 rounded p-2 border border-zinc-800/50 max-h-60 overflow-y-auto">
+                  <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono">
+                    {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  )
+}
+
 export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(({
   context,
   className,
@@ -37,87 +126,86 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   workflowResults
 }, ref) => {
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [pendingComponents, setPendingComponents] = useState<Map<string, MessageComponent>>(new Map())
   const [input, setInput] = useState('')
 
-  const chat = useChat({
-    api: '/api/chat',
-    body: { context },
-    streamProtocol: 'ui-message',
-    initialMessages: initialMessage ? [{ role: 'assistant', content: initialMessage, id: 'initial' }] : undefined,
-    onFinish: (message: any) => {
-      console.log('[Chat] Message finished:', message)
-      const textContent: string = message.content || ''
-      parseComponentsFromMessage(textContent, message.id)
-    },
-    onError: (error: any) => {
+  // AI SDK 6: useChat hook with DefaultChatTransport
+  const {
+    messages,
+    sendMessage,
+    status,
+    setMessages,
+    error,
+  } = useChat({
+    id: 'dashboard-chat',
+    messages: initialMessage
+      ? [{ role: 'assistant' as const, content: initialMessage, id: 'initial', parts: [] }]
+      : undefined,
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: { context },
+    }),
+    onError: (error: Error) => {
       console.error('[Chat] Stream error:', error)
     },
-  } as any) as any
+    onFinish: (message: any) => {
+      console.log('[Chat] Message finished:', message)
+    },
+  })
 
-  const messages = chat?.messages || []
-  const append = chat?.append || chat?.sendMessage
-  const status = chat?.status || 'ready'
-  const setMessages = chat?.setMessages
-  
   const isLoading = status === 'streaming' || status === 'submitted'
 
-  const sendMessage = (data: { text: string }) => {
-    if (append) {
-      append({ role: 'user', content: data.text })
-    } else {
-      console.error('[Chat] No send function available')
-    }
+  // Debug: Log messages state
+  useEffect(() => {
+    console.log('[Chat] Messages updated:', {
+      count: messages.length,
+      messages: messages.map(m => ({
+        id: m.id,
+        role: m.role,
+        hasContent: !!m.content,
+        hasParts: !!m.parts,
+        contentLength: m.content?.length || 0,
+      })),
+      status,
+      isLoading,
+    })
+  }, [messages, status, isLoading])
+
+  const handleSendMessage = (data: { text: string }) => {
+    if (!data.text.trim()) return
+
+    // AI SDK 6: Use sendMessage with text parameter
+    sendMessage({ text: data.text })
   }
 
+  // Handle workflow results injection as a synthetic tool message
   useEffect(() => {
     if (workflowResults && workflowResults.components) {
+      const toolInvocations = workflowResults.components.map((comp: any, index: number) => ({
+        toolCallId: `workflow-ui-${Date.now()}-${index}`,
+        toolName: 'client_ui',
+        args: { component: comp.component, props: comp.props },
+        state: 'result',
+        result: { displayed: true }
+      }))
+
       const workflowMessage: any = {
         id: `workflow-${Date.now()}`,
         role: 'assistant',
         content: workflowResults.summary || 'Workflow completed successfully!',
-        parts: [{ type: 'text', text: workflowResults.summary || 'Workflow completed successfully!' }],
+        toolInvocations: toolInvocations
       }
 
       setMessages((prev: any[]) => [...prev, workflowMessage])
-
-      workflowResults.components.forEach((comp: any) => {
-        setPendingComponents(prev => new Map(prev.set(workflowMessage.id, comp)))
-      })
     }
   }, [workflowResults, setMessages])
 
-  const parseComponentsFromMessage = (content: string, messageId: string) => {
-    const jsonRegex = /```json\n([\s\S]*?)\n```/g
-    const matches = Array.from(content.matchAll(jsonRegex))
-
-    if (matches.length > 0) {
-      matches.forEach((match) => {
-        try {
-          const component: MessageComponent = JSON.parse(match[1])
-          if (component.component) {
-            setPendingComponents(prev => new Map(prev.set(messageId, component)))
-          }
-        } catch (e) {
-          console.error('Failed to parse component:', e)
-        }
-      })
-    }
-  }
-
-  const handleComponentSubmit = (messageId: string, component: MessageComponent, data: any) => {
-    setPendingComponents(prev => {
-      const newMap = new Map(prev)
-      newMap.delete(messageId)
-      return newMap
-    })
-
+  const handleComponentSubmit = (componentType: string, data: any) => {
     if (onComponentSubmit) {
-      onComponentSubmit(component.component, data)
+      onComponentSubmit(componentType, data)
     }
 
-    const message = formatComponentData(component.component, data)
-    sendMessage({ text: message })
+    const message = formatComponentData(componentType, data)
+    handleSendMessage({ text: message })
   }
 
   const formatComponentData = (componentType: string, data: any): string => {
@@ -141,141 +229,70 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const renderMessageContent = (message: any, messageId: string) => {
-    let textContent: string = message.content || ''
-
-    if (!textContent && message.parts && Array.isArray(message.parts)) {
-      textContent = message.parts
-        .filter((p: any) => p.type === 'text')
-        .map((p: any) => p.text)
-        .join('')
+  // Smart loading state: Check for active tools
+  const activeToolName = useMemo(() => {
+    if (!isLoading) return null
+    const lastMessage = messages[messages.length - 1]
+    if (lastMessage?.role === 'assistant' && lastMessage.toolInvocations) {
+      const active = lastMessage.toolInvocations.find((t: any) => t.state !== 'result')
+      return active ? active.toolName : null
     }
+    return null
+  }, [messages, isLoading])
 
-    const cleanedContent = textContent.replace(/```json\n[\s\S]*?\n```/g, '').trim()
-    const component = pendingComponents.get(messageId)
-    const toolCalls = message.toolInvocations || []
+  const renderMessageContent = (message: any) => {
+    // Debug: Log message structure
+    console.log('[Chat] Rendering message:', { 
+      id: message.id, 
+      role: message.role, 
+      content: message.content,
+      parts: message.parts,
+      hasContent: !!message.content,
+      hasParts: !!message.parts
+    })
+
+    // AI SDK 6: Messages might have parts instead of content
+    let textContent = message.content
+    
+    // If no content but has parts, extract text from parts
+    if (!textContent && message.parts) {
+      const textParts = message.parts.filter((part: any) => part.type === 'text')
+      textContent = textParts.map((part: any) => part.text).join('')
+    }
 
     return (
       <>
-        {cleanedContent && (
+        {textContent && (
           message.role === 'assistant' ? (
-            <Response className="prose prose-invert prose-sm max-w-none">{cleanedContent}</Response>
+            <Response className="prose prose-invert prose-sm max-w-none">{textContent}</Response>
           ) : (
             <div className="whitespace-pre-wrap break-words">
-              {cleanedContent}
+              {textContent}
             </div>
           )
         )}
-        {toolCalls.length > 0 && (
-          <div className="mt-4 space-y-3">
-            {toolCalls.map((toolCall: any, index: number) => {
-              const toolName = toolCall.toolName
-              const toolInput = toolCall.args
-              const toolOutput = toolCall.result
-              const toolState = toolCall.state
-              const isLoading = toolState !== 'result'
-              const isSuccess = toolState === 'result'
-              const isError = false 
 
-              if (toolName === 'client_ui') {
-                const componentData = {
-                  component: toolInput.component,
-                  props: toolInput.props || {}
-                }
-
-                return (
-                  <div key={index} className="mt-4 w-full">
-                    {renderMessageComponent(componentData, (data) => handleComponentSubmit(messageId, componentData, data))}
-                  </div>
-                )
-              }
-
-              return (
-                <div
-                  key={index}
-                  className={cn(
-                    "bg-zinc-900",
-                    "border rounded-md p-4 space-y-3",
-                    isError ? "border-red-500/30" : "border-zinc-800",
-                    isSuccess && !isError && "border-green-900/50"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "w-8 h-8 rounded-md flex items-center justify-center bg-zinc-800",
-                        isLoading && "animate-pulse",
-                      )}>
-                        {isLoading && <Loader2 className="w-4 h-4 text-zinc-400 animate-spin" />}
-                        {isSuccess && !isError && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                        {isError && <XCircle className="w-4 h-4 text-red-500" />}
-                        {!isLoading && !isSuccess && !isError && (
-                          <AlertCircle className="w-4 h-4 text-yellow-500" />
-                        )}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-zinc-100 font-mono">
-                          {toolName}
-                        </span>
-                        {toolState && (
-                          <span className={cn(
-                            "text-xs mt-0.5",
-                            isSuccess && !isError ? 'text-green-500' :
-                              isError ? 'text-red-500' :
-                                'text-zinc-500'
-                          )}>
-                            {toolState}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {toolInput && (
-                    <div className="bg-black rounded-md p-3 border border-zinc-800">
-                      <div className="text-xs font-medium text-zinc-500 mb-1.5 font-mono">Input</div>
-                      <div className="text-sm text-zinc-300 font-mono">
-                        {typeof toolInput === 'object' ? (
-                          <pre className="whitespace-pre-wrap break-words text-xs">
-                            {JSON.stringify(toolInput, null, 2)}
-                          </pre>
-                        ) : (
-                          toolInput
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {toolOutput && (isSuccess || isError) && (
-                    <div className={cn(
-                      "rounded-md p-3 border max-h-48 overflow-y-auto",
-                      isError ? "bg-red-900/10 border-red-500/30" : "bg-green-900/10 border-green-900/30"
-                    )}>
-                      <div className={cn(
-                        "text-xs font-medium mb-1.5 font-mono",
-                        isError ? "text-red-400" : "text-green-400"
-                      )}>
-                        {isError ? "Error" : "Output"}
-                      </div>
-                      <pre className="text-xs text-zinc-300 whitespace-pre-wrap break-words font-mono">
-                        {typeof toolOutput === 'string' ? toolOutput : JSON.stringify(toolOutput, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {toolCall.errorText && (
-                    <div className="bg-red-900/10 border border-red-500/30 rounded-md p-3">
-                      <div className="text-xs font-medium text-red-400 mb-1 font-mono">Error</div>
-                      <div className="text-sm text-red-300 font-mono">{toolCall.errorText}</div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-        {component && (
-          <div className="mt-4">
-            {renderMessageComponent(component, (data) => handleComponentSubmit(messageId, component, data))}
-          </div>
-        )}
+        {message.toolInvocations?.map((toolCall: any) => (
+          <ToolInvocation
+            key={toolCall.toolCallId}
+            toolCall={toolCall}
+            onComponentSubmit={(data) => handleComponentSubmit(toolCall.args.component, data)}
+          />
+        ))}
+        
+        {/* AI SDK 6: Handle tool-call parts */}
+        {message.parts?.filter((part: any) => part.type === 'tool-call').map((toolCall: any) => (
+          <ToolInvocation
+            key={toolCall.toolCallId}
+            toolCall={{
+              toolCallId: toolCall.toolCallId,
+              toolName: toolCall.toolName,
+              args: toolCall.input,
+              state: 'result',
+            }}
+            onComponentSubmit={(data) => handleComponentSubmit(toolCall.toolName, data)}
+          />
+        ))}
       </>
     )
   }
@@ -285,69 +302,80 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       <Conversation>
         <ConversationContent>
           {messages.length === 0 && (
-             <ConversationEmptyState
-               icon={
-                 <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
-                   <Sparkles className="w-8 h-8 text-zinc-50" />
-                 </div>
-               }
-               title="Ready to Create?"
-               description="I'm your AI assistant. How can I help you today?"
-             />
+            <ConversationEmptyState
+              icon={
+                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
+                  <Sparkles className="w-8 h-8 text-zinc-50" />
+                </div>
+              }
+              title="Ready to Create?"
+              description="I'm your AI assistant. How can I help you today?"
+            />
           )}
-          
+
           {messages.map((message: any) => (
             <Message key={message.id} from={message.role}>
-              <MessageAvatar 
+              <MessageAvatar
                 src=""
-                name={message.role === 'user' ? "You" : "AI"} 
+                name={message.role === 'user' ? "You" : "AI"}
               />
               <MessageContent variant={message.role === 'user' ? 'contained' : 'flat'}>
-                {renderMessageContent(message, message.id)}
-                
+                {renderMessageContent(message)}
+
                 {/* Actions for assistant */}
-                {message.role === 'assistant' && (
-                   <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => {
-                          const textContent = message.content || ''
-                          copyToClipboard(textContent, message.id)
-                        }}
-                        className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 rounded hover:bg-zinc-800"
-                        title="Copy to clipboard"
-                      >
-                        {copiedId === message.id ? (
-                          <>
-                            <Check className="w-3 h-3 text-green-500" />
-                            <span className="text-green-500">Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                      <ExportButton
-                        content={message.content || ''}
-                        size="sm"
-                        className="text-xs text-zinc-500 hover:text-zinc-300"
-                      />
-                   </div>
+                {message.role === 'assistant' && message.content && (
+                  <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => {
+                        copyToClipboard(message.content, message.id)
+                      }}
+                      className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 rounded hover:bg-zinc-800"
+                      title="Copy to clipboard"
+                    >
+                      {copiedId === message.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-green-500" />
+                          <span className="text-green-500">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                    <ExportButton
+                      content={message.content || ''}
+                      size="sm"
+                      className="text-xs text-zinc-500 hover:text-zinc-300"
+                    />
+                  </div>
                 )}
               </MessageContent>
             </Message>
           ))}
-          
-          {isLoading && (
+
+          {isLoading && !activeToolName && (
             <Message from="assistant">
-               <MessageAvatar src="" name="AI" />
-               <MessageContent variant="flat">
-                 <div className="flex items-center gap-2">
-                   <Loader2 className="w-4 h-4 animate-spin" />
-                   <span>Thinking...</span>
-                 </div>
-               </MessageContent>
+              <MessageAvatar src="" name="AI" />
+              <MessageContent variant="flat">
+                <div className="flex items-center gap-2 text-zinc-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Thinking...</span>
+                </div>
+              </MessageContent>
+            </Message>
+          )}
+
+          {isLoading && activeToolName && (
+            <Message from="assistant">
+              <MessageAvatar src="" name="AI" />
+              <MessageContent variant="flat">
+                <div className="flex items-center gap-2 text-blue-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm font-medium">Using {formatToolName(activeToolName)}...</span>
+                </div>
+              </MessageContent>
             </Message>
           )}
         </ConversationContent>
@@ -363,7 +391,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           onSubmit={() => {
             if (input.trim() && !isLoading) {
               console.log('[Chat] Sending message:', input)
-              sendMessage({ text: input })
+              handleSendMessage({ text: input })
               setInput('')
             }
           }}
@@ -372,10 +400,12 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           showQuickActions={messages.length === 0}
           onQuickActionClick={(text) => {
             console.log('[Chat] Sending quick action:', text)
-            sendMessage({ text })
+            handleSendMessage({ text })
           }}
         />
       </div>
     </div>
   )
 })
+
+AIChatInterface.displayName = 'AIChatInterface'

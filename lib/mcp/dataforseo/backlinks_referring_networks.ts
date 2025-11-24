@@ -9,7 +9,7 @@ export const backlinks_referring_networksToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a detailed overview of referring domains pointing to the target you specify`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string()
         .describe(`domain, subdomain or webpage to get backlinks for
         required field
@@ -88,7 +88,7 @@ example:
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_referring_networks",
@@ -109,4 +109,5 @@ example:
       }
     },
   });
+
 

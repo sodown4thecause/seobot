@@ -16,7 +16,7 @@ import { generateEmbedding } from './embeddings'
  * Retrieve relevant agent documents from Supabase
  * Uses OpenAI text-embedding-3-small (1536 dimensions)
  */
-async function retrieveAgentDocuments(
+export async function retrieveAgentDocuments(
   topic: string,
   agentType: string = 'content_writer',
   limit: number = 3

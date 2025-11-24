@@ -9,7 +9,7 @@ export const on_page_lighthouseToolWithClient = (
 ) =>
   tool({
     description: `The OnPage Lighthouse API is based on Google’s open-source Lighthouse project for measuring the quality of web pages and web apps.`,
-    parameters: z.object({
+    inputSchema: z.object({
       url: z.string().describe("URL of the page to parse"),
       enable_javascript: z
         .boolean()
@@ -28,7 +28,7 @@ export const on_page_lighthouseToolWithClient = (
         .describe("Accept-Language header value")
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "on_page_lighthouse",
@@ -49,3 +49,4 @@ export const on_page_lighthouseToolWithClient = (
       }
     },
   });
+

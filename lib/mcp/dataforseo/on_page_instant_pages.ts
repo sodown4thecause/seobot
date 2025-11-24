@@ -9,7 +9,7 @@ export const on_page_instant_pagesToolWithClient = (
 ) =>
   tool({
     description: `Using this function you will get page-specific data with detailed information on how well a particular page is optimized for organic search`,
-    parameters: z.object({
+    inputSchema: z.object({
       url: z.string().describe("URL to analyze"),
       enable_javascript: z
         .boolean()
@@ -32,7 +32,7 @@ export const on_page_instant_pagesToolWithClient = (
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "on_page_instant_pages",
@@ -53,3 +53,4 @@ export const on_page_instant_pagesToolWithClient = (
       }
     },
   });
+

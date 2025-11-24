@@ -23,10 +23,8 @@ const MAX_CHUNK_SIZE = 1400;
  * Humanize content using Claude as a reliable fallback
  * Uses sophisticated prompting to make AI content sound more human
  */
-async function humanizeWithClaude(content: string): Promise<string> {
-  const { text } = await generateText({
-    model: vercelGateway.languageModel('anthropic/claude-3-5-sonnet-20241022'),
-    prompt: `You are an expert content humanizer. Your task is to rewrite AI-generated content to sound more natural, human, and authentic while preserving all key information and SEO value.
+async function humanizeWithClaude(content: string, guidance?: string): Promise<string> {
+  const prompt = `You are an expert content humanizer. Your task is to rewrite AI-generated content to sound more natural, human, and authentic while preserving all key information and SEO value.
 
 RULES FOR HUMANIZATION:
 1. Use contractions naturally (you're, we've, it's, don't)
@@ -39,6 +37,8 @@ RULES FOR HUMANIZATION:
 8. Use active voice predominantly
 9. Include occasional interjections or asides
 10. Make it feel like a knowledgeable person explaining to a friend
+
+${guidance ? `\nCRITICAL ANTI-DETECTION GUIDELINES:\n${guidance}\n` : ''}
 
 PRESERVE:
 - All factual information
@@ -57,9 +57,12 @@ AVOID:
 Original Content:
 ${content}
 
-Rewrite this to sound authentically human while keeping all the valuable information intact. Make it engaging, natural, and trustworthy.`,
+Rewrite this to sound authentically human while keeping all the valuable information intact. Make it engaging, natural, and trustworthy.`;
+
+  const { text } = await generateText({
+    model: vercelGateway.languageModel('anthropic/claude-3-5-sonnet-20241022'),
+    prompt,
     temperature: 0.9,
-    maxTokens: 4096,
   });
 
   return text;
@@ -161,8 +164,9 @@ async function humanizeChunk(options: {
   chunk: string;
   userId?: string;
   disableRytr?: boolean;
+  guidance?: string;
 }): Promise<HumanizationResult> {
-  const { chunk, userId, disableRytr } = options;
+  const { chunk, userId, disableRytr, guidance } = options;
 
   if (!disableRytr) {
     try {
@@ -190,7 +194,7 @@ async function humanizeChunk(options: {
 
   try {
     console.log('[Humanization] Attempting Claude chunk...');
-    const humanized = await humanizeWithClaude(chunk);
+    const humanized = await humanizeWithClaude(chunk, guidance);
     if (humanized && humanized.trim().length > 0) {
       console.log('[Humanization] ✓ Claude chunk succeeded');
       return {
@@ -218,8 +222,9 @@ export async function humanizeContent(options: {
   content: string;
   userId?: string;
   disableRytr?: boolean;
+  guidance?: string;
 }): Promise<HumanizationResult> {
-  const { content, userId, disableRytr = false } = options;
+  const { content, userId, disableRytr = false, guidance } = options;
 
   console.log('[Humanization] Starting multi-provider humanization');
   console.log('[Humanization] Content length:', content.length);
@@ -234,6 +239,7 @@ export async function humanizeContent(options: {
       chunk,
       userId,
       disableRytr: rytrAttempted,
+      guidance,
     });
 
     humanizedChunks.push(chunkResult.content);

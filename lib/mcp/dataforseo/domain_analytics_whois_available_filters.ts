@@ -11,13 +11,13 @@ export const domain_analytics_whois_available_filtersToolWithClient = (
     description: `Here you will find all the necessary information about filters that can be used with DataForSEO WHOIS API endpoints.
 
 Please, keep in mind that filters are associated with a certain object in the result array, and should be specified accordingly.`,
-    parameters: z.object({
+    inputSchema: z.object({
       tool: z
         .string()
         .describe("The name of the tool to get filters for")
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "domain_analytics_whois_available_filters",
@@ -38,3 +38,4 @@ Please, keep in mind that filters are associated with a certain object in the re
       }
     },
   });
+

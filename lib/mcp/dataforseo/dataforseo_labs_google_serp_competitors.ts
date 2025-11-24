@@ -9,7 +9,7 @@ export const dataforseo_labs_google_serp_competitorsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a list of domains ranking for the keywords you specify. You will also get SERP rankings, rating, estimated traffic volume, and visibility values the provided domains gain from the specified keywords.`,
-    parameters: z.object({
+    inputSchema: z.object({
       keywords: z.array(z.string()).describe(`keywords array
 required field
 the results will be based on the keywords you specify in this array
@@ -99,7 +99,7 @@ example:
         .describe("Include keywords from subdomains")
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_serp_competitors",
@@ -120,4 +120,5 @@ example:
       }
     },
   });
+
 

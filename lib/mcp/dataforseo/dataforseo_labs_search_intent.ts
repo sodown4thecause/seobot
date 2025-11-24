@@ -10,7 +10,7 @@ export const dataforseo_labs_search_intentToolWithClient = (
   tool({
     description: `This endpoint will provide you with search intent data for up to 1,000 keywords. For each keyword that you specify when setting a task, the API will return the keyword's search intent and intent probability. Besides the highest probable search intent, the results will also provide you with other likely search intent(s) and their probability.
 Based on keyword data and search results data, our system has been trained to detect four types of search intent: informational, navigational, commercial, transactional.`,
-    parameters: z.object({
+    inputSchema: z.object({
       keywords: z.array(z.string()).describe(`target keywords
 required field
 UTF-8 encoding
@@ -54,7 +54,7 @@ bs`,
         )
         .default("en"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_search_intent",
@@ -75,3 +75,4 @@ bs`,
       }
     },
   });
+

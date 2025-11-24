@@ -9,7 +9,7 @@ export const serp_youtube_video_info_live_advancedToolWithClient = (
 ) =>
   tool({
     description: "provides data on the video you specify",
-    parameters: z.object({
+    inputSchema: z.object({
       video_id: z.string().describe("ID of the video"),
       location_name: z.string().describe(`full name of the location
 required field
@@ -42,7 +42,7 @@ default value: android`,
         )
         .default("windows"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "serp_youtube_video_info_live_advanced",
@@ -63,3 +63,4 @@ default value: android`,
       }
     },
   });
+

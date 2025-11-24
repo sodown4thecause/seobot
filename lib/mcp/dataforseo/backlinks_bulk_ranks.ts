@@ -9,7 +9,7 @@ export const backlinks_bulk_ranksToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with rank scores of the domains, subdomains, and pages specified in the targets array. The score is based on the number of referring domains pointing to the specified domains, subdomains, or pages. The rank values represent real-time data for the date of the request and range from 0 (no backlinks detected) to 1,000 (highest rank). A similar scoring system is used in Google’s Page Rank algorithm`,
-    parameters: z.object({
+    inputSchema: z.object({
       targets: z.array(z.string())
         .describe(`domains, subdomains or webpages to get rank for
 required field
@@ -41,7 +41,7 @@ one_thousand — rank values are displayed on a 0–1000 scale`,
         )
         .default("one_thousand"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_bulk_ranks",
@@ -62,3 +62,4 @@ one_thousand — rank values are displayed on a 0–1000 scale`,
       }
     },
   });
+

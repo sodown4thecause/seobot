@@ -41,7 +41,7 @@ function fixSingleToolSchema(tool: Tool, toolName: string): Tool | null {
       console.warn(`[Schema Fixer] Tool ${toolName} has no parameters`)
       return {
         ...tool,
-        parameters: z.object({})
+        inputSchema: z.object({})
       }
     }
 

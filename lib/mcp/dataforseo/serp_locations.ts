@@ -10,7 +10,7 @@ export const serp_locationsToolWithClient = (
   tool({
     description:
       "Utility tool for serp_organic_live_advanced to get list of availible locations.",
-    parameters: z.object({
+    inputSchema: z.object({
       search_engine: z
         .string()
         .describe("search engine name, one of: google, yahoo, bing.")
@@ -29,7 +29,7 @@ export const serp_locationsToolWithClient = (
         .describe("Name of location or it`s part.")
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "serp_locations",
@@ -50,3 +50,4 @@ export const serp_locationsToolWithClient = (
       }
     },
   });
+

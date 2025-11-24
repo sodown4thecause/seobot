@@ -4,6 +4,7 @@
 
 import { analyzeContent } from '@/lib/mcp/winston-client'
 import { humanizeContent } from '@/lib/external-apis/humanization-service'
+import { retrieveAgentDocuments } from '@/lib/ai/content-rag'
 
 export interface QAReviewParams {
   content: string
@@ -35,6 +36,19 @@ export class QualityAssuranceAgent {
   async reviewAndImprove(params: QAReviewParams): Promise<QAReviewResult> {
     console.log('[QA Agent] Starting quality review for:', params.topic)
     console.log('[QA Agent] Initial content length:', params.content?.length ?? 0)
+
+    // Pre-fetch anti-AI detection guidance
+    let avoidanceGuidance = '';
+    try {
+      // Specifically search for "AI Detection Avoidance" document
+      const docs = await retrieveAgentDocuments('AI Detection Avoidance Banned Words', 'content_writer', 1);
+      if (docs && docs.length > 0) {
+        avoidanceGuidance = docs[0].content;
+        console.log('[QA Agent] ✓ Retrieved anti-AI detection guidance');
+      }
+    } catch (error) {
+      console.warn('[QA Agent] Failed to retrieve avoidance guidance:', error);
+    }
 
     let currentContent = params.content
     let iterations = 0
@@ -83,6 +97,7 @@ export class QualityAssuranceAgent {
             content: currentContent,
             userId: params.userId,
             disableRytr: rytrAttempted,
+            guidance: avoidanceGuidance, // Pass the RAG-retrieved guidance
           })
 
           if (!result.content || result.content.trim().length === 0) {

@@ -9,7 +9,7 @@ export const search_webToolWithClient = (
 ) =>
   tool({
     description: `Search the entire web for current information, news, articles, and websites. Use this when you need up-to-date information, want to find specific websites, research topics, or get the latest news. Ideal for answering questions about recent events, finding resources, or discovering relevant content.`,
-    parameters: z.object({
+    inputSchema: z.object({
       query: z
         .union([z.string(), z.array(z.string())])
         .describe(
@@ -40,7 +40,7 @@ export const search_webToolWithClient = (
         .describe("Language code, e.g., 'zh-cn' for Simplified Chinese")
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "search_web",
@@ -61,3 +61,4 @@ export const search_webToolWithClient = (
       }
     },
   });
+

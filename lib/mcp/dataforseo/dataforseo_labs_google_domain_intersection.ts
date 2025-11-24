@@ -9,7 +9,7 @@ export const dataforseo_labs_google_domain_intersectionToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the keywords for which both specified domains rank within the same SERP. You will get search volume, competition, cost-per-click and impressions data on each intersecting keyword. Along with that, you will get data on the first and second domain's SERP element discovered for this keyword, as well as the estimated traffic volume and cost of ad traffic.`,
-    parameters: z.object({
+    inputSchema: z.object({
       target1: z.string().describe("target domain 1"),
       target2: z.string().describe("target domain 2 "),
       location_name: z
@@ -115,7 +115,7 @@ default value: true`,
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_domain_intersection",
@@ -136,4 +136,5 @@ default value: true`,
       }
     },
   });
+
 

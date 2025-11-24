@@ -9,7 +9,7 @@ export const dataforseo_labs_google_historical_keyword_dataToolWithClient = (
 ) =>
   tool({
     description: `This endpoint provides Google historical keyword data for specified keywords, including search volume, cost-per-click, competition values for paid search, monthly searches, and search volume trends. You can get historical keyword data since August, 2021, depending on keywords along with location and language combination`,
-    parameters: z.object({
+    inputSchema: z.object({
       keywords: z.array(z.string()).describe(`keywords
 required field
 The maximum number of keywords you can specify: 700
@@ -38,7 +38,7 @@ example:
         )
         .default("en"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_historical_keyword_data",
@@ -59,3 +59,4 @@ example:
       }
     },
   });
+
