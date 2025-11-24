@@ -27,7 +27,7 @@ import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
 import { z } from "zod";
 import { researchAgentTool, competitorAgentTool, frameworkRagTool } from "@/lib/agents/tools";
 
-export const runtime = "edge";
+export const maxDuration = 300; // 5 minutes
 
 // Using Claude Haiku 4.5 via Vercel Gateway
 const CHAT_MODEL_ID = "anthropic/claude-haiku-4.5";
@@ -233,7 +233,12 @@ export async function POST(req: Request) {
             console.log('[Orchestrator Tool] ✓ Orchestrator completed successfully');
 
             // Return simple content string for AI SDK 6 tool result handling
-            const contentResult = result.content || "Content generation completed but no content was returned.";
+            // Include image if generated
+            let contentResult = result.content || "Content generation completed but no content was returned.";
+            
+            if (result.featuredImage) {
+              contentResult = `![Featured Image](${result.featuredImage})\n\n${contentResult}`;
+            }
 
             return contentResult;
           } catch (error) {
