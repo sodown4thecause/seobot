@@ -14,8 +14,13 @@ export default async function AdminLayout({
     redirect('/login')
   }
 
-  // TODO: Add admin role check here if needed
-  // For now, all authenticated users can access admin
+  // Check admin access
+  const { isAdmin } = await import('@/lib/auth/admin-check')
+  const admin = await isAdmin(user.id)
+  
+  if (!admin) {
+    redirect('/dashboard')
+  }
 
   return (
     <div className="min-h-screen bg-[#1a1a1a]">

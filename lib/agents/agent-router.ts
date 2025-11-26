@@ -125,6 +125,13 @@ export class AgentRouter {
    */
   private static isSEOAnalyticsQuery(message: string): boolean {
     const seoAnalyticsKeywords = [
+      // Core SEO/AEO terms (standalone)
+      'seo', 'aeo', 'answer engine', 'search engine optimization',
+      
+      // Search Intent
+      'search intent', 'intent', 'user intent', 'query intent',
+      'informational', 'navigational', 'transactional', 'commercial intent',
+      
       // Analytics & metrics
       'traffic', 'ranking', 'position', 'visibility', 'metrics',
       'analytics', 'performance', 'audit', 'technical seo',
@@ -141,9 +148,23 @@ export class AgentRouter {
       'serp', 'search results', 'google ranking', 'featured snippet',
       'people also ask', 'related searches', 'serp features',
       
-      // Keyword research
+      // Keyword research & terms
       'keyword research', 'search volume', 'keyword difficulty',
       'keyword suggestions', 'keyword trends', 'keyword gap',
+      'keyword', 'keywords', 'long tail', 'short tail', 'seed keyword',
+      'cpc', 'cost per click', 'ppc',
+      
+      // Ranking/Organic
+      'rank', 'ranks', 'ranking for', 'organic', 'organic search',
+      'what ranks', 'how to rank', 'top ranking',
+      
+      // Analysis queries
+      'analyze', 'analysis', 'site analysis', 'website analysis',
+      'seo audit', 'seo analysis', 'seo strategy', 'seo tips',
+      
+      // Search queries
+      'search query', 'search queries', 'what people search',
+      'how people search', 'search behavior',
       
       // Technical SEO
       'crawl', 'index', 'sitemap', 'robots.txt', 'page speed',

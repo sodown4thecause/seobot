@@ -21,6 +21,7 @@ import { getContentQualityTools } from "@/lib/ai/content-quality-tools";
 import { getEnhancedContentQualityTools } from "@/lib/ai/content-quality-enhancements";
 import { searchWithPerplexity } from "@/lib/external-apis/perplexity";
 import { OrchestratorAgent } from "@/lib/agents/orchestrator";
+import { RAGWriterOrchestrator } from "@/lib/agents/rag-writer-orchestrator";
 import { AgentRouter } from "@/lib/agents/agent-router";
 import { vercelGateway } from "@/lib/ai/gateway-provider";
 import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
@@ -85,8 +86,9 @@ export async function POST(req: Request) {
       error: authError,
     } = await supabase.auth.getUser();
 
-    // Initialize Orchestrator
-    const orchestrator = new OrchestratorAgent();
+    // Initialize Orchestrators
+    const orchestrator = new OrchestratorAgent(); // Legacy orchestrator (kept for backward compatibility)
+    const ragWriterOrchestrator = new RAGWriterOrchestrator(); // New RAG + EEAT feedback loop orchestrator
 
     // Extract onboarding context if present
     const onboardingContext = context?.onboarding;
@@ -205,11 +207,11 @@ export async function POST(req: Request) {
       enhancedContentTools = getEnhancedContentQualityTools();
     }
 
-    // Orchestrator Tool - Content Generation with Research & Feedback Loop
+    // Orchestrator Tool - Content Generation with RAG + EEAT Feedback Loop
     const orchestratorTool = {
       generate_researched_content: tool({
         description:
-          "Generate high-quality, researched, and SEO-optimized content (blog posts, articles). This tool runs a comprehensive workflow: Research -> RAG (Best Practices) -> Write -> QA (Winston/Rytr) -> Feedback Loop.",
+          "Generate high-quality, researched, and SEO-optimized content (blog posts, articles). This tool runs a comprehensive workflow: Research (Perplexity + RAG) -> Write -> DataForSEO Scoring -> EEAT QA Review -> Revision Feedback Loop.",
         inputSchema: z.object({
           topic: z.string().describe("The main topic of the content"),
           type: z
@@ -218,31 +220,50 @@ export async function POST(req: Request) {
           keywords: z.array(z.string()).describe("Target keywords"),
           tone: z.string().optional().describe("Desired tone (e.g., professional, casual)"),
           wordCount: z.number().optional().describe("Target word count"),
+          competitorUrls: z.array(z.string()).optional().describe("Optional competitor URLs for comparison"),
         }),
         execute: async (args) => {
           try {
-            console.log('[Orchestrator Tool] 🚀 Starting execution with args:', args);
+            console.log('[RAG Writer Orchestrator Tool] 🚀 Starting execution with args:', args);
 
-            // Pass userId for learning storage
-            const result = await orchestrator.generateContent({
+            // Check credit limit before expensive operation
+            const { checkCreditLimit } = await import('@/lib/usage/limit-check');
+            const limitCheck = await checkCreditLimit(user?.id);
+            
+            if (!limitCheck.allowed) {
+              return `❌ Credit limit exceeded. ${limitCheck.reason || `You've used $${limitCheck.currentSpendUsd.toFixed(2)} of your $${limitCheck.limitUsd.toFixed(2)} monthly limit.`} Please contact support or wait until ${limitCheck.resetDate?.toLocaleDateString() || 'next month'} for your credits to reset.`;
+            }
+
+            // Use new RAG + EEAT feedback loop orchestrator
+            const result = await ragWriterOrchestrator.generateContent({
               ...args,
               userId: user?.id,
-              targetPlatforms: ["chatgpt", "perplexity", "claude"], // Default targets
             });
 
-            console.log('[Orchestrator Tool] ✓ Orchestrator completed successfully');
+            console.log('[RAG Writer Orchestrator Tool] ✓ Orchestrator completed successfully');
+            console.log(`[RAG Writer Orchestrator Tool] Quality Scores - Overall: ${result.qualityScores.overall}, EEAT: ${result.qualityScores.eeat}, Depth: ${result.qualityScores.depth}`);
 
-            // Return simple content string for AI SDK 6 tool result handling
-            // Include image if generated
+            // Format response with quality scores and QA insights
             let contentResult = result.content || "Content generation completed but no content was returned.";
             
-            if (result.featuredImage) {
-              contentResult = `![Featured Image](${result.featuredImage})\n\n${contentResult}`;
-            }
+            // Add quality score summary
+            const scoreSummary = `
+## Quality Scores
+- **Overall Quality**: ${result.qualityScores.overall}/100
+- **DataForSEO Score**: ${result.qualityScores.dataforseo}/100
+- **EEAT Score**: ${result.qualityScores.eeat}/100
+- **Content Depth**: ${result.qualityScores.depth}/100
+- **Factual Accuracy**: ${result.qualityScores.factual}/100
+- **Revision Rounds**: ${result.revisionCount}
+
+${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n${result.qaReport.improvement_instructions.slice(0, 3).map((inst: string, i: number) => `${i + 1}. ${inst}`).join('\n')}` : ''}
+`;
+
+            contentResult = contentResult + scoreSummary;
 
             return contentResult;
           } catch (error) {
-            console.error("[Chat API] Orchestrator error:", error);
+            console.error("[Chat API] RAG Writer Orchestrator error:", error);
             return "Failed to generate content. Please try again.";
           }
         },
@@ -359,8 +380,29 @@ export async function POST(req: Request) {
       onError: (error) => {
         console.error('[Chat API] Streaming error:', error);
       },
-      onFinish: async ({ response }) => {
+      onFinish: async ({ response, usage }) => {
         const { messages: finalMessages } = response;
+
+        // Log AI usage
+        if (user && !authError) {
+          try {
+            const { logAIUsage, extractUsageFromResult } = await import('@/lib/analytics/usage-logger');
+            await logAIUsage({
+              userId: user.id,
+              conversationId: context?.conversationId,
+              agentType: 'general',
+              model: CHAT_MODEL_ID,
+              promptTokens: usage?.promptTokens || 0,
+              completionTokens: usage?.completionTokens || 0,
+              toolCalls: response.steps?.reduce((sum: number, step: any) => sum + (step.toolCalls?.length || 0), 0) || 0,
+              metadata: {
+                onboarding: !!onboardingContext,
+              },
+            });
+          } catch (error) {
+            console.error('[Chat API] Error logging usage:', error);
+          }
+        }
 
         // Save messages after completion
         if (user && !authError) {

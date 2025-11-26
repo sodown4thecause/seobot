@@ -16,6 +16,12 @@ export interface ContentWriteParams {
   researchContext?: any
   seoStrategy?: any
   userId?: string
+  // Revision support
+  previousDraft?: string
+  improvementInstructions?: string[]
+  dataforseoMetrics?: any
+  qaReport?: any
+  revisionRound?: number
 }
 
 export interface ContentWriteResult {
@@ -44,12 +50,32 @@ export class ContentWriterAgent {
 
     // Generate content using Claude via Vercel AI Gateway for superior quality
     try {
-      const { text } = await generateText({
+      const { text, usage } = await generateText({
         model: vercelGateway.languageModel('google/gemini-3-pro-preview' as GatewayModelId),
         system: this.buildSystemPrompt(guidance),
         prompt: prompt,
         temperature: 0.7,
       })
+
+      // Log usage
+      if (params.userId) {
+        try {
+          const { logAIUsage } = await import('@/lib/analytics/usage-logger');
+          await logAIUsage({
+            userId: params.userId,
+            agentType: 'content_writer',
+            model: 'google/gemini-3-pro-preview',
+            promptTokens: usage?.promptTokens || 0,
+            completionTokens: usage?.completionTokens || 0,
+            metadata: {
+              content_type: params.type,
+              topic: params.topic,
+            },
+          });
+        } catch (error) {
+          console.error('[Content Writer] Error logging usage:', error);
+        }
+      }
 
       console.log('[Content Writer] ✓ Content generated')
 
@@ -88,6 +114,12 @@ Focus on creating content that:
   }
 
   private buildPrompt(params: ContentWriteParams): string {
+    // If this is a revision, build revision prompt
+    if (params.previousDraft && params.improvementInstructions) {
+      return this.buildRevisionPrompt(params)
+    }
+
+    // Otherwise, build initial draft prompt
     let prompt = `Write a ${params.type.replace('_', ' ')} about "${params.topic}".
 
 Target Keywords: ${params.keywords.join(', ')}
@@ -99,6 +131,34 @@ ${params.researchContext ? `\nResearch Context:\n${JSON.stringify(params.researc
 ${params.seoStrategy ? `\nSEO Strategy:\n${JSON.stringify(params.seoStrategy, null, 2)}` : ''}
 
 Write the complete content now. Make it engaging, informative, and human-like.`
+
+    return prompt
+  }
+
+  private buildRevisionPrompt(params: ContentWriteParams): string {
+    const instructions = params.improvementInstructions?.join('\n- ') || 'Improve the content quality.'
+
+    let prompt = `Revise the following content based on quality review feedback.
+
+ORIGINAL DRAFT:
+${params.previousDraft}
+
+IMPROVEMENT INSTRUCTIONS:
+- ${instructions}
+
+${params.dataforseoMetrics ? `\nDataForSEO Metrics:\n${JSON.stringify(params.dataforseoMetrics, null, 2)}` : ''}
+
+${params.qaReport ? `\nQA Report Summary:\n${JSON.stringify(params.qaReport, null, 2)}` : ''}
+
+REQUIREMENTS:
+- Keep the core topic and keywords: ${params.keywords.join(', ')}
+${params.tone ? `- Maintain tone: ${params.tone}` : ''}
+${params.wordCount ? `- Target word count: ${params.wordCount}` : ''}
+- Address ALL improvement instructions above
+- Do not change the fundamental structure unless specifically requested
+- Enhance citations, data points, and depth as instructed
+
+Write the revised, improved content now.`
 
     return prompt
   }

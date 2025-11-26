@@ -11,6 +11,7 @@ export interface SEOAEOParams {
   keywords: string[]
   targetPlatforms?: string[]
   researchData?: any
+  userId?: string // For usage logging
 }
 
 export interface SEOAEOResult {
@@ -50,14 +51,34 @@ Format as JSON.`
         controller.abort()
       }, timeoutMs)
 
-      const { text } = (await generateText({
+      const { text, usage } = await generateText({
         // Use Gemini 2.5 Flash for better tool orchestration and faster responses
         model: vercelGateway.languageModel('google/gemini-2.5-flash' as GatewayModelId),
         prompt,
         temperature: 0.4,
         maxRetries: 3, // AI SDK 6: Add retries for transient failures
         abortSignal: controller.signal, // AI SDK 6: Use abortSignal instead of signal
-      })) as { text: string }
+      })
+
+      // Log usage
+      if (params.userId) {
+        try {
+          const { logAIUsage } = await import('@/lib/analytics/usage-logger');
+          await logAIUsage({
+            userId: params.userId,
+            agentType: 'seo_aeo',
+            model: 'google/gemini-2.5-flash',
+            promptTokens: usage?.promptTokens || 0,
+            completionTokens: usage?.completionTokens || 0,
+            metadata: {
+              topic: params.topic,
+              keywords: params.keywords,
+            },
+          });
+        } catch (error) {
+          console.error('[SEO/AEO Agent] Error logging usage:', error);
+        }
+      }
 
       clearTimeout(timeout)
       console.log('[SEO/AEO Agent] ✓ Strategy generation completed')
