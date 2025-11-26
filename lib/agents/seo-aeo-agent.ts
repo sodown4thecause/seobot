@@ -51,11 +51,12 @@ Format as JSON.`
       }, timeoutMs)
 
       const { text } = (await generateText({
-        model: vercelGateway.languageModel('anthropic/claude-haiku-4.5' as GatewayModelId),
+        // Use Gemini 2.5 Flash for better tool orchestration and faster responses
+        model: vercelGateway.languageModel('google/gemini-2.5-flash' as GatewayModelId),
         prompt,
         temperature: 0.4,
-        maxRetries: 2, // AI SDK 6: Add retries for transient failures
-        signal: controller.signal,
+        maxRetries: 3, // AI SDK 6: Add retries for transient failures
+        abortSignal: controller.signal, // AI SDK 6: Use abortSignal instead of signal
       })) as { text: string }
 
       clearTimeout(timeout)

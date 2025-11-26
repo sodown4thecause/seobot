@@ -27,8 +27,8 @@ export interface QAReviewResult {
 }
 
 export class QualityAssuranceAgent {
-  private readonly MAX_ITERATIONS = 3
-  private readonly TARGET_AI_SCORE = 30 // Target < 30% AI detection
+  private readonly MAX_ITERATIONS = 5 // Increased from 3 for better humanization
+  private readonly TARGET_AI_SCORE = 25 // Tightened from 30% for production quality
 
   /**
    * Review and iteratively improve content quality

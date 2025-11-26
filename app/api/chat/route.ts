@@ -15,7 +15,7 @@ import { getDataForSEOTools } from "@/lib/mcp/dataforseo-client";
 import { getFirecrawlTools } from "@/lib/mcp/firecrawl-client";
 import { getJinaTools } from "@/lib/mcp/jina-client";
 import { getWinstonTools } from "@/lib/mcp/winston-client";
-import { loadEssentialTools } from "@/lib/ai/tool-schema-validator-v6";
+import { loadToolsForAgent } from "@/lib/ai/tool-schema-validator-v6";
 import { fixAllMCPTools } from "@/lib/mcp/schema-fixer";
 import { getContentQualityTools } from "@/lib/ai/content-quality-tools";
 import { getEnhancedContentQualityTools } from "@/lib/ai/content-quality-enhancements";
@@ -299,8 +299,8 @@ export async function POST(req: Request) {
       // Agent Specific Tools
       ...(routingResult.agent === 'content' ? { ...contentQualityTools, ...enhancedContentTools } : {}),
 
-      // MCP Tools (Filtered by loadEssentialTools)
-      ...loadEssentialTools(allMCPTools),
+      // MCP Tools (Loaded based on agent type)
+      ...loadToolsForAgent(routingResult.agent, allMCPTools),
     };
 
     // Filter out any undefined tools and ensure valid schema
@@ -345,6 +345,12 @@ export async function POST(req: Request) {
       system: systemPrompt,
       tools: validatedTools,
       toolChoice: 'auto',
+      // AI SDK 6: Model fallbacks via Vercel AI Gateway
+      providerOptions: {
+        gateway: {
+          models: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash'], // Fallback models
+        },
+      },
       // AI SDK 6: Use stopWhen instead of maxSteps
       stopWhen: [
         stepCountIs(10), // Maximum 10 steps to prevent runaway costs

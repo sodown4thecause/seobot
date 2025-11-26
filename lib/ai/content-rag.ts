@@ -62,7 +62,7 @@ export async function getContentGuidance(
     const [similarLearnings, bestPractices, agentDocs, crossUserInsights, highScores] = await Promise.all([
       retrieveSimilarLearnings(topic, contentType, 5),
       getBestPractices(contentType),
-      retrieveAgentDocuments(topic, 'content_writer'),
+      retrieveAgentDocuments(topic, 'content_writer', 5), // Increased from default 3 to 5
       getCrossUserInsights(contentType),
       getRecentHighScores(contentType),
     ])
@@ -90,9 +90,9 @@ export async function getContentGuidance(
   }
 }
 
-const MAX_AGENT_DOCS = 2
-const MAX_AGENT_DOC_CHARS = 320
-const MAX_BEST_PRACTICES = 3
+const MAX_AGENT_DOCS = 4 // Increased from 2 to include more SEO/AEO research guidance
+const MAX_AGENT_DOC_CHARS = 800 // Increased from 320 to provide fuller context
+const MAX_BEST_PRACTICES = 5 // Increased from 3
 
 function formatGuidance(
   similarLearnings: any[],

@@ -60,7 +60,8 @@ ${content}
 Rewrite this to sound authentically human while keeping all the valuable information intact. Make it engaging, natural, and trustworthy.`;
 
   const { text } = await generateText({
-    model: vercelGateway.languageModel('anthropic/claude-3-5-sonnet-20241022'),
+    // Use Claude Sonnet 4 for better humanization quality
+    model: vercelGateway.languageModel('anthropic/claude-sonnet-4'),
     prompt,
     temperature: 0.9,
   });

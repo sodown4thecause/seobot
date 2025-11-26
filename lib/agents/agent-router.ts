@@ -39,17 +39,29 @@ export class AgentRouter {
         confidence: 0.9,
         reasoning: 'Query requires SEO analytics, competitor analysis, or technical SEO data',
         tools: [
-          // DataForSEO tools for comprehensive SEO analytics
-          'dataforseo_domain_overview',
-          'dataforseo_backlink_analysis', 
-          'dataforseo_keyword_research',
-          'dataforseo_competitor_analysis',
-          'dataforseo_serp_analysis',
-          'dataforseo_technical_audit',
-          // Firecrawl for website analysis
+          // Keyword Research
+          'keywords_data_google_ads_search_volume',
+          'dataforseo_labs_google_keyword_ideas',
+          'dataforseo_labs_google_keyword_suggestions',
+          'dataforseo_labs_search_intent',
+          // SERP Analysis
+          'serp_organic_live_advanced',
+          'dataforseo_labs_google_serp_competitors',
+          // Competitor Analysis
+          'dataforseo_labs_google_ranked_keywords',
+          'dataforseo_labs_google_competitors_domain',
+          'dataforseo_labs_google_domain_intersection',
+          // Backlinks
+          'backlinks_summary',
+          'backlinks_referring_domains',
+          'backlinks_competitors',
+          // Technical SEO
+          'on_page_lighthouse',
+          // AEO
+          'ai_optimization_keyword_data_search_volume',
+          // Web scraping
           'firecrawl_scrape',
-          'firecrawl_crawl',
-          'web_search_competitors'
+          'firecrawl_crawl'
         ]
       }
     }
@@ -61,21 +73,24 @@ export class AgentRouter {
         confidence: 0.9,
         reasoning: 'Query requires content creation with research, optimization, and humanization',
         tools: [
-          // Research and web access
+          // Core content tools
+          'generate_researched_content',
           'perplexity_search',
+          // Web scraping
           'firecrawl_scrape',
-          'jina_reader',
-          // Content creation and optimization with RAG feedback loop
-          'generate_researched_content', // Orchestrator tool with full RAG workflow
-          // Quality and humanization tools
-          'rytr_humanize_content',
-          'rytr_seo_optimization', 
-          'winston_ai_detection',
-          'winston_plagiarism_check',
-          // Enhanced content quality tools
-          'seo_content_analysis',
-          'readability_analysis',
-          'fact_checking'
+          'firecrawl_crawl',
+          'read_url',
+          'search_web',
+          // Jina advanced tools
+          'expand_query',
+          'parallel_search_web',
+          'sort_by_relevance',
+          // Content analysis
+          'content_analysis_search',
+          'content_analysis_summary',
+          // Keyword tools for optimization
+          'keywords_data_google_ads_search_volume',
+          'dataforseo_labs_search_intent'
         ]
       }
     }
