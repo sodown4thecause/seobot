@@ -49,7 +49,7 @@ function toMarkdown(content: string, metadata?: ExportRequest['metadata']): stri
   }
 
   // Convert HTML-like tags to markdown
-  let markdownContent = content
+  const markdownContent = content
     // Headers
     .replace(/<h1[^>]*>(.*?)<\/h1>/g, '# $1\n')
     .replace(/<h2[^>]*>(.*?)<\/h2>/g, '## $1\n')
@@ -188,7 +188,7 @@ function toText(content: string, metadata?: ExportRequest['metadata']): string {
   if (author || date || tags) text += '\n'
 
   // Strip HTML tags and convert to text
-  let textContent = content
+  const textContent = content
     .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/&nbsp;/g, ' ') // Replace non-breaking spaces
     .replace(/&amp;/g, '&')

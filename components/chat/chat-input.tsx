@@ -16,6 +16,7 @@ export interface ChatInputProps {
   showQuickActions?: boolean
   onQuickActionClick?: (text: string) => void
   userInitial?: string
+  className?: string
 }
 
 const QUICK_ACTIONS = [
@@ -33,6 +34,7 @@ export function ChatInput({
   showQuickActions = false,
   onQuickActionClick,
   userInitial = 'U',
+  className,
 }: ChatInputProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
@@ -63,7 +65,7 @@ export function ChatInput({
   }, [value])
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto">
+    <div className={cn("relative w-full max-w-4xl mx-auto", className)}>
       {/* Quick Actions */}
       <AnimatePresence>
         {showQuickActions && (
@@ -83,8 +85,8 @@ export function ChatInput({
                 onClick={() => handleQuickAction(action)}
                 disabled={disabled}
                 className={cn(
-                  'bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-md text-sm text-zinc-300',
-                  'border border-zinc-700 hover:border-zinc-600',
+                  'bg-secondary/50 hover:bg-secondary/80 px-3 py-1.5 rounded-full text-sm text-zinc-300',
+                  'border border-white/5 hover:border-white/10',
                   'transition-all duration-200',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500'
@@ -98,7 +100,7 @@ export function ChatInput({
       </AnimatePresence>
 
       {/* Input Container */}
-      <div className="bg-zinc-900 rounded-lg p-3 md:p-4 border border-zinc-800 shadow-sm focus-within:ring-1 focus-within:ring-zinc-700 transition-all">
+      <div className="bg-secondary/30 backdrop-blur-xl rounded-2xl p-3 md:p-4 border border-white/5 shadow-xl focus-within:ring-1 focus-within:ring-white/10 transition-all">
         <div className="flex items-end gap-2">
           {/* Left Controls */}
           <div className="flex items-center gap-1 mb-1">
@@ -164,8 +166,8 @@ export function ChatInput({
               onClick={onSubmit}
               disabled={disabled || !value.trim()}
               className={cn(
-                'bg-zinc-100 text-zinc-900 rounded-md px-4 py-2',
-                'hover:bg-zinc-200 transition-colors duration-200',
+                'bg-primary text-primary-foreground rounded-xl px-4 py-2',
+                'hover:bg-primary/90 transition-colors duration-200 shadow-lg shadow-primary/20',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500'
               )}

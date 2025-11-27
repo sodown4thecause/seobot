@@ -120,7 +120,7 @@ Focus on creating content that:
     }
 
     // Otherwise, build initial draft prompt
-    let prompt = `Write a ${params.type.replace('_', ' ')} about "${params.topic}".
+    const prompt = `Write a ${params.type.replace('_', ' ')} about "${params.topic}".
 
 Target Keywords: ${params.keywords.join(', ')}
 ${params.tone ? `Tone: ${params.tone}` : ''}
@@ -138,7 +138,7 @@ Write the complete content now. Make it engaging, informative, and human-like.`
   private buildRevisionPrompt(params: ContentWriteParams): string {
     const instructions = params.improvementInstructions?.join('\n- ') || 'Improve the content quality.'
 
-    let prompt = `Revise the following content based on quality review feedback.
+    const prompt = `Revise the following content based on quality review feedback.
 
 ORIGINAL DRAFT:
 ${params.previousDraft}

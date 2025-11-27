@@ -123,7 +123,7 @@ export class OrchestratorAgent {
             console.warn('[Orchestrator] Image generation failed:', error)
           }
 
-          let finalContent = maxWords
+          const finalContent = maxWords
             ? this.trimToWordCount(qaResult.content, maxWords)
             : qaResult.content
 

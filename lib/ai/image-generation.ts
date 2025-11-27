@@ -384,7 +384,8 @@ export interface GeminiGeneratedImage {
 export async function generateImageWithGemini(
   request: GeminiImageRequest
 ): Promise<GeminiGeneratedImage> {
-  const { GoogleGenAI } = require('@google/genai')
+  // Dynamic import for optional dependency
+  const { GoogleGenAI } = await import('@google/genai')
   
   try {
     const { prompt, size = 'medium', style = 'realistic', type = 'blog' } = request

@@ -453,19 +453,19 @@ export async function incrementFrameworkUsage(
     
     // Fire-and-forget: don't await
     // Note: Supabase doesn't support raw SQL in update, so we fetch and update
-    // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
+    // @ts-expect-error - writing_frameworks table type not fully defined in Supabase types
     supabase
       .from('writing_frameworks')
       .select('usage_count')
       .eq('id', frameworkId)
       .single()
       .then(({ data: current }) => {
-        if (current && typeof (current as any).usage_count === 'number') {
-          const usageCount = (current as any).usage_count + 1
-          // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
+        if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
+          const usageCount = (current as Record<string, unknown>).usage_count as number + 1
+          // @ts-expect-error - writing_frameworks table type not fully defined in Supabase types
           return supabase
             .from('writing_frameworks')
-            // @ts-ignore
+            // @ts-expect-error
             .update({ usage_count: usageCount })
             .eq('id', frameworkId)
         }
@@ -498,19 +498,19 @@ export async function batchIncrementUsage(
     // Update all frameworks in one query
     // Note: Supabase doesn't support raw SQL, so we need to fetch and update individually
     for (const frameworkId of frameworkIds) {
-      // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
+      // @ts-expect-error - writing_frameworks table type not fully defined in Supabase types
       supabase
         .from('writing_frameworks')
         .select('usage_count')
         .eq('id', frameworkId)
         .single()
         .then(({ data: current }) => {
-          if (current && typeof (current as any).usage_count === 'number') {
-            const usageCount = (current as any).usage_count + 1
-            // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
+          if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
+            const usageCount = (current as Record<string, unknown>).usage_count as number + 1
+            // @ts-expect-error - writing_frameworks table type not fully defined in Supabase types
             return supabase
               .from('writing_frameworks')
-              // @ts-ignore
+              // @ts-expect-error
               .update({ usage_count: usageCount })
               .eq('id', frameworkId)
           }

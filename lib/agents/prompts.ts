@@ -215,15 +215,16 @@ class AgentPromptLoader {
   /**
    * Extract frontmatter from markdown
    */
-  private extractFrontmatter(content: string): Record<string, any> {
+  private extractFrontmatter(content: string): Record<string, unknown> {
     const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/)
     if (!frontmatterMatch) return {}
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const yaml = require('js-yaml')
-      return yaml.load(frontmatterMatch[1]) || {}
-    } catch (error) {
-      console.warn('[Agent Prompts] Could not parse frontmatter:', error)
+      return (yaml.load(frontmatterMatch[1]) as Record<string, unknown>) || {}
+    } catch {
+      // If js-yaml is not available or parsing fails, return empty object
       return {}
     }
   }

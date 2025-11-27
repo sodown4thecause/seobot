@@ -9,6 +9,7 @@ import { ChatInput } from '@/components/chat/chat-input'
 import { renderMessageComponent, type MessageComponent } from './message-types'
 import { ExportButton } from '@/components/ui/export-button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Logo } from '@/components/ui/logo'
 
 // AI Elements Imports
 import {
@@ -40,8 +41,6 @@ const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComp
   const { toolName, args, state, result } = toolCall
   const isLoading = state !== 'result'
   const isSuccess = state === 'result'
-  // In AI SDK 6, error state might be different, but we can infer from result or lack thereof if needed.
-  // For now assuming result presence = success.
   const [isOpen, setIsOpen] = useState(false)
 
   if (toolName === 'client_ui') {
@@ -59,16 +58,16 @@ const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComp
   // For technical tools (Search, SEO analysis, etc.)
   return (
     <div className={cn(
-      "bg-zinc-900/50 border rounded-md my-2 overflow-hidden transition-all",
-      isSuccess ? "border-zinc-800" : "border-zinc-700",
-      isLoading && "animate-pulse border-zinc-700"
+      "glass-card rounded-xl my-2 overflow-hidden transition-all",
+      isSuccess ? "border-white/10" : "border-white/5",
+      isLoading && "animate-pulse border-indigo-500/30"
     )}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div className="flex items-center justify-between p-3">
           <div className="flex items-center gap-2.5">
             <div className={cn(
-              "w-6 h-6 rounded flex items-center justify-center",
-              isLoading ? "bg-blue-500/10 text-blue-400" : "bg-zinc-800 text-zinc-400"
+              "w-6 h-6 rounded-lg flex items-center justify-center",
+              isLoading ? "bg-indigo-500/10 text-indigo-400" : "bg-zinc-800/50 text-zinc-400"
             )}>
               {isLoading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -81,18 +80,18 @@ const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComp
             </span>
           </div>
           <CollapsibleTrigger asChild>
-            <button className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-zinc-300">
+            <button className="p-1 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-zinc-300 transition-colors">
               {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
           </CollapsibleTrigger>
         </div>
 
         <CollapsibleContent>
-          <div className="border-t border-zinc-800 p-3 space-y-3 bg-black/20">
+          <div className="border-t border-white/5 p-3 space-y-3 bg-black/20">
             {/* Input */}
             <div>
               <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1.5">Input</div>
-              <div className="bg-zinc-950 rounded p-2 border border-zinc-800/50">
+              <div className="bg-black/40 rounded-lg p-2 border border-white/5">
                 <pre className="text-xs text-zinc-400 whitespace-pre-wrap font-mono overflow-x-auto">
                   {JSON.stringify(args, null, 2)}
                 </pre>
@@ -103,7 +102,7 @@ const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComp
             {result && (
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1.5">Output</div>
-                <div className="bg-zinc-950 rounded p-2 border border-zinc-800/50 max-h-60 overflow-y-auto">
+                <div className="bg-black/40 rounded-lg p-2 border border-white/5 max-h-60 overflow-y-auto">
                   <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono">
                     {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
                   </pre>
@@ -128,7 +127,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [input, setInput] = useState('')
 
-  // AI SDK 6: useChat hook with DefaultChatTransport
   const {
     messages,
     sendMessage,
@@ -154,17 +152,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
-  // Debug: Log messages state
   useEffect(() => {
     console.log('[Chat] Messages updated:', {
       count: messages.length,
-      messages: messages.map(m => ({
-        id: m.id,
-        role: m.role,
-        hasContent: !!m.content,
-        hasParts: !!m.parts,
-        contentLength: m.content?.length || 0,
-      })),
       status,
       isLoading,
     })
@@ -172,12 +162,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   const handleSendMessage = (data: { text: string }) => {
     if (!data.text.trim()) return
-
-    // AI SDK 6: Use sendMessage with text parameter
     sendMessage({ text: data.text })
   }
 
-  // Handle workflow results injection as a synthetic tool message
   useEffect(() => {
     if (workflowResults && workflowResults.components) {
       const toolInvocations = workflowResults.components.map((comp: any, index: number) => ({
@@ -229,10 +216,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  // Smart loading state: Check for active tools
   const activeToolName = useMemo(() => {
     if (!isLoading) return null
-    const lastMessage = messages[messages.length - 1]
+    const lastMessage = messages[messages.length - 1] as any
     if (lastMessage?.role === 'assistant' && lastMessage.toolInvocations) {
       const active = lastMessage.toolInvocations.find((t: any) => t.state !== 'result')
       return active ? active.toolName : null
@@ -241,20 +227,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   }, [messages, isLoading])
 
   const renderMessageContent = (message: any) => {
-    // Debug: Log message structure
-    console.log('[Chat] Rendering message:', { 
-      id: message.id, 
-      role: message.role, 
-      content: message.content,
-      parts: message.parts,
-      hasContent: !!message.content,
-      hasParts: !!message.parts
-    })
-
-    // AI SDK 6: Messages might have parts instead of content
     let textContent = message.content
-    
-    // If no content but has parts, extract text from parts
+
     if (!textContent && message.parts) {
       const textParts = message.parts.filter((part: any) => part.type === 'text')
       textContent = textParts.map((part: any) => part.text).join('')
@@ -264,9 +238,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       <>
         {textContent && (
           message.role === 'assistant' ? (
-            <Response className="prose prose-invert prose-sm max-w-none">{textContent}</Response>
+            <Response className="prose prose-invert prose-sm max-w-none text-zinc-100">{textContent}</Response>
           ) : (
-            <div className="whitespace-pre-wrap break-words">
+            <div className="whitespace-pre-wrap break-words text-white">
               {textContent}
             </div>
           )
@@ -279,8 +253,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             onComponentSubmit={(data) => handleComponentSubmit(toolCall.args.component, data)}
           />
         ))}
-        
-        {/* AI SDK 6: Handle tool-call parts */}
+
         {message.parts?.filter((part: any) => part.type === 'tool-call').map((toolCall: any) => (
           <ToolInvocation
             key={toolCall.toolCallId}
@@ -298,14 +271,14 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   }
 
   return (
-    <div className={cn("flex flex-col h-full min-h-0 bg-background", className)}>
+    <div className={cn("flex flex-col h-full min-h-0 bg-transparent", className)}>
       <Conversation>
         <ConversationContent>
           {messages.length === 0 && (
             <ConversationEmptyState
               icon={
-                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-zinc-50" />
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-yellow-500/10 to-cyan-500/10 border border-yellow-500/10 flex items-center justify-center mb-6 shadow-2xl shadow-yellow-500/5 backdrop-blur-sm">
+                  <Logo className="w-10 h-10" />
                 </div>
               }
               title="Ready to Create?"
@@ -314,22 +287,30 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           )}
 
           {messages.map((message: any) => (
-            <Message key={message.id} from={message.role}>
+            <Message key={message.id} from={message.role} className={message.role === 'user' ? 'ml-auto' : ''}>
               <MessageAvatar
                 src=""
                 name={message.role === 'user' ? "You" : "AI"}
+                className={message.role === 'user' ? "hidden" : "bg-gradient-to-br from-indigo-500 to-purple-600 ring-2 ring-black/50"}
               />
-              <MessageContent variant={message.role === 'user' ? 'contained' : 'flat'}>
+              <MessageContent
+                variant={message.role === 'user' ? 'contained' : 'flat'}
+                className={cn(
+                  "shadow-lg backdrop-blur-sm",
+                  message.role === 'user'
+                    ? "bg-indigo-600 text-white border-0 rounded-2xl rounded-tr-sm"
+                    : "bg-zinc-900/60 border border-white/5 rounded-2xl rounded-tl-sm"
+                )}
+              >
                 {renderMessageContent(message)}
 
-                {/* Actions for assistant */}
                 {message.role === 'assistant' && message.content && (
-                  <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => {
                         copyToClipboard(message.content, message.id)
                       }}
-                      className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 rounded hover:bg-zinc-800"
+                      className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 rounded hover:bg-white/5 transition-colors"
                       title="Copy to clipboard"
                     >
                       {copiedId === message.id ? (
@@ -347,7 +328,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                     <ExportButton
                       content={message.content || ''}
                       size="sm"
-                      className="text-xs text-zinc-500 hover:text-zinc-300"
+                      className="text-xs text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
                     />
                   </div>
                 )}
@@ -357,8 +338,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
           {isLoading && !activeToolName && (
             <Message from="assistant">
-              <MessageAvatar src="" name="AI" />
-              <MessageContent variant="flat">
+              <MessageAvatar src="" name="AI" className="bg-gradient-to-br from-indigo-500 to-purple-600 ring-2 ring-black/50" />
+              <MessageContent variant="flat" className="bg-zinc-900/60 border border-white/5 rounded-2xl rounded-tl-sm backdrop-blur-sm">
                 <div className="flex items-center gap-2 text-zinc-400">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm">Thinking...</span>
@@ -369,9 +350,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
           {isLoading && activeToolName && (
             <Message from="assistant">
-              <MessageAvatar src="" name="AI" />
-              <MessageContent variant="flat">
-                <div className="flex items-center gap-2 text-blue-400">
+              <MessageAvatar src="" name="AI" className="bg-gradient-to-br from-indigo-500 to-purple-600 ring-2 ring-black/50" />
+              <MessageContent variant="flat" className="bg-zinc-900/60 border border-white/5 rounded-2xl rounded-tl-sm backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-indigo-400">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm font-medium">Using {formatToolName(activeToolName)}...</span>
                 </div>
@@ -379,30 +360,33 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             </Message>
           )}
         </ConversationContent>
-        <ConversationScrollButton />
+        <ConversationScrollButton className="bg-zinc-800/80 hover:bg-zinc-700/80 backdrop-blur border border-white/10" />
       </Conversation>
 
-      <div className="p-4 bg-background border-t border-zinc-800">
-        <ChatInput
-          value={input}
-          onChange={(value) => {
-            setInput(value)
-          }}
-          onSubmit={() => {
-            if (input.trim() && !isLoading) {
-              console.log('[Chat] Sending message:', input)
-              handleSendMessage({ text: input })
-              setInput('')
-            }
-          }}
-          disabled={isLoading}
-          placeholder={placeholder}
-          showQuickActions={messages.length === 0}
-          onQuickActionClick={(text) => {
-            console.log('[Chat] Sending quick action:', text)
-            handleSendMessage({ text })
-          }}
-        />
+      <div className="p-6 bg-transparent">
+        <div className="glass-panel rounded-2xl p-1.5 shadow-2xl ring-1 ring-white/10">
+          <ChatInput
+            value={input}
+            onChange={(value) => {
+              setInput(value)
+            }}
+            onSubmit={() => {
+              if (input.trim() && !isLoading) {
+                console.log('[Chat] Sending message:', input)
+                handleSendMessage({ text: input })
+                setInput('')
+              }
+            }}
+            disabled={isLoading}
+            placeholder={placeholder}
+            showQuickActions={messages.length === 0}
+            onQuickActionClick={(text) => {
+              console.log('[Chat] Sending quick action:', text)
+              handleSendMessage({ text })
+            }}
+            className="bg-transparent border-0 focus-visible:ring-0 text-base"
+          />
+        </div>
       </div>
     </div>
   )
