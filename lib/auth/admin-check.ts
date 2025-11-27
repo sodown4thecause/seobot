@@ -46,7 +46,12 @@ export async function isAdmin(userId: string | null | undefined): Promise<boolea
       user_id: userId
     })
 
-    if (!checkError && adminCheck === true) {
+    if (checkError) {
+      console.error('[Admin Check] RPC error:', checkError)
+      return false
+    }
+
+    if (adminCheck === true) {
       return true
     }
 
