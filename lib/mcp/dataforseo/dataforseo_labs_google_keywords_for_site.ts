@@ -9,7 +9,7 @@ export const dataforseo_labs_google_keywords_for_siteToolWithClient = (
 ) =>
   tool({
     description: `The Keywords For Site endpoint will provide you with a list of keywords relevant to the target domain. Each keyword is supplied with relevant, search volume data for the last month, cost-per-click, competition`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string().describe("target domain"),
       location_name: z
         .string()
@@ -101,7 +101,7 @@ example:
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_keywords_for_site",
@@ -122,4 +122,5 @@ example:
       }
     },
   });
+
 

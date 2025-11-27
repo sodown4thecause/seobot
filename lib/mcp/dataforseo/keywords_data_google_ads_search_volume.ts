@@ -9,7 +9,7 @@ export const keywords_data_google_ads_search_volumeToolWithClient = (
 ) =>
   tool({
     description: "Get search volume data for keywords from Google Ads",
-    parameters: z.object({
+    inputSchema: z.object({
       location_name: z
         .string()
         .describe(
@@ -31,7 +31,7 @@ optional field`,
         .array(z.string())
         .describe("Array of keywords to get search volume for"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "keywords_data_google_ads_search_volume",
@@ -52,3 +52,4 @@ optional field`,
       }
     },
   });
+

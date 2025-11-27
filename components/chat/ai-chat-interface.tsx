@@ -1,13 +1,15 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import type { UIMessage as Message } from 'ai'
-import { useEffect, useState, forwardRef } from 'react'
-import { Sparkles, Copy, Check, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { DefaultChatTransport } from 'ai'
+import { useEffect, useState, forwardRef, useMemo } from 'react'
+import { Sparkles, Copy, Check, Loader2, CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Terminal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
 import { renderMessageComponent, type MessageComponent } from './message-types'
 import { ExportButton } from '@/components/ui/export-button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Logo } from '@/components/ui/logo'
 
 // AI Elements Imports
 import {
@@ -28,6 +30,92 @@ interface AIChatInterfaceProps {
   workflowResults?: any
 }
 
+const formatToolName = (name: string) => {
+  return name
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComponentSubmit: (data: any) => void }) => {
+  const { toolName, args, state, result } = toolCall
+  const isLoading = state !== 'result'
+  const isSuccess = state === 'result'
+  const [isOpen, setIsOpen] = useState(false)
+
+  if (toolName === 'client_ui') {
+    const componentData = {
+      component: args.component,
+      props: args.props || {}
+    }
+    return (
+      <div className="mt-4 w-full">
+        {renderMessageComponent(componentData, onComponentSubmit)}
+      </div>
+    )
+  }
+
+  // For technical tools (Search, SEO analysis, etc.)
+  return (
+    <div className={cn(
+      "glass-card rounded-xl my-2 overflow-hidden transition-all",
+      isSuccess ? "border-white/10" : "border-white/5",
+      isLoading && "animate-pulse border-indigo-500/30"
+    )}>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center justify-between p-3">
+          <div className="flex items-center gap-2.5">
+            <div className={cn(
+              "w-6 h-6 rounded-lg flex items-center justify-center",
+              isLoading ? "bg-indigo-500/10 text-indigo-400" : "bg-zinc-800/50 text-zinc-400"
+            )}>
+              {isLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Terminal className="w-3.5 h-3.5" />
+              )}
+            </div>
+            <span className="text-sm font-medium text-zinc-200">
+              {formatToolName(toolName)}
+            </span>
+          </div>
+          <CollapsibleTrigger asChild>
+            <button className="p-1 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-zinc-300 transition-colors">
+              {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
+          <div className="border-t border-white/5 p-3 space-y-3 bg-black/20">
+            {/* Input */}
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1.5">Input</div>
+              <div className="bg-black/40 rounded-lg p-2 border border-white/5">
+                <pre className="text-xs text-zinc-400 whitespace-pre-wrap font-mono overflow-x-auto">
+                  {JSON.stringify(args, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            {/* Output */}
+            {result && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1.5">Output</div>
+                <div className="bg-black/40 rounded-lg p-2 border border-white/5 max-h-60 overflow-y-auto">
+                  <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono">
+                    {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  )
+}
+
 export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(({
   context,
   className,
@@ -37,87 +125,74 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   workflowResults
 }, ref) => {
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [pendingComponents, setPendingComponents] = useState<Map<string, MessageComponent>>(new Map())
   const [input, setInput] = useState('')
 
-  const chat = useChat({
-    api: '/api/chat',
-    body: { context },
-    streamProtocol: 'ui-message',
-    initialMessages: initialMessage ? [{ role: 'assistant', content: initialMessage, id: 'initial' }] : undefined,
-    onFinish: (message: any) => {
-      console.log('[Chat] Message finished:', message)
-      const textContent: string = message.content || ''
-      parseComponentsFromMessage(textContent, message.id)
-    },
-    onError: (error: any) => {
+  const {
+    messages,
+    sendMessage,
+    status,
+    setMessages,
+    error,
+  } = useChat({
+    id: 'dashboard-chat',
+    messages: initialMessage
+      ? [{ role: 'assistant' as const, content: initialMessage, id: 'initial', parts: [] }]
+      : undefined,
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: { context },
+    }),
+    onError: (error: Error) => {
       console.error('[Chat] Stream error:', error)
     },
-  } as any) as any
+    onFinish: (message: any) => {
+      console.log('[Chat] Message finished:', message)
+    },
+  })
 
-  const messages = chat?.messages || []
-  const append = chat?.append || chat?.sendMessage
-  const status = chat?.status || 'ready'
-  const setMessages = chat?.setMessages
-  
   const isLoading = status === 'streaming' || status === 'submitted'
 
-  const sendMessage = (data: { text: string }) => {
-    if (append) {
-      append({ role: 'user', content: data.text })
-    } else {
-      console.error('[Chat] No send function available')
-    }
+  useEffect(() => {
+    console.log('[Chat] Messages updated:', {
+      count: messages.length,
+      status,
+      isLoading,
+    })
+  }, [messages, status, isLoading])
+
+  const handleSendMessage = (data: { text: string }) => {
+    if (!data.text.trim()) return
+    sendMessage({ text: data.text })
   }
 
   useEffect(() => {
     if (workflowResults && workflowResults.components) {
+      const toolInvocations = workflowResults.components.map((comp: any, index: number) => ({
+        toolCallId: `workflow-ui-${Date.now()}-${index}`,
+        toolName: 'client_ui',
+        args: { component: comp.component, props: comp.props },
+        state: 'result',
+        result: { displayed: true }
+      }))
+
       const workflowMessage: any = {
         id: `workflow-${Date.now()}`,
         role: 'assistant',
         content: workflowResults.summary || 'Workflow completed successfully!',
-        parts: [{ type: 'text', text: workflowResults.summary || 'Workflow completed successfully!' }],
+        toolInvocations: toolInvocations
       }
 
       setMessages((prev: any[]) => [...prev, workflowMessage])
-
-      workflowResults.components.forEach((comp: any) => {
-        setPendingComponents(prev => new Map(prev.set(workflowMessage.id, comp)))
-      })
     }
   }, [workflowResults, setMessages])
 
-  const parseComponentsFromMessage = (content: string, messageId: string) => {
-    const jsonRegex = /```json\n([\s\S]*?)\n```/g
-    const matches = Array.from(content.matchAll(jsonRegex))
-
-    if (matches.length > 0) {
-      matches.forEach((match) => {
-        try {
-          const component: MessageComponent = JSON.parse(match[1])
-          if (component.component) {
-            setPendingComponents(prev => new Map(prev.set(messageId, component)))
-          }
-        } catch (e) {
-          console.error('Failed to parse component:', e)
-        }
-      })
-    }
-  }
-
-  const handleComponentSubmit = (messageId: string, component: MessageComponent, data: any) => {
-    setPendingComponents(prev => {
-      const newMap = new Map(prev)
-      newMap.delete(messageId)
-      return newMap
-    })
-
+  const handleComponentSubmit = (componentType: string, data: any) => {
     if (onComponentSubmit) {
-      onComponentSubmit(component.component, data)
+      onComponentSubmit(componentType, data)
     }
 
-    const message = formatComponentData(component.component, data)
-    sendMessage({ text: message })
+    const message = formatComponentData(componentType, data)
+    handleSendMessage({ text: message })
   }
 
   const formatComponentData = (componentType: string, data: any): string => {
@@ -141,241 +216,180 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const renderMessageContent = (message: any, messageId: string) => {
-    let textContent: string = message.content || ''
-
-    if (!textContent && message.parts && Array.isArray(message.parts)) {
-      textContent = message.parts
-        .filter((p: any) => p.type === 'text')
-        .map((p: any) => p.text)
-        .join('')
+  const activeToolName = useMemo(() => {
+    if (!isLoading) return null
+    const lastMessage = messages[messages.length - 1] as any
+    if (lastMessage?.role === 'assistant' && lastMessage.toolInvocations) {
+      const active = lastMessage.toolInvocations.find((t: any) => t.state !== 'result')
+      return active ? active.toolName : null
     }
+    return null
+  }, [messages, isLoading])
 
-    const cleanedContent = textContent.replace(/```json\n[\s\S]*?\n```/g, '').trim()
-    const component = pendingComponents.get(messageId)
-    const toolCalls = message.toolInvocations || []
+  const renderMessageContent = (message: any) => {
+    let textContent = message.content
+
+    if (!textContent && message.parts) {
+      const textParts = message.parts.filter((part: any) => part.type === 'text')
+      textContent = textParts.map((part: any) => part.text).join('')
+    }
 
     return (
       <>
-        {cleanedContent && (
+        {textContent && (
           message.role === 'assistant' ? (
-            <Response className="prose prose-invert prose-sm max-w-none">{cleanedContent}</Response>
+            <Response className="prose prose-invert prose-sm max-w-none text-zinc-100">{textContent}</Response>
           ) : (
-            <div className="whitespace-pre-wrap break-words">
-              {cleanedContent}
+            <div className="whitespace-pre-wrap break-words text-white">
+              {textContent}
             </div>
           )
         )}
-        {toolCalls.length > 0 && (
-          <div className="mt-4 space-y-3">
-            {toolCalls.map((toolCall: any, index: number) => {
-              const toolName = toolCall.toolName
-              const toolInput = toolCall.args
-              const toolOutput = toolCall.result
-              const toolState = toolCall.state
-              const isLoading = toolState !== 'result'
-              const isSuccess = toolState === 'result'
-              const isError = false 
 
-              if (toolName === 'client_ui') {
-                const componentData = {
-                  component: toolInput.component,
-                  props: toolInput.props || {}
-                }
+        {message.toolInvocations?.map((toolCall: any) => (
+          <ToolInvocation
+            key={toolCall.toolCallId}
+            toolCall={toolCall}
+            onComponentSubmit={(data) => handleComponentSubmit(toolCall.args.component, data)}
+          />
+        ))}
 
-                return (
-                  <div key={index} className="mt-4 w-full">
-                    {renderMessageComponent(componentData, (data) => handleComponentSubmit(messageId, componentData, data))}
-                  </div>
-                )
-              }
-
-              return (
-                <div
-                  key={index}
-                  className={cn(
-                    "bg-zinc-900",
-                    "border rounded-md p-4 space-y-3",
-                    isError ? "border-red-500/30" : "border-zinc-800",
-                    isSuccess && !isError && "border-green-900/50"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "w-8 h-8 rounded-md flex items-center justify-center bg-zinc-800",
-                        isLoading && "animate-pulse",
-                      )}>
-                        {isLoading && <Loader2 className="w-4 h-4 text-zinc-400 animate-spin" />}
-                        {isSuccess && !isError && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                        {isError && <XCircle className="w-4 h-4 text-red-500" />}
-                        {!isLoading && !isSuccess && !isError && (
-                          <AlertCircle className="w-4 h-4 text-yellow-500" />
-                        )}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-zinc-100 font-mono">
-                          {toolName}
-                        </span>
-                        {toolState && (
-                          <span className={cn(
-                            "text-xs mt-0.5",
-                            isSuccess && !isError ? 'text-green-500' :
-                              isError ? 'text-red-500' :
-                                'text-zinc-500'
-                          )}>
-                            {toolState}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {toolInput && (
-                    <div className="bg-black rounded-md p-3 border border-zinc-800">
-                      <div className="text-xs font-medium text-zinc-500 mb-1.5 font-mono">Input</div>
-                      <div className="text-sm text-zinc-300 font-mono">
-                        {typeof toolInput === 'object' ? (
-                          <pre className="whitespace-pre-wrap break-words text-xs">
-                            {JSON.stringify(toolInput, null, 2)}
-                          </pre>
-                        ) : (
-                          toolInput
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {toolOutput && (isSuccess || isError) && (
-                    <div className={cn(
-                      "rounded-md p-3 border max-h-48 overflow-y-auto",
-                      isError ? "bg-red-900/10 border-red-500/30" : "bg-green-900/10 border-green-900/30"
-                    )}>
-                      <div className={cn(
-                        "text-xs font-medium mb-1.5 font-mono",
-                        isError ? "text-red-400" : "text-green-400"
-                      )}>
-                        {isError ? "Error" : "Output"}
-                      </div>
-                      <pre className="text-xs text-zinc-300 whitespace-pre-wrap break-words font-mono">
-                        {typeof toolOutput === 'string' ? toolOutput : JSON.stringify(toolOutput, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {toolCall.errorText && (
-                    <div className="bg-red-900/10 border border-red-500/30 rounded-md p-3">
-                      <div className="text-xs font-medium text-red-400 mb-1 font-mono">Error</div>
-                      <div className="text-sm text-red-300 font-mono">{toolCall.errorText}</div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-        {component && (
-          <div className="mt-4">
-            {renderMessageComponent(component, (data) => handleComponentSubmit(messageId, component, data))}
-          </div>
-        )}
+        {message.parts?.filter((part: any) => part.type === 'tool-call').map((toolCall: any) => (
+          <ToolInvocation
+            key={toolCall.toolCallId}
+            toolCall={{
+              toolCallId: toolCall.toolCallId,
+              toolName: toolCall.toolName,
+              args: toolCall.input,
+              state: 'result',
+            }}
+            onComponentSubmit={(data) => handleComponentSubmit(toolCall.toolName, data)}
+          />
+        ))}
       </>
     )
   }
 
   return (
-    <div className={cn("flex flex-col h-full min-h-0 bg-background", className)}>
+    <div className={cn("flex flex-col h-full min-h-0 bg-transparent", className)}>
       <Conversation>
         <ConversationContent>
           {messages.length === 0 && (
-             <ConversationEmptyState
-               icon={
-                 <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
-                   <Sparkles className="w-8 h-8 text-zinc-50" />
-                 </div>
-               }
-               title="Ready to Create?"
-               description="I'm your AI assistant. How can I help you today?"
-             />
+            <ConversationEmptyState
+              icon={
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-yellow-500/10 to-cyan-500/10 border border-yellow-500/10 flex items-center justify-center mb-6 shadow-2xl shadow-yellow-500/5 backdrop-blur-sm">
+                  <Logo className="w-10 h-10" />
+                </div>
+              }
+              title="Ready to Create?"
+              description="I'm your AI assistant. How can I help you today?"
+            />
           )}
-          
+
           {messages.map((message: any) => (
-            <Message key={message.id} from={message.role}>
-              <MessageAvatar 
+            <Message key={message.id} from={message.role} className={message.role === 'user' ? 'ml-auto' : ''}>
+              <MessageAvatar
                 src=""
-                name={message.role === 'user' ? "You" : "AI"} 
+                name={message.role === 'user' ? "You" : "AI"}
+                className={message.role === 'user' ? "hidden" : "bg-gradient-to-br from-indigo-500 to-purple-600 ring-2 ring-black/50"}
               />
-              <MessageContent variant={message.role === 'user' ? 'contained' : 'flat'}>
-                {renderMessageContent(message, message.id)}
-                
-                {/* Actions for assistant */}
-                {message.role === 'assistant' && (
-                   <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => {
-                          const textContent = message.content || ''
-                          copyToClipboard(textContent, message.id)
-                        }}
-                        className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 rounded hover:bg-zinc-800"
-                        title="Copy to clipboard"
-                      >
-                        {copiedId === message.id ? (
-                          <>
-                            <Check className="w-3 h-3 text-green-500" />
-                            <span className="text-green-500">Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                      <ExportButton
-                        content={message.content || ''}
-                        size="sm"
-                        className="text-xs text-zinc-500 hover:text-zinc-300"
-                      />
-                   </div>
+              <MessageContent
+                variant={message.role === 'user' ? 'contained' : 'flat'}
+                className={cn(
+                  "shadow-lg backdrop-blur-sm",
+                  message.role === 'user'
+                    ? "bg-indigo-600 text-white border-0 rounded-2xl rounded-tr-sm"
+                    : "bg-zinc-900/60 border border-white/5 rounded-2xl rounded-tl-sm"
+                )}
+              >
+                {renderMessageContent(message)}
+
+                {message.role === 'assistant' && message.content && (
+                  <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => {
+                        copyToClipboard(message.content, message.id)
+                      }}
+                      className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 rounded hover:bg-white/5 transition-colors"
+                      title="Copy to clipboard"
+                    >
+                      {copiedId === message.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-green-500" />
+                          <span className="text-green-500">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                    <ExportButton
+                      content={message.content || ''}
+                      size="sm"
+                      className="text-xs text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                    />
+                  </div>
                 )}
               </MessageContent>
             </Message>
           ))}
-          
-          {isLoading && (
+
+          {isLoading && !activeToolName && (
             <Message from="assistant">
-               <MessageAvatar src="" name="AI" />
-               <MessageContent variant="flat">
-                 <div className="flex items-center gap-2">
-                   <Loader2 className="w-4 h-4 animate-spin" />
-                   <span>Thinking...</span>
-                 </div>
-               </MessageContent>
+              <MessageAvatar src="" name="AI" className="bg-gradient-to-br from-indigo-500 to-purple-600 ring-2 ring-black/50" />
+              <MessageContent variant="flat" className="bg-zinc-900/60 border border-white/5 rounded-2xl rounded-tl-sm backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-zinc-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Thinking...</span>
+                </div>
+              </MessageContent>
+            </Message>
+          )}
+
+          {isLoading && activeToolName && (
+            <Message from="assistant">
+              <MessageAvatar src="" name="AI" className="bg-gradient-to-br from-indigo-500 to-purple-600 ring-2 ring-black/50" />
+              <MessageContent variant="flat" className="bg-zinc-900/60 border border-white/5 rounded-2xl rounded-tl-sm backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-indigo-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm font-medium">Using {formatToolName(activeToolName)}...</span>
+                </div>
+              </MessageContent>
             </Message>
           )}
         </ConversationContent>
-        <ConversationScrollButton />
+        <ConversationScrollButton className="bg-zinc-800/80 hover:bg-zinc-700/80 backdrop-blur border border-white/10" />
       </Conversation>
 
-      <div className="p-4 bg-background border-t border-zinc-800">
-        <ChatInput
-          value={input}
-          onChange={(value) => {
-            setInput(value)
-          }}
-          onSubmit={() => {
-            if (input.trim() && !isLoading) {
-              console.log('[Chat] Sending message:', input)
-              sendMessage({ text: input })
-              setInput('')
-            }
-          }}
-          disabled={isLoading}
-          placeholder={placeholder}
-          showQuickActions={messages.length === 0}
-          onQuickActionClick={(text) => {
-            console.log('[Chat] Sending quick action:', text)
-            sendMessage({ text })
-          }}
-        />
+      <div className="p-6 bg-transparent">
+        <div className="glass-panel rounded-2xl p-1.5 shadow-2xl ring-1 ring-white/10">
+          <ChatInput
+            value={input}
+            onChange={(value) => {
+              setInput(value)
+            }}
+            onSubmit={() => {
+              if (input.trim() && !isLoading) {
+                console.log('[Chat] Sending message:', input)
+                handleSendMessage({ text: input })
+                setInput('')
+              }
+            }}
+            disabled={isLoading}
+            placeholder={placeholder}
+            showQuickActions={messages.length === 0}
+            onQuickActionClick={(text) => {
+              console.log('[Chat] Sending quick action:', text)
+              handleSendMessage({ text })
+            }}
+            className="bg-transparent border-0 focus-visible:ring-0 text-base"
+          />
+        </div>
       </div>
     </div>
   )
 })
+
+AIChatInterface.displayName = 'AIChatInterface'

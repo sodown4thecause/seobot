@@ -1,5 +1,0 @@
-[33m8fad5e6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/codemode[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mcodemode[m[33m)[m aa
-[33m22ba93a[m[33m ([m[1;32mfeature/multi-agent-rigorous-strategist[m[33m)[m fix: update xAI model from deprecated grok-beta to grok-3
-[33m31e6aa0[m feat: add Winston AI and Rytr integrations for content quality and generation
-[33m14b9cc7[m feat: switch to xAI Grok for chat API - faster reasoning and tool calling
-[33m702e72d[m fix: inject workflow results into chat interface - workflow components now appear after execution

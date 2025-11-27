@@ -90,6 +90,20 @@ export default function AdminOverviewPage() {
             </CardHeader>
           </Card>
         </Link>
+
+        <Link href="/admin/usage">
+          <Card className="bg-[#0f0f0f] border-white/10 hover:bg-white/5 transition-colors cursor-pointer">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Usage Analytics
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                View per-user AI usage, costs, and credit limits
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
       </div>
 
       {/* Agent Status */}

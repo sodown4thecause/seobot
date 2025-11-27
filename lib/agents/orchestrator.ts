@@ -78,6 +78,7 @@ export class OrchestratorAgent {
             keywords: params.keywords,
             targetPlatforms: params.targetPlatforms || ['chatgpt', 'perplexity'],
             researchData: researchResult,
+            userId: params.userId,
           })
 
           // Step 3: Content Generation
@@ -122,7 +123,7 @@ export class OrchestratorAgent {
             console.warn('[Orchestrator] Image generation failed:', error)
           }
 
-          let finalContent = maxWords
+          const finalContent = maxWords
             ? this.trimToWordCount(qaResult.content, maxWords)
             : qaResult.content
 

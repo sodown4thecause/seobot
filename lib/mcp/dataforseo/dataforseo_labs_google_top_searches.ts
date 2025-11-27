@@ -9,7 +9,7 @@ export const dataforseo_labs_google_top_searchesToolWithClient = (
 ) =>
   tool({
     description: `The Top Searches endpoint of DataForSEO Labs API can provide you with over 7 billion keywords from the DataForSEO Keyword Database. Each keyword in the API response is provided with a set of relevant keyword data with Google Ads metrics`,
-    parameters: z.object({
+    inputSchema: z.object({
       location_name: z
         .string()
         .describe(
@@ -100,7 +100,7 @@ example:
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_top_searches",
@@ -121,4 +121,5 @@ example:
       }
     },
   });
+
 

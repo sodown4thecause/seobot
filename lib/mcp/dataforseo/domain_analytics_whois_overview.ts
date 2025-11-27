@@ -9,7 +9,7 @@ export const domain_analytics_whois_overviewToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with Whois data enriched with backlink stats, and ranking and traffic info from organic and paid search results. Using this endpoint you will be able to get all these data for the domains matching the parameters you specify in the request`,
-    parameters: z.object({
+    inputSchema: z.object({
       limit: z
         .number()
         .gte(1)
@@ -72,7 +72,7 @@ example:
         )
         .default(true),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "domain_analytics_whois_overview",
@@ -93,4 +93,5 @@ example:
       }
     },
   });
+
 

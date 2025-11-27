@@ -17,7 +17,7 @@ As a result, you will get a list of long-tail keywords with each keyword in the 
 Along with each suggested keyword, you will get its search volume rate for the last month, search volume trend for the previous 12 months, as well as current cost-per-click and competition values. Moreover, this endpoint supplies minimum, maximum and average values of daily impressions, clicks and CPC for each result.
 
 `,
-    parameters: z.object({
+    inputSchema: z.object({
       keyword: z.string().describe("target keyword"),
       location_name: z
         .string()
@@ -109,7 +109,7 @@ example:
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_keyword_suggestions",
@@ -130,4 +130,5 @@ example:
       }
     },
   });
+
 

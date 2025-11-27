@@ -31,7 +31,7 @@ This is the most powerful, fastest and most reliable scraper tool, if available 
 **Returns:** Markdown, HTML, or other formats as specified.
 **Safe Mode:** Read-only content extraction. Interactive actions (click, write, executeJavascript) are disabled for security.
 `,
-    parameters: z.object({
+    inputSchema: z.object({
       url: z.string().url(),
       formats: z
         .array(
@@ -60,7 +60,7 @@ This is the most powerful, fastest and most reliable scraper tool, if available 
       storeInCache: z.boolean().optional(),
       maxAge: z.number().optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "firecrawl_scrape",
@@ -81,3 +81,4 @@ This is the most powerful, fastest and most reliable scraper tool, if available 
       }
     },
   });
+

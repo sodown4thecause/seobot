@@ -10,7 +10,7 @@ export const backlinks_timeseries_summaryToolWithClient = (
   tool({
     description: `This endpoint will provide you with an overview of backlink data for the target domain available during a period between the two indicated dates. Backlink metrics will be grouped by the time range that you define: day, week, month, or year.
 Data from this endpoint will be especially helpful for building time-series graphs of daily, weekly, monthly, and yearly link-building progress`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string().describe(`domain to get data for
 required field
 a domain should be specified without https:// and www.
@@ -62,7 +62,7 @@ if there is no data for a certain day/week/month/year, we will return 0`,
         )
         .default("month"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_timeseries_summary",
@@ -83,3 +83,4 @@ if there is no data for a certain day/week/month/year, we will return 0`,
       }
     },
   });
+

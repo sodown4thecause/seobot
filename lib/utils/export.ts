@@ -114,7 +114,7 @@ ${content}
  * Export content as Markdown file
  */
 export async function exportAsMarkdown(content: string, title?: string): Promise<void> {
-  let markdown = content
+  const markdown = content
     .replace(/<h1[^>]*>(.*?)<\/h1>/g, '# $1\n')
     .replace(/<h2[^>]*>(.*?)<\/h2>/g, '## $1\n')
     .replace(/<h3[^>]*>(.*?)<\/h3>/g, '### $1\n')

@@ -9,7 +9,7 @@ export const backlinks_backlinksToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a list of backlinks and relevant data for the specified domain, subdomain, or webpage`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string()
         .describe(`domain, subdomain or webpage to get backlinks for
         required field
@@ -91,7 +91,7 @@ example:
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_backlinks",
@@ -112,4 +112,5 @@ example:
       }
     },
   });
+
 

@@ -9,7 +9,7 @@ export const backlinks_domain_intersectionToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the list of domains pointing to the specified websites. This endpoint is especially useful for creating a Link Gap feature that shows what domains link to your competitors but do not link out to your website`,
-    parameters: z.object({
+    inputSchema: z.object({
       targets: z.array(z.string())
         .describe(`domains, subdomains or webpages to get links for
 required field
@@ -80,7 +80,7 @@ example:
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_domain_intersection",
@@ -101,4 +101,5 @@ example:
       }
     },
   });
+
 

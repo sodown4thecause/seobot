@@ -9,7 +9,7 @@ export const dataforseo_labs_google_relevant_pagesToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with rankings and traffic data for the web pages of the specified domain. You will be able to review each page’s ranking distribution and estimated monthly traffic volume from both organic and paid searches.`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string().describe("target domain"),
       location_name: z
         .string()
@@ -125,7 +125,7 @@ set to true if you want to get highly-relevant competitors excluding the top web
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_relevant_pages",
@@ -146,4 +146,5 @@ set to true if you want to get highly-relevant competitors excluding the top web
       }
     },
   });
+
 

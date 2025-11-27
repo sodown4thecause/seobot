@@ -45,7 +45,7 @@ Extract structured information from web pages using LLM capabilities. Supports b
 \`\`\`
 **Returns:** Extracted structured data as defined by your schema.
 `,
-    parameters: z.object({
+    inputSchema: z.object({
       urls: z.array(z.string()),
       prompt: z.string().optional(),
       schema: z.record(z.any()).optional(),
@@ -53,7 +53,7 @@ Extract structured information from web pages using LLM capabilities. Supports b
       enableWebSearch: z.boolean().optional(),
       includeSubdomains: z.boolean().optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "firecrawl_extract",
@@ -74,3 +74,4 @@ Extract structured information from web pages using LLM capabilities. Supports b
       }
     },
   });
+

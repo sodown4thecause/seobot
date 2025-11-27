@@ -9,7 +9,7 @@ export const business_data_business_listings_searchToolWithClient = (
 ) =>
   tool({
     description: `Business Listings Search API provides results containing information about business entities listed on Google Maps in the specified categories. You will receive the address, contacts, rating, working hours, and other relevant data`,
-    parameters: z.object({
+    inputSchema: z.object({
       description: z
         .string()
         .describe(
@@ -113,7 +113,7 @@ example:
         )
         .default(true),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "business_data_business_listings_search",
@@ -134,4 +134,5 @@ example:
       }
     },
   });
+
 

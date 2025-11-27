@@ -69,7 +69,7 @@ The query also supports search operators, that you can use if needed to refine t
 \`\`\`
 **Returns:** Array of search results (with optional scraped content).
 `,
-    parameters: z.object({
+    inputSchema: z.object({
       query: z.string().min(1),
       limit: z.number().optional(),
       tbs: z.string().optional(),
@@ -147,7 +147,7 @@ The query also supports search operators, that you can use if needed to refine t
         .strict()
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "firecrawl_search",
@@ -168,3 +168,4 @@ The query also supports search operators, that you can use if needed to refine t
       }
     },
   });
+

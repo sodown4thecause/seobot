@@ -9,7 +9,7 @@ export const dataforseo_labs_google_historical_rank_overviewToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with historical data on rankings and traffic of the specified domain, such as domain ranking distribution in SERPs and estimated monthly traffic volume for both organic and paid results`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string().describe("target domain"),
       location_name: z
         .string()
@@ -43,7 +43,7 @@ example:
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_historical_rank_overview",
@@ -64,3 +64,4 @@ example:
       }
     },
   });
+

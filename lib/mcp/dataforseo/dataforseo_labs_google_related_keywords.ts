@@ -15,7 +15,7 @@ You can get up to 4680 keyword ideas by specifying the search depth. Each relate
 Datasource: DataForSEO SERPs Database
 Search algorithm: depth-first search for queries appearing in the "search related to" element of SERP for the specified seed keyword.
 `,
-    parameters: z.object({
+    inputSchema: z.object({
       keyword: z.string().describe("target keyword"),
       depth: z
         .number()
@@ -115,7 +115,7 @@ example:
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_related_keywords",
@@ -136,4 +136,5 @@ example:
       }
     },
   });
+
 

@@ -9,7 +9,7 @@ export const sort_by_relevanceToolWithClient = (
 ) =>
   tool({
     description: `Rerank a list of documents by relevance to a query using Jina Reranker API. Use this when you have multiple documents and want to sort them by how well they match a specific query or topic. Perfect for document retrieval, content filtering, or finding the most relevant information from a collection.`,
-    parameters: z.object({
+    inputSchema: z.object({
       query: z
         .string()
         .describe(
@@ -23,7 +23,7 @@ export const sort_by_relevanceToolWithClient = (
         .describe("Maximum number of top results to return")
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "sort_by_relevance",
@@ -44,3 +44,4 @@ export const sort_by_relevanceToolWithClient = (
       }
     },
   });
+

@@ -9,7 +9,7 @@ export const ai_optimization_keyword_data_search_volumeToolWithClient = (
 ) =>
   tool({
     description: `This endpoint provides search volume data for your target keywords, reflecting their estimated usage in AI LLMs`,
-    parameters: z.object({
+    inputSchema: z.object({
       keywords: z
         .array(z.string())
         .describe(
@@ -25,7 +25,7 @@ export const ai_optimization_keyword_data_search_volumeToolWithClient = (
         .string()
         .describe("Search engine language code (e.g., 'en')"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "ai_optimization_keyword_data_search_volume",
@@ -46,3 +46,4 @@ export const ai_optimization_keyword_data_search_volumeToolWithClient = (
       }
     },
   });
+

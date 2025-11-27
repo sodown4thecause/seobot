@@ -9,7 +9,7 @@ export const search_imagesToolWithClient = (
 ) =>
   tool({
     description: `Search for images across the web, similar to Google Images. Use this when you need to find photos, illustrations, diagrams, charts, logos, or any visual content. Perfect for finding images to illustrate concepts, locating specific pictures, or discovering visual resources. Images are returned by default as small base64-encoded JPEG images.`,
-    parameters: z.object({
+    inputSchema: z.object({
       query: z
         .string()
         .describe(
@@ -42,7 +42,7 @@ export const search_imagesToolWithClient = (
         .describe("Language code, e.g., 'zh-cn' for Simplified Chinese")
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "search_images",
@@ -63,3 +63,4 @@ export const search_imagesToolWithClient = (
       }
     },
   });
+

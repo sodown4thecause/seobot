@@ -12,7 +12,7 @@ export const dataforseo_labs_google_keyword_ideasToolWithClient = (
 As a result, you will get a list of relevant keyword ideas for up to 200 seed keywords.
 Along with each keyword idea, you will get its search volume rate for the last month, search volume trend for the previous 12 months, as well as current cost-per-click and competition values. Moreover, this endpoint supplies minimum, maximum and average values of daily impressions, clicks and CPC for each result.
 `,
-    parameters: z.object({
+    inputSchema: z.object({
       keywords: z.array(z.string()).describe("target keywords"),
       location_name: z
         .string()
@@ -98,7 +98,7 @@ example:
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_keyword_ideas",
@@ -119,4 +119,5 @@ example:
       }
     },
   });
+
 

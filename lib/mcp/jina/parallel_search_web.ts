@@ -9,7 +9,7 @@ export const parallel_search_webToolWithClient = (
 ) =>
   tool({
     description: `Run multiple web searches in parallel for comprehensive topic coverage and diverse perspectives. For best results, provide multiple search queries that explore different aspects of your topic. You can use expand_query to help generate diverse queries, or create them yourself.`,
-    parameters: z.object({
+    inputSchema: z.object({
       searches: z
         .array(
           z
@@ -57,7 +57,7 @@ export const parallel_search_webToolWithClient = (
         .describe("Timeout in milliseconds for all searches")
         .default(30000),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "parallel_search_web",
@@ -78,3 +78,4 @@ export const parallel_search_webToolWithClient = (
       }
     },
   });
+

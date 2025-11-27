@@ -9,7 +9,7 @@ export const backlinks_bulk_pages_summaryToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a comprehensive overview of backlinks and related data for a bulk of up to 1000 pages, domains, or subdomains. If you indicate a single page as a target, you will get comprehensive summary data on all backlinks for that page.`,
-    parameters: z.object({
+    inputSchema: z.object({
       targets: z.array(z.string())
         .describe(`domains, subdomains or webpages to get summary data for
 required field
@@ -26,7 +26,7 @@ if set to false, indirect links will be ignored`,
         )
         .default(true),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_bulk_pages_summary",
@@ -47,3 +47,4 @@ if set to false, indirect links will be ignored`,
       }
     },
   });
+

@@ -447,7 +447,7 @@ export async function humanizeContent(options: {
   const result = await generateContent({
     useCase: 'humanize',
     input: content,
-    tone: 'conversational',
+    tone: 'casual', // Using 'casual' instead of 'conversational' which isn't a valid RytrTone
     creativity: 'high', // Higher creativity for more human-like output
     userId,
   })

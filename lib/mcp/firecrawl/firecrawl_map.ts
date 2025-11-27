@@ -26,7 +26,7 @@ Map a website to discover all indexed URLs on the site.
 \`\`\`
 **Returns:** Array of URLs found on the site.
 `,
-    parameters: z.object({
+    inputSchema: z.object({
       url: z.string().url(),
       search: z.string().optional(),
       sitemap: z.enum(["include", "skip", "only"]).optional(),
@@ -34,7 +34,7 @@ Map a website to discover all indexed URLs on the site.
       limit: z.number().optional(),
       ignoreQueryParameters: z.boolean().optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "firecrawl_map",
@@ -55,3 +55,4 @@ Map a website to discover all indexed URLs on the site.
       }
     },
   });
+

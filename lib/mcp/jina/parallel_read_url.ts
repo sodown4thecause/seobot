@@ -9,7 +9,7 @@ export const parallel_read_urlToolWithClient = (
 ) =>
   tool({
     description: `Read multiple web pages in parallel to extract clean content efficiently. For best results, provide multiple URLs that you need to extract simultaneously. This is useful for comparing content across multiple sources or gathering information from multiple pages at once.`,
-    parameters: z.object({
+    inputSchema: z.object({
       urls: z
         .array(
           z
@@ -44,7 +44,7 @@ export const parallel_read_urlToolWithClient = (
         .describe("Timeout in milliseconds for all URL reads")
         .default(30000),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "parallel_read_url",
@@ -65,3 +65,4 @@ export const parallel_read_urlToolWithClient = (
       }
     },
   });
+

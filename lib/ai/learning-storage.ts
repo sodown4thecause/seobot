@@ -3,7 +3,7 @@
  * Implements global learning loop across all users
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export interface ContentLearning {
   userId: string
@@ -152,7 +152,8 @@ export async function getBestPractices(contentType: string): Promise<any[]> {
  */
 export async function aggregateBestPractices(contentType: string): Promise<void> {
   try {
-    const supabase = await createClient()
+    // Use admin client to bypass RLS for global best practices update
+    const supabase = createAdminClient()
 
     // Get successful learnings
     const { data: learnings, error: fetchError } = await supabase

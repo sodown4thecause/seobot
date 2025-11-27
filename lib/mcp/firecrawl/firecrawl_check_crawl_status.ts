@@ -22,8 +22,8 @@ Check the status of a crawl job.
 \`\`\`
 **Returns:** Status and progress of the crawl job, including results if available.
 `,
-    parameters: z.object({ id: z.string() }),
-    execute: async (args): Promise<string> => {
+    inputSchema: z.object({ id: z.string() }),
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "firecrawl_check_crawl_status",
@@ -44,3 +44,4 @@ Check the status of a crawl job.
       }
     },
   });
+

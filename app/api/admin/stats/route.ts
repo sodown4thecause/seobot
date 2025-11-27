@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllCacheStats, pruneAllCaches } from '@/lib/utils/cache';
-import { getRateLimitStats } from '@/lib/middleware/rate-limit';
+import { getRateLimitStats } from '@/lib/redis/rate-limit';
 
 export const runtime = 'edge';
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     // }
 
     const cacheStats = getAllCacheStats();
-    const rateLimitStats = getRateLimitStats();
+    const rateLimitStats = await getRateLimitStats();
 
     return NextResponse.json({
       success: true,

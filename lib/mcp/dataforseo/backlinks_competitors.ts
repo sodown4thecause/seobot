@@ -9,7 +9,7 @@ export const backlinks_competitorsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with a list of competitors that share some part of the backlink profile with a target website, along with a number of backlink intersections and the rank of every competing website`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string()
         .describe(`domain, subdomain or webpage to get backlinks for
         required field
@@ -97,7 +97,7 @@ if set to false, internal links will be included in the results`,
         )
         .default(true),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_competitors",
@@ -118,4 +118,5 @@ if set to false, internal links will be included in the results`,
       }
     },
   });
+
 

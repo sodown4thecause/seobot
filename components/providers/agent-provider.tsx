@@ -671,7 +671,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
         const decoder = new TextDecoder()
         let buffer = ''
-        let assistantMessageId = `assistant-${Date.now()}`
+        const assistantMessageId = `assistant-${Date.now()}`
         let assistantMessage = ''
         let messageAdded = false
 

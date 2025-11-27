@@ -264,3 +264,163 @@ export async function getRateLimitStatus(
     }
   }
 }
+
+/**
+ * Get rate limit statistics across all rate limiters
+ * Note: This function scans Redis keys which can be expensive.
+ * Use sparingly and only for admin/monitoring purposes.
+ */
+export async function getRateLimitStats(): Promise<{
+  totalKeys: number
+  totalRequests: number
+  keys: Array<{ key: string; requests: number; lastRequest: number }>
+}> {
+  const redis = getRedisClient()
+
+  if (!redis) {
+    console.warn('[RateLimit] Redis not configured, returning empty stats')
+    return {
+      totalKeys: 0,
+      totalRequests: 0,
+      keys: [],
+    }
+  }
+
+  try {
+    // Scan for all rate limit keys
+    const allKeys: string[] = []
+    let cursor = 0
+
+    do {
+      const result = await redis.scan(cursor, {
+        match: 'ratelimit:*',
+        count: 100,
+      })
+      cursor = result[0]
+      allKeys.push(...result[1])
+    } while (cursor !== 0)
+
+    const keys: Array<{ key: string; requests: number; lastRequest: number }> = []
+    let totalRequests = 0
+
+    // Get analytics data for each rate limiter
+    for (const fullKey of allKeys) {
+      try {
+        // Try to get analytics data if available
+        const analyticsKey = fullKey.replace('ratelimit:', 'ratelimit:analytics:')
+        const analytics = await redis.get<{ count: number; lastUsed: number }>(analyticsKey)
+
+        if (analytics) {
+          const displayKey = fullKey.replace('ratelimit:', '')
+          keys.push({
+            key: displayKey,
+            requests: analytics.count || 0,
+            lastRequest: analytics.lastUsed || 0,
+          })
+          totalRequests += analytics.count || 0
+        }
+      } catch (error) {
+        // Skip keys that can't be read
+        console.warn('[RateLimit] Error reading key:', fullKey, error)
+      }
+    }
+
+    return {
+      totalKeys: allKeys.length,
+      totalRequests,
+      keys: keys.sort((a, b) => b.requests - a.requests).slice(0, 50), // Top 50
+    }
+  } catch (error) {
+    console.error('[RateLimit] Error getting stats:', error)
+    return {
+      totalKeys: 0,
+      totalRequests: 0,
+      keys: [],
+    }
+  }
+}
+
+/**
+ * Clear rate limit for a specific identifier
+ * @param identifier - The identifier to clear (e.g., IP address or user ID)
+ * @param type - The rate limit type to clear
+ */
+export async function clearRateLimit(identifier: string, type?: RateLimitType): Promise<boolean> {
+  const redis = getRedisClient()
+
+  if (!redis) {
+    console.warn('[RateLimit] Redis not configured')
+    return false
+  }
+
+  try {
+    if (type) {
+      // Clear specific rate limit type for identifier
+      const config = RATE_LIMITS[type]
+      const key = `${type}:${config.window}:${config.limit}`
+      const fullKey = `ratelimit:${key}:${identifier}`
+      const result = await redis.del(fullKey)
+      return result > 0
+    } else {
+      // Clear all rate limits for identifier
+      const allKeys: string[] = []
+      let cursor = 0
+
+      do {
+        const result = await redis.scan(cursor, {
+          match: `ratelimit:*:${identifier}`,
+          count: 100,
+        })
+        cursor = result[0]
+        allKeys.push(...result[1])
+      } while (cursor !== 0)
+
+      if (allKeys.length > 0) {
+        await redis.del(...allKeys)
+      }
+
+      return allKeys.length > 0
+    }
+  } catch (error) {
+    console.error('[RateLimit] Error clearing rate limit:', error)
+    return false
+  }
+}
+
+/**
+ * Clear all rate limits (admin function)
+ * Warning: This will scan and delete all rate limit keys
+ */
+export async function clearAllRateLimits(): Promise<number> {
+  const redis = getRedisClient()
+
+  if (!redis) {
+    console.warn('[RateLimit] Redis not configured')
+    return 0
+  }
+
+  try {
+    // Scan for all rate limit keys
+    const allKeys: string[] = []
+    let cursor = 0
+
+    do {
+      const result = await redis.scan(cursor, {
+        match: 'ratelimit:*',
+        count: 100,
+      })
+      cursor = result[0]
+      allKeys.push(...result[1])
+    } while (cursor !== 0)
+
+    // Delete all keys
+    if (allKeys.length > 0) {
+      await redis.del(...allKeys)
+    }
+
+    return allKeys.length
+  } catch (error) {
+    console.error('[RateLimit] Error clearing all rate limits:', error)
+    return 0
+  }
+}

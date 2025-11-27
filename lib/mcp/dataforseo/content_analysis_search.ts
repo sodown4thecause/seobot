@@ -9,7 +9,7 @@ export const content_analysis_searchToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with detailed citation data available for the target keyword`,
-    parameters: z.object({
+    inputSchema: z.object({
       keyword: z.string().describe(`target keyword
         Note: to match an exact phrase instead of a stand-alone keyword, use double quotes and backslashes;`),
       keyword_fields: z
@@ -109,7 +109,7 @@ example:
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "content_analysis_search",
@@ -130,4 +130,5 @@ example:
       }
     },
   });
+
 

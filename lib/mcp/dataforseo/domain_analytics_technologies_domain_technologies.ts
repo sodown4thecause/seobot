@@ -9,13 +9,13 @@ export const domain_analytics_technologies_domain_technologiesToolWithClient = (
 ) =>
   tool({
     description: `Using this endpoint you will get a list of technologies used in a particular domain`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string().describe(`target domain
 required field
 domain name of the website to analyze
 Note: results will be returned for the specified domain only`),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "domain_analytics_technologies_domain_technologies",
@@ -36,3 +36,4 @@ Note: results will be returned for the specified domain only`),
       }
     },
   });
+

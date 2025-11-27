@@ -9,7 +9,7 @@ export const capture_screenshot_urlToolWithClient = (
 ) =>
   tool({
     description: `Capture high-quality screenshots of web pages in base64 encoded JPEG format. Use this tool when you need to visually inspect a website, take a snapshot for analysis, or show users what a webpage looks like.`,
-    parameters: z.object({
+    inputSchema: z.object({
       url: z
         .string()
         .url()
@@ -29,7 +29,7 @@ export const capture_screenshot_urlToolWithClient = (
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "capture_screenshot_url",
@@ -50,3 +50,4 @@ export const capture_screenshot_urlToolWithClient = (
       }
     },
   });
+

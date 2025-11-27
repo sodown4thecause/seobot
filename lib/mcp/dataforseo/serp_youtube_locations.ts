@@ -9,7 +9,7 @@ export const serp_youtube_locationsToolWithClient = (
 ) =>
   tool({
     description: `Utility tool to get list of available locations for: serp_youtube_organic_live_advanced, serp_youtube_video_info_live_advanced, serp_youtube_video_comments_live_advanced, serp_youtube_video_subtitles_live_advanced.`,
-    parameters: z.object({
+    inputSchema: z.object({
       country_iso_code: z
         .string()
         .describe("ISO 3166-1 alpha-2 country code, for example: US, GB, MT"),
@@ -24,7 +24,7 @@ export const serp_youtube_locationsToolWithClient = (
         .describe("Name of location or it`s part.")
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "serp_youtube_locations",
@@ -45,3 +45,4 @@ export const serp_youtube_locationsToolWithClient = (
       }
     },
   });
+

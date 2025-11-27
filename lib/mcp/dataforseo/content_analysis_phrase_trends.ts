@@ -9,7 +9,7 @@ export const content_analysis_phrase_trendsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with data on all citations of the target keyword for the indicated date range`,
-    parameters: z.object({
+    inputSchema: z.object({
       keyword: z.string().describe(`target keyword
         Note: to match an exact phrase instead of a stand-alone keyword, use double quotes and backslashes;`),
       keyword_fields: z
@@ -96,7 +96,7 @@ export const content_analysis_phrase_trendsToolWithClient = (
         )
         .default(1),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "content_analysis_phrase_trends",
@@ -117,4 +117,5 @@ export const content_analysis_phrase_trendsToolWithClient = (
       }
     },
   });
+
 

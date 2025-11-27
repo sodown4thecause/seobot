@@ -9,7 +9,7 @@ export const search_arxivToolWithClient = (
 ) =>
   tool({
     description: `Search academic papers and preprints on arXiv repository. Perfect for finding research papers, scientific studies, technical papers, and academic literature. Use this when researching scientific topics, looking for papers by specific authors, or finding the latest research in fields like AI, physics, mathematics, computer science, etc.`,
-    parameters: z.object({
+    inputSchema: z.object({
       query: z
         .union([z.string(), z.array(z.string())])
         .describe(
@@ -26,7 +26,7 @@ export const search_arxivToolWithClient = (
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "search_arxiv",
@@ -47,3 +47,4 @@ export const search_arxivToolWithClient = (
       }
     },
   });
+

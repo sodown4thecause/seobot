@@ -9,7 +9,7 @@ export const guess_datetime_urlToolWithClient = (
 ) =>
   tool({
     description: `Guess the last updated or published datetime of a web page. This tool examines HTTP headers, HTML metadata, Schema.org data, visible dates, JavaScript timestamps, HTML comments, Git information, RSS/Atom feeds, sitemaps, and international date formats to provide the most accurate update time with confidence scores. Returns the best guess timestamp and confidence level.`,
-    parameters: z.object({
+    inputSchema: z.object({
       url: z
         .string()
         .url()
@@ -17,7 +17,7 @@ export const guess_datetime_urlToolWithClient = (
           "The complete HTTP/HTTPS URL of the webpage to guess datetime information",
         ),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "guess_datetime_url",
@@ -38,3 +38,4 @@ export const guess_datetime_urlToolWithClient = (
       }
     },
   });
+

@@ -13,7 +13,7 @@ The results will be provided for a period between the two indicated dates, and m
 Data from this endpoint will be especially helpful for building time-series graphs of new and lost backlinks and referring domains.
 
 `,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string().describe(`domain to get data for
 required field
 a domain should be specified without https:// and www.
@@ -65,7 +65,7 @@ if there is no data for a certain day/week/month/year, we will return 0`,
         )
         .default("month"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_timeseries_new_lost_summary",
@@ -86,3 +86,4 @@ if there is no data for a certain day/week/month/year, we will return 0`,
       }
     },
   });
+

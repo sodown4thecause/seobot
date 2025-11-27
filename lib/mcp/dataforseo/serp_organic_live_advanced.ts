@@ -10,7 +10,7 @@ export const serp_organic_live_advancedToolWithClient = (
   tool({
     description:
       "Get organic search results for a keyword in specified search engine",
-    parameters: z.object({
+    inputSchema: z.object({
       search_engine: z
         .string()
         .describe("search engine name, one of: google, yahoo, bing.")
@@ -72,7 +72,7 @@ default value: desktop`,
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "serp_organic_live_advanced",
@@ -93,3 +93,4 @@ default value: desktop`,
       }
     },
   });
+

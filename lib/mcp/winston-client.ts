@@ -1,31 +1,23 @@
 /**
  * Winston AI MCP Client Configuration
  * 
- * Connects to the Winston AI MCP server for plagiarism detection and content validation.
- * 
- * IMPORTANT: Winston AI uses JSON-RPC 2.0 protocol. The API key is NOT passed in headers,
- * but rather as an "apiKey" parameter in each tool call. The connection itself requires
- * no authentication.
+ * Provides AI detection and plagiarism checking using Winston AI API.
+ * Production-grade replacement for Gradio-based detection.
  * 
  * Note: Compatible with Edge runtime - uses Web APIs instead of Node.js APIs
- * 
- * AI Detection now uses Gradio AI Detector as primary method
  */
 
 import { tool } from 'ai'
 import { z } from 'zod'
-import { serverEnv } from '@/lib/config/env'
-import { detectAIContentWithGradio } from '@/lib/external-apis/gradio-ai-detector'
-
+import { checkAiContent } from '@/lib/external-apis/winston-ai'
 
 /**
  * Get Winston tools (Direct API version)
- * Replaces the MCP client with a direct tool definition
  */
 export async function getWinstonTools() {
   return {
     winston_check_quality: tool({
-      description: 'Check content quality, plagiarism, and AI detection using Winston AI. Returns a score (0-100) where higher means more likely AI-generated.',
+      description: 'Check content quality and AI detection using Winston AI. Returns a score (0-100) where higher means more likely AI-generated.',
       inputSchema: z.object({
         content: z.string().describe('The text content to analyze'),
       }),
@@ -36,22 +28,33 @@ export async function getWinstonTools() {
   }
 }
 
-
 /**
- * Analyze content for AI detection using Gradio AI Detector
- * Replaces Winston AI as the primary detection method
+ * Analyze content for AI detection using Winston AI
+ * Production-grade detection with fallback handling
  */
 export async function analyzeContent(content: string): Promise<{
   score: number
   humanProbability: number
   feedback: string | null
 }> {
-  const result = await detectAIContentWithGradio(content);
-  
-  return {
-    score: result.score,
-    humanProbability: result.humanProbability,
-    feedback: null
-  };
+  try {
+    const result = await checkAiContent(content);
+    
+    return {
+      score: result.score,
+      humanProbability: 100 - result.score,
+      feedback: result.confidence === 'low' 
+        ? 'Detection confidence is low - consider manual review' 
+        : null
+    };
+  } catch (error) {
+    console.error('[Winston Client] AI detection failed:', error);
+    // Return conservative fallback - assume AI-generated to be safe
+    return {
+      score: 75,
+      humanProbability: 25,
+      feedback: 'Detection service unavailable - using fallback score'
+    };
+  }
 }
 
