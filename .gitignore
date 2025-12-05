@@ -60,9 +60,9 @@ node_modules/
 *.sw?
 # OS specific
 
-# Task files
-# tasks.json
-# tasks/
-
 # Cursor MCP config (contains API keys)
 .cursor/mcp.json 
+
+# Task files
+# tasks.json
+# tasks/ 
