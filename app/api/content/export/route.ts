@@ -11,6 +11,7 @@
 import { NextRequest } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'edge'
 
@@ -222,13 +223,17 @@ function toJSON(content: string, metadata?: ExportRequest['metadata']): string {
 }
 
 export async function POST(req: NextRequest) {
-  // Check rate limit
-  const rateLimitResponse = await rateLimitMiddleware(req, 'EXPORT')
-  if (rateLimitResponse) {
-    return rateLimitResponse
-  }
-
   try {
+    // Get user for rate limiting
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Check rate limit (after getting user for better identification)
+    const rateLimitResponse = await rateLimitMiddleware(req, 'EXPORT', user?.id)
+    if (rateLimitResponse) {
+      return rateLimitResponse
+    }
+
     const body: ExportRequest = await req.json()
 
     if (!body.content || !body.format) {

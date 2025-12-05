@@ -6,6 +6,7 @@
  */
 
 import { Redis } from '@upstash/redis'
+import { serverEnv } from '@/lib/config/env'
 
 // Singleton Redis client
 let redis: Redis | null = null
@@ -20,8 +21,8 @@ export function getRedisClient(): Redis | null {
   }
 
   try {
-    const url = process.env.UPSTASH_REDIS_REST_URL
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN
+    const url = serverEnv.UPSTASH_REDIS_REST_URL
+    const token = serverEnv.UPSTASH_REDIS_REST_TOKEN
 
     if (!url || !token) {
       console.warn('[Redis] Not configured - UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN missing')
@@ -288,7 +289,7 @@ export function getRedisStatus(): {
   return {
     enabled: client !== null,
     configured:
-      !!process.env.UPSTASH_REDIS_REST_URL &&
-      !!process.env.UPSTASH_REDIS_REST_TOKEN,
+      !!serverEnv.UPSTASH_REDIS_REST_URL &&
+      !!serverEnv.UPSTASH_REDIS_REST_TOKEN,
   }
 }

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "augment-context-engine": {
+      "type": "local",
+      "command": ["auggie", "--mcp"],
+      "enabled": true,
+      "environment": {}
+    },
+    "Ref": {
+      "type": "remote",
+      "url": "https://api.ref.tools/mcp",
+      "enabled": true,
+      "headers": {
+        "x-ref-api-key": "ref-57210845759dab8bb7f6"
+      }
+    },
+    "supabase": {
+      "type": "remote",
+      "url": "https://mcp.supabase.com/mcp?project_ref=praixxjujhbpqxuqyczn",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer sbp_2941cb4f0c66b1b52fea4056f8d166fd58cc794b"
+      }
+    }
+  }
+}
+

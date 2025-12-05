@@ -55,16 +55,17 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         // Custom colors for the dark theme
-        'purple-deep': '#0F0518',
-        'purple-mid': '#1D0D30',
-        'cyan-bright': '#38BDF8',
+        'slate-deep': '#020617', // Slate 950
+        'slate-mid': '#0f172a',  // Slate 900
+        'cyan-bright': '#06b6d4', // Cyan 500
+        'gold-accent': '#eab308', // Yellow 500
         'glass-border': 'rgba(255, 255, 255, 0.08)',
         'glass-surface': 'rgba(255, 255, 255, 0.03)',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'purple-gradient': 'linear-gradient(135deg, #0F0518 0%, #1D0D30 50%, #4C1D95 100%)',
-        'mesh': 'radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%)',
+        'slate-gradient': 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e293b 100%)',
+        'mesh': 'radial-gradient(at 0% 0%, hsla(222,47%,11%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(199,89%,48%,0.2) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(217,33%,17%,1) 0, transparent 50%)',
         'glass-gradient': 'linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.00) 100%)',
       },
       borderRadius: {

@@ -1,11 +1,25 @@
 import { streamText } from 'ai';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
 import { z } from 'zod';
+import { rateLimitMiddleware } from '@/lib/redis/rate-limit';
+import { createClient } from '@/lib/supabase/server';
+import { handleApiError } from '@/lib/errors/handlers';
+import { createTelemetryConfig } from '@/lib/observability/langfuse';
 
 export const runtime = 'edge';
 
 export async function POST(req: Request) {
   try {
+    // Get user for rate limiting
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Check rate limit for content generation
+    const rateLimitResponse = await rateLimitMiddleware(req as any, 'CONTENT_GENERATION', user?.id);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const { topic, type, tone, keywords } = await req.json();
 
     const systemPrompt = `You are an expert content writer specializing in SEO-optimized content.
@@ -24,12 +38,19 @@ export async function POST(req: Request) {
       model: vercelGateway.languageModel('google/gemini-1.5-flash'),
       prompt: systemPrompt,
       system: 'You are a professional content writer.',
+      experimental_telemetry: createTelemetryConfig('content-generate-api', {
+        userId: user?.id,
+        topic,
+        contentType: type,
+        tone,
+        keywords: keywords?.join(', '),
+      }),
     });
 
     return result.toTextStreamResponse();
 
   } catch (error) {
     console.error('Content Generation Error:', error);
-    return new Response('Internal Server Error', { status: 500 });
+    return handleApiError(error, 'Failed to generate content');
   }
 }

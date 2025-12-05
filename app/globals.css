@@ -4,40 +4,40 @@
 
 @layer base {
   :root {
-    /* Base dark theme - Deep Space/Glass */
-    --background: 260 30% 6%; /* Deep Purple/Black */
+    /* Base dark theme - Deep Slate/Glass */
+    --background: 222.2 84% 4.9%; /* #020617 - Slate 950 */
     --foreground: 210 40% 98%;
 
-    --card: 260 30% 8%;
+    --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
  
-    --popover: 260 30% 8%;
+    --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
  
-    --primary: 250 100% 65%; /* Vibrant Violet */
+    --primary: 189 94% 43%; /* Cyan 600 */
     --primary-foreground: 0 0% 100%;
  
-    --secondary: 260 20% 15%;
+    --secondary: 217.2 32.6% 17.5%; /* Slate 800 */
     --secondary-foreground: 210 40% 98%;
  
-    --muted: 260 20% 15%;
-    --muted-foreground: 250 20% 65%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
  
-    --accent: 260 20% 20%;
+    --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
  
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 260 20% 15%;
-    --input: 260 20% 15%;
-    --ring: 250 100% 65%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 189 94% 43%;
  
     --radius: 1rem;
   }
  
   .dark {
-    --background: 260 30% 6%;
+    --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
   }
 }
@@ -49,8 +49,8 @@
   body {
     @apply bg-background text-foreground selection:bg-primary/30 selection:text-primary-foreground;
     background-image: 
-      radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.08), transparent 25%),
-      radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.08), transparent 25%);
+      radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.1), transparent 40%), /* Cyan glow */
+      radial-gradient(circle at 0% 50%, rgba(2, 6, 23, 0.1), transparent 40%); /* Slate glow */
     background-attachment: fixed;
   }
 }
@@ -61,7 +61,7 @@
 }
 
 .glass-card {
-  @apply bg-zinc-900/40 backdrop-blur-md border border-white/[0.05] hover:border-white/[0.1] hover:bg-white/[0.05] transition-all duration-300 shadow-lg;
+  @apply bg-slate-900/40 backdrop-blur-md border border-white/[0.05] hover:border-white/[0.1] hover:bg-white/[0.05] transition-all duration-300 shadow-lg;
 }
 
 .glass-button {
@@ -69,16 +69,27 @@
 }
 
 .glass-input {
-  @apply bg-black/20 backdrop-blur-sm border border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all duration-200 placeholder:text-white/20;
+  @apply bg-black/20 backdrop-blur-sm border border-white/10 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all duration-200 placeholder:text-white/20;
 }
 
 /* Gradient Text */
 .text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-400;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400;
 }
 
 .text-gradient-primary {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500;
+}
+
+/* Reusable noise overlay to avoid missing assets */
+.noise-overlay {
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.15) 0.5px, transparent 1px),
+    radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.08) 0.5px, transparent 1px),
+    radial-gradient(circle at 0% 100%, rgba(255, 255, 255, 0.05) 0.5px, transparent 1px);
+  background-size: 3px 3px, 4px 4px, 5px 5px;
+  mix-blend-mode: overlay;
+  opacity: 0.04;
 }
 
 /* Custom Scrollbar */

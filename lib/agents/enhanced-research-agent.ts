@@ -1,11 +1,12 @@
 /**
  * Enhanced Research Agent
- * Combines Perplexity web research with Supabase RAG for comprehensive research
+ * Combines Perplexity web research with Supabase RAG and Firecrawl competitor scraping
  */
 
 import { searchWithPerplexity, type PerplexitySearchResult } from '@/lib/external-apis/perplexity'
 import { retrieveAgentDocuments } from '@/lib/ai/content-rag'
 import { mcpDataforseoTools } from '@/lib/mcp/dataforseo/index'
+import { mcpFirecrawlTools } from '@/mcps/mcp.firecrawl.dev/fc-9b271ecf3a944c3faf93489565547fc8/v2/mcp/index'
 
 export interface EnhancedResearchParams {
   topic: string
@@ -52,11 +53,18 @@ export interface EnhancedResearchResult {
     peopleAlsoAsk?: string[]
     relatedSearches?: string[]
   }
+  // Firecrawl scraped competitor content for deep analysis
+  competitorContent?: Array<{
+    url: string
+    markdown: string
+    wordCount: number
+    headings: string[]
+  }>
 }
 
 export class EnhancedResearchAgent {
   /**
-   * Conduct comprehensive research using Perplexity + RAG
+   * Conduct comprehensive research using Perplexity + RAG + Firecrawl
    */
   async research(params: EnhancedResearchParams): Promise<EnhancedResearchResult> {
     console.log('[Enhanced Research] Researching:', params.topic)
@@ -69,7 +77,7 @@ export class EnhancedResearchAgent {
           keywords: [params.targetKeyword],
           language_code: params.languageCode || 'en',
         })
-        
+
         const intentData = typeof intentResult === 'string' ? JSON.parse(intentResult) : intentResult
         if (intentData && Array.isArray(intentData) && intentData.length > 0) {
           const keywordData = intentData[0]
@@ -106,7 +114,7 @@ export class EnhancedResearchAgent {
             device: 'desktop',
           })
         )
-        
+
         const serpParsed = typeof serpResult === 'string' ? JSON.parse(serpResult) : serpResult
         if (serpParsed && serpParsed.tasks && serpParsed.tasks[0]?.result) {
           const results = serpParsed.tasks[0].result[0]?.items || []
@@ -124,6 +132,52 @@ export class EnhancedResearchAgent {
         }
       } catch (error) {
         console.warn('[Enhanced Research] SERP analysis failed:', error)
+      }
+
+      // Step 2.5: Scrape top competitor pages with Firecrawl for detailed analysis
+      let competitorContent: Array<{ url: string; markdown: string; wordCount: number; headings: string[] }> = []
+      if (serpData && serpData.topResults.length > 0) {
+        console.log('[Enhanced Research] Scraping top 3 competitors with Firecrawl...')
+        const topUrls = serpData.topResults.slice(0, 3).map(r => r.url)
+
+        const scrapePromises = topUrls.map(async (url) => {
+          try {
+            const { withMCPLogging } = await import('@/lib/analytics/mcp-logger');
+            const scrapeResult = await withMCPLogging(
+              {
+                userId: params.userId,
+                provider: 'firecrawl',
+                endpoint: 'firecrawl_scrape',
+                agentType: 'enhanced_research',
+              },
+              () => mcpFirecrawlTools.firecrawl_scrape.execute({
+                url,
+                formats: ['markdown'],
+              })
+            )
+
+            const scrapeParsed = typeof scrapeResult === 'string' ? JSON.parse(scrapeResult) : scrapeResult
+            if (scrapeParsed && scrapeParsed.data?.markdown) {
+              const markdown = scrapeParsed.data.markdown
+              const words = markdown.split(/\s+/).filter((w: string) => w.length > 0)
+              const headings = (markdown.match(/^#{1,3}\s+.+$/gm) || []).slice(0, 15)
+
+              return {
+                url,
+                markdown: markdown.substring(0, 5000), // First 5000 chars for context
+                wordCount: words.length,
+                headings: headings.map((h: string) => h.replace(/^#+\s+/, '')),
+              }
+            }
+          } catch (error) {
+            console.warn(`[Enhanced Research] Failed to scrape ${url}:`, error)
+          }
+          return null
+        })
+
+        const results = await Promise.all(scrapePromises)
+        competitorContent = results.filter((r): r is NonNullable<typeof r> => r !== null)
+        console.log(`[Enhanced Research] Scraped ${competitorContent.length} competitor pages`)
       }
 
       // Step 3: Perplexity web research
@@ -149,17 +203,18 @@ export class EnhancedResearchAgent {
         serpData
       )
 
-      // Step 6: Combine research into summary
+      // Step 6: Combine research into summary (now includes competitor content)
       const combinedSummary = this.combineResearch(
         perplexityResult.answer,
         ragDocs,
         competitorSnippets,
         searchIntent,
-        serpData
+        serpData,
+        competitorContent
       )
 
       console.log('[Enhanced Research] ✓ Research complete')
-      console.log(`[Enhanced Research] Found ${perplexityResult.citations.length} citations, ${ragDocs.length} RAG docs`)
+      console.log(`[Enhanced Research] Found ${perplexityResult.citations.length} citations, ${ragDocs.length} RAG docs, ${competitorContent.length} scraped pages`)
 
       return {
         perplexityResearch: perplexityResult,
@@ -173,10 +228,11 @@ export class EnhancedResearchAgent {
         competitorSnippets,
         searchIntent,
         serpData,
+        competitorContent,
       }
     } catch (error) {
       console.error('[Enhanced Research] Error during research:', error)
-      
+
       // Return fallback result
       return {
         perplexityResearch: {
@@ -249,7 +305,7 @@ Focus on information valuable for creating SEO/AEO optimized content.`
 
     // Filter by competitor URLs if specified
     if (competitorUrls && competitorUrls.length > 0) {
-      return snippets.filter(s => 
+      return snippets.filter(s =>
         competitorUrls.some(url => s.url.includes(url))
       )
     }
@@ -262,7 +318,8 @@ Focus on information valuable for creating SEO/AEO optimized content.`
     ragDocs: any[],
     competitorSnippets: Array<{ url: string; title: string; snippet?: string }>,
     searchIntent?: EnhancedResearchResult['searchIntent'],
-    serpData?: EnhancedResearchResult['serpData']
+    serpData?: EnhancedResearchResult['serpData'],
+    competitorContent?: Array<{ url: string; markdown: string; wordCount: number; headings: string[] }>
   ): string {
     const parts: string[] = []
 
@@ -285,6 +342,20 @@ Focus on information valuable for creating SEO/AEO optimized content.`
       ragDocs.forEach((doc, i) => {
         parts.push(`\n### ${i + 1}. ${doc.title}`)
         parts.push(doc.content.substring(0, 500) + (doc.content.length > 500 ? '...' : ''))
+      })
+      parts.push('')
+    }
+
+    // Add detailed competitor content analysis from Firecrawl
+    if (competitorContent && competitorContent.length > 0) {
+      parts.push('## Competitor Content Analysis (Scraped)')
+      competitorContent.forEach((comp, i) => {
+        parts.push(`\n### ${i + 1}. Competitor Page`)
+        parts.push(`- URL: ${comp.url}`)
+        parts.push(`- Word Count: ${comp.wordCount}`)
+        if (comp.headings.length > 0) {
+          parts.push(`- Key Headings: ${comp.headings.slice(0, 8).join(' | ')}`)
+        }
       })
       parts.push('')
     }
@@ -320,4 +391,3 @@ Focus on information valuable for creating SEO/AEO optimized content.`
     return parts.join('\n')
   }
 }
-

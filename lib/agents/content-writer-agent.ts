@@ -6,6 +6,11 @@ import { generateText } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { getContentGuidance } from '@/lib/ai/content-rag'
+import { serverEnv } from '@/lib/config/env'
+import { withAgentRetry } from '@/lib/errors/retry'
+import { ProviderError } from '@/lib/errors/types'
+import { logAgentExecution } from '@/lib/errors/logger'
+import { createTelemetryConfig } from '@/lib/observability/langfuse'
 
 export interface ContentWriteParams {
   type: 'blog_post' | 'article' | 'social_media' | 'landing_page'
@@ -49,46 +54,98 @@ export class ContentWriterAgent {
     const prompt = this.buildPrompt(params)
 
     // Generate content using Claude via Vercel AI Gateway for superior quality
-    try {
-      const { text, usage } = await generateText({
-        model: vercelGateway.languageModel('google/gemini-3-pro-preview' as GatewayModelId),
-        system: this.buildSystemPrompt(guidance),
-        prompt: prompt,
-        temperature: 0.7,
-      })
+    return logAgentExecution(
+      'content-writer',
+      async () => {
+        return withAgentRetry(
+          async () => {
+            const { text, usage } = await generateText({
+              model: vercelGateway.languageModel('anthropic/claude-sonnet-4' as GatewayModelId),
+              system: this.buildSystemPrompt(guidance),
+              prompt: prompt,
+              temperature: 0.7,
+              experimental_telemetry: createTelemetryConfig(
+                params.revisionRound ? 'content-writer-revision' : 'content-writer',
+                {
+                  userId: params.userId,
+                  contentType: params.type,
+                  topic: params.topic,
+                  keywords: params.keywords,
+                  wordCount: params.wordCount,
+                  revisionRound: params.revisionRound,
+                  hasImprovementInstructions: !!params.improvementInstructions,
+                  learningsApplied: this.countLearnings(guidance),
+                  provider: 'anthropic',
+                  model: 'claude-sonnet-4',
+                }
+              ),
+            })
 
-      // Log usage
-      if (params.userId) {
-        try {
-          const { logAIUsage } = await import('@/lib/analytics/usage-logger');
-          await logAIUsage({
-            userId: params.userId,
-            agentType: 'content_writer',
-            model: 'google/gemini-3-pro-preview',
-            promptTokens: usage?.promptTokens || 0,
-            completionTokens: usage?.completionTokens || 0,
-            metadata: {
-              content_type: params.type,
-              topic: params.topic,
+            // Log usage
+            if (params.userId) {
+              try {
+                const { logAIUsage } = await import('@/lib/analytics/usage-logger');
+                await logAIUsage({
+                  userId: params.userId,
+                  agentType: 'content_writer',
+                  model: 'anthropic/claude-sonnet-4',
+                  promptTokens: usage?.promptTokens || 0,
+                  completionTokens: usage?.completionTokens || 0,
+                  metadata: {
+                    content_type: params.type,
+                    topic: params.topic,
+                  },
+                });
+              } catch (error) {
+                console.error('[Content Writer] Error logging usage:', error);
+              }
+            }
+
+            console.log('[Content Writer] ✓ Content generated')
+
+            return {
+              content: text,
+              metadata: {
+                learningsApplied: this.countLearnings(guidance),
+              },
+            }
+          },
+          {
+            retries: 2,
+            agent: 'content-writer',
+            provider: 'google',
+            onRetry: (error, attempt, delay) => {
+              console.warn(
+                `[Content Writer] Retry attempt ${attempt} after ${delay}ms:`,
+                error.message
+              )
             },
-          });
-        } catch (error) {
-          console.error('[Content Writer] Error logging usage:', error);
-        }
-      }
-
-      console.log('[Content Writer] ✓ Content generated')
-
-      return {
-        content: text,
+          }
+        )
+      },
+      {
+        provider: 'google',
+        userId: params.userId,
         metadata: {
-          learningsApplied: this.countLearnings(guidance),
+          contentType: params.type,
+          topic: params.topic,
+          revisionRound: params.revisionRound,
         },
       }
-    } catch (error) {
-      console.error('[Content Writer] Error generating content:', error)
+    ).catch((error) => {
+      // Convert to ProviderError if needed
+      if (!(error instanceof ProviderError)) {
+        throw new ProviderError(
+          error instanceof Error ? error.message : 'Content generation failed',
+          'google',
+          {
+            agent: 'content-writer',
+            cause: error instanceof Error ? error : undefined,
+          }
+        )
+      }
       throw error
-    }
+    })
   }
 
   private buildSystemPrompt(guidance: string): string {

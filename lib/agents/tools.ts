@@ -2,6 +2,8 @@ import { tool, generateText } from 'ai';
 import { z } from 'zod';
 import { perplexity } from '@ai-sdk/perplexity';
 import { findRelevantFrameworks, formatFrameworksForPrompt, batchIncrementUsage } from '@/lib/ai/rag-service';
+import { serverEnv } from '@/lib/config/env';
+import { createTelemetryConfig } from '@/lib/observability/langfuse';
 
 /**
  * Research Agent Tool
@@ -31,6 +33,12 @@ Provide:
 
 Focus on information that would be valuable for creating SEO/AEO optimized content.`,
         temperature: 0.3,
+        experimental_telemetry: createTelemetryConfig('research-tool', {
+          query,
+          depth,
+          provider: 'perplexity',
+          model: 'sonar-pro',
+        }),
       });
       
       return text;

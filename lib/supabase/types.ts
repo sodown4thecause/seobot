@@ -237,7 +237,119 @@ export interface Database {
           created_at?: string
         }
       }
+      conversations: {
+        Row: {
+          id: string
+          user_id: string
+          agent_type: string
+          title: string
+          status: string | null
+          metadata: Json | null
+          created_at: string
+          updated_at: string
+          archived_at: string | null
+          last_message_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          agent_type?: string
+          title?: string
+          status?: string | null
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+          archived_at?: string | null
+          last_message_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          agent_type?: string
+          title?: string
+          status?: string | null
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+          archived_at?: string | null
+          last_message_at?: string | null
+        }
+      }
+      messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          role: string
+          content: string
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          role: string
+          content: string
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          role?: string
+          content?: string
+          metadata?: Json | null
+          created_at?: string
+        }
+      }
+      library_items: {
+        Row: {
+          id: string
+          user_id: string
+          conversation_id: string | null
+          message_id: string | null
+          item_type: string
+          title: string
+          content: string | null
+          data: Json | null
+          image_url: string | null
+          tags: string[] | null
+          metadata: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          conversation_id?: string | null
+          message_id?: string | null
+          item_type: string
+          title: string
+          content?: string | null
+          data?: Json | null
+          image_url?: string | null
+          tags?: string[] | null
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          conversation_id?: string | null
+          message_id?: string | null
+          item_type?: string
+          title?: string
+          content?: string | null
+          data?: Json | null
+          image_url?: string | null
+          tags?: string[] | null
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
+
     Views: {
       [_ in never]: never
     }

@@ -12,6 +12,7 @@ import { createClient } from '@supabase/supabase-js'
 import { generateEmbedding } from './embedding'
 import { type FrameworkCategory } from './framework-seeds'
 import { LRUCache } from 'lru-cache'
+import { clientEnv } from '@/lib/config/env'
 import {
   cacheGet,
   cacheSet,
@@ -110,8 +111,8 @@ let supabaseClient: ReturnType<typeof createClient> | null = null
 
 function getSupabaseClient() {
   if (!supabaseClient) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const url = clientEnv.NEXT_PUBLIC_SUPABASE_URL
+    const anonKey = clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!url || !anonKey) {
       throw new Error('Supabase environment variables not configured')
@@ -311,11 +312,11 @@ export async function findRelevantFrameworks(
       return []
     }
 
-    // Fetch full framework details
+    // Fetch full framework details (optimized: select only needed columns)
     const frameworkIds = data.map((r) => r.id)
     const { data: fullFrameworks, error: fetchError } = await supabase
       .from('writing_frameworks')
-      .select('*')
+      .select('id, name, description, structure, examples, category, metadata')
       .in('id', frameworkIds)
 
     if (fetchError || !fullFrameworks) {

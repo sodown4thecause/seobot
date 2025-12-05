@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { clientEnv } from '@/lib/config/env'
 
 export async function proxy(req: NextRequest) {
   const res = NextResponse.next()
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    clientEnv.NEXT_PUBLIC_SUPABASE_URL,
+    clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -22,9 +23,15 @@ export async function proxy(req: NextRequest) {
   )
 
   const {
-    data: { session }
-  } = await supabase.auth.getSession()
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
 
+  if (authError && authError.status !== 401) {
+    console.warn('[Auth middleware] Failed to fetch Supabase user', authError.message)
+  }
+
+  const isAuthenticated = Boolean(user)
   const url = req.nextUrl
   const pathname = url.pathname
 
@@ -33,16 +40,17 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/dashboard') || pathname.startsWith('/onboarding')
 
   // Unauthenticated: block protected routes
-  if (!session && isProtected) {
+  if (!isAuthenticated && isProtected) {
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('redirectedFrom', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
   // If user is signed in and trying to access auth pages, redirect to dashboard
-  if (session && isAuthPage) {
+  if (isAuthenticated && isAuthPage) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
+
 
   return res
 }

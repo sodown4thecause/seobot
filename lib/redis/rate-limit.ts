@@ -9,6 +9,8 @@ import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { NextRequest } from 'next/server'
 import { getRedisClient } from './client'
+import { createClient } from '@/lib/supabase/server'
+import { trackAPICall } from '@/lib/analytics/api-tracker'
 
 // Configure rate limits for different endpoints
 export const RATE_LIMITS = {
@@ -55,6 +57,90 @@ type RateLimitType = keyof typeof RATE_LIMITS
 // In-memory cache for rate limiters (Edge runtime compatible)
 const rateLimiters = new Map<string, Ratelimit>()
 
+// In-memory rate limit storage for fallback (when Redis is not available)
+interface InMemoryRateLimitEntry {
+  timestamps: number[]
+  windowMs: number
+}
+
+const inMemoryRateLimits = new Map<string, InMemoryRateLimitEntry>()
+
+/**
+ * Parse window string to milliseconds
+ */
+function parseWindow(window: string): number {
+  const match = window.match(/^(\d+)\s*([smhd])$/)
+  if (!match) return 60000 // Default to 1 minute
+  
+  const [, value, unit] = match
+  const num = parseInt(value, 10)
+  
+  switch (unit) {
+    case 's': return num * 1000
+    case 'm': return num * 60 * 1000
+    case 'h': return num * 60 * 60 * 1000
+    case 'd': return num * 24 * 60 * 60 * 1000
+    default: return 60000
+  }
+}
+
+/**
+ * In-memory rate limiting fallback (sliding window)
+ */
+function checkInMemoryRateLimit(
+  identifier: string,
+  type: RateLimitType
+): { success: boolean; remaining: number; reset: number } {
+  const config = RATE_LIMITS[type]
+  const windowMs = parseWindow(config.window)
+  const now = Date.now()
+  const key = `${type}:${identifier}`
+  
+  let entry = inMemoryRateLimits.get(key)
+  
+  if (!entry || entry.windowMs !== windowMs) {
+    entry = { timestamps: [], windowMs }
+    inMemoryRateLimits.set(key, entry)
+  }
+  
+  // Remove timestamps outside the window
+  entry.timestamps = entry.timestamps.filter(
+    (ts) => now - ts < windowMs
+  )
+  
+  // Check if limit exceeded
+  if (entry.timestamps.length >= config.limit) {
+    const oldestTimestamp = entry.timestamps[0]
+    const reset = oldestTimestamp + windowMs
+    return {
+      success: false,
+      remaining: 0,
+      reset,
+    }
+  }
+  
+  // Add current request
+  entry.timestamps.push(now)
+  
+  // Clean up old entries periodically (every 1000 requests)
+  if (inMemoryRateLimits.size > 1000) {
+    const keysToDelete: string[] = []
+    for (const [k, e] of inMemoryRateLimits.entries()) {
+      e.timestamps = e.timestamps.filter((ts) => now - ts < e.windowMs)
+      if (e.timestamps.length === 0) {
+        keysToDelete.push(k)
+      }
+    }
+    keysToDelete.forEach((k) => inMemoryRateLimits.delete(k))
+  }
+  
+  return {
+    success: true,
+    remaining: config.limit - entry.timestamps.length,
+    reset: now + windowMs,
+  }
+}
+
 /**
  * Get or create a rate limiter for a specific type
  */
@@ -84,28 +170,44 @@ function getRateLimiter(type: RateLimitType): Ratelimit | null {
 
 /**
  * Get client identifier from request
- * Uses IP address as primary identifier
+ * Prioritizes user ID from auth, falls back to IP address
  */
-function getClientIdentifier(req: NextRequest): string {
-  // Try different headers for client IP
+async function getClientIdentifier(req: NextRequest, userId?: string | null): Promise<string> {
+  // Prefer user ID if available (more accurate for authenticated users)
+  if (userId) {
+    return `user:${userId}`
+  }
+
+  // Try to get user from Supabase auth if not provided
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.id) {
+      return `user:${user.id}`
+    }
+  } catch (error) {
+    // Auth check failed, fall back to IP
+  }
+
+  // Fall back to IP address
   const forwarded = req.headers.get('x-forwarded-for')
   const realIp = req.headers.get('x-real-ip')
   const cfConnectingIp = req.headers.get('cf-connecting-ip')
 
   if (forwarded) {
-    return forwarded.split(',')[0].trim()
+    return `ip:${forwarded.split(',')[0].trim()}`
   }
 
   if (realIp) {
-    return realIp
+    return `ip:${realIp}`
   }
 
   if (cfConnectingIp) {
-    return cfConnectingIp
+    return `ip:${cfConnectingIp}`
   }
 
   // Fallback to a default identifier
-  return 'unknown'
+  return 'ip:unknown'
 }
 
 /**
@@ -113,32 +215,64 @@ function getClientIdentifier(req: NextRequest): string {
  *
  * @param req - Next.js request object
  * @param type - Type of rate limit to check
+ * @param userId - Optional user ID (if already available from auth)
  * @returns Result object with success status and metadata
  */
 export async function checkRateLimit(
   req: NextRequest,
-  type: RateLimitType
+  type: RateLimitType,
+  userId?: string | null
 ): Promise<{
   success: boolean
   limit?: number
   remaining?: number
   reset?: number
   message?: string
+  identifier?: string
 }> {
+  const config = RATE_LIMITS[type]
+  const identifier = await getClientIdentifier(req, userId)
   const limiter = getRateLimiter(type)
 
-  // If Redis is not configured, allow all requests
+  // If Redis is not configured, use in-memory fallback
   if (!limiter) {
-    return { success: true, limit: 1000, remaining: 999, reset: Date.now() + 60000 }
+    const inMemoryResult = checkInMemoryRateLimit(identifier, type)
+    return {
+      success: inMemoryResult.success,
+      limit: config.limit,
+      remaining: inMemoryResult.remaining,
+      reset: inMemoryResult.reset,
+      message: config.message,
+      identifier,
+    }
   }
-
-  const identifier = getClientIdentifier(req)
 
   try {
     const result = await limiter.limit(identifier)
-
-    const config = RATE_LIMITS[type]
     const resetTime = result.reset
+
+    // Log rate limit hit to api_usage_logs if user is authenticated
+    if (userId && !result.success) {
+      try {
+        await trackAPICall(userId, {
+          service: 'rate-limit',
+          endpoint: `rate-limit:${type}`,
+          method: req.method,
+          statusCode: 429,
+          durationMs: 0,
+          metadata: {
+            rateLimitType: type,
+            identifier,
+            limit: config.limit,
+            remaining: result.remaining,
+            reset: resetTime,
+          },
+        })
+      } catch (logError) {
+        // Don't fail rate limiting if logging fails
+        console.error('[RateLimit] Failed to log rate limit hit:', logError)
+      }
+    }
 
     return {
       success: result.success,
@@ -146,11 +280,20 @@ export async function checkRateLimit(
       remaining: result.remaining,
       reset: resetTime,
       message: config.message,
+      identifier,
     }
   } catch (error) {
     console.error('[RateLimit] Error checking limit:', error)
-    // On error, allow the request but log the error
-    return { success: true, limit: 1000, remaining: 999, reset: Date.now() + 60000 }
+    // On error, fall back to in-memory rate limiting
+    const inMemoryResult = checkInMemoryRateLimit(identifier, type)
+    return {
+      success: inMemoryResult.success,
+      limit: config.limit,
+      remaining: inMemoryResult.remaining,
+      reset: inMemoryResult.reset,
+      message: config.message,
+      identifier,
+    }
   }
 }
 
@@ -205,13 +348,26 @@ export function createRateLimitResponse(result: {
  *
  *   // Your route logic here
  * }
+ * 
+ * @param req - Next.js request object
+ * @param type - Type of rate limit to apply
+ * @param userId - Optional user ID (if already available from auth, improves accuracy)
  */
 export async function rateLimitMiddleware(
   req: NextRequest,
-  type: RateLimitType
+  type: RateLimitType,
+  userId?: string | null
 ): Promise<Response | null> {
-  const result = await checkRateLimit(req, type)
-  return createRateLimitResponse(result)
+  const result = await checkRateLimit(req, type, userId)
+  const response = createRateLimitResponse(result)
+  
+  // Add Retry-After header if rate limited
+  if (response && result.reset) {
+    const retryAfter = Math.ceil((result.reset - Date.now()) / 1000)
+    response.headers.set('Retry-After', retryAfter.toString())
+  }
+  
+  return response
 }
 
 /**

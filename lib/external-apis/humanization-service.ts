@@ -9,6 +9,8 @@ import { humanizeContent as rytrHumanize } from './rytr';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
 import { generateText } from 'ai';
 import { applyStylisticPass, applyLexicalVariation } from '@/lib/ai/style/postprocess';
+import { serverEnv } from '@/lib/config/env';
+import { createTelemetryConfig } from '@/lib/observability/langfuse';
 
 export interface HumanizationResult {
   content: string;
@@ -64,6 +66,12 @@ Rewrite this to sound authentically human while keeping all the valuable informa
     model: vercelGateway.languageModel('anthropic/claude-sonnet-4'),
     prompt,
     temperature: 0.9,
+    experimental_telemetry: createTelemetryConfig('humanization-service', {
+      hasGuidance: !!guidance,
+      contentLength: content.length,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+    }),
   });
 
   return text;

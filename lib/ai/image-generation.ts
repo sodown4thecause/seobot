@@ -1,28 +1,18 @@
 import { generateObject, generateText } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { serverEnv } from '@/lib/config/env'
+import { createTelemetryConfig } from '@/lib/observability/langfuse'
+import { createAdminClient } from '@/lib/supabase/server'
 
 // Initialize AI providers
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+  apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Supabase client for storing generated images (lazy initialization)
-let supabaseClient: ReturnType<typeof createClient> | null = null
-
+// Use singleton admin client for Supabase operations
 function getSupabase() {
-  if (!supabaseClient) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase configuration is missing')
-    }
-    
-    supabaseClient = createClient(supabaseUrl, supabaseKey)
-  }
-  return supabaseClient
+  return createAdminClient()
 }
 
 export interface ImageGenerationOptions {
@@ -106,6 +96,14 @@ Return as JSON array.`
       model: google('gemini-2.5-pro'),
       prompt,
       schema: imageSuggestionSchema,
+      experimental_telemetry: createTelemetryConfig('image-suggestions', {
+        title,
+        targetKeyword,
+        style,
+        contentLength: content.length,
+        provider: 'google',
+        model: 'gemini-2.5-pro',
+      }),
     })
 
     return object as ImageSuggestion[]
@@ -153,6 +151,14 @@ Return only the enhanced prompt, no explanations.`
     const result = await generateText({
       model: google('gemini-2.5-pro'),
       prompt: contextualPrompt,
+      experimental_telemetry: createTelemetryConfig('image-prompt-enhance', {
+        style,
+        hasArticleContext: !!articleContext,
+        articleTitle: articleContext?.title,
+        targetKeyword: articleContext?.targetKeyword,
+        provider: 'google',
+        model: 'gemini-2.5-pro',
+      }),
     })
 
     return result.text
@@ -178,7 +184,7 @@ export async function generateImageWithOpenAI(
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${serverEnv.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -271,6 +277,13 @@ Return only the alt text, no quotes or explanations.`
     const result = await generateText({
       model: google('gemini-2.5-pro'),
       prompt: altPrompt,
+      experimental_telemetry: createTelemetryConfig('image-alt-text-generation', {
+        hasArticleContext: !!articleContext,
+        articleTitle: articleContext?.title,
+        targetKeyword: articleContext?.targetKeyword,
+        provider: 'google',
+        model: 'gemini-2.5-pro',
+      }),
     })
 
     return (result.text || 'AI-generated image for article content').substring(0, 125)
@@ -412,7 +425,7 @@ export async function generateImageWithGemini(
 
     // Initialize Google GenAI
     const ai = new GoogleGenAI({
-      apiKey: process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_API_KEY,
+      apiKey: serverEnv.GOOGLE_CLOUD_API_KEY || serverEnv.GOOGLE_API_KEY,
     })
 
     const generationConfig = {
@@ -481,6 +494,10 @@ export async function editImageWithGemini(
       prompt: `${editPrompt}. Maintain the original composition and quality.
               Make precise, natural-looking changes. High resolution output.`,
       maxOutputTokens: 1000,
+      experimental_telemetry: createTelemetryConfig('image-edit', {
+        provider: 'google',
+        model: 'gemini-2.5-flash-image-preview',
+      }),
     })
 
     // Note: In AI SDK v5, image editing might need to be done differently

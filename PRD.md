@@ -1,8 +1,8 @@
 # Product Requirements Document: AI-Powered SEO Platform with RAG-Enhanced Content Generation
 
-**Version:** 2.0  
+**Version:** 2.1  
 **Last Updated:** January 2025  
-**Status:** Pre-Production - Feature Complete, Production Hardening Required
+**Status:** Beta Ready - Focused on Beta Launch Requirements
 
 ---
 
@@ -16,6 +16,7 @@ An enterprise-grade SEO and content creation platform that leverages multi-agent
 - **DataForSEO Integration**: Real-time SEO metrics, keyword data, and competitive analysis
 - **EEAT Compliance**: Automated quality assurance ensuring Experience, Expertise, Authoritativeness, and Trustworthiness
 - **MCP Tool Integration**: Modular tools via Model Context Protocol for extensibility
+- **LangWatch AI Evaluation**: Continuous AI system improvement through LLM-as-a-judge evaluations and prompt optimization
 
 ---
 
@@ -34,7 +35,7 @@ An enterprise-grade SEO and content creation platform that leverages multi-agent
   - OpenAI text-embedding-3-small (embeddings via gateway)
   - Perplexity Sonar Pro (web research via gateway)
 - **External APIs**: DataForSEO, Firecrawl, Jina AI, Winston AI, Rytr
-- **Monitoring**: Axiom (logging & observability), Supabase Analytics
+- **Monitoring**: LangWatch (AI evaluation & prompt optimization), Axiom (logging & observability), Supabase Analytics
 
 ### Multi-Agent System
 
@@ -184,6 +185,66 @@ Axiom integration provides:
 
 ---
 
+## LangWatch AI Evaluation & Monitoring
+
+### Overview
+
+LangWatch serves as the primary platform for AI evaluation, prompt optimization, and continuous improvement of the AI SDK 6 system. All AI agents and prompts are evaluated through LangWatch's comprehensive evaluation framework, enabling data-driven improvements to content quality and system performance.
+
+### Key Features
+
+#### LLM as a Judge
+- **Automated Quality Assessment**: Use LLM judges to evaluate content quality, EEAT compliance, and SEO effectiveness
+- **Multi-Criteria Evaluation**: Evaluate content across multiple dimensions (relevance, accuracy, depth, readability)
+- **Comparative Analysis**: Compare different prompt versions and agent configurations
+- **Consistent Scoring**: Standardized evaluation criteria applied across all content generation
+
+#### AI SDK 6 Telemetry Integration
+- **Automatic Traces**: Capture all AI SDK 6 operations including multi-step tool calls
+- **Token Usage Tracking**: Monitor token consumption per agent, per user, per content type
+- **Latency Monitoring**: Track response times for each agent in the pipeline
+- **Error Tracking**: Identify and analyze AI provider errors and fallback triggers
+- **Cost Attribution**: Track costs per agent, per user, and per content generation
+
+#### Prompt Evaluation & Optimization
+- **A/B Testing**: Test different prompt variations to identify optimal configurations
+- **Version Control**: Track prompt changes and their impact on content quality
+- **Performance Metrics**: Measure prompt effectiveness through success rates and quality scores
+- **Iterative Improvement**: Use evaluation results to refine prompts and agent instructions
+
+#### Continuous Improvement Workflow
+1. **Generate Content**: Content generated via RAG Writer Orchestrator
+2. **Evaluate**: LangWatch evaluates content quality using LLM judges
+3. **Analyze**: Review evaluation metrics and identify improvement opportunities
+4. **Optimize**: Update prompts and agent configurations based on findings
+5. **Iterate**: Continuous cycle of improvement driven by real-world performance data
+
+### Integration Points
+
+- **Vercel AI SDK 6**: Native integration with AI SDK telemetry
+- **All Agents**: Enhanced Research Agent, Content Writer Agent, DataForSEO Scoring Agent, EEAT QA Agent
+- **RAG Writer Orchestrator**: End-to-end evaluation of the complete content generation pipeline
+- **Quality Thresholds**: LangWatch evaluations inform quality threshold adjustments
+
+### Benefits
+
+1. **Data-Driven Improvements**: Make prompt and system changes based on quantitative evaluation data
+2. **Quality Assurance**: Continuous monitoring ensures content quality standards are maintained
+3. **Cost Optimization**: Identify inefficient prompts and agent configurations to reduce costs
+4. **Rapid Iteration**: Quickly test and deploy improvements with confidence
+5. **Beta Feedback Loop**: Use beta user content to improve the system for production launch
+
+### Beta Focus
+
+During beta, LangWatch evaluations will:
+- Establish baseline quality metrics for all agents
+- Identify prompt weaknesses and optimization opportunities
+- Track improvement trends as prompts are refined
+- Provide insights for post-beta production optimization
+- Enable rapid response to quality issues reported by beta users
+
+---
+
 ## MCP Tools Architecture
 
 All external tools have been converted to static AI SDK tools using `mcp-to-ai-sdk` and are located in the `mcps/` folder.
@@ -330,7 +391,7 @@ All external tools have been converted to static AI SDK tools using `mcp-to-ai-s
 
 ---
 
-## Production Readiness Checklist
+## Beta Readiness Checklist
 
 ### ✅ Completed Features
 
@@ -378,81 +439,49 @@ All external tools have been converted to static AI SDK tools using `mcp-to-ai-s
 
 #### Security & Auth
 - [ ] Rate limiting on API routes
-- [ ] API key rotation mechanism
-- [ ] RBAC (Role-Based Access Control)
-- [ ] 2FA for admin accounts
-- [ ] Audit logging for sensitive operations
-- [ ] CORS configuration for production
-- [ ] CSP (Content Security Policy) headers
+- [ ] Basic CORS configuration
+- [ ] Environment variable security validation
 
 #### Performance & Scalability
-- [ ] Redis caching layer
-- [ ] Database query optimization
-- [ ] Connection pooling configuration
-- [ ] CDN setup for static assets
-- [ ] Image optimization pipeline
-- [ ] Lazy loading for heavy components
-- [ ] Bundle size optimization
-- [ ] API response caching strategy
+- [ ] Basic connection pooling configuration
+- [ ] Essential database query optimization
+- [ ] Basic caching for expensive API calls
 
 #### Monitoring & Observability
-- [x] Axiom integration for logging
-- [x] AI SDK telemetry via Axiom
-- [ ] Performance monitoring (Web Vitals)
-- [ ] AI agent performance metrics dashboard
-- [ ] Cost tracking dashboard
-- [ ] Alert system for failures
-- [ ] Uptime monitoring
-- [ ] Database performance monitoring
-- [ ] Vercel AI Gateway analytics
+- [ ] LangWatch integration for AI evaluation
+- [ ] LLM-as-a-judge evaluation setup
+- [ ] AI SDK 6 telemetry via LangWatch
+- [ ] Prompt evaluation and A/B testing framework
+- [ ] Axiom integration for general logging
+- [ ] Basic performance monitoring (Web Vitals)
+- [ ] Error alert system for critical failures
 
 #### Testing
-- [ ] Unit tests for agents
-- [ ] Integration tests for API routes
-- [ ] E2E tests for critical flows
-- [ ] Load testing for content generation
-- [ ] Security testing (OWASP)
-- [ ] Accessibility testing (WCAG 2.1)
+- [ ] Critical unit tests for core agents
+- [ ] Integration tests for content generation flow
+- [ ] Basic E2E tests for onboarding and content creation
 
 #### Documentation
-- [ ] API documentation (OpenAPI/Swagger)
-- [ ] Developer onboarding guide
-- [ ] Architecture decision records (ADRs)
-- [ ] Deployment runbook
-- [ ] Incident response playbook
-- [ ] User documentation
+- [ ] Basic API documentation
+- [ ] Beta user guide
 
 #### Data & Privacy
-- [ ] GDPR compliance review
-- [ ] Data retention policies
-- [ ] User data export functionality
-- [ ] Right to deletion implementation
-- [ ] Privacy policy updates
+- [ ] Basic privacy policy
 - [ ] Cookie consent management
 
 #### DevOps & Deployment
-- [ ] CI/CD pipeline setup
-- [ ] Staging environment
-- [ ] Database backup strategy
-- [ ] Disaster recovery plan
+- [ ] Staging environment setup
+- [ ] Basic database backup strategy
 - [ ] Environment variable management
-- [ ] Secrets rotation
-- [ ] Blue-green deployment strategy
 
 #### Business Features
-- [ ] Billing integration (Stripe)
-- [ ] Usage-based pricing enforcement
-- [ ] Team collaboration features
-- [ ] White-label capabilities
-- [ ] CMS integrations (WordPress, Webflow, etc.)
-- [ ] Analytics dashboard
-- [ ] Export functionality (PDF, DOCX, HTML)
+- [ ] Basic export functionality (PDF, HTML)
 
 ---
 
-## Critical Production Blockers
+## Critical Beta Blockers
 
-### High Priority (Must Fix Before Launch)
+### High Priority (Must Fix Before Beta Launch)
 
 1. **Environment Variable Security**
    - **Issue**: API keys in client-side code
@@ -461,100 +490,57 @@ All external tools have been converted to static AI SDK tools using `mcp-to-ai-s
 
 2. **Rate Limiting**
    - **Issue**: No rate limiting on expensive AI operations
-   - **Fix**: Implement rate limiting middleware using Upstash Redis
+   - **Fix**: Implement basic rate limiting middleware
    - **Impact**: Prevent abuse, control costs
 
 3. **Error Handling**
    - **Issue**: Inconsistent error handling across agents
-   - **Fix**: Standardize error responses, add retry logic, graceful degradation
+   - **Fix**: Standardize error responses, add basic retry logic
    - **Files**: All agent files, API routes
 
-4. **Database Connection Pooling**
+4. **LangWatch Integration**
+   - **Issue**: No AI evaluation system in place
+   - **Fix**: Set up LangWatch integration with AI SDK 6 telemetry, configure LLM-as-a-judge evaluations
+   - **Impact**: Enable data-driven prompt improvements during beta
+   - **Files**: New LangWatch integration files, agent telemetry updates
+
+5. **Database Connection Pooling**
    - **Issue**: Potential connection exhaustion under load
-   - **Fix**: Configure Supabase connection pooling, implement connection limits
+   - **Fix**: Configure basic Supabase connection pooling
    - **Files**: `lib/supabase/server.ts`
 
-5. **Cost Controls**
-   - **Issue**: No hard limits on AI API spending
-   - **Fix**: Implement budget alerts, usage caps per user/tier
-   - **Files**: New middleware for cost tracking
+### Medium Priority (Address During Beta)
 
-### Medium Priority (Should Fix Soon)
-
-6. **Caching Strategy**
+6. **Basic Caching**
    - **Issue**: Repeated expensive API calls for same data
-   - **Fix**: Implement Redis caching for SERP data, embeddings, research results
+   - **Fix**: Implement basic caching for SERP data and research results
    - **Impact**: Reduce costs, improve performance
 
 7. **Streaming Error Recovery**
    - **Issue**: Streaming responses can fail mid-stream
-   - **Fix**: Implement checkpointing, resume capability
+   - **Fix**: Add basic error handling and user feedback
    - **Files**: `app/api/chat/route.ts`, agent orchestrator
-
-8. **Vector Search Optimization**
-   - **Issue**: Vector search can be slow with large datasets
-   - **Fix**: Tune HNSW parameters, implement result caching
-   - **Files**: Supabase migration for index tuning
-
-9. **MCP Client Connection Management**
-   - **Issue**: MCP clients may leak connections
-   - **Fix**: Implement connection pooling, cleanup on errors
-   - **Files**: All MCP client files in `lib/mcp/`
-
-10. **Content Versioning**
-    - **Issue**: No rollback mechanism for content
-    - **Fix**: Implement proper versioning with diff tracking
-    - **Files**: `app/api/content/save/route.ts`
-
-### Low Priority (Nice to Have)
-
-11. **Generative UI for Analytics**
-    - **Issue**: Analytics shown as markdown instead of React components
-    - **Fix**: Implement generative UI components for data visualization
-    - **Files**: Chat interface, new UI components
-
-12. **Multi-language Support**
-    - **Issue**: Currently English-only
-    - **Fix**: i18n implementation, multi-language content generation
-    - **Files**: New i18n setup, agent prompts
-
-13. **Advanced Workflow System**
-    - **Issue**: Basic workflow support
-    - **Fix**: Visual workflow builder, conditional logic
-    - **Files**: `lib/workflows/`, new UI components
 
 ---
 
-## Deployment Strategy
+## Beta Launch Strategy
 
-### Phase 1: Staging Deployment (Week 1-2)
+### Phase 1: Beta Preparation (Week 1-2)
 1. Set up staging environment on Vercel
 2. Configure staging Supabase instance
 3. Implement environment-specific configs
-4. Deploy and run smoke tests
-5. Load testing with realistic data
-6. Security audit
+4. Integrate LangWatch for AI evaluation
+5. Deploy and run smoke tests
+6. Basic security review
 
 ### Phase 2: Beta Launch (Week 3-4)
 1. Invite 50-100 beta users
-2. Monitor error rates and performance
+2. Monitor error rates and performance via LangWatch and Axiom
 3. Collect user feedback
-4. Fix critical bugs
-5. Optimize based on real usage patterns
-
-### Phase 3: Production Launch (Week 5-6)
-1. Implement all high-priority fixes
-2. Set up monitoring and alerts
-3. Configure auto-scaling
-4. Deploy to production
-5. Gradual rollout (10% → 50% → 100%)
-6. 24/7 monitoring for first week
-
-### Phase 4: Post-Launch (Ongoing)
-1. Weekly performance reviews
-2. Monthly cost optimization
-3. Quarterly feature releases
-4. Continuous security updates
+4. Use LangWatch evaluations to identify prompt improvements
+5. Fix critical bugs
+6. Iterate on prompts and agent configurations based on evaluation data
+7. Optimize based on real usage patterns
 
 ---
 
@@ -600,25 +586,20 @@ All external tools have been converted to static AI SDK tools using `mcp-to-ai-s
 ## Next Steps
 
 ### Immediate (This Week)
-1. Fix environment variable security
-2. Implement rate limiting
-3. Standardize error handling
-4. Set up staging environment
-5. Write critical unit tests
+1. Set up LangWatch integration with AI SDK 6
+2. Configure LLM-as-a-judge evaluation framework
+3. Fix environment variable security
+4. Implement basic rate limiting
+5. Standardize error handling
+6. Set up staging environment
 
 ### Short-term (Next 2 Weeks)
-1. Implement caching layer
-2. Database optimization
-3. Complete security audit
-4. Set up monitoring dashboards
+1. Complete LangWatch evaluation setup for all agents
+2. Write critical unit tests for core agents
+3. Basic database optimization
+4. Set up basic monitoring dashboards
 5. Beta user recruitment
-
-### Medium-term (Next Month)
-1. Billing integration
-2. Team features
-3. CMS integrations
-4. Advanced analytics
-5. Production launch
+6. Deploy to staging and run smoke tests
 
 ---
 
@@ -660,6 +641,7 @@ WINSTON_AI_API_KEY=
 RYTR_API_KEY=
 
 # Monitoring & Observability
+LANGWATCH_API_KEY=
 AXIOM_TOKEN=
 AXIOM_DATASET=
 
@@ -681,7 +663,7 @@ REDIS_URL=
 
 ---
 
-**Document Version**: 2.0
+**Document Version**: 2.1
 **Last Updated**: January 2025
-**Next Review**: Before Production Launch
+**Next Review**: After Beta Launch
 

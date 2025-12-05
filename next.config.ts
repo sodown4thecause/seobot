@@ -3,12 +3,20 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
-
-  // Suppress hydration warnings caused by browser extensions
-  // (e.g., rtrvr-listeners attribute added by retriever extensions)
-  experimental: {
-    // This helps reduce false positive hydration warnings
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'flow-intent-126ee12.ingress-erytho.ewp.live',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.gravatar.com',
+      },
+    ],
   },
+
 };
+
 
 export default nextConfig;

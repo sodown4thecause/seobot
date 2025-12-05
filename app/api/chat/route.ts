@@ -4,8 +4,10 @@ import {
   tool,
   CoreMessage,
   stepCountIs,
+  createIdGenerator,
 } from "ai";
 import { createClient } from "@/lib/supabase/server";
+import { serverEnv } from "@/lib/config/env";
 import { buildOnboardingSystemPrompt } from "@/lib/onboarding/prompts";
 import {
   type OnboardingData,
@@ -27,6 +29,15 @@ import { vercelGateway } from "@/lib/ai/gateway-provider";
 import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
 import { z } from "zod";
 import { researchAgentTool, competitorAgentTool, frameworkRagTool } from "@/lib/agents/tools";
+import { handleApiError } from "@/lib/errors/handlers";
+import { createTelemetryConfig } from "@/lib/observability/langfuse";
+import {
+  ensureConversationForUser,
+  loadConversationMessages,
+  normalizeUIMessage,
+  saveConversationMessage,
+  type GenericUIMessage,
+} from "@/lib/chat/storage";
 
 export const maxDuration = 300; // 5 minutes
 
@@ -43,48 +54,109 @@ interface ChatContext {
 }
 
 interface RequestBody {
-  messages: any[];
+  messages?: any[];
+  message?: GenericUIMessage;
+  chatId?: string;
+  conversationId?: string;
+  agentId?: string;
   context?: ChatContext;
 }
 
 export async function POST(req: Request) {
   console.log('[Chat API] POST handler called');
-  
+
   // Log request details
   const contentType = req.headers.get('content-type');
   console.log('[Chat API] Content-Type:', contentType);
-
-  // Check rate limit
-  const rateLimitResponse = await rateLimitMiddleware(req as any, "CHAT");
-  if (rateLimitResponse) {
-    return rateLimitResponse;
-  }
 
   try {
     const body = (await req.json()) as RequestBody;
     console.log('[Chat API] Request body:', JSON.stringify({
       messagesCount: body.messages?.length,
+      hasSingleMessage: !!body.message,
       hasContext: !!body.context,
-      firstMessage: body.messages?.[0],
+      chatId: body.chatId || body.conversationId || body.context?.conversationId,
     }));
-    
-    const { messages, context } = body;
 
-    // Validate messages
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    const {
+      context,
+      message: singleMessage,
+      chatId,
+      conversationId: legacyConversationId,
+      agentId,
+    } = body;
+    const requestMessages = body.messages;
+
+    const supabase = await createClient();
+
+    // Get current user (needed for rate limiting)
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    const requestedConversationId = chatId || legacyConversationId || context?.conversationId;
+    const resolvedAgentType = agentId || (context as any)?.agentType || 'general';
+
+    let normalizedSingleMessage = singleMessage ? normalizeUIMessage(singleMessage) : undefined;
+    const normalizedMessages = Array.isArray(requestMessages)
+      ? requestMessages.map((msg) => normalizeUIMessage(msg))
+      : undefined;
+
+    let conversationRecord: Awaited<ReturnType<typeof ensureConversationForUser>> | null = null;
+    let persistedMessages: GenericUIMessage[] = [];
+
+    if (requestedConversationId && user) {
+      try {
+        conversationRecord = await ensureConversationForUser(
+          supabase,
+          user.id,
+          requestedConversationId,
+          resolvedAgentType,
+        );
+        persistedMessages = await loadConversationMessages(supabase, conversationRecord.id);
+      } catch (error) {
+        console.error('[Chat API] Conversation lookup failed:', error);
+        return new Response(
+          JSON.stringify({ error: "Conversation not found" }),
+          { status: 404, headers: { "Content-Type": "application/json" } },
+        );
+      }
+    }
+
+    let messages: GenericUIMessage[] | null = null;
+
+    if (normalizedSingleMessage) {
+      messages = [
+        ...(persistedMessages.length > 0 ? persistedMessages : normalizedMessages ?? []),
+        normalizedSingleMessage,
+      ];
+    } else if (normalizedMessages?.length) {
+      messages = normalizedMessages;
+    } else if (persistedMessages.length > 0) {
+      messages = persistedMessages;
+    }
+
+    if (!messages || messages.length === 0) {
       return new Response(
         JSON.stringify({ error: "Messages array is required and must not be empty" }),
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const supabase = await createClient();
+    if (normalizedSingleMessage && conversationRecord) {
+      await saveConversationMessage(supabase, conversationRecord.id, normalizedSingleMessage, {
+        metadata: { source: 'user' },
+      });
+    }
 
-    // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const activeConversationId = conversationRecord?.id ?? requestedConversationId;
+
+    // Check rate limit (after getting user for better identification)
+    const rateLimitResponse = await rateLimitMiddleware(req as any, "CHAT", user?.id);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
 
     // Initialize Orchestrators
     const orchestrator = new OrchestratorAgent(); // Legacy orchestrator (kept for backward compatibility)
@@ -133,7 +205,8 @@ export async function POST(req: Request) {
       agent: routingResult.agent,
       confidence: routingResult.confidence,
       reasoning: routingResult.reasoning,
-      toolsCount: routingResult.tools.length
+      toolsCount: routingResult.tools.length,
+      toolsSample: routingResult.tools.slice(0, 10) // Log first 10 tools
     });
 
     // Build system prompt for the selected agent
@@ -229,7 +302,7 @@ export async function POST(req: Request) {
             // Check credit limit before expensive operation
             const { checkCreditLimit } = await import('@/lib/usage/limit-check');
             const limitCheck = await checkCreditLimit(user?.id);
-            
+
             if (!limitCheck.allowed) {
               return `❌ Credit limit exceeded. ${limitCheck.reason || `You've used $${limitCheck.currentSpendUsd.toFixed(2)} of your $${limitCheck.limitUsd.toFixed(2)} monthly limit.`} Please contact support or wait until ${limitCheck.resetDate?.toLocaleDateString() || 'next month'} for your credits to reset.`;
             }
@@ -245,7 +318,7 @@ export async function POST(req: Request) {
 
             // Format response with quality scores and QA insights
             let contentResult = result.content || "Content generation completed but no content was returned.";
-            
+
             // Add quality score summary
             const scoreSummary = `
 ## Quality Scores
@@ -297,22 +370,22 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
       // Core Tools (Always available)
       ...orchestratorTool,
       client_ui: clientUiTool,
-      
+
       // Best Practice: Specialized Agents as Tools
       research_agent: researchAgentTool,
       competitor_analysis: competitorAgentTool,
       consult_frameworks: frameworkRagTool,
-      
+
       // Kept for backward compatibility/Router specific requests (can be refactored to use research_agent)
       // Perplexity specific tool for direct queries if requested by agent
       perplexity_search: tool({
-          description: "Search the web using Perplexity AI via Vercel AI Gateway. Use this for specific research queries.",
-          inputSchema: z.object({
-            query: z.string().describe("The search query"),
-          }),
-          execute: async ({ query }) => {
-            return await searchWithPerplexity({ query });
-          },
+        description: "Search the web using Perplexity AI via Vercel AI Gateway. Use this for specific research queries.",
+        inputSchema: z.object({
+          query: z.string().describe("The search query"),
+        }),
+        execute: async ({ query }) => {
+          return await searchWithPerplexity({ query });
+        },
       }),
       // Web search for competitors (legacy alias for AgentRouter compatibility)
       web_search_competitors: competitorAgentTool,
@@ -338,13 +411,32 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
     // Debug incoming messages
     console.log('[Chat API] Incoming messages:', JSON.stringify(messages, null, 2));
 
-    // Sanitize messages to ensure content is never undefined
-    const sanitizedMessages = messages.map((msg: any) => ({
-      ...msg,
-      content: msg.content || '', // Ensure content is at least an empty string
-      // If tool invocations exist, ensure they are preserved or handled
-      toolInvocations: msg.toolInvocations || undefined,
-    }));
+    // Sanitize messages to ensure content and parts are always defined
+    const sanitizedMessages = messages.map((msg) => {
+      const contentText = typeof (msg as any).content === 'string'
+        ? (msg as any).content
+        : Array.isArray((msg as any).content)
+          ? (msg as any).content
+              .filter((part: any) => part?.type === 'text')
+              .map((part: any) => part.text)
+              .join('')
+          : '';
+
+      return {
+        ...msg,
+        content: contentText,
+        parts: Array.isArray((msg as any).parts) && (msg as any).parts.length > 0
+          ? (msg as any).parts
+          : Array.isArray((msg as any).content)
+            ? (msg as any).content
+            : contentText
+              ? [{ type: 'text', text: contentText }]
+              : [],
+        toolInvocations: (msg as any).toolInvocations || undefined,
+      };
+    });
+
+    const serverMessageIdGenerator = createIdGenerator({ prefix: 'msg', size: 16 });
 
     // Convert messages to CoreMessage format for AI SDK 6
     let coreMessages;
@@ -375,10 +467,34 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
       // AI SDK 6: Use stopWhen instead of maxSteps
       stopWhen: [
         stepCountIs(10), // Maximum 10 steps to prevent runaway costs
-        ({ steps }) => steps.length > 0 && steps[steps.length - 1].toolCalls.length === 0, // Stop when no tools are called in the last step
       ],
+      experimental_telemetry: createTelemetryConfig('chat-stream', {
+        userId: user?.id,
+        agentType: routingResult.agent,
+        page: context?.page,
+        isOnboarding: !!isOnboarding,
+        onboardingStep: onboardingContext?.currentStep,
+        workflowId: workflowId || undefined,
+        toolsCount: Object.keys(validatedTools).length,
+        conversationId: activeConversationId,
+        mcpToolsEnabled: {
+          dataforseo: routingResult.agent === 'seo-aeo' || routingResult.agent === 'content',
+          firecrawl: routingResult.agent === 'seo-aeo' || routingResult.agent === 'content',
+          jina: routingResult.agent === 'content',
+          winston: routingResult.agent === 'content',
+        },
+      }),
       onError: (error) => {
         console.error('[Chat API] Streaming error:', error);
+        // Log error with context
+        import('@/lib/errors/logger').then(({ logError }) => {
+          logError(error, {
+            agent: 'chat',
+            requestId: context?.conversationId,
+            userId: user?.id,
+            endpoint: '/api/chat',
+          });
+        });
       },
       onFinish: async ({ response, usage }) => {
         const { messages: finalMessages } = response;
@@ -389,7 +505,7 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
             const { logAIUsage, extractUsageFromResult } = await import('@/lib/analytics/usage-logger');
             await logAIUsage({
               userId: user.id,
-              conversationId: context?.conversationId,
+              conversationId: activeConversationId || context?.conversationId,
               agentType: 'general',
               model: CHAT_MODEL_ID,
               promptTokens: usage?.promptTokens || 0,
@@ -450,14 +566,34 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       },
+      originalMessages: sanitizedMessages,
+      generateMessageId: serverMessageIdGenerator,
+      onFinish: async ({ messages: uiMessages }) => {
+        if (!uiMessages?.length || !activeConversationId || !user) {
+          return;
+        }
+
+        const finalAssistantMessage = uiMessages[uiMessages.length - 1];
+        if (finalAssistantMessage?.role !== 'assistant') {
+          return;
+        }
+
+        try {
+          await saveConversationMessage(
+            supabase,
+            activeConversationId,
+            normalizeUIMessage(finalAssistantMessage as GenericUIMessage),
+            { metadata: { source: 'assistant' } },
+          );
+        } catch (error) {
+          console.error('[Chat API] Failed to persist assistant message', error);
+        }
+      },
     });
 
   } catch (error) {
-    const err = error as Error;
-    console.error("Chat API error:", err);
-    return new Response(
-      JSON.stringify({ error: err?.message || "Internal Server Error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
+    console.error("Chat API error:", error);
+    // Use standardized error handler
+    return handleApiError(error, "Failed to process chat request");
   }
 }

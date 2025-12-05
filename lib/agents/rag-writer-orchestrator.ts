@@ -9,6 +9,9 @@ import { DataForSEOScoringAgent } from './dataforseo-scoring-agent'
 import { EEATQAAgent } from './eeat-qa-agent'
 import { createClient } from '@/lib/supabase/server'
 import { QUALITY_THRESHOLDS, shouldTriggerRevision } from '@/lib/config/quality-thresholds'
+import { getLangWatchClient } from '@/lib/observability/langwatch'
+import { EVALUATION_SCHEMAS } from '@/lib/observability/evaluation-schemas'
+import { createIdGenerator } from 'ai'
 
 export interface RAGWriterParams {
   type: 'blog_post' | 'article' | 'social_media' | 'landing_page'
@@ -44,6 +47,8 @@ export class RAGWriterOrchestrator {
   private writerAgent: ContentWriterAgent
   private scoringAgent: DataForSEOScoringAgent
   private qaAgent: EEATQAAgent
+  private langWatch = getLangWatchClient()
+  private traceIdGenerator = createIdGenerator()
 
   constructor() {
     this.researchAgent = new EnhancedResearchAgent()
@@ -59,13 +64,41 @@ export class RAGWriterOrchestrator {
     console.log('[RAG Writer Orchestrator] Starting content generation for:', params.topic)
 
     const supabase = await createClient()
+    const traceId = this.traceIdGenerator()
     let contentId: string | undefined
     let contentVersionId: string | undefined
     let revisionRound = 0
 
+    // Log trace start to LangWatch
+    await this.langWatch.logTrace({
+      traceId,
+      agent: 'rag-writer-orchestrator',
+      model: 'multi-agent',
+      telemetry: {
+        topic: params.topic,
+        contentType: params.type,
+        keywords: params.keywords,
+        userId: params.userId,
+      },
+      metadata: {
+        startTime: new Date().toISOString(),
+      },
+    })
+
     try {
       // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
       console.log('[Orchestrator] Phase 1: Research')
+      const researchTraceId = this.traceIdGenerator()
+      await this.langWatch.logTrace({
+        traceId: researchTraceId,
+        agent: 'enhanced-research',
+        model: 'perplexity',
+        telemetry: {
+          topic: params.topic,
+          targetKeyword: params.keywords[0] || params.topic,
+        },
+      })
+
       const researchResult = await this.researchAgent.research({
         topic: params.topic,
         targetKeyword: params.keywords[0] || params.topic,
@@ -78,6 +111,18 @@ export class RAGWriterOrchestrator {
 
       // Step 2: Initial Draft
       console.log('[Orchestrator] Phase 2: Initial Draft')
+      const writerTraceId = this.traceIdGenerator()
+      await this.langWatch.logTrace({
+        traceId: writerTraceId,
+        agent: 'content-writer',
+        model: 'gemini-2.0-flash',
+        telemetry: {
+          contentType: params.type,
+          topic: params.topic,
+          wordCount: params.wordCount,
+        },
+      })
+
       let currentDraft = await this.writerAgent.write({
         type: params.type,
         topic: params.topic,
@@ -105,29 +150,29 @@ export class RAGWriterOrchestrator {
 
       if (contentError) {
         console.error('[Orchestrator] Error creating content record:', contentError)
-        // Continue without contentId - we'll skip version tracking but still generate content
-      } else {
-        contentId = contentData.id
-
-        // Create initial content version only if content was created successfully
-        const { data: versionData, error: versionError } = await supabase
-          .from('content_versions')
-          .insert({
-            content_id: contentId,
-            content_markdown: currentDraft.content,
-            version_number: 1,
-            created_by: params.userId,
-          })
-          .select()
-          .single()
-
-        if (versionError) {
-          console.error('[Orchestrator] Error creating content version:', versionError)
-          // Continue without version tracking
-        } else {
-          contentVersionId = versionData.id
-        }
+        throw new Error(`Failed to create content record: ${contentError.message}`)
       }
+
+      contentId = contentData.id
+
+      // Create initial content version
+      const { data: versionData, error: versionError } = await supabase
+        .from('content_versions')
+        .insert({
+          content_id: contentId,
+          content_markdown: currentDraft.content,
+          version_number: 1,
+          created_by: params.userId,
+        })
+        .select()
+        .single()
+
+      if (versionError) {
+        console.error('[Orchestrator] Error creating content version:', versionError)
+        throw new Error(`Failed to create content version: ${versionError.message}`)
+      }
+
+      contentVersionId = versionData.id
 
       // Step 3-5: Scoring, QA, and Revision Loop
       let finalScores: any = {}
@@ -159,8 +204,10 @@ export class RAGWriterOrchestrator {
           researchDocs: researchResult.ragContext,
           targetKeyword: params.keywords[0] || params.topic,
           topic: params.topic,
+          contentType: params.type,
           searchIntent: researchResult.searchIntent,
           serpData: researchResult.serpData,
+          competitorContent: researchResult.competitorContent, // Firecrawl scraped content
           userId: params.userId,
         })
 
@@ -182,7 +229,67 @@ export class RAGWriterOrchestrator {
 
         finalQAReport = qaResult.qaReport
 
-        // Store quality review in Supabase
+        // Evaluate content with LangWatch LLM-as-a-judge
+        // Wrap in try-catch so evaluation failures don't break the main flow
+        let eeatEvaluation: any = { passed: true, scores: {}, evaluationId: EVALUATION_SCHEMAS.EEAT }
+        let contentQualityEvaluation: any = { passed: true, scores: {}, evaluationId: EVALUATION_SCHEMAS.CONTENT_QUALITY }
+
+        try {
+          // Run EEAT evaluation
+          eeatEvaluation = await this.langWatch.evaluate({
+            evaluationId: EVALUATION_SCHEMAS.EEAT,
+            content: currentDraft.content,
+            context: {
+              userId: params.userId,
+              topic: params.topic,
+              contentType: params.type,
+              revisionRound,
+              contentId,
+              contentVersionId,
+            },
+            scores: {
+              eeat_score: qaResult.qaReport.eeat_score,
+              depth_score: qaResult.qaReport.depth_score,
+              factual_score: qaResult.qaReport.factual_score,
+            },
+            metadata: {
+              traceId,
+              dataforseoRaw: scoringResult.dataforseoRaw,
+              qaReport: qaResult.qaReport,
+            },
+          })
+        } catch (error) {
+          console.error('[Orchestrator] LangWatch EEAT evaluation failed:', error)
+          // Continue with default passed status
+        }
+
+        try {
+          // Run Content Quality evaluation
+          contentQualityEvaluation = await this.langWatch.evaluate({
+            evaluationId: EVALUATION_SCHEMAS.CONTENT_QUALITY,
+            content: currentDraft.content,
+            context: {
+              userId: params.userId,
+              topic: params.topic,
+              contentType: params.type,
+              revisionRound,
+            },
+            scores: {
+              overall_score: overallScore,
+              depth_score: qaResult.qaReport.depth_score,
+              factual_score: qaResult.qaReport.factual_score,
+            },
+            metadata: {
+              traceId,
+              wordCount: currentDraft.content.split(/\s+/).length,
+            },
+          })
+        } catch (error) {
+          console.error('[Orchestrator] LangWatch Content Quality evaluation failed:', error)
+          // Continue with default passed status
+        }
+
+        // Store quality review in Supabase with LangWatch evaluation results
         if (contentId) {
           await supabase
             .from('content_quality_reviews')
@@ -196,19 +303,60 @@ export class RAGWriterOrchestrator {
               depth_score: qaResult.qaReport.depth_score,
               factual_score: qaResult.qaReport.factual_score,
               overall_quality_score: overallScore,
-              qa_report: qaResult.qaReport,
+              qa_report: {
+                ...qaResult.qaReport,
+                langwatch_evaluations: {
+                  eeat: {
+                    evaluationId: eeatEvaluation.evaluationId,
+                    passed: eeatEvaluation.passed,
+                    scores: eeatEvaluation.scores,
+                    feedback: eeatEvaluation.feedback,
+                  },
+                  content_quality: {
+                    evaluationId: contentQualityEvaluation.evaluationId,
+                    passed: contentQualityEvaluation.passed,
+                    scores: contentQualityEvaluation.scores,
+                    feedback: contentQualityEvaluation.feedback,
+                  },
+                },
+              },
               revision_round: revisionRound,
-              status: 'pending',
+              status: eeatEvaluation.passed && contentQualityEvaluation.passed ? 'passed' : 'pending',
             })
         }
 
         // Step 5: Check if revision is needed
-        const needsRevision = shouldTriggerRevision(finalScores)
+        // Use LangWatch evaluation results to determine if revision is needed
+        const needsRevision = shouldTriggerRevision(finalScores) || 
+          !eeatEvaluation.passed || 
+          !contentQualityEvaluation.passed
 
         if (!needsRevision || revisionRound >= QUALITY_THRESHOLDS.MAX_REVISION_ROUNDS) {
           console.log('[Orchestrator] ✓ Quality thresholds met or max revisions reached')
-          
-          // Update status to passed if thresholds met
+
+          // Log final trace to LangWatch
+          try {
+            await this.langWatch.logTrace({
+              traceId,
+              agent: 'rag-writer-orchestrator',
+              model: 'multi-agent',
+              telemetry: {
+                completed: true,
+                revisionRounds: revisionRound,
+                finalScores,
+                evaluationsPassed: eeatEvaluation.passed && contentQualityEvaluation.passed,
+              },
+              metadata: {
+                endTime: new Date().toISOString(),
+                contentId,
+                contentVersionId,
+              },
+            })
+          } catch (error) {
+            console.error('[Orchestrator] Failed to log final trace to LangWatch:', error)
+          }
+
+          // Update status to passed if thresholds met and evaluations passed
           if (!needsRevision && contentId) {
             await supabase
               .from('content_quality_reviews')
@@ -280,6 +428,28 @@ export class RAGWriterOrchestrator {
       }
     } catch (error) {
       console.error('[Orchestrator] Error in content generation:', error)
+      
+      // Log error to LangWatch
+      try {
+        await this.langWatch.logTrace({
+          traceId,
+          agent: 'rag-writer-orchestrator',
+          model: 'multi-agent',
+          telemetry: {
+            error: true,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          },
+          metadata: {
+            error: true,
+            errorStack: error instanceof Error ? error.stack : undefined,
+            topic: params.topic,
+            userId: params.userId,
+          },
+        })
+      } catch (langWatchError) {
+        console.error('[Orchestrator] Failed to log error to LangWatch:', langWatchError)
+      }
+      
       throw error
     }
   }

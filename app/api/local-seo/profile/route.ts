@@ -6,10 +6,11 @@ import {
   generateLocalContentIdeas,
   trackLocalSEOPerformance
 } from '@/lib/local-seo/local-seo-service'
+import { serverEnv, clientEnv } from '@/lib/config/env'
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  clientEnv.NEXT_PUBLIC_SUPABASE_URL,
+  serverEnv.SUPABASE_SERVICE_ROLE_KEY
 )
 
 export async function POST(request: NextRequest) {

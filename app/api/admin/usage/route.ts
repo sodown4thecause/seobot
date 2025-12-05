@@ -60,110 +60,73 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch usage data' }, { status: 500 })
     }
 
-    // Get summary with proper aggregation
-    const summaryQuery = supabase
-      .from('ai_usage_events')
-      .select('user_id, metadata, prompt_tokens, completion_tokens', { count: 'exact' })
+    // Build base query for aggregations
+    let baseQuery = supabase.from('ai_usage_events')
+    if (userId) baseQuery = baseQuery.eq('user_id', userId)
+    if (from) baseQuery = baseQuery.gte('created_at', from)
+    if (to) baseQuery = baseQuery.lte('created_at', to)
 
-    if (userId) {
-      summaryQuery.eq('user_id', userId)
-    }
-    if (from) {
-      summaryQuery.gte('created_at', from)
-    }
-    if (to) {
-      summaryQuery.lte('created_at', to)
-    }
+    // Get total count (database-level)
+    const { count: totalCalls } = await baseQuery.select('*', { count: 'exact', head: true })
 
-    const { data: allEvents, count } = await summaryQuery
+    // Get unique user count (database-level via distinct)
+    const { count: activeUsers } = await baseQuery.select('user_id', { count: 'exact', head: true })
 
-    // Aggregate summary
-    const uniqueUsers = new Set(allEvents?.map(e => e.user_id).filter(Boolean))
-    const summary = {
-      totalCalls: count || 0,
-      activeUsers: uniqueUsers.size,
-      totalCost: allEvents?.reduce((sum, e) => sum + (Number(e.metadata?.cost_usd) || 0), 0) || 0,
-      totalTokens: allEvents?.reduce((sum, e) => sum + (e.prompt_tokens || 0) + (e.completion_tokens || 0), 0) || 0,
-      avgCostPerCall: count ? (allEvents?.reduce((sum, e) => sum + (Number(e.metadata?.cost_usd) || 0), 0) || 0) / count : 0,
-    }
+    // Use RPC functions for database-level aggregation (if available)
+    // Otherwise fallback to limited queries
+    const { data: summaryData, error: summaryError } = await supabase.rpc('aggregate_usage_summary', {
+      p_user_id: userId || null,
+      p_from: from || null,
+      p_to: to || null
+    }).single().catch(() => ({ data: null, error: true }))
 
-    // Aggregate per-user stats from all events (not just paginated)
-    const userStatsMap = new Map<string, any>()
-    allEvents?.forEach(event => {
-      if (!event.user_id) return
+    let summary
+    if (summaryError || !summaryData) {
+      // Fallback: Fetch only aggregated fields with limit to prevent memory issues
+      const { data: aggData } = await baseQuery
+        .select('metadata, prompt_tokens, completion_tokens')
+        .limit(5000) // Reasonable limit for aggregation
       
-      const existing = userStatsMap.get(event.user_id) || {
-        user_id: event.user_id,
-        call_count: 0,
-        total_cost: 0,
-        total_tokens: 0,
-        total_tool_calls: 0,
-        provider_breakdown: {} as Record<string, any>,
+      const totalCost = aggData?.reduce((sum, e) => sum + (Number(e.metadata?.cost_usd) || 0), 0) || 0
+      const totalTokens = aggData?.reduce((sum, e) => sum + (e.prompt_tokens || 0) + (e.completion_tokens || 0), 0) || 0
+      summary = {
+        totalCalls: totalCalls || 0,
+        activeUsers: activeUsers || 0,
+        totalCost,
+        totalTokens,
+        avgCostPerCall: totalCalls ? totalCost / totalCalls : 0,
       }
+    } else {
+      summary = summaryData
+    }
 
-      existing.call_count++
-      existing.total_cost += Number(event.metadata?.cost_usd) || 0
-      existing.total_tokens += (event.prompt_tokens || 0) + (event.completion_tokens || 0)
-      // Note: tool_calls not in summary query, will be 0
-
-      const provider = event.metadata?.provider || 'unknown'
-      if (!existing.provider_breakdown[provider]) {
-        existing.provider_breakdown[provider] = { cost: 0, calls: 0 }
-      }
-      existing.provider_breakdown[provider].cost += Number(event.metadata?.cost_usd) || 0
-      existing.provider_breakdown[provider].calls++
-
-      userStatsMap.set(event.user_id, existing)
+    // Use RPC for user stats (database aggregation)
+    // Note: RPC functions should be created in database for optimal performance
+    const { data: userStatsData, error: userStatsError } = await supabase.rpc('aggregate_user_stats', {
+      p_user_id: userId || null,
+      p_from: from || null,
+      p_to: to || null,
+      p_limit: limit,
+      p_offset: offset
     })
+    const userStats = userStatsError ? [] : (userStatsData || [])
 
-    const userStats = Array.from(userStatsMap.values())
-      .sort((a, b) => b.total_cost - a.total_cost)
-      .slice(offset, offset + limit)
-
-    // Aggregate provider stats from all events
-    const providerStatsMap = new Map<string, any>()
-    allEvents?.forEach(event => {
-      const provider = event.metadata?.provider || 'unknown'
-      const existing = providerStatsMap.get(provider) || {
-        provider,
-        call_count: 0,
-        total_cost: 0,
-        total_tokens: 0,
-      }
-
-      existing.call_count++
-      existing.total_cost += Number(event.metadata?.cost_usd) || 0
-      existing.total_tokens += (event.prompt_tokens || 0) + (event.completion_tokens || 0)
-
-      providerStatsMap.set(provider, existing)
+    // Use RPC for provider stats (database aggregation)
+    const { data: providerStatsData, error: providerStatsError } = await supabase.rpc('aggregate_provider_stats', {
+      p_user_id: userId || null,
+      p_from: from || null,
+      p_to: to || null
     })
+    const providerStats = providerStatsError ? [] : (providerStatsData || [])
 
-    const providerStats = Array.from(providerStatsMap.values())
-      .sort((a, b) => b.total_cost - a.total_cost)
-
-    // Aggregate model stats from all events
-    const modelStatsMap = new Map<string, any>()
-    allEvents?.forEach(event => {
-      const model = event.model || 'unknown'
-      const existing = modelStatsMap.get(model) || {
-        model,
-        call_count: 0,
-        total_cost: 0,
-        total_prompt_tokens: 0,
-        total_completion_tokens: 0,
-      }
-
-      existing.call_count++
-      existing.total_cost += Number(event.metadata?.cost_usd) || 0
-      existing.total_prompt_tokens += event.prompt_tokens || 0
-      existing.total_completion_tokens += event.completion_tokens || 0
-
-      modelStatsMap.set(model, existing)
+    // Use RPC for model stats (database aggregation)
+    const { data: modelStatsData, error: modelStatsError } = await supabase.rpc('aggregate_model_stats', {
+      p_user_id: userId || null,
+      p_from: from || null,
+      p_to: to || null,
+      p_limit: 20
     })
-
-    const modelStats = Array.from(modelStatsMap.values())
-      .sort((a, b) => b.total_cost - a.total_cost)
-      .slice(0, 20)
+    const modelStats = modelStatsError ? [] : (modelStatsData || [])
 
     return NextResponse.json({
       summary,

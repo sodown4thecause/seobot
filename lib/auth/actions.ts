@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { serverEnv } from '@/lib/config/env'
 
 type AuthState = {
   error?: string
@@ -31,7 +32,7 @@ export async function signUp(prevState: AuthState, formData: FormData): Promise<
   const supabase = await createClient()
 
   const hdrs = await headers()
-  const origin = hdrs.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  const origin = hdrs.get('origin') ?? serverEnv.NEXT_PUBLIC_SITE_URL ?? ''
   const emailRedirectTo = `${origin}/auth/callback`
 
   const { data, error } = await supabase.auth.signUp({
@@ -79,7 +80,7 @@ export async function signIn(prevState: AuthState, formData: FormData): Promise<
     return { error: error.message, fields: { email } }
   }
 
-  redirect('/onboarding')
+  redirect('/dashboard')
 }
 
 export async function signOut() {

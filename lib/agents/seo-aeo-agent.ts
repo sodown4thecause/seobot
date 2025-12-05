@@ -5,6 +5,8 @@
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { generateText } from 'ai'
+import { serverEnv } from '@/lib/config/env'
+import { createTelemetryConfig } from '@/lib/observability/langfuse'
 
 export interface SEOAEOParams {
   topic: string
@@ -58,6 +60,15 @@ Format as JSON.`
         temperature: 0.4,
         maxRetries: 3, // AI SDK 6: Add retries for transient failures
         abortSignal: controller.signal, // AI SDK 6: Use abortSignal instead of signal
+        experimental_telemetry: createTelemetryConfig('seo-aeo', {
+          userId: params.userId,
+          topic: params.topic,
+          keywords: params.keywords,
+          targetPlatforms: params.targetPlatforms,
+          hasResearchData: !!params.researchData,
+          provider: 'google',
+          model: 'gemini-2.5-flash',
+        }),
       })
 
       // Log usage

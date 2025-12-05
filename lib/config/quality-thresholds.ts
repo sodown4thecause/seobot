@@ -3,16 +3,18 @@
  * Defines minimum scores and revision limits for content quality feedback loop
  */
 
+import { serverEnv } from './env'
+
 export const QUALITY_THRESHOLDS = {
   // Minimum scores (0-100) required to pass QA
-  MIN_DATAFORSEO_SCORE: Number(process.env.MIN_DATAFORSEO_SCORE) || 60,
-  MIN_EEAT_SCORE: Number(process.env.MIN_EEAT_SCORE) || 70,
-  MIN_DEPTH_SCORE: Number(process.env.MIN_DEPTH_SCORE) || 65,
-  MIN_FACTUAL_SCORE: Number(process.env.MIN_FACTUAL_SCORE) || 70,
-  MIN_OVERALL_SCORE: Number(process.env.MIN_OVERALL_SCORE) || 70,
+  MIN_DATAFORSEO_SCORE: serverEnv.MIN_DATAFORSEO_SCORE ?? 60,
+  MIN_EEAT_SCORE: serverEnv.MIN_EEAT_SCORE ?? 70,
+  MIN_DEPTH_SCORE: serverEnv.MIN_DEPTH_SCORE ?? 65,
+  MIN_FACTUAL_SCORE: serverEnv.MIN_FACTUAL_SCORE ?? 70,
+  MIN_OVERALL_SCORE: serverEnv.MIN_OVERALL_SCORE ?? 70,
 
   // Maximum revision rounds before giving up
-  MAX_REVISION_ROUNDS: Number(process.env.MAX_REVISION_ROUNDS) || 3,
+  MAX_REVISION_ROUNDS: serverEnv.MAX_REVISION_ROUNDS ?? 3,
 
   // Scoring weights for overall quality calculation
   SCORING_WEIGHTS: {

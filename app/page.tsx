@@ -5,6 +5,7 @@ import { ArrowRight, MessageSquare, LineChart, Sparkles, Zap, Globe, Lock, Play 
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
 import { Logo } from '@/components/ui/logo'
+import { Navbar } from '@/components/navbar'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -36,30 +37,11 @@ export default function LandingPage() {
         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-purple-900/20 rounded-full blur-[120px] animate-pulse-glow" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-indigo-900/20 rounded-full blur-[120px] animate-pulse-glow" style={{ animationDelay: '1.5s' }} />
         <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[40%] h-[40%] bg-cyan-900/10 rounded-full blur-[100px]" />
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02] mix-blend-overlay" />
+        <div className="absolute inset-0 noise-overlay" />
       </div>
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/20 backdrop-blur-xl h-20 flex items-center">
-        <div className="container mx-auto px-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-300">
-              <Logo className="w-6 h-6 text-white" />
-            </div>
-            <span className="font-bold text-xl tracking-tight text-white group-hover:text-indigo-300 transition-colors">Flow Intent</span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/login" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
-              Log in
-            </Link>
-            <Link href="/signup">
-              <Button size="sm" className="bg-white text-black hover:bg-zinc-200 font-medium shadow-lg shadow-white/10 rounded-full px-6">
-                Get Started
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="relative z-10 pt-40 pb-20 px-6">
@@ -207,7 +189,7 @@ export default function LandingPage() {
       <footer className="py-12 px-6 border-t border-white/[0.05] bg-black/40 backdrop-blur-xl relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500/20 to-cyan-500/20 border border-yellow-500/20 flex items-center justify-center shadow-lg shadow-yellow-500/10">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 flex items-center justify-center shadow-lg shadow-indigo-500/10">
               <Logo className="w-6 h-6" />
             </div>
             <span className="font-bold text-xl tracking-tight text-white">Flow Intent</span>

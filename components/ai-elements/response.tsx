@@ -2,7 +2,14 @@
 
 import { cn } from "@/lib/utils";
 import { type ComponentProps, memo } from "react";
-import { Streamdown } from "streamdown";
+import dynamic from "next/dynamic";
+
+// Dynamic import with SSR disabled to prevent "Illegal constructor" error
+// Streamdown uses browser-only APIs that aren't available during SSR
+const Streamdown = dynamic(
+  () => import("streamdown").then((mod) => mod.Streamdown),
+  { ssr: false }
+);
 
 type ResponseProps = ComponentProps<typeof Streamdown>;
 
