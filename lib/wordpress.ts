@@ -155,7 +155,7 @@ export async function getPosts(first = 10, after?: string): Promise<PostsRespons
  */
 export async function getPostBySlug(slug: string): Promise<WordPressPost | null> {
     const query = `
-    query GetPostBySlug($slug: String!) {
+    query GetPostBySlug($slug: ID!) {
       post(id: $slug, idType: SLUG) {
         id
         title
