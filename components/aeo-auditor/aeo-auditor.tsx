@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Loader2, Shield, AlertTriangle, CheckCircle2, Sparkles, Target, FileText, Bot, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AEOResultsDisplay } from './aeo-results-display'
 import type { AuditReport } from './types'
+import { generateSessionId, trackAuditStarted, trackAuditCompleted, trackAuditFailed, trackEmailCaptured, trackResultsViewed } from '@/lib/analytics/audit-tracker'
 
 type AuditStep = 'input' | 'loading' | 'email' | 'results'
 
@@ -16,14 +17,21 @@ export function AEOAuditor() {
   const [brandName, setBrandName] = useState('')
   const [email, setEmail] = useState('')
   const [report, setReport] = useState<AuditReport | null>(null)
+  const [toolsUsed, setToolsUsed] = useState<string[]>([])
+  const [apiCost, setApiCost] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const sessionIdRef = useRef<string>(generateSessionId())
 
   const handleAuditSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!url || !brandName) return
     setError(null)
     setStep('loading')
+    const sessionId = sessionIdRef.current
+
+    // Track audit started
+    trackAuditStarted({ sessionId, brandName, url })
 
     try {
       const response = await fetch('/api/audit/run', {
@@ -33,14 +41,24 @@ export function AEOAuditor() {
       })
       if (!response.ok) {
         const errorData = await response.json()
+        // Handle rate limit specially
+        if (response.status === 429) {
+          throw new Error(errorData.error || 'You have already used your free audit today. Sign up for unlimited audits!')
+        }
         throw new Error(errorData.error || 'Audit failed')
       }
       const data = await response.json()
       setReport(data.report)
+      setToolsUsed(data.toolsUsed || [])
+      setApiCost(data.apiCost || 0)
       setStep('email')
+      // Track audit completed
+      trackAuditCompleted({ sessionId, brandName, url, score: data.report.scoreCard.aeoScore, grade: data.report.scoreCard.grade })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setStep('input')
+      // Track audit failed
+      trackAuditFailed({ sessionId, brandName, url, properties: { error: err instanceof Error ? err.message : 'Unknown error' } })
     }
   }
 
@@ -48,28 +66,26 @@ export function AEOAuditor() {
     e.preventDefault()
     if (!email || !report) return
     setIsSubmitting(true)
+    const sessionId = sessionIdRef.current
     try {
       await fetch('/api/audit/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          brandName,
-          url,
-          score: report.scoreCard.aeoScore,
-          grade: report.scoreCard.grade,
-          report,
-          source: 'landing_page',
-        }),
+        body: JSON.stringify({ email, brandName, url, score: report.scoreCard.aeoScore, grade: report.scoreCard.grade, report, source: 'landing_page' }),
       })
+      // Track email captured
+      trackEmailCaptured({ sessionId, brandName, url, email, score: report.scoreCard.aeoScore, grade: report.scoreCard.grade })
     } catch (err) {
       console.error('Failed to save lead:', err)
     }
     setIsSubmitting(false)
     setStep('results')
+    // Track results viewed
+    trackResultsViewed({ sessionId, brandName, url, email, score: report.scoreCard.aeoScore, grade: report.scoreCard.grade })
   }
 
   const resetAudit = () => {
+    sessionIdRef.current = generateSessionId() // New session for new audit
     setStep('input')
     setUrl('')
     setBrandName('')
@@ -102,7 +118,7 @@ export function AEOAuditor() {
             {step === 'input' && <AuditInputForm url={url} brandName={brandName} error={error} onUrlChange={setUrl} onBrandChange={setBrandName} onSubmit={handleAuditSubmit} />}
             {step === 'loading' && <AuditLoadingState brandName={brandName} />}
             {step === 'email' && report && <EmailCaptureForm email={email} score={report.scoreCard.aeoScore} grade={report.scoreCard.grade} isSubmitting={isSubmitting} onEmailChange={setEmail} onSubmit={handleEmailSubmit} />}
-            {step === 'results' && report && <AEOResultsDisplay report={report} brandName={brandName} onReset={resetAudit} />}
+            {step === 'results' && report && <AEOResultsDisplay report={report} brandName={brandName} onReset={resetAudit} sessionId={sessionIdRef.current} toolsUsed={toolsUsed} apiCost={apiCost} />}
           </AnimatePresence>
         </motion.div>
       </div>

@@ -44,7 +44,7 @@ export function ChatInput({
 
   return (
     <div className={cn("w-full", className)}>
-      <div className="relative flex items-center bg-zinc-800 rounded-2xl border border-zinc-700/50">
+      <div className="relative flex items-center bg-[#2f2f2f] rounded-xl border border-zinc-700/30">
         {/* Text input */}
         <textarea
           ref={textareaRef}

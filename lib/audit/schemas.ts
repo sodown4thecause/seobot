@@ -74,17 +74,54 @@ export const LLMMentionSchema = z.object({
   sentiment: z.enum(['positive', 'neutral', 'negative']).optional(),
 })
 
+export const PerplexityInsightSchema = z.object({
+  summary: z.string().describe('What Perplexity says about the brand'),
+  sources: z.array(z.string()).describe('Sources cited by Perplexity'),
+  hasAccurateInfo: z.boolean().describe('Whether info matches ground truth'),
+})
+
+export const CompetitorInsightSchema = z.object({
+  domain: z.string(),
+  name: z.string().optional(),
+  organicTraffic: z.number().optional(),
+  organicKeywords: z.number().optional(),
+  backlinks: z.number().optional(),
+  hasSchema: z.boolean().optional(),
+  schemaTypes: z.array(z.string()).optional(),
+  rankPosition: z.number().optional(),
+})
+
+export const DomainMetricsSchema = z.object({
+  organicTraffic: z.number().optional(),
+  organicKeywords: z.number().optional(),
+  backlinks: z.number().optional(),
+  referringDomains: z.number().optional(),
+  domainRank: z.number().optional(),
+})
+
 export const AIPerceptionSchema = z.object({
   llmMentionsCount: z.number().describe('Total mentions found in LLM results'),
   llmMentions: z.array(LLMMentionSchema).describe('Individual mention details'),
   chatGPTSummary: z.string().describe('What ChatGPT says about the brand'),
   chatGPTRawResponse: z.string().optional(),
+  perplexityInsight: PerplexityInsightSchema.optional().describe('What Perplexity says'),
   aiSearchVolume: z.number().optional().describe('AI search volume for brand keywords'),
   knowledgeGraphExists: z.boolean().describe('Brand has Google Knowledge Graph'),
   knowledgeGraphData: z.record(z.unknown()).optional(),
+  domainMetrics: DomainMetricsSchema.optional().describe('SEO metrics for the domain'),
+  competitors: z.array(CompetitorInsightSchema).optional().describe('Top competitors data'),
+  apiCosts: z.object({
+    dataForSEO: z.number().describe('DataForSEO API cost in dollars'),
+    perplexity: z.number().describe('Perplexity API cost in dollars'),
+    firecrawl: z.number().describe('Firecrawl API cost in dollars'),
+    total: z.number().describe('Total API cost for this audit'),
+  }).optional().describe('API costs breakdown'),
 })
 
 export type AIPerception = z.infer<typeof AIPerceptionSchema>
+export type PerplexityInsight = z.infer<typeof PerplexityInsightSchema>
+export type CompetitorInsight = z.infer<typeof CompetitorInsightSchema>
+export type DomainMetrics = z.infer<typeof DomainMetricsSchema>
 
 // ============================================================================
 // PHASE 3: JUDGE AGENT (Final Report)

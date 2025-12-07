@@ -802,22 +802,22 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   // HERO VIEW (Empty State) - Clean, minimal style
   if (messages.length === 0) {
     const suggestions = [
-      { title: 'View all my cameras', prompt: 'Show me all my cameras' },
-      { title: 'Show me my smart home hub', prompt: 'Display my smart home hub' },
-      { title: 'How much electricity have I used this month?', prompt: 'How much electricity have I used this month?' },
-      { title: 'How much water have I used this month?', prompt: 'How much water have I used this month?' },
+      { title: 'Write an SEO-optimized blog post', prompt: 'Write a high-quality, SEO-optimized blog post about [topic]' },
+      { title: 'Analyze my competitors', prompt: 'Analyze my top competitors and find content gaps' },
+      { title: 'Generate content ideas', prompt: 'Generate 10 content ideas that will rank well for [keyword]' },
+      { title: 'Improve my EEAT score', prompt: 'How can I improve my content for better EEAT (Experience, Expertise, Authoritativeness, Trustworthiness)?' },
     ]
 
     return (
-      <div className={cn("flex flex-col h-full items-center justify-center p-8 relative", className)}>
+      <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-[#1a1a1a]", className)}>
         <div className="w-full max-w-4xl space-y-8">
           {/* Greeting - Clean and minimal */}
           <div className="text-center space-y-3">
-            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
-              Good Evening, DeepAI.
+            <h1 className="text-4xl md:text-5xl font-semibold text-zinc-100 tracking-tight">
+              Flow Intent
             </h1>
-            <p className="text-lg md:text-xl text-zinc-400">
-              Can I help you with anything?
+            <p className="text-lg md:text-xl text-zinc-500">
+              Your AI-powered SEO and content assistant
             </p>
           </div>
 
@@ -890,7 +890,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // ACTIVE CHAT VIEW - Clean, minimal style matching screenshot
   return (
-    <div className={cn("flex flex-col h-full min-h-0 bg-transparent", className)}>
+    <div className={cn("flex flex-col h-full min-h-0 bg-[#1a1a1a]", className)}>
       <Conversation>
         <ConversationContent>
           {messages.map((message: any) => {
@@ -974,7 +974,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         <ConversationScrollButton className="bg-zinc-800/80 hover:bg-zinc-700/80 backdrop-blur border border-white/10" />
       </Conversation>
 
-      <div className="p-4 md:p-6 bg-transparent border-t border-white/5">
+      <div className="p-4 md:p-6 bg-[#1a1a1a] border-t border-zinc-800">
         {(status === 'streaming' || status === 'submitted') && (
           <div className="flex justify-end gap-3 text-xs text-zinc-400 mb-2">
             <span>{status === 'submitted' ? 'Connecting…' : 'Streaming response…'}</span>

@@ -1,3 +1,32 @@
+export interface CompetitorData {
+  domain: string
+  name?: string
+  organicTraffic?: number
+  organicKeywords?: number
+  backlinks?: number
+  hasSchema?: boolean
+  schemaTypes?: string[]
+}
+
+export interface PerceptionData {
+  perplexitySummary?: string
+  perplexitySources?: string[]
+  competitors?: CompetitorData[]
+  domainMetrics?: {
+    organicTraffic?: number
+    organicKeywords?: number
+    backlinks?: number
+    referringDomains?: number
+    domainRank?: number
+  }
+  apiCosts?: {
+    dataForSEO: number
+    perplexity: number
+    firecrawl: number
+    total: number
+  }
+}
+
 export interface AuditReport {
   scoreCard: {
     aeoScore: number
@@ -33,6 +62,7 @@ export interface AuditReport {
   }>
   summary: string
   competitorComparison: string
+  perception?: PerceptionData
 }
 
 export interface AuditResponse {
@@ -41,5 +71,7 @@ export interface AuditResponse {
   auditId: string
   report: AuditReport
   processingTimeMs: number
+  toolsUsed?: string[]
+  apiCost?: number
 }
 

@@ -7,6 +7,13 @@ import {
   createIdGenerator,
   type Message,
 } from "ai";
+import { after } from "next/server";
+import { trace } from "@opentelemetry/api";
+import {
+  observe,
+  updateActiveObservation,
+  updateActiveTrace,
+} from "@langfuse/tracing";
 import { createClient } from "@/lib/supabase/server";
 import { serverEnv } from "@/lib/config/env";
 import { buildOnboardingSystemPrompt } from "@/lib/onboarding/prompts";
@@ -152,25 +159,6 @@ const handler = async (req: Request) => {
         : Array.isArray(lastMsg.parts)
           ? lastMsg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
           : '';
-
-    // Update Langfuse trace with conversation context and user input
-    updateActiveObservation({
-      input: lastUserMessageContent,
-    });
-
-    updateActiveTrace({
-      name: "chat-message",
-      sessionId: activeConversationId || undefined, // Groups related messages together
-      userId: user?.id || undefined, // Track which user made the request
-      input: lastUserMessageContent,
-      metadata: {
-        agentType: routingResult.agent,
-        page: context?.page,
-        isOnboarding: !!isOnboarding,
-        onboardingStep: onboardingContext?.currentStep,
-        workflowId: workflowId || undefined,
-      },
-    });
 
     // WORKFLOW DETECTION: Check if user wants to run a workflow
     const { detectWorkflow, isWorkflowRequest, extractWorkflowId } =
@@ -683,7 +671,7 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
               resultKeys: t.result ? Object.keys(t.result) : [],
             })),
           });
-          
+
           // Log image tool results specifically
           const imageTools = finalAssistantMessage.toolInvocations.filter(
             (t: any) => t.toolName === 'gateway_image' && t.state === 'result'
@@ -715,7 +703,7 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
 
   } catch (error) {
     console.error("Chat API error:", error);
-    
+
     // Update trace with error before returning
     updateActiveObservation({
       output: error instanceof Error ? error.message : String(error),

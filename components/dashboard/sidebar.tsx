@@ -114,7 +114,7 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
           <Logo className="w-full h-full" />
         </div>
         {!collapsed && (
-          <span className="font-semibold text-xl text-white tracking-tight">Axora</span>
+          <span className="font-semibold text-xl text-white tracking-tight">Flow Intent</span>
         )}
       </div>
 

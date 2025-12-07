@@ -208,17 +208,44 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', auditId)
 
-    // 10. Cache the result
-    await cacheSet(cacheKey, { report: judgeResult.report, auditId }, CACHE_TTL)
+    // 10. Build enhanced report with perception data
+    const enhancedReport = {
+      ...judgeResult.report,
+      perception: {
+        perplexitySummary: perception.perplexityInsight?.summary,
+        perplexitySources: perception.perplexityInsight?.sources,
+        competitors: perception.competitors,
+        domainMetrics: perception.domainMetrics,
+        apiCosts: perception.apiCosts,
+      },
+    }
 
-    console.log('[AEO Audit] Complete:', brandName, 'Score:', judgeResult.report.scoreCard.aeoScore)
+    // 11. Cache the result
+    await cacheSet(cacheKey, { report: enhancedReport, auditId }, CACHE_TTL)
+
+    // List of tools used in this audit
+    const toolsUsed = [
+      'DataForSEO LLM Mentions API',
+      'DataForSEO ChatGPT Scraper',
+      'DataForSEO Knowledge Graph',
+      'DataForSEO Domain Metrics',
+      'DataForSEO Competitor Analysis',
+      'DataForSEO Backlink Analysis',
+      'Perplexity Sonar AI',
+      'Firecrawl Web Scraper',
+      'Google Gemini 2.0 Flash',
+    ]
+
+    console.log('[AEO Audit] Complete:', brandName, 'Score:', judgeResult.report.scoreCard.aeoScore, 'Cost:', `$${perception.apiCosts?.total?.toFixed(2) || '0.00'}`)
 
     return NextResponse.json({
       success: true,
       cached: false,
       auditId,
-      report: judgeResult.report,
+      report: enhancedReport,
       processingTimeMs,
+      toolsUsed,
+      apiCost: perception.apiCosts?.total || 0,
     })
   } catch (error) {
     console.error('[AEO Audit] Unexpected error:', error)

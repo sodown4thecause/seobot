@@ -50,11 +50,11 @@ export const RATE_LIMITS = {
     window: '1 m',
     message: 'Too many requests. Please slow down.',
   },
-  // AEO Audit: 20 audits per hour per IP (free tool rate limit)
+  // AEO Audit: 1 audit per day per IP (free tool rate limit - each audit costs ~$0.40 in API fees)
   AEO_AUDIT: {
-    limit: 20,
-    window: '1 h',
-    message: 'You have reached the limit of 20 free audits per hour. Please try again later or sign up for unlimited audits.',
+    limit: 1,
+    window: '1 d',
+    message: 'You have already used your free audit today. Sign up for a free account to get more audits!',
   },
 } as const
 

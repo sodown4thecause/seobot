@@ -26,13 +26,46 @@ export interface JudgeResult {
 }
 
 /**
- * Build the judge prompt with all context
+ * Build the judge prompt with all context including competitor data
  */
 function buildJudgePrompt(
   entityProfile: EntityProfile,
   perception: AIPerception,
   brandName: string
 ): string {
+  // Format competitor data if available
+  const competitorSection = perception.competitors && perception.competitors.length > 0
+    ? `
+## COMPETITOR ANALYSIS (from DataForSEO + Firecrawl)
+${perception.competitors.map((c, i) => `
+${i + 1}. **${c.domain}**
+   - Organic Traffic: ${c.organicTraffic?.toLocaleString() ?? 'N/A'}
+   - Organic Keywords: ${c.organicKeywords?.toLocaleString() ?? 'N/A'}
+   - Has Schema: ${c.hasSchema ?? 'Unknown'}${c.schemaTypes?.length ? ` (${c.schemaTypes.join(', ')})` : ''}
+`).join('')}
+
+Use this to compare: How does ${brandName} stack up against competitors in AI visibility?`
+    : ''
+
+  // Format Perplexity insight if available
+  const perplexitySection = perception.perplexityInsight
+    ? `
+### What Perplexity Says:
+"${perception.perplexityInsight.summary}"
+${perception.perplexityInsight.sources.length > 0 ? `Sources cited: ${perception.perplexityInsight.sources.slice(0, 3).join(', ')}` : ''}`
+    : ''
+
+  // Format domain metrics if available
+  const metricsSection = perception.domainMetrics
+    ? `
+### Domain SEO Metrics
+- Organic Traffic: ${perception.domainMetrics.organicTraffic?.toLocaleString() ?? 'N/A'}
+- Organic Keywords: ${perception.domainMetrics.organicKeywords?.toLocaleString() ?? 'N/A'}
+- Total Backlinks: ${perception.domainMetrics.backlinks?.toLocaleString() ?? 'N/A'}
+- Referring Domains: ${perception.domainMetrics.referringDomains?.toLocaleString() ?? 'N/A'}
+- Domain Rank: ${perception.domainMetrics.domainRank ?? 'N/A'}`
+    : ''
+
   return `You are the AEO (Answer Engine Optimization) Trust Auditor.
 
 Your task is to compare what a brand says about itself (Ground Truth) versus what AI systems say about them (AI Perception), then generate a comprehensive trust score and action plan.
@@ -59,8 +92,9 @@ ${entityProfile.keyFacts.map((f) => `  - ${f}`).join('\n')}
 - Has Author Bio: ${entityProfile.contentSignals.hasAuthorBio}
 - Has Citations: ${entityProfile.contentSignals.hasCitations}
 - Readability: ${entityProfile.contentSignals.readabilityLevel}
+${metricsSection}
 
-## AI PERCEPTION (From DataForSEO)
+## AI PERCEPTION (Multi-Source Analysis)
 - LLM Mentions Count: ${perception.llmMentionsCount.toLocaleString()} (total mentions in AI responses)
 - Knowledge Graph Exists: ${perception.knowledgeGraphExists}
 - AI Search Volume: ${perception.aiSearchVolume?.toLocaleString() ?? 'Unknown'}
@@ -70,6 +104,8 @@ ${perception.llmMentions?.slice(0, 5).map((m, i) => `${i + 1}. Source: ${m.sourc
 
 ### What ChatGPT Says:
 "${perception.chatGPTSummary || "AI doesn't have information about this brand."}"
+${perplexitySection}
+${competitorSection}
 
 ## SCORING RUBRIC
 Calculate scores for each category (0-25 points each):
@@ -83,14 +119,16 @@ Calculate scores for each category (0-25 points each):
    - 0 mentions: 0 points
 
 2. **Accuracy Score (0-25)**
-   - AI description matches reality closely: +25 points
-   - Partial match with minor errors: +15 points
+   - Both ChatGPT AND Perplexity describe accurately: +25 points
+   - One AI accurate, other partial: +18 points
+   - Partial match with minor errors: +12 points
    - Major discrepancies or missing key info: +5 points
    - AI says "I don't know" or no info: 0 points
 
 3. **Citation Strength (0-25)**
    - AI cites the brand's website as source: +15 points
    - AI mentions specific products/services correctly: +10 points
+   - Perplexity includes brand in sources: +5 points (bonus)
    - No citations or sources: 0 points
 
 4. **Technical Readiness (0-25)**
@@ -98,27 +136,45 @@ Calculate scores for each category (0-25 points each):
    - Has FAQs/definitions: +5 points
    - Has author/date info: +5 points
    - Has citations: +5 points
+   - BONUS: Better schema than competitors: +3 points
 
 ## HALLUCINATION DETECTION
 - **Positive Hallucinations**: AI overstates capabilities, claims bigger market share, etc.
 - **Negative Hallucinations**: Wrong pricing, incorrect features, outdated info, competitor confusion
+- Compare ChatGPT vs Perplexity for consistency - inconsistencies indicate hallucination risk
+
+## COMPETITIVE CONTEXT
+${perception.competitors && perception.competitors.length > 0
+  ? `Compare ${brandName} against the competitors above. In the summary, mention:
+- Whether competitors have better AI visibility
+- Specific areas where competitors are ahead (schema, traffic, etc.)
+- Urgency to catch up if falling behind`
+  : 'No competitor data available - focus on absolute performance'}
 
 ## ACTION PLAN PRIORITIES
-Generate 3-5 actionable recommendations with:
+Generate 4-6 actionable recommendations with:
 - Critical: Immediate action needed (wrong info being spread)
 - High: Important for visibility improvement
 - Medium: Optimization opportunities
 
 Be specific with technical recommendations. For each recommendation, map it to one of these product feature categories:
 - **Technical**: Schema Generator tool can auto-generate Organization, FAQ, Product, and Article schema
-- **Content**: AI Content Writer creates LLM-optimized content with proper citations and definitions
-- **Authority**: AI Visibility Monitor tracks brand mentions across ChatGPT, Perplexity, Claude
+- **Content**: AI Content Writer creates EEAT-optimized content with proper citations and AI-ready formatting
+- **Authority**: AI Visibility Monitor tracks brand mentions across ChatGPT, Perplexity, Claude, Google AI
 - **Accuracy**: SEO Chat Assistant helps correct AI misconceptions and improve brand narratives
 
-Frame recommendations as actionable with our tools. Example:
+IMPORTANT: Frame recommendations to show Flow Intent's value. These tools are ALL available through our SEO/AEO chatbot platform. Examples:
 - Task: "Add FAQ schema to key pages"
-- Fix: "Use our Schema Generator to create FAQ schema from your support content automatically"
-- Impact: "Increases chance of appearing in AI-generated answers by 40%"`
+- Fix: "Use Flow Intent's Schema Generator to create FAQ schema from your support content in one prompt"
+- Impact: "Increases chance of appearing in AI-generated answers by 40%"
+
+- Task: "Create EEAT-optimized content"
+- Fix: "Flow Intent's AI Content Writer generates content with Experience, Expertise, Authoritativeness & Trustworthiness signals"
+- Impact: "Content with EEAT signals is 3x more likely to be cited by AI models"
+
+- Task: "Monitor AI visibility continuously"
+- Fix: "Flow Intent's AI Visibility Monitor tracks mentions across all major AI platforms automatically"
+- Impact: "Get alerts when competitors gain visibility or when AI spreads misinformation about your brand"`
 }
 
 /**

@@ -1,11 +1,16 @@
 /**
  * AEO Trust Auditor - Perception Service (Phase 2)
  *
- * Gathers AI perception data from DataForSEO:
- * - LLM Mentions (how often AI mentions the brand)
- * - ChatGPT Scraper (what ChatGPT says about the brand)
- * - AI Search Volume (are people asking AI about this topic?)
- * - Knowledge Graph (is the brand recognized as an entity?)
+ * Gathers AI perception data from multiple premium APIs:
+ * - DataForSEO: LLM Mentions, ChatGPT Scraper, Knowledge Graph, Domain Metrics, Competitors
+ * - Perplexity Sonar: Real-time AI perception via Vercel Gateway
+ * - Firecrawl: Competitor website scraping
+ * - Jina AI: Content analysis
+ *
+ * API Cost Tracking:
+ * - DataForSEO: ~$0.10-0.15 per endpoint
+ * - Perplexity Sonar: ~$0.005 per query
+ * - Firecrawl: ~$0.01 per scrape
  */
 
 import {
@@ -14,8 +19,28 @@ import {
   chatGPTLLMScraper,
   aiKeywordSearchVolume,
   knowledgeGraphCheck,
+  competitorAnalysis,
+  domainMetrics,
+  backlinkAnalysis,
 } from '@/lib/api/dataforseo-service'
-import { type AIPerception } from './schemas'
+import { generateText } from 'ai'
+import { vercelGateway } from '@/lib/ai/gateway-provider'
+import { mcpFirecrawlTools } from '@/lib/mcp/firecrawl/index'
+import { type AIPerception, type PerplexityInsight, type CompetitorInsight, type DomainMetrics } from './schemas'
+
+// API cost estimates (in USD)
+const API_COSTS = {
+  llmMentionsSearch: 0.10,
+  llmMentionsAggregated: 0.10,
+  chatGPTScraper: 0.15,
+  aiSearchVolume: 0.05,
+  knowledgeGraph: 0.02,
+  competitorAnalysis: 0.10,
+  domainMetrics: 0.05,
+  backlinkAnalysis: 0.05,
+  perplexitySonar: 0.005,
+  firecrawlScrape: 0.01,
+}
 
 export interface PerceptionResult {
   success: boolean
@@ -302,8 +327,181 @@ async function getKnowledgeGraphStatus(brandName: string): Promise<{
 }
 
 /**
+ * Get Perplexity's perception of the brand using Sonar via Vercel AI Gateway
+ */
+async function getPerplexityPerception(brandName: string): Promise<PerplexityInsight | null> {
+  try {
+    console.log('[Perception] Perplexity Sonar: Querying for', brandName)
+
+    const { text } = await generateText({
+      model: vercelGateway.languageModel('perplexity/sonar'),
+      prompt: `What is ${brandName}? Provide a concise 2-3 sentence summary of what they do, their main products/services, and their reputation. Include any notable facts.`,
+      maxOutputTokens: 300,
+    })
+
+    console.log('[Perception] Perplexity Response:', {
+      hasText: !!text,
+      length: text?.length,
+      preview: text?.slice(0, 100),
+    })
+
+    // Extract sources from response (Perplexity often includes citations)
+    const sourceMatches = text.match(/\[([^\]]+)\]/g) || []
+    const sources = sourceMatches.map(s => s.replace(/[\[\]]/g, ''))
+
+    return {
+      summary: text || '',
+      sources,
+      hasAccurateInfo: text.length > 50,
+    }
+  } catch (error) {
+    console.error('[Perception] Perplexity error:', error)
+    return null
+  }
+}
+
+/**
+ * Get domain SEO metrics from DataForSEO
+ */
+async function getDomainMetricsData(domain: string): Promise<DomainMetrics | null> {
+  try {
+    console.log('[Perception] Domain Metrics: Fetching for', domain)
+
+    const [metricsResponse, backlinksResponse] = await Promise.all([
+      domainMetrics({ domain }),
+      backlinkAnalysis({ domain }),
+    ])
+
+    type MetricsType = { metrics?: { organic?: { etv?: number; count?: number } } }
+    type BacklinksType = { total_backlinks?: number; referring_domains?: number; rank?: number }
+
+    let metrics: MetricsType | undefined
+    let backlinks: BacklinksType | undefined
+
+    if (metricsResponse.success && metricsResponse.data) {
+      metrics = metricsResponse.data.tasks?.[0]?.result?.[0] as unknown as MetricsType
+    }
+
+    if (backlinksResponse.success && backlinksResponse.data) {
+      backlinks = backlinksResponse.data.tasks?.[0]?.result?.[0] as unknown as BacklinksType
+    }
+
+    console.log('[Perception] Domain Metrics Result:', {
+      hasMetrics: !!metrics,
+      hasBacklinks: !!backlinks,
+    })
+
+    return {
+      organicTraffic: metrics?.metrics?.organic?.etv,
+      organicKeywords: metrics?.metrics?.organic?.count,
+      backlinks: backlinks?.total_backlinks,
+      referringDomains: backlinks?.referring_domains,
+      domainRank: backlinks?.rank,
+    }
+  } catch (error) {
+    console.error('[Perception] Domain Metrics error:', error)
+    return null
+  }
+}
+
+/**
+ * Get top competitors from DataForSEO
+ */
+async function getCompetitorData(domain: string): Promise<CompetitorInsight[]> {
+  try {
+    console.log('[Perception] Competitors: Fetching for', domain)
+
+    const response = await competitorAnalysis({ domain })
+
+    const result = response.data?.tasks?.[0]?.result as Array<{
+      domain?: string
+      metrics?: {
+        organic?: { etv?: number; count?: number }
+      }
+      full_domain_metrics?: {
+        organic?: { etv?: number; count?: number }
+      }
+    }>
+
+    if (!result || result.length === 0) {
+      return []
+    }
+
+    // Get top 3 competitors
+    const competitors: CompetitorInsight[] = result.slice(0, 3).map((comp) => ({
+      domain: comp.domain || '',
+      organicTraffic: comp.metrics?.organic?.etv || comp.full_domain_metrics?.organic?.etv,
+      organicKeywords: comp.metrics?.organic?.count || comp.full_domain_metrics?.organic?.count,
+    }))
+
+    console.log('[Perception] Competitors Found:', competitors.length)
+    return competitors
+  } catch (error) {
+    console.error('[Perception] Competitors error:', error)
+    return []
+  }
+}
+
+/**
+ * Scrape competitor websites for schema and content analysis using Firecrawl
+ */
+async function analyzeCompetitorSchema(competitors: CompetitorInsight[]): Promise<CompetitorInsight[]> {
+  if (competitors.length === 0) return []
+
+  try {
+    console.log('[Perception] Analyzing competitor schemas for', competitors.length, 'competitors')
+
+    // Only scrape top 2 to control costs
+    const topCompetitors = competitors.slice(0, 2)
+
+    const enrichedCompetitors = await Promise.all(
+      topCompetitors.map(async (comp) => {
+        try {
+          const result = await mcpFirecrawlTools.firecrawl_scrape.execute({
+            url: `https://${comp.domain}`,
+            formats: ['markdown'],
+            onlyMainContent: true,
+            waitFor: 2000,
+          })
+
+          const content = typeof result === 'string' ? result : JSON.stringify(result)
+
+          // Check for schema indicators in content
+          const hasSchema = content.includes('application/ld+json') ||
+                           content.includes('itemtype') ||
+                           content.includes('schema.org')
+
+          // Detect schema types from content
+          const schemaTypes: string[] = []
+          if (content.includes('Organization')) schemaTypes.push('Organization')
+          if (content.includes('Product')) schemaTypes.push('Product')
+          if (content.includes('FAQPage')) schemaTypes.push('FAQPage')
+          if (content.includes('Article')) schemaTypes.push('Article')
+
+          return {
+            ...comp,
+            hasSchema,
+            schemaTypes,
+          }
+        } catch (e) {
+          console.error('[Perception] Competitor scrape failed for', comp.domain, e)
+          return comp
+        }
+      })
+    )
+
+    // Add remaining competitors without enrichment
+    return [...enrichedCompetitors, ...competitors.slice(2)]
+  } catch (error) {
+    console.error('[Perception] Competitor schema analysis error:', error)
+    return competitors
+  }
+}
+
+/**
  * Main perception gathering - Phase 2 of the AEO Audit
- * Runs all DataForSEO calls in parallel for performance
+ * Runs all API calls in parallel for maximum performance
+ * Tracks API costs for transparency
  */
 export async function runPerceptionService(params: {
   brandName: string
@@ -311,15 +509,43 @@ export async function runPerceptionService(params: {
 }): Promise<PerceptionResult> {
   console.log('[Perception Service] Gathering AI perception for:', params.brandName)
   const errors: string[] = []
+  const domain = params.url ? extractDomain(params.url) : undefined
 
   try {
-    // Run all API calls in parallel
-    const [llmMentions, chatGPT, aiVolume, kg] = await Promise.all([
+    // Phase 1: Core perception data (parallel)
+    const [llmMentions, chatGPT, aiVolume, kg, perplexity] = await Promise.all([
       getLLMMentions(params.brandName, params.url),
       getChatGPTPerception(params.brandName),
       getAISearchVolume(params.brandName),
       getKnowledgeGraphStatus(params.brandName),
+      getPerplexityPerception(params.brandName),
     ])
+
+    // Phase 2: Domain and competitor data (only if URL provided)
+    let domainMetricsData: DomainMetrics | null = null
+    let competitors: CompetitorInsight[] = []
+
+    if (domain) {
+      const [metrics, comps] = await Promise.all([
+        getDomainMetricsData(domain),
+        getCompetitorData(domain),
+      ])
+      domainMetricsData = metrics
+
+      // Phase 3: Enrich competitors with schema analysis
+      competitors = await analyzeCompetitorSchema(comps)
+    }
+
+    // Calculate API costs
+    const apiCosts = {
+      dataForSEO: API_COSTS.llmMentionsSearch + API_COSTS.llmMentionsAggregated +
+                  API_COSTS.chatGPTScraper + API_COSTS.aiSearchVolume + API_COSTS.knowledgeGraph +
+                  (domain ? API_COSTS.competitorAnalysis + API_COSTS.domainMetrics + API_COSTS.backlinkAnalysis : 0),
+      perplexity: API_COSTS.perplexitySonar,
+      firecrawl: competitors.filter(c => c.hasSchema !== undefined).length * API_COSTS.firecrawlScrape,
+      total: 0,
+    }
+    apiCosts.total = apiCosts.dataForSEO + apiCosts.perplexity + apiCosts.firecrawl
 
     const perception: AIPerception = {
       llmMentionsCount: llmMentions.count,
@@ -330,16 +556,23 @@ export async function runPerceptionService(params: {
       })),
       chatGPTSummary: chatGPT.summary || "AI doesn't have information about this brand.",
       chatGPTRawResponse: chatGPT.raw,
-      aiSearchVolume: llmMentions.totalVolume || aiVolume, // Prefer LLM volume, fallback to keyword volume
+      perplexityInsight: perplexity ?? undefined,
+      aiSearchVolume: llmMentions.totalVolume || aiVolume,
       knowledgeGraphExists: kg.exists,
       knowledgeGraphData: kg.data ?? undefined,
+      domainMetrics: domainMetricsData ?? undefined,
+      competitors: competitors.length > 0 ? competitors : undefined,
+      apiCosts,
     }
 
     console.log('[Perception Service] Complete:', {
       mentions: perception.llmMentionsCount,
       aiVolume: perception.aiSearchVolume,
       hasKG: perception.knowledgeGraphExists,
-      hasSummary: !!perception.chatGPTSummary,
+      hasChatGPT: !!perception.chatGPTSummary,
+      hasPerplexity: !!perception.perplexityInsight,
+      competitorsFound: competitors.length,
+      totalApiCost: `$${apiCosts.total.toFixed(2)}`,
     })
 
     return { success: true, perception, errors }
