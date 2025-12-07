@@ -1,22 +1,19 @@
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
 import { cva, type VariantProps } from "class-variance-authority";
-import type { ComponentProps, HTMLAttributes } from "react";
+import { User, Bot } from "lucide-react";
+import type { HTMLAttributes } from "react";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
 };
 
+// Clean message layout - icons on left, content aligned
 export const Message = ({ className, from, ...props }: MessageProps) => (
   <div
     className={cn(
-      "group flex w-full items-end justify-end gap-2 py-4",
-      from === "user" ? "is-user" : "is-assistant flex-row-reverse justify-end",
+      "group flex w-full gap-4 py-3",
+      from === "user" ? "is-user" : "is-assistant",
       className
     )}
     {...props}
@@ -24,23 +21,24 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
 );
 
 const messageContentVariants = cva(
-  "is-user:dark flex flex-col gap-2 overflow-hidden rounded-lg text-sm",
+  "flex flex-col gap-2 text-[15px] leading-relaxed font-normal flex-1",
   {
     variants: {
       variant: {
         contained: [
-          "max-w-[80%] px-4 py-3",
-          "group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground",
-          "group-[.is-assistant]:bg-secondary group-[.is-assistant]:text-foreground",
+          "max-w-[85%] px-4 py-3 rounded-2xl",
+          "group-[.is-user]:bg-zinc-700/60 group-[.is-user]:text-zinc-100",
+          "group-[.is-assistant]:bg-zinc-800/40 group-[.is-assistant]:text-zinc-100",
         ],
         flat: [
-          "group-[.is-user]:max-w-[80%] group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
-          "group-[.is-assistant]:text-foreground",
+          // Clean text without boxes
+          "group-[.is-user]:text-zinc-200",
+          "group-[.is-assistant]:text-zinc-300",
         ],
       },
     },
     defaultVariants: {
-      variant: "contained",
+      variant: "flat",
     },
   }
 );
@@ -62,19 +60,30 @@ export const MessageContent = ({
   </div>
 );
 
-export type MessageAvatarProps = ComponentProps<typeof Avatar> & {
-  src: string;
+export type MessageAvatarProps = HTMLAttributes<HTMLDivElement> & {
+  src?: string;
   name?: string;
+  isUser?: boolean;
 };
 
+// Simple outline icon avatars matching the GenUI demo style
 export const MessageAvatar = ({
-  src,
   name,
   className,
+  isUser,
   ...props
 }: MessageAvatarProps) => (
-  <Avatar className={cn("size-8 ring-1 ring-border", className)} {...props}>
-    <AvatarImage alt="" className="mt-0 mb-0" src={src} />
-    <AvatarFallback>{name?.slice(0, 2) || "ME"}</AvatarFallback>
-  </Avatar>
+  <div
+    className={cn(
+      "flex-shrink-0 w-6 h-6 flex items-center justify-center text-zinc-400",
+      className
+    )}
+    {...props}
+  >
+    {isUser || name === "You" || name === "User" ? (
+      <User className="w-5 h-5" strokeWidth={1.5} />
+    ) : (
+      <Bot className="w-5 h-5" strokeWidth={1.5} />
+    )}
+  </div>
 );

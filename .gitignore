@@ -61,6 +61,8 @@ node_modules/
 # OS specific
 
 # Cursor MCP config (contains API keys)
+# Copy .cursor/mcp.json.example to .cursor/mcp.json and fill in your API keys
+# See README.md for setup instructions
 .cursor/mcp.json 
 
 # Task files

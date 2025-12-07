@@ -3,7 +3,7 @@
 import { useChat } from '@ai-sdk/react'
 import { useEffect, useState, forwardRef, useMemo, useCallback, useRef } from 'react'
 
-import { Loader2, Terminal, Check, Copy, ChevronDown, ChevronRight } from 'lucide-react'
+import { Terminal, Check, Copy, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
@@ -20,6 +20,8 @@ import {
 } from '@/components/ai-elements/conversation'
 import { Message, MessageAvatar, MessageContent } from '@/components/ai-elements/message'
 import { Response } from '@/components/ai-elements/response'
+import { Loader } from '@/components/ai-elements/loader'
+import { Shimmer } from '@/components/ai-elements/shimmer'
 
 interface AIChatInterfaceProps {
   context?: Record<string, unknown>
@@ -55,6 +57,70 @@ const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComp
         {renderMessageComponent(componentData, onComponentSubmit)}
       </div>
     )
+  }
+
+  // Special handling for image generation tool
+  // Note: Images from gateway_image are now primarily displayed in renderMessageContent
+  // This component is kept for fallback or when tool invocation is shown separately
+  if (toolName === 'gateway_image' && isSuccess && result) {
+    const imageUrls: string[] = []
+
+    // Extract from files array (primary source)
+    if (Array.isArray(result.files)) {
+      result.files.forEach((f: any) => {
+        if (f.url) imageUrls.push(f.url)
+        if (f.dataUrl && !imageUrls.includes(f.dataUrl)) imageUrls.push(f.dataUrl)
+      })
+    }
+
+    // Extract from parts array
+    if (Array.isArray(result.parts)) {
+      result.parts.forEach((p: any) => {
+        if (p.type === 'file' && p.url && !imageUrls.includes(p.url)) {
+          imageUrls.push(p.url)
+        }
+      })
+    }
+
+    // Legacy fields and direct properties
+    if (result.url) imageUrls.push(result.url)
+    if (result.imageUrl && result.imageUrl !== result.url) imageUrls.push(result.imageUrl)
+    if (result.dataUrl && !imageUrls.includes(result.dataUrl)) imageUrls.push(result.dataUrl)
+    // Add base64 support if no URL is available
+    if (imageUrls.length === 0 && result.base64) {
+      const mime = result.mediaType || result.mimeType || 'image/png';
+      imageUrls.push(`data:${mime};base64,${result.base64}`);
+    }
+
+    const uniqueUrls = [...new Set(imageUrls)]
+
+    if (uniqueUrls.length > 0) {
+      return (
+        <div className="my-3">
+          <div className="grid grid-cols-1 gap-3">
+            {uniqueUrls.map((url, idx) => (
+              <div key={idx} className="overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-lg">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={args.prompt || 'Generated image'} className="w-full h-auto object-contain max-h-[500px]" loading="lazy" />
+                {args.prompt && (
+                  <div className="p-3 border-t border-white/5 bg-black/20">
+                    <p className="text-xs text-zinc-400 truncate">{args.prompt}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    if (result.status === 'error' || result.errorMessage) {
+      return (
+        <div className="my-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5">
+          <p className="text-sm text-red-300">Failed to generate image: {result.errorMessage || 'Unknown error'}</p>
+        </div>
+      )
+    }
   }
 
   return (
@@ -337,14 +403,10 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     id: conversationId ?? 'dashboard-chat',
     api: '/api/chat',
     experimental_throttle: 32,
-    // AI SDK 6: Use prepareRequestBody instead of custom transport
-    experimental_prepareRequestBody: ({ messages }) => {
-      const lastMessage = messages[messages.length - 1]
-      return {
-        chatId: conversationId,
-        message: lastMessage,
-        context: mergedContext,
-      }
+    // AI SDK 6: Use body to include extra fields alongside messages
+    body: {
+      chatId: conversationId,
+      context: mergedContext,
     },
   })
 
@@ -364,63 +426,94 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         : null
 
       if (!workingConversation) {
-        const latestResponse = await fetch('/api/conversations?limit=1')
-        if (!latestResponse.ok) {
-          throw new Error('Failed to load conversations')
+        try {
+          const latestResponse = await fetch('/api/conversations?limit=1')
+          if (latestResponse.ok) {
+            const latestPayload = await latestResponse.json()
+            workingConversation = latestPayload?.conversations?.[0] ?? null
+          } else {
+            console.warn('[AIChatInterface] Failed to load latest conversation, will create new one')
+          }
+        } catch (error) {
+          console.warn('[AIChatInterface] Error loading conversations, will create new one', error)
         }
-
-        const latestPayload = await latestResponse.json()
-        workingConversation = latestPayload?.conversations?.[0] ?? null
 
         if (!workingConversation) {
-          const createResponse = await fetch('/api/conversations', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ agentId: agentPreference }),
-          })
+          try {
+            const createResponse = await fetch('/api/conversations', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ agentId: agentPreference }),
+            })
 
-          if (!createResponse.ok) {
-            throw new Error('Failed to create conversation')
+            if (createResponse.ok) {
+              const createdPayload = await createResponse.json()
+              workingConversation = createdPayload?.conversation ?? null
+            } else {
+              console.warn('[AIChatInterface] Failed to create conversation, will continue without one')
+            }
+          } catch (error) {
+            console.warn('[AIChatInterface] Error creating conversation', error)
           }
-
-          const createdPayload = await createResponse.json()
-          workingConversation = createdPayload?.conversation ?? null
         }
       }
 
-      if (!workingConversation?.id) {
-        throw new Error('Conversation unavailable')
-      }
+      // If we have a conversation, load its history
+      if (workingConversation?.id) {
+        try {
+          const historyResponse = await fetch(`/api/conversations/${workingConversation.id}/messages`)
+          if (historyResponse.ok) {
+            const historyPayload = await historyResponse.json()
+            let historyMessages = historyPayload?.messages ?? []
 
-      const historyResponse = await fetch(`/api/conversations/${workingConversation.id}/messages`)
-      if (!historyResponse.ok) {
-        throw new Error('Failed to load conversation history')
-      }
+            if (historyMessages.length === 0 && initialMessage && !overrideConversationId) {
+              historyMessages = [
+                {
+                  id: 'initial',
+                  role: 'assistant',
+                  content: initialMessage,
+                  parts: [{ type: 'text', text: initialMessage }],
+                },
+              ]
+            }
 
-      const historyPayload = await historyResponse.json()
-      let historyMessages = historyPayload?.messages ?? []
-
-      if (historyMessages.length === 0 && initialMessage && !overrideConversationId) {
-        historyMessages = [
-          {
-            id: 'initial',
-            role: 'assistant',
-            content: initialMessage,
-            parts: [{ type: 'text', text: initialMessage }],
-          },
-        ]
-      }
-
-      if (mountedRef.current) {
-        setConversationId(workingConversation.id)
-        setMessages(historyMessages)
+            if (mountedRef.current) {
+              setConversationId(workingConversation.id)
+              setMessages(historyMessages)
+            }
+          } else {
+            console.warn('[AIChatInterface] Failed to load history, starting with empty chat')
+            if (mountedRef.current) {
+              setConversationId(workingConversation.id)
+              setMessages([])
+            }
+          }
+        } catch (error) {
+          console.warn('[AIChatInterface] Error loading history', error)
+          // Still set conversationId so user can send messages
+          if (mountedRef.current) {
+            setConversationId(workingConversation.id)
+            setMessages([])
+          }
+        }
+      } else {
+        // No conversation available, but allow user to send messages anyway
+        // The API will create a conversation on first message
+        console.log('[AIChatInterface] No conversation available, will create on first message')
+        if (mountedRef.current) {
+          setConversationId(null)
+          setMessages([])
+        }
       }
     } catch (error) {
       console.error('[AIChatInterface] Failed to bootstrap chat', error)
       if (mountedRef.current) {
-        setBootError('Unable to load your chat history.')
+        // Don't show error - allow user to try sending a message anyway
+        setBootError(null)
+        setConversationId(null)
+        setMessages([])
       }
     } finally {
       if (mountedRef.current) {
@@ -451,7 +544,15 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   }, [conversationIdProp])
 
   const handleSendMessage = (data: { text: string }) => {
-    if (!data.text.trim() || !conversationId || isBootstrapping) return
+    if (!data.text.trim()) return
+
+    // Allow sending even if conversationId is not yet set (will be created in background)
+    // Only block if we're actively bootstrapping and have no conversationId
+    if (isBootstrapping && !conversationId) {
+      console.warn('[AIChatInterface] Still bootstrapping, message will be sent after conversation is ready')
+      // Try to send anyway - the API will handle conversation creation
+    }
+
     sendMessage({ text: data.text })
   }
 
@@ -496,26 +597,180 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     return null
   }, [messages, isLoading])
 
-  const renderMessageContent = (message: any, textContent: string) => (
-    <>
-      {textContent && (
-        message.role === 'assistant' ? (
-          <Response className="prose prose-invert prose-sm max-w-none text-zinc-100">{textContent}</Response>
-        ) : (
-          <div className="whitespace-pre-wrap break-words text-white">
-            {textContent}
+  const renderMessageContent = (message: any, textContent: string, isLastMessage: boolean = false) => {
+    // AI SDK 6: Render by iterating over message.parts
+    // Parts can be: text, file, tool-{toolName}, source-url, source-document, etc.
+    const parts = message.parts || [];
+
+    // Also check legacy toolInvocations for backward compatibility
+    const toolInvocations = message.toolInvocations || [];
+
+    // Collect images from various sources
+    const imageSources: { src: string; alt?: string }[] = [];
+
+    // 1. Extract images from file parts (AI SDK 6 native image generation)
+    parts
+      .filter((p: any) => p?.type === 'file' && p?.mediaType?.startsWith('image/') && p?.url)
+      .forEach((p: any) => {
+        imageSources.push({ src: p.url, alt: p.name || 'Generated image' });
+      });
+
+    // 2. Extract images from tool-gateway_image parts (our custom tool)
+    parts
+      .filter((p: any) => p?.type === 'tool-gateway_image' && p?.state === 'output-available')
+      .forEach((p: any) => {
+        const output = p.output;
+        if (output?.url) imageSources.push({ src: output.url, alt: output.prompt || 'Generated image' });
+        if (output?.imageUrl && output.imageUrl !== output.url) {
+          imageSources.push({ src: output.imageUrl, alt: output.prompt || 'Generated image' });
+        }
+        if (Array.isArray(output?.files)) {
+          output.files.forEach((f: any) => {
+            if (f.url) imageSources.push({ src: f.url, alt: f.name || output.prompt || 'Generated image' });
+          });
+        }
+      });
+
+    // 3. Extract from legacy toolInvocations (for backward compatibility)
+    toolInvocations
+      .filter((t: any) => t.toolName === 'gateway_image' && t.state === 'result' && t.result)
+      .forEach((t: any) => {
+        const result = t.result;
+        if (result.url) imageSources.push({ src: result.url, alt: result.prompt || 'Generated image' });
+        if (result.imageUrl && result.imageUrl !== result.url) {
+          imageSources.push({ src: result.imageUrl, alt: result.prompt || 'Generated image' });
+        }
+        if (Array.isArray(result.files)) {
+          result.files.forEach((f: any) => {
+            if (f.url) imageSources.push({ src: f.url, alt: f.name || result.prompt || 'Generated image' });
+          });
+        }
+      });
+
+    // 4. Extract from message.files (legacy)
+    if (Array.isArray(message.files)) {
+      message.files
+        .filter((f: any) => f?.mediaType?.startsWith('image/') && (f.base64 || f.url || f.dataUrl))
+        .forEach((f: any) => {
+          const src = f.dataUrl || f.url || (f.base64 ? `data:${f.mediaType};base64,${f.base64}` : '');
+          if (src) imageSources.push({ src, alt: f.name || 'Generated image' });
+        });
+    }
+
+    // Deduplicate images by URL
+    const uniqueImages = Array.from(new Set(imageSources.map(i => i.src)))
+      .map(src => imageSources.find(i => i.src === src)!)
+      .filter(img => img.src && !img.src.includes('undefined'));
+
+    // Render function for parts
+    const renderPart = (part: any, index: number) => {
+      // Text parts
+      if (part.type === 'text') {
+        return null; // Text is handled separately via textContent
+      }
+
+      // File parts (native AI SDK 6 images)
+      if (part.type === 'file' && part.mediaType?.startsWith('image/') && part.url) {
+        // Already handled in imageSources above, skip to avoid duplicate
+        return null;
+      }
+
+      // Tool parts - gateway_image
+      if (part.type === 'tool-gateway_image') {
+        // Already extracted images above, but show loading state if needed
+        if (part.state === 'input-streaming' || part.state === 'input-available') {
+          return (
+            <div key={`tool-${part.toolCallId}-${index}`} className="my-2 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+              <div className="flex items-center gap-2 text-indigo-300">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Generating image...</span>
+              </div>
+            </div>
+          );
+        }
+        // output-available: image is already in imageSources
+        return null;
+      }
+
+      // Generic tool parts (other tools)
+      if (part.type?.startsWith('tool-')) {
+        const toolName = part.type.replace('tool-', '');
+        // Skip gateway_image as it's handled above
+        if (toolName === 'gateway_image') return null;
+
+        // For other tools, show a collapsed view
+        if (part.state === 'output-available' || part.state === 'result') {
+          return (
+            <div key={`tool-${part.toolCallId}-${index}`} className="my-2 text-xs text-zinc-500">
+              <span className="bg-zinc-800/50 px-2 py-1 rounded">✓ {formatToolName(toolName)}</span>
+            </div>
+          );
+        }
+        if (part.state === 'input-streaming' || part.state === 'input-available') {
+          return (
+            <div key={`tool-${part.toolCallId}-${index}`} className="my-2 flex items-center gap-2 text-zinc-400">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span className="text-xs">{formatToolName(toolName)}...</span>
+            </div>
+          );
+        }
+      }
+
+      return null;
+    };
+
+    return (
+      <>
+        {/* Render images prominently at the top */}
+        {uniqueImages.length > 0 && (
+          <div className="my-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {uniqueImages.map((img, idx) => (
+              <div key={`img-${idx}`} className="overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-lg">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.src}
+                  alt={img.alt || 'Generated image'}
+                  className="w-full h-auto object-contain max-h-[500px]"
+                  loading="lazy"
+                />
+              </div>
+            ))}
           </div>
-        )
-      )}
-      {message.toolInvocations?.map((toolCall: any) => (
-        <ToolInvocation
-          key={toolCall.toolCallId}
-          toolCall={toolCall}
-          onComponentSubmit={(data) => handleComponentSubmit(toolCall.args.component, data)}
-        />
-      ))}
-    </>
-  )
+        )}
+
+        {/* Render text content */}
+        {textContent && (
+          message.role === 'assistant' ? (
+            <Response
+              isStreaming={isLastMessage && isLoading}
+              className="prose prose-invert prose-sm max-w-none text-zinc-100"
+            >
+              {textContent}
+            </Response>
+          ) : (
+            <div className="whitespace-pre-wrap break-words text-zinc-200 text-[15px] leading-relaxed">
+              {textContent}
+            </div>
+          )
+        )}
+
+        {/* Render non-text, non-image parts (tool states, etc) */}
+        {parts.map((part: any, index: number) => renderPart(part, index))}
+
+        {/* Legacy: Render tool invocations that aren't handled by parts */}
+        {toolInvocations
+          .filter((t: any) => t.toolName !== 'gateway_image') // gateway_image is handled above
+          .map((toolCall: any) => (
+            <ToolInvocation
+              key={toolCall.toolCallId}
+              toolCall={toolCall}
+              onComponentSubmit={(data) => handleComponentSubmit(toolCall.args?.component, data)}
+            />
+          ))}
+      </>
+    );
+  }
+
 
   if (isBootstrapping) {
     return (
@@ -544,153 +799,158 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     )
   }
 
-  // HERO VIEW (Empty State)
+  // HERO VIEW (Empty State) - Clean, minimal style
   if (messages.length === 0) {
+    const suggestions = [
+      { title: 'View all my cameras', prompt: 'Show me all my cameras' },
+      { title: 'Show me my smart home hub', prompt: 'Display my smart home hub' },
+      { title: 'How much electricity have I used this month?', prompt: 'How much electricity have I used this month?' },
+      { title: 'How much water have I used this month?', prompt: 'How much water have I used this month?' },
+    ]
 
     return (
       <div className={cn("flex flex-col h-full items-center justify-center p-8 relative", className)}>
-        <div className="w-full max-w-3xl space-y-12">
-
-          {/* Greeting & Logo */}
-          <div className="text-center space-y-6">
-            <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-600/20 flex items-center justify-center p-1 shadow-2xl shadow-indigo-500/10 animate-pulse-glow">
-              <div className="w-full h-full rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center relative overflow-hidden">
-                <Logo className="w-16 h-16 relative z-10" />
-              </div>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/60 tracking-tight">
-              Good Evening, DeepAI.<br />
-              <span className="text-3xl md:text-4xl font-medium text-white/60">Can I help you with anything?</span>
+        <div className="w-full max-w-4xl space-y-8">
+          {/* Greeting - Clean and minimal */}
+          <div className="text-center space-y-3">
+            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
+              Good Evening, DeepAI.
             </h1>
+            <p className="text-lg md:text-xl text-zinc-400">
+              Can I help you with anything?
+            </p>
           </div>
 
-          {/* Input Area */}
-          <div className="w-full">
+          {/* Input Area - Centered and prominent */}
+          <div className="w-full max-w-3xl mx-auto">
             <ChatInput
               value={input}
               onChange={setInput}
               onSubmit={() => {
-                if (input.trim() && !isLoading && conversationId) {
+                if (input.trim() && !isLoading) {
                   handleSendMessage({ text: input })
                   setInput('')
                 }
               }}
-              disabled={isLoading || !conversationId}
+              disabled={isLoading}
               placeholder={placeholder}
               className="bg-transparent"
+              onImageGenerate={() => {
+                const prompt = input.trim() || 'a beautiful landscape'
+                // Explicit instruction to use the gateway_image tool
+                handleSendMessage({
+                  text: `Please use the gateway_image tool to generate an image of: ${prompt}. Do not just describe the image - actually generate it using the tool.`
+                })
+                setInput('')
+              }}
+              onWebSearch={() => {
+                const query = input.trim() || 'latest news'
+                // Explicit instruction to use web search tools
+                handleSendMessage({
+                  text: `Please search the web for: ${query}. Use the perplexity_search or research_agent tool to find current information.`
+                })
+                setInput('')
+              }}
             />
             {error && (
-              <p className="mt-2 text-sm text-rose-300/80">Something went wrong. Please try again.</p>
+              <div className="mt-3 p-3 rounded-xl border border-red-500/20 bg-red-500/5">
+                <p className="text-sm text-red-300/80">
+                  {error.message || 'Something went wrong. Please try again.'}
+                </p>
+              </div>
+            )}
+            {bootError && (
+              <div className="mt-3 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                <p className="text-sm text-amber-300/80">{bootError}</p>
+              </div>
             )}
           </div>
 
-
-          {/* Suggestion Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { title: 'Smart Budget', desc: 'A budget that fits your lifestyle, not the other way around' },
-              { title: 'Analytics', desc: 'Analytics empowers individuals and businesses to make smarter decisions' },
-              { title: 'Spending', desc: 'Spending is the way individuals and businesses use their financial resources' }
-            ].map((card) => (
+          {/* Suggestion Cards - Clean, minimal style */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl mx-auto">
+            {suggestions.map((suggestion) => (
               <button
-                key={card.title}
+                key={suggestion.title}
                 onClick={() => {
-                  if (!conversationId || isLoading) return
-                  const prompt = `Tell me about ${card.title}`
-                  setInput(prompt)
-                  handleSendMessage({ text: prompt })
+                  if (isLoading) return
+                  handleSendMessage({ text: suggestion.prompt })
                 }}
-
-                className="text-left p-5 rounded-2xl bg-[#18181b] border border-white/[0.05] hover:bg-[#27272a] hover:border-white/10 transition-all group h-full"
+                className="text-left p-4 rounded-xl bg-zinc-900/40 border border-white/5 hover:bg-zinc-800/60 hover:border-white/10 transition-all group"
               >
-                <h3 className="font-semibold text-zinc-100 mb-2 group-hover:text-white">{card.title}</h3>
-                <p className="text-sm text-zinc-500 leading-relaxed group-hover:text-zinc-400">{card.desc}</p>
+                <p className="text-sm font-medium text-zinc-200 group-hover:text-white">
+                  {suggestion.title}
+                </p>
               </button>
             ))}
           </div>
-
         </div>
       </div>
     )
   }
 
-  // ACTIVE CHAT VIEW
+  // ACTIVE CHAT VIEW - Clean, minimal style matching screenshot
   return (
     <div className={cn("flex flex-col h-full min-h-0 bg-transparent", className)}>
       <Conversation>
         <ConversationContent>
           {messages.map((message: any) => {
+
             const messageText = getMessageText(message)
             const sources = extractSources(message)
             const planSteps = extractPlanSteps(message)
             const timestampLabel = getMessageTimestamp(message)
             const statusBadge = getMessageStatus(message)
+            const isLastMessage = message.id === (messages[messages.length - 1] as any)?.id
             const canRegenerate =
               message.role === 'assistant' &&
               message.id === lastAssistantMessageId &&
               Boolean(regenerate) &&
               !isLoading
-            const statusToneClass = statusBadge ? statusToneClassMap[statusBadge.tone] : ''
 
             return (
-              <Message key={message.id} from={message.role} className={message.role === 'user' ? 'ml-auto' : ''}>
+              <Message
+                key={`${message.id}-${message.toolInvocations?.length || 0}-${message.toolInvocations?.filter((t: any) => t.state === 'result').length || 0}`}
+                from={message.role}
+                className="group"
+              >
                 <MessageAvatar
-                  src=""
+                  isUser={message.role === 'user'}
                   name={message.role === 'user' ? "You" : "AI"}
-                  className={message.role === 'user' ? "hidden" : "bg-gradient-to-br from-indigo-500 to-purple-600 ring-2 ring-black/50"}
                 />
-                <MessageContent
-                  variant={message.role === 'user' ? 'contained' : 'flat'}
-                  className={cn(
-                    "shadow-lg backdrop-blur-sm",
-                    message.role === 'user'
-                      ? "bg-indigo-600 text-white border-0 rounded-2xl rounded-tr-sm"
-                      : "bg-zinc-900/60 border border-white/5 rounded-2xl rounded-tl-sm"
-                  )}
-                >
-                  {renderMessageContent(message, messageText)}
+                <MessageContent variant="flat">
+                  {renderMessageContent(message, messageText, isLastMessage)}
 
                   {message.role === 'assistant' && sources.length > 0 && <SourcesList sources={sources} />}
-                  {message.role === 'assistant' && planSteps.length > 0 && <PlanList steps={planSteps} />}
 
-                  <div className="mt-3 flex flex-col gap-2 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2">
-                      {statusBadge && (
-                        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', statusToneClass)}>
-                          {statusBadge.label}
-                        </span>
-                      )}
-                      {timestampLabel && <span>{timestampLabel}</span>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {messageText && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-zinc-300 hover:text-white"
-                          onClick={() => copyToClipboard(messageText, message.id)}
-                        >
-                          {copiedId === message.id ? (
-                            <Check className="mr-1.5 h-3.5 w-3.5 text-green-400" />
-                          ) : (
-                            <Copy className="mr-1.5 h-3.5 w-3.5" />
-                          )}
-                          Copy
-                        </Button>
-                      )}
-                      {canRegenerate && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-zinc-300 hover:text-white"
-                          onClick={() => regenerate?.()}
-                        >
-                          Regenerate
-                        </Button>
-                      )}
-                    </div>
+                  {/* Minimal footer with actions - show on hover or for last message */}
+                  <div className={cn(
+                    "mt-2 flex items-center gap-3 text-xs text-zinc-500 transition-opacity",
+                    isLastMessage ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  )}>
+                    {timestampLabel && <span>{timestampLabel}</span>}
+                    {messageText && (
+                      <button
+                        type="button"
+                        className="hover:text-zinc-300 transition-colors"
+                        onClick={() => copyToClipboard(messageText, message.id)}
+                        title="Copy message"
+                      >
+                        {copiedId === message.id ? (
+                          <Check className="h-3.5 w-3.5 text-green-400" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
+                    {canRegenerate && (
+                      <button
+                        type="button"
+                        className="hover:text-zinc-300 transition-colors"
+                        onClick={() => regenerate?.()}
+                      >
+                        Regenerate
+                      </button>
+                    )}
                   </div>
                 </MessageContent>
               </Message>
@@ -699,11 +959,13 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
           {isLoading && (
             <Message from="assistant">
-              <MessageAvatar src="" name="AI" className="bg-gradient-to-br from-indigo-500 to-purple-600 ring-2 ring-black/50" />
-              <MessageContent variant="flat" className="bg-zinc-900/60 border border-white/5 rounded-2xl rounded-tl-sm backdrop-blur-sm">
+              <MessageAvatar isUser={false} name="AI" />
+              <MessageContent variant="flat">
                 <div className="flex items-center gap-2 text-zinc-400">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">{activeToolName ? `Using ${formatToolName(activeToolName)}...` : 'Thinking...'}</span>
+                  <Loader size={16} className="text-indigo-400" />
+                  <Shimmer className="text-sm text-zinc-300">
+                    {activeToolName ? `Using ${formatToolName(activeToolName)}...` : 'Thinking...'}
+                  </Shimmer>
                 </div>
               </MessageContent>
             </Message>
@@ -712,9 +974,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         <ConversationScrollButton className="bg-zinc-800/80 hover:bg-zinc-700/80 backdrop-blur border border-white/10" />
       </Conversation>
 
-      <div className="p-4 md:p-6 bg-transparent space-y-2">
+      <div className="p-4 md:p-6 bg-transparent border-t border-white/5">
         {(status === 'streaming' || status === 'submitted') && (
-          <div className="flex justify-end gap-3 text-xs text-zinc-400">
+          <div className="flex justify-end gap-3 text-xs text-zinc-400 mb-2">
             <span>{status === 'submitted' ? 'Connecting…' : 'Streaming response…'}</span>
             <Button
               type="button"
@@ -728,20 +990,28 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           </div>
         )}
         <ChatInput
-
           value={input}
           onChange={setInput}
           onSubmit={() => {
-            if (input.trim() && !isLoading && conversationId) {
+            if (input.trim() && !isLoading) {
               handleSendMessage({ text: input })
               setInput('')
             }
           }}
-          disabled={isLoading || !conversationId}
+          disabled={isLoading}
           placeholder={placeholder}
           className="bg-transparent"
+          onImageGenerate={() => {
+            const prompt = input.trim() || 'a beautiful landscape'
+            handleSendMessage({ text: `Generate an image: ${prompt}` })
+            setInput('')
+          }}
+          onWebSearch={() => {
+            const query = input.trim() || 'latest news'
+            handleSendMessage({ text: `Search the web for: ${query}` })
+            setInput('')
+          }}
         />
-
       </div>
     </div>
   )

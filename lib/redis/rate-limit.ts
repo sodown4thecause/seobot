@@ -50,6 +50,12 @@ export const RATE_LIMITS = {
     window: '1 m',
     message: 'Too many requests. Please slow down.',
   },
+  // AEO Audit: 20 audits per hour per IP (free tool rate limit)
+  AEO_AUDIT: {
+    limit: 20,
+    window: '1 h',
+    message: 'You have reached the limit of 20 free audits per hour. Please try again later or sign up for unlimited audits.',
+  },
 } as const
 
 type RateLimitType = keyof typeof RATE_LIMITS

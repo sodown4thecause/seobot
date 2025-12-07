@@ -5,6 +5,7 @@ import {
   CoreMessage,
   stepCountIs,
   createIdGenerator,
+  type Message,
 } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { serverEnv } from "@/lib/config/env";
@@ -26,6 +27,7 @@ import { OrchestratorAgent } from "@/lib/agents/orchestrator";
 import { RAGWriterOrchestrator } from "@/lib/agents/rag-writer-orchestrator";
 import { AgentRouter } from "@/lib/agents/agent-router";
 import { vercelGateway } from "@/lib/ai/gateway-provider";
+import { generateImageWithGatewayGemini } from "@/lib/ai/image-generation";
 import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
 import { z } from "zod";
 import { researchAgentTool, competitorAgentTool, frameworkRagTool } from "@/lib/agents/tools";
@@ -54,15 +56,14 @@ interface ChatContext {
 }
 
 interface RequestBody {
-  messages?: any[];
-  message?: GenericUIMessage;
+  messages?: Message[]; // Message[] from @ai-sdk/react useChat
   chatId?: string;
   conversationId?: string;
   agentId?: string;
   context?: ChatContext;
 }
 
-export async function POST(req: Request) {
+const handler = async (req: Request) => {
   console.log('[Chat API] POST handler called');
 
   // Log request details
@@ -73,106 +74,103 @@ export async function POST(req: Request) {
     const body = (await req.json()) as RequestBody;
     console.log('[Chat API] Request body:', JSON.stringify({
       messagesCount: body.messages?.length,
-      hasSingleMessage: !!body.message,
       hasContext: !!body.context,
-      chatId: body.chatId || body.conversationId || body.context?.conversationId,
+      chatId: body.chatId,
     }));
 
-    const {
-      context,
-      message: singleMessage,
-      chatId,
-      conversationId: legacyConversationId,
-      agentId,
-    } = body;
-    const requestMessages = body.messages;
+    const { messages: incomingMessages, chatId, context } = body;
+    const agentId = (context as any)?.agentId || 'general';
+
+    // Extract onboarding context for system prompt building
+    const onboardingContext = context?.onboarding;
+    const isOnboarding = context?.page === 'onboarding' || !!onboardingContext;
 
     const supabase = await createClient();
 
     // Get current user (needed for rate limiting)
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    let user = null;
+    let authError = null;
 
-    const requestedConversationId = chatId || legacyConversationId || context?.conversationId;
+    try {
+      const authResult = await supabase.auth.getUser();
+      user = authResult.data.user;
+      authError = authResult.error;
+    } catch (err) {
+      console.warn('[Chat API] Auth check failed (safe to ignore for anon usage):', err);
+      // Treat as anonymous user
+      user = null;
+      // We don't set authError to avoid triggering downstream logic that expects a specific Supabase error shape
+    }
+
+    const requestedConversationId = chatId || (context as any)?.conversationId;
     const resolvedAgentType = agentId || (context as any)?.agentType || 'general';
 
-    let normalizedSingleMessage = singleMessage ? normalizeUIMessage(singleMessage) : undefined;
-    const normalizedMessages = Array.isArray(requestMessages)
-      ? requestMessages.map((msg) => normalizeUIMessage(msg))
-      : undefined;
-
     let conversationRecord: Awaited<ReturnType<typeof ensureConversationForUser>> | null = null;
-    let persistedMessages: GenericUIMessage[] = [];
 
-    if (requestedConversationId && user) {
+    // If user is authenticated, ensure we have a conversation (create if needed)
+    if (user) {
       try {
         conversationRecord = await ensureConversationForUser(
           supabase,
           user.id,
-          requestedConversationId,
+          requestedConversationId || undefined, // Create new if not provided
           resolvedAgentType,
         );
-        persistedMessages = await loadConversationMessages(supabase, conversationRecord.id);
       } catch (error) {
-        console.error('[Chat API] Conversation lookup failed:', error);
-        return new Response(
-          JSON.stringify({ error: "Conversation not found" }),
-          { status: 404, headers: { "Content-Type": "application/json" } },
-        );
+        console.error('[Chat API] Conversation lookup/creation failed:', error);
+        // Don't fail the request - allow it to proceed without conversation persistence
+        // The conversation will be created on the next message if needed
       }
     }
 
-    let messages: GenericUIMessage[] | null = null;
-
-    if (normalizedSingleMessage) {
-      messages = [
-        ...(persistedMessages.length > 0 ? persistedMessages : normalizedMessages ?? []),
-        normalizedSingleMessage,
-      ];
-    } else if (normalizedMessages?.length) {
-      messages = normalizedMessages;
-    } else if (persistedMessages.length > 0) {
-      messages = persistedMessages;
-    }
-
-    if (!messages || messages.length === 0) {
+    // Validate incoming messages - should be Message[] from useChat
+    if (!Array.isArray(incomingMessages) || incomingMessages.length === 0) {
       return new Response(
         JSON.stringify({ error: "Messages array is required and must not be empty" }),
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    if (normalizedSingleMessage && conversationRecord) {
-      await saveConversationMessage(supabase, conversationRecord.id, normalizedSingleMessage, {
+    // Normalize messages to GenericUIMessage format for storage
+    const normalizedMessages = incomingMessages.map(msg => normalizeUIMessage(msg));
+
+    const lastUserMessage = normalizedMessages[normalizedMessages.length - 1];
+    if (lastUserMessage?.role === 'user' && conversationRecord) {
+      await saveConversationMessage(supabase, conversationRecord.id, lastUserMessage, {
         metadata: { source: 'user' },
       });
     }
 
     const activeConversationId = conversationRecord?.id ?? requestedConversationId;
 
-    // Check rate limit (after getting user for better identification)
-    const rateLimitResponse = await rateLimitMiddleware(req as any, "CHAT", user?.id);
-    if (rateLimitResponse) {
-      return rateLimitResponse;
-    }
-
-    // Initialize Orchestrators
-    const orchestrator = new OrchestratorAgent(); // Legacy orchestrator (kept for backward compatibility)
-    const ragWriterOrchestrator = new RAGWriterOrchestrator(); // New RAG + EEAT feedback loop orchestrator
-
-    // Extract onboarding context if present
-    const onboardingContext = context?.onboarding;
-    const isOnboarding = context?.page === "onboarding";
-
     // Extract last user message content for intent detection
-    const lastUserMessage = messages[messages.length - 1];
-    const lastUserMessageContent = typeof lastUserMessage.content === 'string'
-      ? lastUserMessage.content
-      : Array.isArray(lastUserMessage.content)
-        ? lastUserMessage.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
-        : '';
+    const lastMsg = normalizedMessages[normalizedMessages.length - 1];
+    const lastUserMessageContent = typeof lastMsg.content === 'string'
+      ? lastMsg.content
+      : Array.isArray(lastMsg.content)
+        ? lastMsg.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
+        : Array.isArray(lastMsg.parts)
+          ? lastMsg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
+          : '';
+
+    // Update Langfuse trace with conversation context and user input
+    updateActiveObservation({
+      input: lastUserMessageContent,
+    });
+
+    updateActiveTrace({
+      name: "chat-message",
+      sessionId: activeConversationId || undefined, // Groups related messages together
+      userId: user?.id || undefined, // Track which user made the request
+      input: lastUserMessageContent,
+      metadata: {
+        agentType: routingResult.agent,
+        page: context?.page,
+        isOnboarding: !!isOnboarding,
+        onboardingStep: onboardingContext?.currentStep,
+        workflowId: workflowId || undefined,
+      },
+    });
 
     // WORKFLOW DETECTION: Check if user wants to run a workflow
     const { detectWorkflow, isWorkflowRequest, extractWorkflowId } =
@@ -207,6 +205,26 @@ export async function POST(req: Request) {
       reasoning: routingResult.reasoning,
       toolsCount: routingResult.tools.length,
       toolsSample: routingResult.tools.slice(0, 10) // Log first 10 tools
+    });
+
+    // Update Langfuse trace with conversation context and user input
+    // (After routingResult is defined so we can include agentType in metadata)
+    updateActiveObservation({
+      input: lastUserMessageContent,
+    });
+
+    updateActiveTrace({
+      name: "chat-message",
+      sessionId: activeConversationId || undefined, // Groups related messages together
+      userId: user?.id || undefined, // Track which user made the request
+      input: lastUserMessageContent,
+      metadata: {
+        agentType: routingResult.agent,
+        page: context?.page,
+        isOnboarding: !!isOnboarding,
+        onboardingStep: onboardingContext?.currentStep,
+        workflowId: workflowId || undefined,
+      },
     });
 
     // Build system prompt for the selected agent
@@ -365,11 +383,118 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
       },
     });
 
+    const gatewayImageTool = tool({
+      description: "Generate images with Google Gemini 2.5 Flash Image via Vercel AI Gateway. Use when the user asks for an image or wants edits/regenerations.",
+      inputSchema: z.object({
+        prompt: z.string().describe("Base prompt for the image"),
+        previousPrompt: z.string().optional().describe("Previous prompt to refine from"),
+        editInstructions: z.string().optional().describe("Refinements or edits requested by the user"),
+        size: z.enum(["1024x1024", "1792x1024", "1024x1792"]).optional(),
+        aspectRatio: z.enum(["1:1", "4:3", "3:4", "16:9", "9:16"]).optional(),
+        seed: z.number().optional().describe("Optional seed for deterministic output"),
+        n: z.number().optional().describe("Number of images to request (default 1)"),
+        abortTimeoutMs: z.number().optional().describe("Timeout in milliseconds for generation"),
+      }),
+      execute: async (args) => {
+        try {
+          console.log('[Chat API] Generating image with prompt:', args.prompt);
+
+          const response = await generateImageWithGatewayGemini({
+            prompt: args.prompt,
+            previousPrompt: args.previousPrompt,
+            editInstructions: args.editInstructions,
+            size: args.size,
+            aspectRatio: args.aspectRatio,
+            seed: args.seed,
+            n: args.n,
+            abortTimeoutMs: args.abortTimeoutMs || 60000,
+          });
+
+          console.log('[Chat API] Image generated, uploading to storage...');
+
+          // Upload images to Supabase storage to avoid payload size limits
+          const uploadedImages: { url: string; name: string; mediaType: string }[] = [];
+
+          for (let idx = 0; idx < response.images.length; idx++) {
+            const img = response.images[idx];
+            const fileName = `generated/${Date.now()}-${Math.random().toString(36).substring(7)}-${idx}.png`;
+
+            // Convert base64 to buffer
+            const imageBuffer = Buffer.from(img.base64, 'base64');
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('article-images')
+              .upload(fileName, imageBuffer, {
+                contentType: img.mediaType || 'image/png',
+                cacheControl: '31536000', // 1 year cache
+              });
+
+            if (uploadError) {
+              console.error('[Chat API] Failed to upload image to storage:', uploadError);
+              // Fall back to data URL (may still fail for large images)
+              uploadedImages.push({
+                url: img.dataUrl,
+                name: `image-${idx + 1}.png`,
+                mediaType: img.mediaType || 'image/png',
+              });
+              continue;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('article-images')
+              .getPublicUrl(fileName);
+
+            console.log('[Chat API] Image uploaded successfully:', publicUrl);
+            uploadedImages.push({
+              url: publicUrl,
+              name: `image-${idx + 1}.png`,
+              mediaType: img.mediaType || 'image/png',
+            });
+          }
+
+          const primary = uploadedImages[0];
+
+          return {
+            type: 'image',
+            model: 'google/gemini-2.5-flash-image',
+            prompt: response.prompt,
+            size: args.size || '1024x1024',
+            url: primary?.url,
+            imageUrl: primary?.url,
+            mediaType: primary?.mediaType,
+            warnings: response.warnings,
+            count: uploadedImages.length,
+            files: uploadedImages.map(img => ({
+              name: img.name,
+              mediaType: img.mediaType,
+              url: img.url,
+            })),
+            parts: uploadedImages.map(img => ({
+              type: 'file',
+              mimeType: img.mediaType,
+              name: img.name,
+              url: img.url,
+            })),
+            content: `Image generated successfully! [View Image](${primary?.url})`,
+          };
+        } catch (error: any) {
+          console.error('[Chat API] Gateway image tool failed:', error);
+          return {
+            type: 'image',
+            model: 'google/gemini-2.5-flash-image',
+            status: 'error',
+            errorMessage: error?.message || 'Image generation failed',
+          };
+        }
+      }
+    });
+
     // Construct Final Tool Set
     const allTools = {
       // Core Tools (Always available)
       ...orchestratorTool,
       client_ui: clientUiTool,
+      gateway_image: gatewayImageTool,
 
       // Best Practice: Specialized Agents as Tools
       research_agent: researchAgentTool,
@@ -409,46 +534,20 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
     });
 
     // Debug incoming messages
-    console.log('[Chat API] Incoming messages:', JSON.stringify(messages, null, 2));
-
-    // Sanitize messages to ensure content and parts are always defined
-    const sanitizedMessages = messages.map((msg) => {
-      const contentText = typeof (msg as any).content === 'string'
-        ? (msg as any).content
-        : Array.isArray((msg as any).content)
-          ? (msg as any).content
-              .filter((part: any) => part?.type === 'text')
-              .map((part: any) => part.text)
-              .join('')
-          : '';
-
-      return {
-        ...msg,
-        content: contentText,
-        parts: Array.isArray((msg as any).parts) && (msg as any).parts.length > 0
-          ? (msg as any).parts
-          : Array.isArray((msg as any).content)
-            ? (msg as any).content
-            : contentText
-              ? [{ type: 'text', text: contentText }]
-              : [],
-        toolInvocations: (msg as any).toolInvocations || undefined,
-      };
-    });
+    console.log('[Chat API] Incoming messages count:', incomingMessages.length);
 
     const serverMessageIdGenerator = createIdGenerator({ prefix: 'msg', size: 16 });
 
-    // Convert messages to CoreMessage format for AI SDK 6
-    let coreMessages;
+    // Convert Message[] from useChat to CoreMessage[] for streamText
+    // convertToCoreMessages handles the conversion properly, preserving parts and toolInvocations
+    let coreMessages: CoreMessage[];
     try {
-      coreMessages = convertToCoreMessages(sanitizedMessages);
+      coreMessages = convertToCoreMessages(incomingMessages);
+      console.log('[Chat API] Converted to CoreMessage[], count:', coreMessages.length);
     } catch (err) {
       console.error('[Chat API] convertToCoreMessages failed:', err);
-      // Fallback to manual conversion if built-in fails
-      coreMessages = sanitizedMessages.map((m: any) => ({
-        role: m.role,
-        content: m.content,
-      })) as CoreMessage[];
+      // Fallback: convert normalized messages if direct conversion fails
+      coreMessages = convertToCoreMessages(normalizedMessages);
     }
 
     // Use AI SDK 6 with stopWhen conditions for tool loop control
@@ -484,18 +583,6 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
           winston: routingResult.agent === 'content',
         },
       }),
-      onError: (error) => {
-        console.error('[Chat API] Streaming error:', error);
-        // Log error with context
-        import('@/lib/errors/logger').then(({ logError }) => {
-          logError(error, {
-            agent: 'chat',
-            requestId: context?.conversationId,
-            userId: user?.id,
-            endpoint: '/api/chat',
-          });
-        });
-      },
       onFinish: async ({ response, usage }) => {
         const { messages: finalMessages } = response;
 
@@ -560,13 +647,21 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
 
     console.log('[Chat API] streamText result keys:', Object.keys(result));
 
+    // Critical for serverless: flush traces before function terminates
+    // Get langfuseSpanProcessor from global (set in instrumentation.ts)
+    const langfuseSpanProcessor = (global as any).langfuseSpanProcessor;
+    if (langfuseSpanProcessor) {
+      after(async () => await langfuseSpanProcessor.forceFlush());
+    }
+
     // AI SDK v6: Use toUIMessageStreamResponse for proper chat transport compatibility
+    // Pass originalMessages to prevent duplicate assistant messages (see troubleshooting guide)
     return result.toUIMessageStreamResponse({
       headers: {
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       },
-      originalMessages: sanitizedMessages,
+      originalMessages: incomingMessages, // Use original Message[] from useChat
       generateMessageId: serverMessageIdGenerator,
       onFinish: async ({ messages: uiMessages }) => {
         if (!uiMessages?.length || !activeConversationId || !user) {
@@ -576,6 +671,33 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
         const finalAssistantMessage = uiMessages[uiMessages.length - 1];
         if (finalAssistantMessage?.role !== 'assistant') {
           return;
+        }
+
+        // Log tool invocations for debugging image generation
+        if (finalAssistantMessage.toolInvocations) {
+          console.log('[Chat API] Final assistant message tool invocations:', {
+            count: finalAssistantMessage.toolInvocations.length,
+            tools: finalAssistantMessage.toolInvocations.map((t: any) => ({
+              toolName: t.toolName,
+              hasResult: !!t.result,
+              resultKeys: t.result ? Object.keys(t.result) : [],
+            })),
+          });
+          
+          // Log image tool results specifically
+          const imageTools = finalAssistantMessage.toolInvocations.filter(
+            (t: any) => t.toolName === 'gateway_image' && t.state === 'result'
+          );
+          if (imageTools.length > 0) {
+            console.log('[Chat API] Image tool results:', imageTools.map((t: any) => ({
+              // Safety check for result properties
+              hasFiles: t.result && Array.isArray(t.result.files),
+              filesCount: t.result?.files?.length || 0,
+              hasParts: t.result && Array.isArray(t.result.parts),
+              partsCount: t.result?.parts?.length || 0,
+              hasUrl: !!t.result?.url,
+            })));
+          }
         }
 
         try {
@@ -593,7 +715,24 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
 
   } catch (error) {
     console.error("Chat API error:", error);
+    
+    // Update trace with error before returning
+    updateActiveObservation({
+      output: error instanceof Error ? error.message : String(error),
+      level: "ERROR"
+    });
+    updateActiveTrace({
+      output: error instanceof Error ? error.message : String(error),
+    });
+    trace.getActiveSpan()?.end();
+
     // Use standardized error handler
     return handleApiError(error, "Failed to process chat request");
   }
-}
+};
+
+// Wrap handler with observe() to create a Langfuse trace
+export const POST = observe(handler, {
+  name: "handle-chat-message",
+  endOnExit: false, // Don't end observation until stream finishes
+});

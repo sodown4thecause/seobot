@@ -37,15 +37,17 @@ export interface ImageMessage extends BaseMessage {
   quality?: 'standard' | 'hd'
   style?: 'vivid' | 'natural'
   seed?: number
-  model: 'dall-e-3'
+  model: 'dall-e-3' | 'google/gemini-2.5-flash-image'
   base64?: string
   imageBase64?: string  // Alternative field name for compatibility
   url?: string
+  mediaType?: string
   providerMetadata?: any
   warnings?: any[]  // Can be string[] or warning objects
   status?: 'loading' | 'done' | 'error'
   errorMessage?: string
 }
+
 
 /**
  * Union type for all message types
@@ -89,8 +91,9 @@ export interface ImageGenerationResponse {
   providerMetadata?: any
   warnings?: string[]
   size: string
-  model: string
+  model: 'dall-e-3' | 'google/gemini-2.5-flash-image' | string
 }
+
 
 /**
  * Image mode preferences

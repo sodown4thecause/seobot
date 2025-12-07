@@ -12,6 +12,7 @@ import { QUALITY_THRESHOLDS, shouldTriggerRevision } from '@/lib/config/quality-
 import { getLangWatchClient } from '@/lib/observability/langwatch'
 import { EVALUATION_SCHEMAS } from '@/lib/observability/evaluation-schemas'
 import { createIdGenerator } from 'ai'
+import { startActiveObservation, updateActiveTrace } from '@langfuse/tracing'
 
 export interface RAGWriterParams {
   type: 'blog_post' | 'article' | 'social_media' | 'landing_page'
@@ -69,23 +70,54 @@ export class RAGWriterOrchestrator {
     let contentVersionId: string | undefined
     let revisionRound = 0
 
-    // Log trace start to LangWatch
-    await this.langWatch.logTrace({
-      traceId,
-      agent: 'rag-writer-orchestrator',
-      model: 'multi-agent',
-      telemetry: {
-        topic: params.topic,
-        contentType: params.type,
-        keywords: params.keywords,
-        userId: params.userId,
-      },
-      metadata: {
-        startTime: new Date().toISOString(),
-      },
-    })
+    // Create Langfuse observation for full orchestration trace
+    return await startActiveObservation('rag-writer-orchestrator', async (span) => {
+      // Set initial trace context
+      updateActiveTrace({
+        name: 'rag-content-generation',
+        userId: params.userId || undefined,
+        input: {
+          topic: params.topic,
+          type: params.type,
+          keywords: params.keywords,
+          tone: params.tone,
+          wordCount: params.wordCount,
+        },
+        metadata: {
+          contentType: params.type,
+          keywords: params.keywords.join(', '),
+          tone: params.tone,
+          wordCount: params.wordCount,
+        },
+      });
 
-    try {
+      span.update({
+        input: {
+          topic: params.topic,
+          type: params.type,
+          keywords: params.keywords,
+          tone: params.tone,
+          wordCount: params.wordCount,
+        },
+      });
+
+      // Log trace start to LangWatch (for backward compatibility)
+      await this.langWatch.logTrace({
+        traceId,
+        agent: 'rag-writer-orchestrator',
+        model: 'multi-agent',
+        telemetry: {
+          topic: params.topic,
+          contentType: params.type,
+          keywords: params.keywords,
+          userId: params.userId,
+        },
+        metadata: {
+          startTime: new Date().toISOString(),
+        },
+      });
+
+      try {
       // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
       console.log('[Orchestrator] Phase 1: Research')
       const researchTraceId = this.traceIdGenerator()
@@ -411,47 +443,87 @@ export class RAGWriterOrchestrator {
         }
       }
 
-      console.log('[Orchestrator] ✓ Content generation complete')
-      console.log(`[Orchestrator] Final scores - Overall: ${finalScores.overall}, Revisions: ${revisionRound}`)
+        console.log('[Orchestrator] ✓ Content generation complete')
+        console.log(`[Orchestrator] Final scores - Overall: ${finalScores.overall}, Revisions: ${revisionRound}`)
 
-      return {
-        content: bestDraft,
-        contentId,
-        contentVersionId,
-        qualityScores: finalScores,
-        revisionCount: revisionRound,
-        qaReport: finalQAReport,
-        metadata: {
-          researchSummary: researchResult.combinedSummary,
-          citations: researchResult.citations,
-        },
-      }
-    } catch (error) {
-      console.error('[Orchestrator] Error in content generation:', error)
-      
-      // Log error to LangWatch
-      try {
-        await this.langWatch.logTrace({
-          traceId,
-          agent: 'rag-writer-orchestrator',
-          model: 'multi-agent',
-          telemetry: {
+        const result = {
+          content: bestDraft,
+          contentId,
+          contentVersionId,
+          qualityScores: finalScores,
+          revisionCount: revisionRound,
+          qaReport: finalQAReport,
+          metadata: {
+            researchSummary: researchResult.combinedSummary,
+            citations: researchResult.citations,
+          },
+        };
+
+        // Update trace with final output
+        updateActiveTrace({
+          output: {
+            contentId,
+            contentVersionId,
+            qualityScores: finalScores,
+            revisionCount: revisionRound,
+            wordCount: bestDraft.split(/\s+/).length,
+          },
+        });
+
+        span.update({
+          output: {
+            contentId,
+            contentVersionId,
+            qualityScores: finalScores,
+            revisionCount: revisionRound,
+            wordCount: bestDraft.split(/\s+/).length,
+          },
+        });
+
+        return result;
+      } catch (error) {
+        console.error('[Orchestrator] Error in content generation:', error)
+        
+        // Update trace with error
+        updateActiveTrace({
+          output: {
             error: true,
             errorMessage: error instanceof Error ? error.message : 'Unknown error',
           },
-          metadata: {
+        });
+
+        span.update({
+          output: {
             error: true,
-            errorStack: error instanceof Error ? error.stack : undefined,
-            topic: params.topic,
-            userId: params.userId,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
           },
-        })
-      } catch (langWatchError) {
-        console.error('[Orchestrator] Failed to log error to LangWatch:', langWatchError)
+          level: 'ERROR',
+        });
+        
+        // Log error to LangWatch (for backward compatibility)
+        try {
+          await this.langWatch.logTrace({
+            traceId,
+            agent: 'rag-writer-orchestrator',
+            model: 'multi-agent',
+            telemetry: {
+              error: true,
+              errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            },
+            metadata: {
+              error: true,
+              errorStack: error instanceof Error ? error.stack : undefined,
+              topic: params.topic,
+              userId: params.userId,
+            },
+          })
+        } catch (langWatchError) {
+          console.error('[Orchestrator] Failed to log error to LangWatch:', langWatchError)
+        }
+        
+        throw error
       }
-      
-      throw error
-    }
+    });
   }
 
   /**

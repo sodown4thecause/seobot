@@ -44,6 +44,11 @@ npm install
 cp .env.local.example .env.local
 # Edit .env.local with your API keys
 
+# Set up Cursor MCP configuration (for Taskmaster AI features)
+cp .cursor/mcp.json.example .cursor/mcp.json
+# Edit .cursor/mcp.json with your AI provider API keys
+# See .cursor/MCP_SETUP.md for detailed setup instructions
+
 # Run database migrations
 # Apply migrations from supabase/migrations/ to your Supabase project
 

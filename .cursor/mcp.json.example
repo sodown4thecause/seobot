@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "taskmaster": {
+      "command": "npx",
+      "args": ["task-master-ai", "mcp"],
+      "env": {
+        "ANTHROPIC_API_KEY": "your-anthropic-api-key-here",
+        "PERPLEXITY_API_KEY": "your-perplexity-api-key-here",
+        "OPENAI_API_KEY": "your-openai-api-key-here",
+        "GOOGLE_API_KEY": "your-google-api-key-here",
+        "MISTRAL_API_KEY": "your-mistral-api-key-here",
+        "AZURE_OPENAI_API_KEY": "your-azure-openai-api-key-here",
+        "AZURE_OPENAI_ENDPOINT": "https://your-resource.openai.azure.com",
+        "OPENROUTER_API_KEY": "your-openrouter-api-key-here",
+        "XAI_API_KEY": "your-xai-api-key-here",
+        "OLLAMA_API_KEY": "your-ollama-api-key-here",
+        "OLLAMA_BASE_URL": "http://localhost:11434/api"
+      }
+    }
+  }
+}

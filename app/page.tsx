@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
 import { Logo } from '@/components/ui/logo'
 import { Navbar } from '@/components/navbar'
+import { AEOAuditor } from '@/components/aeo-auditor'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -85,6 +86,9 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
+
+      {/* AEO Auditor - Lead Magnet */}
+      <AEOAuditor />
 
       {/* Stats/Social Proof */}
       <section className="border-y border-white/[0.05] bg-white/[0.01] backdrop-blur-sm py-16 relative z-10">

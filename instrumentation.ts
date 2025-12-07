@@ -45,6 +45,10 @@ export async function register() {
 
       tracerProvider.register();
 
+      // Export span processor for forceFlush in API routes
+      // @ts-ignore - exporting for use in API routes
+      global.langfuseSpanProcessor = langfuseSpanProcessor;
+
       console.log('[Langfuse] OpenTelemetry instrumentation registered with LangfuseSpanProcessor');
     } catch (error) {
       console.error('[Langfuse] Failed to initialize OpenTelemetry:', error);

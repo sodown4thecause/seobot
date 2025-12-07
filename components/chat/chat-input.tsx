@@ -1,9 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { Paperclip, Image as ImageIcon, Globe, Mic, ArrowUp } from 'lucide-react'
+import { ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 
 export interface ChatInputProps {
   value: string
@@ -12,6 +11,8 @@ export interface ChatInputProps {
   disabled?: boolean
   placeholder?: string
   className?: string
+  onImageGenerate?: () => void
+  onWebSearch?: () => void
 }
 
 export function ChatInput({
@@ -19,7 +20,7 @@ export function ChatInput({
   onChange,
   onSubmit,
   disabled = false,
-  placeholder = 'Message AI Chat...',
+  placeholder = 'Send a message...',
   className,
 }: ChatInputProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
@@ -37,13 +38,14 @@ export function ChatInput({
   React.useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
     }
   }, [value])
 
   return (
-    <div className={cn("relative w-full max-w-4xl mx-auto", className)}>
-      <div className="bg-[#18181b] rounded-[24px] p-4 border border-white/[0.08] shadow-2xl focus-within:ring-1 focus-within:ring-white/10 transition-all">
+    <div className={cn("w-full", className)}>
+      <div className="relative flex items-center bg-zinc-800 rounded-2xl border border-zinc-700/50">
+        {/* Text input */}
         <textarea
           ref={textareaRef}
           value={value}
@@ -53,70 +55,26 @@ export function ChatInput({
           disabled={disabled}
           rows={1}
           className={cn(
-            'w-full bg-transparent border-none outline-none resize-none',
+            'flex-1 bg-transparent border-none outline-none resize-none px-4 py-3',
             'text-zinc-100 placeholder:text-zinc-500',
-            'min-h-[24px] max-h-[200px]',
+            'min-h-[48px] max-h-[200px]',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            'font-medium text-base py-1 mb-4'
+            'text-[15px] leading-relaxed'
           )}
         />
-        
-        <div className="flex items-center justify-between">
-          {/* Left Actions */}
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10"
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-9 px-3 rounded-full bg-[#27272a] text-zinc-300 hover:text-white hover:bg-[#3f3f46] text-xs font-medium flex items-center gap-2 border border-white/5"
-            >
-              <ImageIcon className="h-4 w-4 text-blue-400" />
-              Create an image
-            </Button>
 
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-9 px-3 rounded-full bg-[#27272a] text-zinc-300 hover:text-white hover:bg-[#3f3f46] text-xs font-medium flex items-center gap-2 border border-white/5"
-            >
-              <Globe className="h-4 w-4 text-purple-400" />
-              Search the web
-            </Button>
-          </div>
-
-          {/* Right Actions */}
-          <div className="flex items-center gap-2">
-             <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10"
-            >
-              <Mic className="h-5 w-5" />
-            </Button>
-            {value.trim() && (
-               <Button
-                type="button"
-                onClick={onSubmit}
-                disabled={disabled}
-                size="icon"
-                className="h-9 w-9 rounded-xl bg-white text-black hover:bg-zinc-200 transition-all"
-              >
-                <ArrowUp className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
-        </div>
+        {/* Send button - only show when there's text */}
+        {value.trim() && (
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={disabled}
+            className="flex-shrink-0 p-2 m-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:text-white transition-all"
+          >
+            <ArrowUp className="w-5 h-5" />
+          </button>
+        )}
       </div>
     </div>
   )
 }
-

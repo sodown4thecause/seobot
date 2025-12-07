@@ -1,9 +1,11 @@
-import { generateObject, generateText } from 'ai'
+import { Buffer } from 'node:buffer'
+import { generateObject, generateText, experimental_generateImage as generateImage } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
 import { createAdminClient } from '@/lib/supabase/server'
+import { vercelGateway } from '@/lib/ai/gateway-provider'
 
 // Initialize AI providers
 const google = createGoogleGenerativeAI({
@@ -369,6 +371,103 @@ export function getImageGenerationCost(
   }
 
   return numberOfImages * baseCost * (sizeMultiplier[size as keyof typeof sizeMultiplier] || 1)
+}
+
+export interface GatewayGeminiImageOptions {
+  prompt: string
+  previousPrompt?: string
+  editInstructions?: string
+  size?: '1024x1024' | '1792x1024' | '1024x1792'
+  aspectRatio?: '1:1' | '4:3' | '3:4' | '16:9' | '9:16'
+  n?: number
+  seed?: number
+  abortTimeoutMs?: number
+}
+
+export interface GatewayGeminiImageResult {
+  id: string
+  base64: string
+  dataUrl: string
+  mediaType: string
+}
+
+export interface GatewayGeminiImageResponse {
+  prompt: string
+  images: GatewayGeminiImageResult[]
+  warnings?: any[]
+  providerMetadata?: any
+}
+
+export async function generateImageWithGatewayGemini(
+  options: GatewayGeminiImageOptions
+): Promise<GatewayGeminiImageResponse> {
+  const {
+    prompt,
+    previousPrompt,
+    editInstructions,
+    size = '1024x1024',
+    aspectRatio,
+    n = 1,
+    seed,
+    abortTimeoutMs = 45000,
+  } = options
+
+  const promptParts = [prompt]
+  if (previousPrompt) {
+    promptParts.push(`Previous prompt: ${previousPrompt}`)
+  }
+  if (editInstructions) {
+    promptParts.push(`Refinement request: ${editInstructions}`)
+  }
+
+  const details: string[] = []
+  if (size) details.push(`Target size: ${size}`)
+  if (aspectRatio) details.push(`Aspect ratio: ${aspectRatio}`)
+  if (n && n > 1) details.push(`Number of images: ${n}`)
+  if (seed !== undefined) details.push(`Seed: ${seed}`)
+  if (details.length) {
+    promptParts.push(details.join(' | '))
+  }
+
+  const finalPrompt = promptParts.filter(Boolean).join('\n\n').trim()
+
+  const model = vercelGateway.languageModel('google/gemini-2.5-flash-image')
+
+  const result = await generateText({
+    model,
+    prompt: finalPrompt,
+    abortSignal: AbortSignal.timeout(abortTimeoutMs),
+  })
+
+  const fileImages = (result.files || []).filter(f => f.mediaType?.startsWith('image/'))
+
+  if (!fileImages.length) {
+    throw new Error('No image generated from gateway Gemini')
+  }
+
+  const images: GatewayGeminiImageResult[] = fileImages.map((file, index) => {
+    const mediaType = file.mediaType || 'image/png'
+    const base64 = (file as any).base64
+      || ((file as any).uint8Array ? Buffer.from((file as any).uint8Array).toString('base64') : '')
+
+    if (!base64) {
+      throw new Error('Image payload missing base64 data')
+    }
+
+    return {
+      id: `gemini-gateway-${Date.now()}-${index}`,
+      base64,
+      dataUrl: `data:${mediaType};base64,${base64}`,
+      mediaType,
+    }
+  })
+
+  return {
+    prompt: finalPrompt,
+    images,
+    warnings: (result as any).warnings,
+    providerMetadata: (result as any).providerMetadata,
+  }
 }
 
 // ============================================================================
