@@ -809,7 +809,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     ]
 
     return (
-      <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-[#1a1a1a]", className)}>
+      <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-[#1a1a1a] font-chat", className)}>
         <div className="w-full max-w-4xl space-y-8">
           {/* Greeting - Clean and minimal */}
           <div className="text-center space-y-3">
@@ -890,7 +890,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // ACTIVE CHAT VIEW - Clean, minimal style matching screenshot
   return (
-    <div className={cn("flex flex-col h-full min-h-0 bg-[#1a1a1a]", className)}>
+    <div className={cn("flex flex-col h-full min-h-0 bg-[#1a1a1a] font-chat", className)}>
       <Conversation>
         <ConversationContent>
           {messages.map((message: any) => {

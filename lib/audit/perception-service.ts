@@ -25,7 +25,6 @@ import {
 } from '@/lib/api/dataforseo-service'
 import { generateText } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
-import { mcpFirecrawlTools } from '@/lib/mcp/firecrawl/index'
 import { type AIPerception, type PerplexityInsight, type CompetitorInsight, type DomainMetrics } from './schemas'
 
 // API cost estimates (in USD)
@@ -102,13 +101,13 @@ async function getLLMMentions(
     // Log raw responses for debugging
     console.log('[Perception] LLM Search Response:', {
       success: searchResponse.success,
-      tasksCount: searchResponse.data?.tasks?.length ?? 0,
-      resultCount: searchResponse.data?.tasks?.[0]?.result?.length ?? 0,
+      tasksCount: searchResponse.success ? searchResponse.data?.tasks?.length ?? 0 : 0,
+      resultCount: searchResponse.success ? searchResponse.data?.tasks?.[0]?.result?.length ?? 0 : 0,
     })
     console.log('[Perception] LLM Aggregated Response:', {
       success: aggregatedResponse.success,
-      tasksCount: aggregatedResponse.data?.tasks?.length ?? 0,
-      resultCount: aggregatedResponse.data?.tasks?.[0]?.result?.length ?? 0,
+      tasksCount: aggregatedResponse.success ? aggregatedResponse.data?.tasks?.length ?? 0 : 0,
+      resultCount: aggregatedResponse.success ? aggregatedResponse.data?.tasks?.[0]?.result?.length ?? 0 : 0,
     })
 
     // Extract search results for detailed mentions
@@ -159,12 +158,12 @@ async function getChatGPTPerception(brandName: string): Promise<{
 
     console.log('[Perception] ChatGPT Scraper Response:', {
       success: scraperResponse.success,
-      hasData: !!scraperResponse.data,
-      tasksCount: scraperResponse.data?.tasks?.length ?? 0,
+      hasData: scraperResponse.success ? !!scraperResponse.data : false,
+      tasksCount: scraperResponse.success ? scraperResponse.data?.tasks?.length ?? 0 : 0,
     })
 
     // Log full response structure for debugging
-    const taskResult = scraperResponse.data?.tasks?.[0]?.result?.[0]
+    const taskResult = scraperResponse.success ? scraperResponse.data?.tasks?.[0]?.result?.[0] : null
     console.log('[Perception] ChatGPT Scraper Result Structure:', {
       hasResult: !!taskResult,
       resultKeys: taskResult ? Object.keys(taskResult) : [],
@@ -231,11 +230,13 @@ async function getChatGPTPerception(brandName: string): Promise<{
         const query = `What is ${brandName}? Describe what they do, their main products or services, and their reputation in 2-3 sentences.`
         const llmResponse = await chatGPTLLMResponses({ prompt: query, model: 'gpt-4o' })
 
-        const llmResult = llmResponse.data?.tasks?.[0]?.result?.[0] as {
-          response?: string
-          message?: string
+        if (llmResponse.success && llmResponse.data) {
+          const llmResult = llmResponse.data.tasks?.[0]?.result?.[0] as {
+            response?: string
+            message?: string
+          }
+          text = llmResult?.response ?? llmResult?.message ?? ''
         }
-        text = llmResult?.response ?? llmResult?.message ?? ''
 
         console.log('[Perception] ChatGPT LLM Response:', {
           success: llmResponse.success,
@@ -273,11 +274,15 @@ async function getAISearchVolume(brandName: string): Promise<number> {
 
     console.log('[Perception] AI Search Volume Response:', {
       success: response.success,
-      hasData: !!response.data,
+      hasData: response.success ? !!response.data : false,
     })
 
+    if (!response.success || !response.data) {
+      return 0
+    }
+
     // The response structure is different - items contain the search volume
-    const taskResult = response.data?.tasks?.[0]?.result?.[0]
+    const taskResult = response.data.tasks?.[0]?.result?.[0]
     const items = (taskResult as { items?: Array<{ keyword?: string; ai_search_volume?: number }> })?.items
     const volume = items?.[0]?.ai_search_volume ?? 0
 
@@ -306,7 +311,7 @@ async function getKnowledgeGraphStatus(brandName: string): Promise<{
 
     console.log('[Perception] Knowledge Graph Response:', {
       success: response.success,
-      hasData: !!response.data,
+      hasData: response.success ? !!response.data : false,
     })
 
     if (!response.success) {
@@ -413,15 +418,17 @@ async function getCompetitorData(domain: string): Promise<CompetitorInsight[]> {
 
     const response = await competitorAnalysis({ domain })
 
-    const result = response.data?.tasks?.[0]?.result as Array<{
+    if (!response.success || !response.data) {
+      return []
+    }
+
+    type CompetitorResult = {
       domain?: string
-      metrics?: {
-        organic?: { etv?: number; count?: number }
-      }
-      full_domain_metrics?: {
-        organic?: { etv?: number; count?: number }
-      }
-    }>
+      metrics?: { organic?: { etv?: number; count?: number } }
+      full_domain_metrics?: { organic?: { etv?: number; count?: number } }
+    }
+
+    const result = response.data.tasks?.[0]?.result as CompetitorResult[] | undefined
 
     if (!result || result.length === 0) {
       return []
@@ -443,59 +450,14 @@ async function getCompetitorData(domain: string): Promise<CompetitorInsight[]> {
 }
 
 /**
- * Scrape competitor websites for schema and content analysis using Firecrawl
+ * Analyze competitor schema presence (simplified - no scraping to control costs)
+ * In production, this could be enhanced with Firecrawl scraping
  */
 async function analyzeCompetitorSchema(competitors: CompetitorInsight[]): Promise<CompetitorInsight[]> {
-  if (competitors.length === 0) return []
-
-  try {
-    console.log('[Perception] Analyzing competitor schemas for', competitors.length, 'competitors')
-
-    // Only scrape top 2 to control costs
-    const topCompetitors = competitors.slice(0, 2)
-
-    const enrichedCompetitors = await Promise.all(
-      topCompetitors.map(async (comp) => {
-        try {
-          const result = await mcpFirecrawlTools.firecrawl_scrape.execute({
-            url: `https://${comp.domain}`,
-            formats: ['markdown'],
-            onlyMainContent: true,
-            waitFor: 2000,
-          })
-
-          const content = typeof result === 'string' ? result : JSON.stringify(result)
-
-          // Check for schema indicators in content
-          const hasSchema = content.includes('application/ld+json') ||
-                           content.includes('itemtype') ||
-                           content.includes('schema.org')
-
-          // Detect schema types from content
-          const schemaTypes: string[] = []
-          if (content.includes('Organization')) schemaTypes.push('Organization')
-          if (content.includes('Product')) schemaTypes.push('Product')
-          if (content.includes('FAQPage')) schemaTypes.push('FAQPage')
-          if (content.includes('Article')) schemaTypes.push('Article')
-
-          return {
-            ...comp,
-            hasSchema,
-            schemaTypes,
-          }
-        } catch (e) {
-          console.error('[Perception] Competitor scrape failed for', comp.domain, e)
-          return comp
-        }
-      })
-    )
-
-    // Add remaining competitors without enrichment
-    return [...enrichedCompetitors, ...competitors.slice(2)]
-  } catch (error) {
-    console.error('[Perception] Competitor schema analysis error:', error)
-    return competitors
-  }
+  // For now, return competitors as-is without schema analysis
+  // This avoids additional API costs and complexity
+  // Schema analysis can be added later with proper Firecrawl integration
+  return competitors
 }
 
 /**

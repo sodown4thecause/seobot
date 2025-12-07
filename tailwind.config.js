@@ -19,6 +19,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["var(--font-outfit)", "sans-serif"],
+        chat: ["var(--font-inter)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

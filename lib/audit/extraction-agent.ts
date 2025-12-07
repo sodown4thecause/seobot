@@ -28,13 +28,17 @@ export interface ExtractionResult {
  */
 async function scrapeWebsite(url: string): Promise<{ content: string; blocked: boolean }> {
   try {
-    const result = await mcpFirecrawlTools.firecrawl_scrape.execute({
-      url,
-      formats: ['markdown'],
-      onlyMainContent: true,
-      waitFor: 2000,
-      removeBase64Images: true,
-    })
+    // AI SDK 6 tool execute requires (input, options) - pass empty options
+    const result = await mcpFirecrawlTools.firecrawl_scrape.execute!(
+      {
+        url,
+        formats: ['markdown'],
+        onlyMainContent: true,
+        waitFor: 2000,
+        removeBase64Images: true,
+      },
+      { toolCallId: `scrape-${Date.now()}`, messages: [] }
+    )
 
     const content = typeof result === 'string' ? result : JSON.stringify(result)
 

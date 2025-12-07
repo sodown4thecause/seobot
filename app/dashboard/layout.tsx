@@ -19,14 +19,7 @@ export default function DashboardLayout({
   return (
     <ChatModeProvider>
       <AgentProvider>
-        <div className="min-h-screen bg-background flex text-foreground relative overflow-hidden">
-          {/* Dashboard Background Ambience */}
-          <div className="fixed inset-0 z-0 pointer-events-none">
-            <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-purple-900/10 rounded-full blur-[120px] animate-pulse-glow" />
-            <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-indigo-900/10 rounded-full blur-[120px] animate-pulse-glow" style={{ animationDelay: '2s' }} />
-            <div className="absolute inset-0 noise-overlay" />
-
-          </div>
+        <div className="min-h-screen bg-[#1a1a1a] flex text-foreground relative overflow-hidden">
 
           {/* Sidebar */}
           <Sidebar
