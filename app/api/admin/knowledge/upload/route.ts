@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenAI } from 'openai'
-import pdf from 'pdf-parse'
 import { serverEnv } from '@/lib/config/env'
 
 export const runtime = 'nodejs' // Need Node.js runtime for file processing
@@ -15,7 +14,10 @@ async function extractText(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer())
   
   if (file.type === 'application/pdf') {
-    const data = await pdf(buffer)
+    // Dynamic import for pdf-parse to handle ESM/CJS compatibility
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
+    const data = await pdfParse(buffer)
     return data.text
   } else if (file.type === 'text/markdown' || file.type === 'text/plain') {
     return buffer.toString('utf-8')

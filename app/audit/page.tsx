@@ -20,7 +20,7 @@ export default function AuditPage() {
       <nav className="relative z-20 border-b border-white/5 bg-black/20 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <Logo size="sm" />
+            <Logo />
             <span className="text-lg font-semibold text-white group-hover:text-purple-400 transition-colors">Flow Intent</span>
           </Link>
           <Link href="/" className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors">

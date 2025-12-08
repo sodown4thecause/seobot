@@ -75,7 +75,7 @@ describe('Rate Limiting', () => {
       }
 
       // Verify blocked
-      let result = await checkRateLimit(req, 'CHAT')
+      const result = await checkRateLimit(req, 'CHAT')
       expect(result.success).toBe(false)
 
       // Note: Testing window expiration requires manipulating time
@@ -199,7 +199,7 @@ describe('Rate Limiting', () => {
       expect(response?.status).toBe(429)
 
       const bodyText = await response?.text()
-      const body = JSON.parse(bodyText)
+      const body = JSON.parse(bodyText ?? '{}')
       expect(body.error).toBe('Rate limit exceeded')
       expect(body.retryAfter).toBeGreaterThan(0)
 

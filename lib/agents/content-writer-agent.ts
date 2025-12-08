@@ -21,6 +21,8 @@ export interface ContentWriteParams {
   researchContext?: any
   seoStrategy?: any
   userId?: string
+  langfuseTraceId?: string // For grouping spans under a parent trace
+  sessionId?: string // For Langfuse session tracking
   // Revision support
   previousDraft?: string
   improvementInstructions?: string[]
@@ -68,6 +70,8 @@ export class ContentWriterAgent {
                 params.revisionRound ? 'content-writer-revision' : 'content-writer',
                 {
                   userId: params.userId,
+                  sessionId: params.sessionId,
+                  langfuseTraceId: params.langfuseTraceId,
                   contentType: params.type,
                   topic: params.topic,
                   keywords: params.keywords,
@@ -89,8 +93,8 @@ export class ContentWriterAgent {
                   userId: params.userId,
                   agentType: 'content_writer',
                   model: 'anthropic/claude-sonnet-4',
-                  promptTokens: usage?.promptTokens || 0,
-                  completionTokens: usage?.completionTokens || 0,
+                  promptTokens: usage?.inputTokens || 0,
+                  completionTokens: usage?.outputTokens || 0,
                   metadata: {
                     content_type: params.type,
                     topic: params.topic,

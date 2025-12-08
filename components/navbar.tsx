@@ -33,19 +33,19 @@ export function Navbar() {
                         <NavigationMenuList>
 
                             <NavigationMenuItem>
-                                <Link href="/prices" legacyBehavior passHref>
-                                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                                <NavigationMenuLink asChild>
+                                    <Link href="/prices" className={navigationMenuTriggerStyle()}>
                                         Prices
-                                    </NavigationMenuLink>
-                                </Link>
+                                    </Link>
+                                </NavigationMenuLink>
                             </NavigationMenuItem>
 
                             <NavigationMenuItem>
-                                <Link href="/blog" legacyBehavior passHref>
-                                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                                <NavigationMenuLink asChild>
+                                    <Link href="/blog" className={navigationMenuTriggerStyle()}>
                                         Blog
-                                    </NavigationMenuLink>
-                                </Link>
+                                    </Link>
+                                </NavigationMenuLink>
                             </NavigationMenuItem>
 
                         </NavigationMenuList>

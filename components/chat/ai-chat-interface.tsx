@@ -1,6 +1,7 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
 import { useEffect, useState, forwardRef, useMemo, useCallback, useRef } from 'react'
 
 import { Terminal, Check, Copy, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
@@ -275,7 +276,7 @@ const extractSources = (message: any): SourceItem[] => {
   if (!Array.isArray(sources)) return []
 
   return sources
-    .map((source: any) => {
+    .map((source: any): SourceItem | null => {
       if (typeof source === 'string') {
         return { url: source }
       }
@@ -288,7 +289,7 @@ const extractSources = (message: any): SourceItem[] => {
       }
       return null
     })
-    .filter((source): source is SourceItem => !!source)
+    .filter((source): source is SourceItem => source !== null)
 }
 
 const extractPlanSteps = (message: any): PlanStep[] => {
@@ -362,15 +363,21 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
-  const [isBootstrapping, setIsBootstrapping] = useState(true)
+  // Start with false - the bootstrap effect will set to true when it starts
+  const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
+  const hasInitializedRef = useRef(false)
   const mountedRef = useRef(true)
   const lastLoadedConversationId = useRef<string | null>(null)
   const agentPreference = agentIdProp ?? (chatContext as any)?.agentId ?? 'general'
+  const bootstrapTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     return () => {
       mountedRef.current = false
+      if (bootstrapTimeoutRef.current) {
+        clearTimeout(bootstrapTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -391,6 +398,16 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     error: 'bg-rose-500/20 text-rose-200',
   }
 
+  const transport = useMemo(() => {
+    return new DefaultChatTransport({
+      api: '/api/chat',
+      body: () => ({
+        chatId: conversationId,
+        context: mergedContext,
+      }),
+    })
+  }, [conversationId, mergedContext])
+
   const {
     messages,
     sendMessage,
@@ -401,13 +418,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     regenerate,
   } = useChat({
     id: conversationId ?? 'dashboard-chat',
-    api: '/api/chat',
     experimental_throttle: 32,
-    // AI SDK 6: Use body to include extra fields alongside messages
-    body: {
-      chatId: conversationId,
-      context: mergedContext,
-    },
+    transport,
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
@@ -416,124 +428,172 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     setIsBootstrapping(true)
     setBootError(null)
 
-    try {
-      if (overrideConversationId && mountedRef.current) {
-        setMessages([])
-      }
+    // Clear any existing timeout
+    if (bootstrapTimeoutRef.current) {
+      clearTimeout(bootstrapTimeoutRef.current)
+    }
 
-      let workingConversation = overrideConversationId
-        ? { id: overrideConversationId }
-        : null
+    // Set a safety timeout to prevent infinite loading
+    const timeoutPromise = new Promise<'timeout'>((resolve) => {
+      bootstrapTimeoutRef.current = setTimeout(() => resolve('timeout'), 8000)
+    })
 
-      if (!workingConversation) {
-        try {
-          const latestResponse = await fetch('/api/conversations?limit=1')
-          if (latestResponse.ok) {
-            const latestPayload = await latestResponse.json()
-            workingConversation = latestPayload?.conversations?.[0] ?? null
-          } else {
-            console.warn('[AIChatInterface] Failed to load latest conversation, will create new one')
-          }
-        } catch (error) {
-          console.warn('[AIChatInterface] Error loading conversations, will create new one', error)
+    const bootstrapPromise = (async () => {
+      const controller = new AbortController()
+      const signal = controller.signal
+
+      try {
+        if (overrideConversationId && mountedRef.current) {
+          setMessages([])
         }
+
+        let workingConversation = overrideConversationId
+          ? { id: overrideConversationId }
+          : null
 
         if (!workingConversation) {
           try {
-            const createResponse = await fetch('/api/conversations', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ agentId: agentPreference }),
-            })
-
-            if (createResponse.ok) {
-              const createdPayload = await createResponse.json()
-              workingConversation = createdPayload?.conversation ?? null
-            } else {
-              console.warn('[AIChatInterface] Failed to create conversation, will continue without one')
+            const latestResponse = await fetch('/api/conversations?limit=1', { signal })
+            if (latestResponse.ok) {
+              const latestPayload = await latestResponse.json()
+              workingConversation = latestPayload?.conversations?.[0] ?? null
             }
           } catch (error) {
-            console.warn('[AIChatInterface] Error creating conversation', error)
+            if ((error as Error).name !== 'AbortError') {
+              console.warn('[AIChatInterface] Error loading conversations', error)
+            }
+          }
+
+          if (!workingConversation) {
+            try {
+              const createResponse = await fetch('/api/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agentId: agentPreference }),
+                signal,
+              })
+              if (createResponse.ok) {
+                const createdPayload = await createResponse.json()
+                workingConversation = createdPayload?.conversation ?? null
+              }
+            } catch (error) {
+              if ((error as Error).name !== 'AbortError') {
+                console.warn('[AIChatInterface] Error creating conversation', error)
+              }
+            }
           }
         }
-      }
 
-      // If we have a conversation, load its history
-      if (workingConversation?.id) {
-        try {
-          const historyResponse = await fetch(`/api/conversations/${workingConversation.id}/messages`)
-          if (historyResponse.ok) {
-            const historyPayload = await historyResponse.json()
-            let historyMessages = historyPayload?.messages ?? []
+        // If we have a conversation, load its history
+        if (workingConversation?.id) {
+          try {
+            console.log('[AIChatInterface] Loading messages for conversation:', workingConversation.id)
+            const historyResponse = await fetch(
+              `/api/conversations/${workingConversation.id}/messages`,
+              { signal }
+            )
+            if (historyResponse.ok) {
+              const historyPayload = await historyResponse.json()
+              let historyMessages = historyPayload?.messages ?? []
+              console.log('[AIChatInterface] Loaded messages:', historyMessages.length)
 
-            if (historyMessages.length === 0 && initialMessage && !overrideConversationId) {
-              historyMessages = [
-                {
-                  id: 'initial',
-                  role: 'assistant',
-                  content: initialMessage,
-                  parts: [{ type: 'text', text: initialMessage }],
-                },
-              ]
+              if (historyMessages.length === 0 && initialMessage && !overrideConversationId) {
+                historyMessages = [
+                  {
+                    id: 'initial',
+                    role: 'assistant',
+                    content: initialMessage,
+                    parts: [{ type: 'text', text: initialMessage }],
+                  },
+                ]
+              }
+
+              if (mountedRef.current) {
+                setConversationId(workingConversation.id)
+                setMessages(historyMessages)
+                console.log('[AIChatInterface] Messages set successfully')
+              }
+            } else {
+              console.warn('[AIChatInterface] Failed to load history, status:', historyResponse.status)
+              if (mountedRef.current) {
+                setConversationId(workingConversation.id)
+                setMessages([])
+              }
             }
-
-            if (mountedRef.current) {
-              setConversationId(workingConversation.id)
-              setMessages(historyMessages)
+          } catch (error) {
+            if ((error as Error).name !== 'AbortError') {
+              console.warn('[AIChatInterface] Error loading history', error)
             }
-          } else {
-            console.warn('[AIChatInterface] Failed to load history, starting with empty chat')
             if (mountedRef.current) {
               setConversationId(workingConversation.id)
               setMessages([])
             }
           }
-        } catch (error) {
-          console.warn('[AIChatInterface] Error loading history', error)
-          // Still set conversationId so user can send messages
+        } else {
+          console.log('[AIChatInterface] No conversation to load')
           if (mountedRef.current) {
-            setConversationId(workingConversation.id)
+            setConversationId(null)
             setMessages([])
           }
         }
-      } else {
-        // No conversation available, but allow user to send messages anyway
-        // The API will create a conversation on first message
-        console.log('[AIChatInterface] No conversation available, will create on first message')
+        return 'success' as const
+      } catch (error) {
+        console.error('[AIChatInterface] Failed to bootstrap chat', error)
         if (mountedRef.current) {
           setConversationId(null)
           setMessages([])
         }
+        return 'error' as const
       }
-    } catch (error) {
-      console.error('[AIChatInterface] Failed to bootstrap chat', error)
+    })()
+
+    // Race between bootstrap and timeout
+    const result = await Promise.race([bootstrapPromise, timeoutPromise])
+
+    if (result === 'timeout') {
+      console.warn('[AIChatInterface] Bootstrap timed out, allowing user to proceed')
       if (mountedRef.current) {
-        // Don't show error - allow user to try sending a message anyway
-        setBootError(null)
         setConversationId(null)
         setMessages([])
       }
-    } finally {
-      if (mountedRef.current) {
-        setIsBootstrapping(false)
-      }
+    }
+
+    if (bootstrapTimeoutRef.current) {
+      clearTimeout(bootstrapTimeoutRef.current)
+      bootstrapTimeoutRef.current = null
+    }
+
+    if (mountedRef.current) {
+      setIsBootstrapping(false)
     }
   }, [agentPreference, initialMessage, setMessages])
 
   useEffect(() => {
+    console.log('[AIChatInterface] Bootstrap effect triggered', {
+      conversationIdProp,
+      lastLoaded: lastLoadedConversationId.current,
+      conversationId,
+    })
     if (conversationIdProp) {
       if (lastLoadedConversationId.current === conversationIdProp) {
+        console.log('[AIChatInterface] Skipping bootstrap - already loaded this conversation')
+        // Make sure we're not stuck in loading state
+        setIsBootstrapping(false)
         return
       }
       lastLoadedConversationId.current = conversationIdProp
+      console.log('[AIChatInterface] Bootstrapping conversation:', conversationIdProp)
       bootstrapConversation(conversationIdProp)
       return
     }
 
     if (!conversationId) {
+      console.log('[AIChatInterface] Bootstrapping new conversation')
       bootstrapConversation()
+    } else {
+      // We have a conversationId already, no need to bootstrap
+      console.log('[AIChatInterface] Already have conversationId, skipping bootstrap')
+      setIsBootstrapping(false)
     }
   }, [conversationIdProp, conversationId, bootstrapConversation])
 
@@ -928,7 +988,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                     isLastMessage ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                   )}>
                     {timestampLabel && <span>{timestampLabel}</span>}
-                    {messageText && (
+                    {messageText && message.role === 'assistant' && (
                       <button
                         type="button"
                         className="hover:text-zinc-300 transition-colors"

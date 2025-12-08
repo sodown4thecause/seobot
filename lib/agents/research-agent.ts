@@ -13,6 +13,8 @@ import { createTelemetryConfig } from '@/lib/observability/langfuse'
 export interface ResearchParams {
   topic: string
   depth?: 'quick' | 'standard' | 'deep'
+  langfuseTraceId?: string // For grouping spans under a parent trace
+  sessionId?: string // For Langfuse session tracking
 }
 
 export interface ResearchResult {
@@ -50,11 +52,13 @@ Focus on information that would be valuable for creating SEO/AEO optimized conte
               prompt,
               temperature: 0.3, // Lower temperature for factual research
               experimental_telemetry: createTelemetryConfig('research-agent', {
+                userId: params.userId,
+                sessionId: params.sessionId,
+                langfuseTraceId: params.langfuseTraceId,
                 topic: params.topic,
                 depth: params.depth || 'standard',
                 provider: 'perplexity',
                 model: 'sonar-pro',
-                userId: params.userId,
                 requestId: params.requestId,
               }),
             })

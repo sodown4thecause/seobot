@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
+  // Enable instrumentation hook for Langfuse OpenTelemetry
+  experimental: {
+    instrumentationHook: true,
+  },
   images: {
     remotePatterns: [
       {

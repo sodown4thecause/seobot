@@ -5,6 +5,25 @@
 
 import { mcpDataforseoTools } from '@/lib/mcp/dataforseo/index'
 
+// Helper to execute MCP tools (they only need args, not the full AI SDK context)
+// The execute function can return string | AsyncIterable<string> | PromiseLike<string>
+const executeTool = async <T>(
+  tool: { execute?: (args: T, ctx?: any) => string | AsyncIterable<string> | PromiseLike<string> },
+  args: T
+): Promise<string> => {
+  if (!tool.execute) throw new Error('Tool does not have execute function')
+  const result = tool.execute(args, { toolCallId: 'agent-exec', messages: [] })
+  // Handle different return types
+  if (typeof result === 'string') return result
+  if ('then' in result) return await result
+  // AsyncIterable - collect all chunks
+  let collected = ''
+  for await (const chunk of result) {
+    collected += chunk
+  }
+  return collected
+}
+
 export interface DataForSEOScoringParams {
   content: string
   targetKeyword: string
@@ -53,10 +72,11 @@ export class DataForSEOScoringAgent {
             endpoint: 'content_analysis_search',
             agentType: 'dataforseo_scoring',
           },
-          () => mcpDataforseoTools.content_analysis_search.execute({
+          () => executeTool(mcpDataforseoTools.content_analysis_search, {
             keyword: params.targetKeyword,
             limit: 10,
-            page_type: ['blogs', 'news'],
+            offset: 0,
+            page_type: ['blogs', 'news'] as const,
           })
         )
 
@@ -80,8 +100,11 @@ export class DataForSEOScoringAgent {
             endpoint: 'content_analysis_phrase_trends',
             agentType: 'dataforseo_scoring',
           },
-          () => mcpDataforseoTools.content_analysis_phrase_trends.execute({
+          () => executeTool(mcpDataforseoTools.content_analysis_phrase_trends, {
             keyword: params.targetKeyword,
+            date_from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
+            date_group: 'month' as const,
+            internal_list_limit: 10,
           })
         )
 
@@ -108,11 +131,13 @@ export class DataForSEOScoringAgent {
             endpoint: 'dataforseo_labs_google_related_keywords',
             agentType: 'dataforseo_scoring',
           },
-          () => mcpDataforseoTools.dataforseo_labs_google_related_keywords.execute({
+          () => executeTool(mcpDataforseoTools.dataforseo_labs_google_related_keywords, {
             keyword: params.targetKeyword,
             language_code: params.language || 'en',
-            location_code: 2840, // US
+            location_name: 'United States',
+            depth: 1,
             limit: 20,
+            include_clickstream_data: false,
           })
         )
 
@@ -136,9 +161,11 @@ export class DataForSEOScoringAgent {
             endpoint: 'content_analysis_summary',
             agentType: 'dataforseo_scoring',
           },
-          () => mcpDataforseoTools.content_analysis_summary.execute({
+          () => executeTool(mcpDataforseoTools.content_analysis_summary, {
             keyword: params.targetKeyword,
             internal_list_limit: 5,
+            positive_connotation_threshold: 0.4,
+            sentiments_connotation_threshold: 0.4,
           })
         )
 
@@ -163,7 +190,7 @@ export class DataForSEOScoringAgent {
               endpoint: 'on_page_content_parsing',
               agentType: 'dataforseo_scoring',
             },
-            () => mcpDataforseoTools.on_page_content_parsing.execute({
+            () => executeTool(mcpDataforseoTools.on_page_content_parsing, {
               url: params.contentUrl!,
               enable_javascript: true,
             })
@@ -191,7 +218,7 @@ export class DataForSEOScoringAgent {
                 endpoint: 'on_page_lighthouse',
                 agentType: 'dataforseo_scoring',
               },
-              () => mcpDataforseoTools.on_page_lighthouse.execute({
+              () => executeTool(mcpDataforseoTools.on_page_lighthouse, {
                 url: params.contentUrl!,
                 enable_javascript: true,
               })

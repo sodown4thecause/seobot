@@ -43,7 +43,7 @@ function createPooledConnectionString(baseUrl: string): string {
 // ============================================================================
 
 // Singleton for user session client (uses SSR client)
-let userClient: ReturnType<typeof createServerClient> | null = null
+const userClient: ReturnType<typeof createServerClient> | null = null
 
 // Singleton for admin client (uses service role key with pooling)
 let adminClient: SupabaseClient | null = null
@@ -125,10 +125,6 @@ export function createAdminClient(): SupabaseClient {
       },
       db: {
         schema: 'public',
-        // Enable connection pooling
-        pool: {
-          enabled: true,
-        },
       },
       // Set default timeout for queries (30 seconds)
       global: {

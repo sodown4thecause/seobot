@@ -1,17 +1,15 @@
-import { createClient } from '@supabase/supabase-js'
 import { generateObject } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
-import { serverEnv, clientEnv } from '@/lib/config/env'
+import { serverEnv } from '@/lib/config/env'
+import { createAdminClient } from '@/lib/supabase/server'
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-const supabase = createClient(
-  clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-  serverEnv.SUPABASE_SERVICE_ROLE_KEY
-)
+// Use singleton admin client for Supabase operations
+const supabase = createAdminClient()
 
 export interface SchemaMarkupTemplate {
   id: string

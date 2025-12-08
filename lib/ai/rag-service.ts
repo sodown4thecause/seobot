@@ -8,11 +8,9 @@
  * - Edge-compatible implementation (no Node.js APIs)
  */
 
-import { createClient } from '@supabase/supabase-js'
 import { generateEmbedding } from './embedding'
 import { type FrameworkCategory } from './framework-seeds'
 import { LRUCache } from 'lru-cache'
-import { clientEnv } from '@/lib/config/env'
 import {
   cacheGet,
   cacheSet,
@@ -21,6 +19,7 @@ import {
   CACHE_PREFIXES,
   CACHE_TTL,
 } from '../redis/client'
+import { createAdminClient } from '@/lib/supabase/server'
 
 // ============================================================================
 // TYPES
@@ -104,24 +103,15 @@ function getCacheKey(query: string, options: RetrievalOptions = {}): string {
 }
 
 // ============================================================================
-// SUPABASE CLIENT (CLIENT-SIDE)
+// SUPABASE CLIENT (SERVER-SIDE WITH POOLING)
 // ============================================================================
 
-let supabaseClient: ReturnType<typeof createClient> | null = null
-
+/**
+ * Get Supabase client for RAG operations
+ * Uses admin client singleton for connection pooling
+ */
 function getSupabaseClient() {
-  if (!supabaseClient) {
-    const url = clientEnv.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-    if (!url || !anonKey) {
-      throw new Error('Supabase environment variables not configured')
-    }
-
-    supabaseClient = createClient(url, anonKey)
-  }
-
-  return supabaseClient
+  return createAdminClient()
 }
 
 // ============================================================================
@@ -454,7 +444,6 @@ export async function incrementFrameworkUsage(
     
     // Fire-and-forget: don't await
     // Note: Supabase doesn't support raw SQL in update, so we fetch and update
-    // @ts-expect-error - writing_frameworks table type not fully defined in Supabase types
     supabase
       .from('writing_frameworks')
       .select('usage_count')
@@ -463,10 +452,8 @@ export async function incrementFrameworkUsage(
       .then(({ data: current }) => {
         if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
           const usageCount = (current as Record<string, unknown>).usage_count as number + 1
-          // @ts-expect-error - writing_frameworks table type not fully defined in Supabase types
           return supabase
             .from('writing_frameworks')
-            // @ts-expect-error
             .update({ usage_count: usageCount })
             .eq('id', frameworkId)
         }
@@ -499,7 +486,6 @@ export async function batchIncrementUsage(
     // Update all frameworks in one query
     // Note: Supabase doesn't support raw SQL, so we need to fetch and update individually
     for (const frameworkId of frameworkIds) {
-      // @ts-expect-error - writing_frameworks table type not fully defined in Supabase types
       supabase
         .from('writing_frameworks')
         .select('usage_count')
@@ -508,10 +494,8 @@ export async function batchIncrementUsage(
         .then(({ data: current }) => {
           if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
             const usageCount = (current as Record<string, unknown>).usage_count as number + 1
-            // @ts-expect-error - writing_frameworks table type not fully defined in Supabase types
             return supabase
               .from('writing_frameworks')
-              // @ts-expect-error
               .update({ usage_count: usageCount })
               .eq('id', frameworkId)
           }

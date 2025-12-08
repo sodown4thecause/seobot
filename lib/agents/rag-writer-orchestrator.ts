@@ -7,6 +7,7 @@ import { EnhancedResearchAgent } from './enhanced-research-agent'
 import { ContentWriterAgent } from './content-writer-agent'
 import { DataForSEOScoringAgent } from './dataforseo-scoring-agent'
 import { EEATQAAgent } from './eeat-qa-agent'
+import { SEOAEOSyntaxAgent } from './seo-aeo-syntax-agent'
 import { createClient } from '@/lib/supabase/server'
 import { QUALITY_THRESHOLDS, shouldTriggerRevision } from '@/lib/config/quality-thresholds'
 import { getLangWatchClient } from '@/lib/observability/langwatch'
@@ -40,6 +41,10 @@ export interface RAGWriterResult {
   metadata: {
     researchSummary?: string
     citations?: Array<{ url: string; title?: string }>
+    metaTitle?: string
+    metaDescription?: string
+    slug?: string
+    directAnswer?: string
   }
 }
 
@@ -48,6 +53,7 @@ export class RAGWriterOrchestrator {
   private writerAgent: ContentWriterAgent
   private scoringAgent: DataForSEOScoringAgent
   private qaAgent: EEATQAAgent
+  private syntaxAgent: SEOAEOSyntaxAgent
   private langWatch = getLangWatchClient()
   private traceIdGenerator = createIdGenerator()
 
@@ -56,6 +62,7 @@ export class RAGWriterOrchestrator {
     this.writerAgent = new ContentWriterAgent()
     this.scoringAgent = new DataForSEOScoringAgent()
     this.qaAgent = new EEATQAAgent()
+    this.syntaxAgent = new SEOAEOSyntaxAgent()
   }
 
   /**
@@ -66,6 +73,8 @@ export class RAGWriterOrchestrator {
 
     const supabase = await createClient()
     const traceId = this.traceIdGenerator()
+    // Use traceId as sessionId for content generation (one session per generation)
+    const sessionId = `content-session-${traceId}`
     let contentId: string | undefined
     let contentVersionId: string | undefined
     let revisionRound = 0
@@ -88,6 +97,7 @@ export class RAGWriterOrchestrator {
           keywords: params.keywords.join(', '),
           tone: params.tone,
           wordCount: params.wordCount,
+          sessionId, // Include sessionId in trace metadata
         },
       });
 
@@ -106,6 +116,8 @@ export class RAGWriterOrchestrator {
         traceId,
         agent: 'rag-writer-orchestrator',
         model: 'multi-agent',
+        userId: params.userId, // Langfuse user tracking
+        sessionId, // Langfuse session tracking
         telemetry: {
           topic: params.topic,
           contentType: params.type,
@@ -125,6 +137,8 @@ export class RAGWriterOrchestrator {
         traceId: researchTraceId,
         agent: 'enhanced-research',
         model: 'perplexity',
+        userId: params.userId, // Langfuse user tracking
+        sessionId, // Langfuse session tracking
         telemetry: {
           topic: params.topic,
           targetKeyword: params.keywords[0] || params.topic,
@@ -139,6 +153,8 @@ export class RAGWriterOrchestrator {
         languageCode: 'en', // TODO: Get from user preferences
         location: 'United States', // TODO: Get from user preferences
         userId: params.userId,
+        langfuseTraceId: traceId, // Link to parent trace
+        sessionId, // Link to session
       })
 
       // Step 2: Initial Draft
@@ -148,6 +164,8 @@ export class RAGWriterOrchestrator {
         traceId: writerTraceId,
         agent: 'content-writer',
         model: 'gemini-2.0-flash',
+        userId: params.userId, // Langfuse user tracking
+        sessionId, // Langfuse session tracking
         telemetry: {
           contentType: params.type,
           topic: params.topic,
@@ -163,6 +181,8 @@ export class RAGWriterOrchestrator {
         wordCount: params.wordCount,
         researchContext: researchResult.combinedSummary,
         userId: params.userId,
+        langfuseTraceId: traceId, // Link to parent trace
+        sessionId, // Link to session
       })
 
       // Create content record in Supabase
@@ -206,6 +226,46 @@ export class RAGWriterOrchestrator {
 
       contentVersionId = versionData.id
 
+      // Step 2.5: SEO/AEO Syntax Optimization
+      console.log('[Orchestrator] Phase 2.5: SEO/AEO Syntax Optimization')
+      let syntaxMetadata: {
+        metaTitle?: string
+        metaDescription?: string
+        slug?: string
+        directAnswer?: string
+      } = {}
+
+      try {
+        const syntaxResult = await this.syntaxAgent.optimize({
+          content: currentDraft.content,
+          primaryKeyword: params.keywords[0] || params.topic,
+          secondaryKeywords: params.keywords.slice(1),
+          contentType: params.type,
+          userId: params.userId,
+          langfuseTraceId: traceId, // Link to parent trace
+          sessionId, // Link to session
+        })
+
+        // Use optimized content for subsequent phases
+        currentDraft = {
+          content: syntaxResult.formattedContent,
+          metadata: currentDraft.metadata,
+        }
+
+        // Store syntax metadata for final result
+        syntaxMetadata = {
+          metaTitle: syntaxResult.metaTitle,
+          metaDescription: syntaxResult.metaDescription,
+          slug: syntaxResult.slug,
+          directAnswer: syntaxResult.directAnswer,
+        }
+
+        console.log(`[Orchestrator] ? Syntax optimization complete - H1: ${syntaxResult.syntaxReport.h1Present}, Question H2: ${syntaxResult.syntaxReport.h2QuestionHeading}`)
+      } catch (syntaxError) {
+        console.error('[Orchestrator] Syntax optimization failed, continuing with original draft:', syntaxError)
+        // Continue with original draft if syntax optimization fails
+      }
+
       // Step 3-5: Scoring, QA, and Revision Loop
       let finalScores: any = {}
       let finalQAReport: any = {}
@@ -241,6 +301,8 @@ export class RAGWriterOrchestrator {
           serpData: researchResult.serpData,
           competitorContent: researchResult.competitorContent, // Firecrawl scraped content
           userId: params.userId,
+          langfuseTraceId: traceId, // Link to parent trace
+          sessionId, // Link to session
         })
 
         // Store quality review
@@ -271,6 +333,9 @@ export class RAGWriterOrchestrator {
           eeatEvaluation = await this.langWatch.evaluate({
             evaluationId: EVALUATION_SCHEMAS.EEAT,
             content: currentDraft.content,
+            userId: params.userId, // Langfuse user tracking
+            sessionId, // Langfuse session tracking
+            langfuseTraceId: traceId, // Link to parent trace
             context: {
               userId: params.userId,
               topic: params.topic,
@@ -364,7 +429,7 @@ export class RAGWriterOrchestrator {
           !contentQualityEvaluation.passed
 
         if (!needsRevision || revisionRound >= QUALITY_THRESHOLDS.MAX_REVISION_ROUNDS) {
-          console.log('[Orchestrator] ✓ Quality thresholds met or max revisions reached')
+          console.log('[Orchestrator] ? Quality thresholds met or max revisions reached')
 
           // Log final trace to LangWatch
           try {
@@ -372,6 +437,8 @@ export class RAGWriterOrchestrator {
               traceId,
               agent: 'rag-writer-orchestrator',
               model: 'multi-agent',
+              userId: params.userId, // Langfuse user tracking
+              sessionId, // Langfuse session tracking
               telemetry: {
                 completed: true,
                 revisionRounds: revisionRound,
@@ -412,6 +479,8 @@ export class RAGWriterOrchestrator {
           wordCount: params.wordCount,
           researchContext: researchResult.combinedSummary,
           userId: params.userId,
+          langfuseTraceId: traceId, // Link to parent trace
+          sessionId, // Link to session
           previousDraft: currentDraft.content,
           improvementInstructions: qaResult.qaReport.improvement_instructions,
           dataforseoMetrics: scoringResult.metrics,
@@ -443,7 +512,7 @@ export class RAGWriterOrchestrator {
         }
       }
 
-        console.log('[Orchestrator] ✓ Content generation complete')
+        console.log('[Orchestrator] ? Content generation complete')
         console.log(`[Orchestrator] Final scores - Overall: ${finalScores.overall}, Revisions: ${revisionRound}`)
 
         const result = {
@@ -456,6 +525,7 @@ export class RAGWriterOrchestrator {
           metadata: {
             researchSummary: researchResult.combinedSummary,
             citations: researchResult.citations,
+            ...syntaxMetadata,
           },
         };
 

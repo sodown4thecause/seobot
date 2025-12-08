@@ -252,11 +252,11 @@ export async function getRateLimitStats(): Promise<{
     let cursor = 0;
 
     do {
-      const result = await redis.scan(cursor, {
+      const result: [string, string[]] = await redis.scan(cursor, {
         match: 'ratelimit:*',
         count: 100,
       });
-      cursor = result[0];
+      cursor = parseInt(result[0], 10);
       allKeys.push(...result[1]);
     } while (cursor !== 0);
 
@@ -331,11 +331,11 @@ export async function clearAllRateLimits(): Promise<number> {
     let cursor = 0;
 
     do {
-      const result = await redis.scan(cursor, {
+      const result: [string, string[]] = await redis.scan(cursor, {
         match: 'ratelimit:*',
         count: 100,
       });
-      cursor = result[0];
+      cursor = parseInt(result[0], 10);
       allKeys.push(...result[1]);
     } while (cursor !== 0);
 

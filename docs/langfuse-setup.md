@@ -19,6 +19,7 @@ LANGFUSE_ENABLED=true  # Set to 'false' to disable (defaults to true if keys are
 LANGFUSE_SECRET_KEY=sk-lf-...  # Your Langfuse secret key
 LANGFUSE_PUBLIC_KEY=pk-lf-...  # Your Langfuse public key
 LANGFUSE_BASEURL=https://cloud.langfuse.com  # EU region (use https://us.cloud.langfuse.com for US)
+# Note: Both LANGFUSE_BASEURL and LANGFUSE_BASE_URL are supported for compatibility
 LANGFUSE_DEBUG=false  # Set to 'true' for debug logging
 ```
 
@@ -26,38 +27,51 @@ LANGFUSE_DEBUG=false  # Set to 'true' for debug logging
 
 ### Instrumentation (`instrumentation.ts`)
 
-The OpenTelemetry instrumentation is registered at application startup:
+The OpenTelemetry instrumentation uses `@langfuse/otel` with `LangfuseSpanProcessor` for AI SDK 6 compatibility:
 
 ```typescript
-import { registerOTel } from '@vercel/otel';
-import { LangfuseExporter } from 'langfuse-vercel';
-import { serverEnv } from './lib/config/env';
+import { LangfuseSpanProcessor } from '@langfuse/otel';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 
-export function register() {
-  const langfuseEnabled = serverEnv.LANGFUSE_ENABLED !== 'false' && 
-                          serverEnv.LANGFUSE_SECRET_KEY && 
-                          serverEnv.LANGFUSE_PUBLIC_KEY;
+export async function register() {
+  // Only run on Node.js runtime (not edge or browser)
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const langfuseEnabled =
+      process.env.LANGFUSE_ENABLED !== 'false' &&
+      process.env.LANGFUSE_SECRET_KEY &&
+      process.env.LANGFUSE_PUBLIC_KEY;
 
-  if (!langfuseEnabled) {
-    console.log('[Langfuse] Tracing disabled');
-    return;
+    if (!langfuseEnabled) {
+      console.log('[Langfuse] Tracing disabled');
+      return;
+    }
+
+    const { LangfuseSpanProcessor } = await import('@langfuse/otel');
+    const { NodeTracerProvider } = await import('@opentelemetry/sdk-trace-node');
+
+    const langfuseSpanProcessor = new LangfuseSpanProcessor({
+      shouldExportSpan: (span) => {
+        return span.otelSpan.instrumentationScope.name !== 'next.js';
+      },
+    });
+
+    const tracerProvider = new NodeTracerProvider({
+      spanProcessors: [langfuseSpanProcessor],
+    });
+
+    tracerProvider.register();
+    
+    // Export for forceFlush in API routes
+    global.langfuseSpanProcessor = langfuseSpanProcessor;
   }
-
-  registerOTel({
-    serviceName: 'seo-platform',
-    traceExporter: new LangfuseExporter({
-      secretKey: serverEnv.LANGFUSE_SECRET_KEY!,
-      publicKey: serverEnv.LANGFUSE_PUBLIC_KEY!,
-      baseUrl: serverEnv.LANGFUSE_BASEURL || 'https://cloud.langfuse.com',
-      debug: serverEnv.LANGFUSE_DEBUG === 'true',
-    }),
-  });
 }
 ```
 
+**Note**: Ensure `next.config.ts` has `experimental.instrumentationHook: true` for this to work.
+
 ### Centralized Telemetry Helper (`lib/observability/langfuse.ts`)
 
-All agents and API routes use the centralized `createTelemetryConfig()` helper:
+All agents and API routes use the centralized `createTelemetryConfig()` helper, which supports standard Langfuse fields:
 
 ```typescript
 import { createTelemetryConfig } from '@/lib/observability/langfuse';
@@ -66,12 +80,23 @@ const result = await generateText({
   model: perplexity('sonar-pro'),
   prompt: '...',
   experimental_telemetry: createTelemetryConfig('research-agent', {
+    // Standard Langfuse fields (recognized for user/session tracking and trace grouping)
+    userId: user.id,              // Langfuse user tracking
+    sessionId: conversationId,    // Langfuse session grouping
+    langfuseTraceId: parentTraceId, // Group spans under parent trace
+    
+    // Custom metadata
     topic: 'AI SEO',
-    userId: user.id,
     // ... additional metadata
   }),
 });
 ```
+
+**Key Langfuse Metadata Fields**:
+- `userId`: Links traces to users (enables Users tab in Langfuse)
+- `sessionId`: Groups related traces into sessions (enables Sessions tab)
+- `langfuseTraceId`: Groups multiple AI SDK spans under one parent trace
+- `tags`: Array of strings for filtering and organization
 
 ## Agents with Langfuse Integration
 
@@ -80,22 +105,22 @@ All major agents are instrumented:
 1. **Research Agent** (`lib/agents/research-agent.ts`)
    - Function ID: `research-agent`
    - Provider: Perplexity
-   - Metadata: topic, depth, userId, requestId
+   - Metadata: userId, sessionId, langfuseTraceId, topic, depth, requestId
 
 2. **Content Writer Agent** (`lib/agents/content-writer-agent.ts`)
    - Function ID: `content-writer` / `content-writer-revision`
    - Provider: Anthropic Claude Sonnet 4
-   - Metadata: userId, contentType, topic, keywords, revisionRound
+   - Metadata: userId, sessionId, langfuseTraceId, contentType, topic, keywords, revisionRound
 
 3. **EEAT QA Agent** (`lib/agents/eeat-qa-agent.ts`)
    - Function ID: `eeat-qa`
    - Provider: Anthropic Claude Sonnet 4
-   - Metadata: userId, topic, contentLength, objective metrics
+   - Metadata: userId, sessionId, langfuseTraceId, topic, contentLength, objective metrics
 
 4. **SEO/AEO Agent** (`lib/agents/seo-aeo-agent.ts`)
    - Function ID: `seo-aeo`
    - Provider: Google Gemini 2.5 Flash
-   - Metadata: userId, topic, keywords, targetPlatforms
+   - Metadata: userId, sessionId, langfuseTraceId, topic, keywords, targetPlatforms
 
 5. **Enhanced Research Agent** (`lib/agents/enhanced-research-agent.ts`)
    - Uses Perplexity API (not directly AI SDK, but logged via MCP logger)
@@ -108,11 +133,11 @@ All major agents are instrumented:
 
 1. **Chat API** (`app/api/chat/route.ts`)
    - Function ID: `chat-stream`
-   - Comprehensive metadata including agent type, tools, conversation ID
+   - Metadata: userId, sessionId (mapped from conversationId), agentType, tools, conversationId
 
 2. **Content Generate API** (`app/api/content/generate/route.ts`)
    - Function ID: `content-generate-api`
-   - Metadata: userId, topic, contentType, tone, keywords
+   - Metadata: userId, sessionId (generated per request), topic, contentType, tone, keywords
 
 ## Error Handling Integration
 
@@ -138,10 +163,25 @@ Langfuse telemetry works seamlessly with error handling:
 4. Each trace should include:
    - Function ID
    - Model used
-   - Input/output (if not disabled)
-   - Metadata (userId, topic, etc.)
+   - **Input/output** (prompts and responses automatically captured by AI SDK)
+   - Metadata (userId, sessionId, topic, etc.)
    - Token usage
    - Latency
+
+### Verify Sessions
+
+1. Make multiple requests to `/api/chat` with the same conversation ID
+2. Check the **Sessions** tab in Langfuse dashboard
+3. Sessions should be grouped by `sessionId` (conversation ID for chat)
+4. All traces from the same session should appear grouped together
+
+### Verify Evaluations
+
+1. Generate content via the RAG writer orchestrator (`/api/content/generate` or content generation flow)
+2. Check Langfuse dashboard for traces with evaluation scores
+3. Look for traces named `evaluation:eeat_judge_v1` and `evaluation:content_quality_v1`
+4. These should be linked to the main content generation trace via `langfuseTraceId`
+5. Scores should appear in the trace details (EEAT score, depth score, factual score, etc.)
 
 ### Debug Mode
 
@@ -156,9 +196,12 @@ This will log detailed telemetry information to help troubleshoot issues.
 ## Best Practices
 
 1. **Consistent Function IDs**: Use descriptive, consistent function IDs
-2. **Rich Metadata**: Include relevant context (userId, topic, etc.) in metadata
-3. **Error Context**: Errors automatically include Langfuse context via error handlers
-4. **Privacy**: Be mindful of sensitive data in metadata (use hashing if needed)
+2. **Always Include userId**: Pass `userId` wherever available to enable user tracking
+3. **Session Tracking**: Use `sessionId` to group related traces (e.g., conversation ID for chat, content ID for generation)
+4. **Trace Grouping**: Use `langfuseTraceId` to group multiple AI SDK spans under one parent trace (e.g., RAG orchestrator grouping all agent calls)
+5. **Rich Metadata**: Include relevant context (topic, keywords, etc.) in metadata
+6. **Error Context**: Errors automatically include Langfuse context via error handlers
+7. **Privacy**: Be mindful of sensitive data in metadata (use hashing if needed)
 
 ## Troubleshooting
 
@@ -181,10 +224,20 @@ This will log detailed telemetry information to help troubleshoot issues.
 - Check that the function ID is unique and descriptive
 - Verify the AI SDK call is actually executing (check logs)
 
+## LangWatch Evaluations
+
+The platform uses LangWatch (wrapper around Langfuse Node SDK) for LLM-as-a-judge evaluations:
+
+- **EEAT Evaluations**: Automatically run after content generation via `rag-writer-orchestrator.ts`
+- **Content Quality Evaluations**: Scored against multiple dimensions (relevance, depth, factual accuracy)
+- **Trace Linking**: Evaluation traces are linked to main content generation traces via `langfuseTraceId`
+- **Scores**: Evaluation scores appear in Langfuse as generation scores attached to evaluation traces
+
 ## Next Steps
 
-- [ ] Set up Langfuse evaluations for content quality
+- [x] Set up Langfuse evaluations for content quality (via LangWatch)
 - [ ] Configure prompt management in Langfuse
 - [ ] Set up alerts for high error rates
 - [ ] Create dashboards for cost tracking by user/agent
+- [ ] Set up Langfuse datasets for prompt testing
 

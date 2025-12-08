@@ -35,7 +35,7 @@ export async function detectAIContentWithGradio(
     // [0] String: "**The text is** <span ...>**PERCENT%** likely <b>LABEL written</b>.</span>"
     // [1] Plot object (ignored)
     
-    const resultString = result.data[0] as string;
+    const resultString = (result.data as unknown[])[0] as string;
     console.log('[Gradio AI] Raw result:', resultString);
 
     // Extract percentage

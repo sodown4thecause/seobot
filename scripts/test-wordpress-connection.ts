@@ -10,10 +10,10 @@ async function testWordPressConnection() {
     try {
         // Test fetching posts
         console.log('📝 Fetching posts...')
-        const { posts, pageInfo } = await getPosts(5)
+        const { posts } = await getPosts(5)
 
         console.log(`✅ Successfully fetched ${posts.nodes.length} posts`)
-        console.log(`   Has next page: ${pageInfo.hasNextPage}`)
+        console.log(`   Has next page: ${posts.pageInfo.hasNextPage}`)
 
         if (posts.nodes.length > 0) {
             console.log('\n📄 First post:')

@@ -9,9 +9,12 @@ import { requireAdminMiddleware } from '@/lib/auth/admin-middleware'
 import { estimateCost, extractProviderFromModel, type AIProvider } from '@/lib/analytics/cost-estimator'
 
 export async function POST(req: NextRequest) {
-  return requireAdminMiddleware(async (user) => {
-    try {
-      const supabase = await createClient()
+  // Check admin access first
+  const adminCheck = await requireAdminMiddleware(req)
+  if (adminCheck) return adminCheck
+
+  try {
+    const supabase = await createClient()
       
       // Get all events without cost_usd in metadata
       // We'll fetch all and filter in code, or use a more specific query
@@ -105,13 +108,12 @@ export async function POST(req: NextRequest) {
           })
         }, 0),
       })
-    } catch (error) {
-      console.error('[Backfill Costs] Error:', error)
-      return NextResponse.json(
-        { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
-        { status: 500 }
-      )
-    }
-  })(req)
+  } catch (error) {
+    console.error('[Backfill Costs] Error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    )
+  }
 }
 

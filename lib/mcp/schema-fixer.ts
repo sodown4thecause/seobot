@@ -1,12 +1,25 @@
 /**
  * MCP Tool Schema Fixer
- * 
+ *
  * Fixes MCP-generated tools to ensure they have proper object schemas
  * that are compatible with AI SDK 6 and Vercel AI Gateway
  */
 
 import { z } from 'zod'
 import type { Tool } from 'ai'
+
+// Helper to get schema from tool (AI SDK 6 uses inputSchema, not parameters)
+function getToolSchema(tool: Tool): z.ZodSchema | undefined {
+  return (tool as any).inputSchema ?? (tool as any).parameters
+}
+
+// Helper to set schema on tool
+function setToolSchema(tool: Tool, schema: z.ZodSchema): Tool {
+  return {
+    ...tool,
+    inputSchema: schema,
+  } as Tool
+}
 
 /**
  * Fixes MCP tool schemas to ensure they use proper object types
@@ -37,50 +50,46 @@ export function fixMCPToolSchemas(tools: Record<string, Tool>): Record<string, T
  */
 function fixSingleToolSchema(tool: Tool, toolName: string): Tool | null {
   try {
-    if (!tool.parameters) {
-      console.warn(`[Schema Fixer] Tool ${toolName} has no parameters`)
-      return {
-        ...tool,
-        inputSchema: z.object({})
-      }
+    const schema = getToolSchema(tool)
+
+    if (!schema) {
+      console.warn(`[Schema Fixer] Tool ${toolName} has no schema`)
+      return setToolSchema(tool, z.object({}))
     }
 
-    // Check if parameters is already a proper Zod object schema
-    const paramType = (tool.parameters as any)._def?.typeName
-    
+    // Check if schema is already a proper Zod object schema
+    const paramType = (schema as any)._def?.typeName
+
     if (paramType === 'ZodObject') {
-      // Already a proper object schema
-      return tool
+      // Already a proper object schema - ensure it uses inputSchema
+      return setToolSchema(tool, schema)
     }
 
     // Try to extract and fix the schema
-    let fixedParameters: z.ZodSchema
+    let fixedSchema: z.ZodSchema
 
     if (paramType === 'ZodUnion') {
       // Handle union types by converting to object
-      fixedParameters = convertUnionToObject(tool.parameters as any, toolName)
+      fixedSchema = convertUnionToObject(schema as any, toolName)
     } else if (paramType === 'ZodArray') {
       // Handle array types by wrapping in object
-      fixedParameters = z.object({
-        items: tool.parameters
+      fixedSchema = z.object({
+        items: schema
       })
     } else if (paramType === 'ZodString' || paramType === 'ZodNumber' || paramType === 'ZodBoolean') {
       // Handle primitive types by wrapping in object
-      fixedParameters = z.object({
-        value: tool.parameters
+      fixedSchema = z.object({
+        value: schema
       })
     } else {
       // For unknown types, try to wrap in object
       console.warn(`[Schema Fixer] Unknown parameter type ${paramType} for tool ${toolName}, wrapping in object`)
-      fixedParameters = z.object({
-        parameters: tool.parameters
+      fixedSchema = z.object({
+        parameters: schema
       })
     }
 
-    return {
-      ...tool,
-      parameters: fixedParameters
-    }
+    return setToolSchema(tool, fixedSchema)
   } catch (error) {
     console.error(`[Schema Fixer] Failed to fix schema for tool ${toolName}:`, error)
     return null
@@ -183,25 +192,19 @@ export function applyFallbackSchemas(
     try {
       // First try the normal fix
       const fixedTool = fixSingleToolSchema(tool, name)
-      
+
       if (fixedTool) {
         fixedTools[name] = fixedTool
       } else {
         // Apply fallback schema
         const fallbackSchema = fallbackSchemas[name] || fallbackSchemas.default
-        fixedTools[name] = {
-          ...tool,
-          parameters: fallbackSchema
-        }
+        fixedTools[name] = setToolSchema(tool, fallbackSchema)
         console.log(`[Schema Fixer] Applied fallback schema for tool: ${name}`)
       }
     } catch (error) {
       // Last resort: use default schema
       console.error(`[Schema Fixer] Failed to fix tool ${name}, using default schema:`, error)
-      fixedTools[name] = {
-        ...tool,
-        parameters: fallbackSchemas.default
-      }
+      fixedTools[name] = setToolSchema(tool, fallbackSchemas.default)
     }
   }
 
@@ -219,8 +222,9 @@ export function validateFixedTools(tools: Record<string, Tool>): {
   const invalid: string[] = []
 
   for (const [name, tool] of Object.entries(tools)) {
-    const paramType = (tool.parameters as any)?._def?.typeName
-    
+    const schema = getToolSchema(tool)
+    const paramType = (schema as any)?._def?.typeName
+
     if (paramType === 'ZodObject') {
       valid.push(name)
     } else {
@@ -230,7 +234,7 @@ export function validateFixedTools(tools: Record<string, Tool>): {
   }
 
   console.log(`[Schema Validator] ${valid.length}/${Object.keys(tools).length} tools have valid object schemas`)
-  
+
   return { valid, invalid }
 }
 

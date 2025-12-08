@@ -59,10 +59,9 @@ export class OrchestratorAgent {
 
     try {
       // Cache the full workflow to improve performance
-      const cacheKey = `${AEO_CACHE_PREFIXES.WORKFLOW}:${params.type}:${params.topic}`
-
       return await cachedAEOCall(
-        cacheKey,
+        AEO_CACHE_PREFIXES.WORKFLOW,
+        { type: params.type, topic: params.topic },
         async () => {
           // Step 1: Research Phase
           console.log('[Orchestrator] Phase 1: Research')
@@ -159,7 +158,7 @@ export class OrchestratorAgent {
             suggestions: qaResult.suggestions,
           }
         },
-        AEO_CACHE_TTL.WORKFLOW
+        { ttl: AEO_CACHE_TTL.WORKFLOW }
       )
     } catch (error) {
       console.error('[Orchestrator] Error in content generation:', error)

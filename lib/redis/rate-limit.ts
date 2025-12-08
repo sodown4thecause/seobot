@@ -6,7 +6,6 @@
  */
 
 import { Ratelimit } from '@upstash/ratelimit'
-import { Redis } from '@upstash/redis'
 import { NextRequest } from 'next/server'
 import { getRedisClient } from './client'
 import { createClient } from '@/lib/supabase/server'
@@ -397,11 +396,11 @@ export async function getRateLimitStatus(
       limit: 1000,
       remaining: 999,
       reset: Date.now() + 60000,
-      identifier: getClientIdentifier(req),
+      identifier: await getClientIdentifier(req),
     }
   }
 
-  const identifier = getClientIdentifier(req)
+  const identifier = await getClientIdentifier(req)
 
   try {
     const result = await limiter.limit(identifier)
@@ -454,11 +453,11 @@ export async function getRateLimitStats(): Promise<{
     let cursor = 0
 
     do {
-      const result = await redis.scan(cursor, {
+      const result: [string, string[]] = await redis.scan(cursor, {
         match: 'ratelimit:*',
         count: 100,
       })
-      cursor = result[0]
+      cursor = parseInt(result[0], 10)
       allKeys.push(...result[1])
     } while (cursor !== 0)
 
@@ -529,11 +528,11 @@ export async function clearRateLimit(identifier: string, type?: RateLimitType): 
       let cursor = 0
 
       do {
-        const result = await redis.scan(cursor, {
+        const result: [string, string[]] = await redis.scan(cursor, {
           match: `ratelimit:*:${identifier}`,
           count: 100,
         })
-        cursor = result[0]
+        cursor = parseInt(result[0], 10)
         allKeys.push(...result[1])
       } while (cursor !== 0)
 
@@ -567,11 +566,11 @@ export async function clearAllRateLimits(): Promise<number> {
     let cursor = 0
 
     do {
-      const result = await redis.scan(cursor, {
+      const result: [string, string[]] = await redis.scan(cursor, {
         match: 'ratelimit:*',
         count: 100,
       })
-      cursor = result[0]
+      cursor = parseInt(result[0], 10)
       allKeys.push(...result[1])
     } while (cursor !== 0)
 

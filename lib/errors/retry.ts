@@ -79,40 +79,32 @@ export async function withAgentRetry<T>(
 
       // Check if error is retryable
       if (!isRetryable(error)) {
-        // Enrich non-retryable errors with metadata
-        if (error instanceof AppError) {
-          if (!error.requestId) error.requestId = requestId
-          if (!error.agent && agent) error.agent = agent
-          if (!error.provider && provider) error.provider = provider
+        // For non-retryable errors, wrap in ProviderError if we have metadata
+        if (error instanceof Error && !(error instanceof AppError)) {
+          throw new ProviderError(
+            error.message,
+            provider || 'unknown',
+            { requestId, agent, retryable: false, cause: error }
+          )
         }
         throw error
       }
 
       // If this was the last attempt, throw the error
       if (attempt === retries) {
-        // Enrich final error with metadata
-        if (error instanceof AppError) {
-          if (!error.requestId) error.requestId = requestId
-          if (!error.agent && agent) error.agent = agent
-          if (!error.provider && provider) error.provider = provider
-        } else if (error instanceof Error) {
-          // Convert unknown errors to ProviderError if we have provider info
+        // Convert unknown errors to ProviderError if we have provider info
+        if (error instanceof Error && !(error instanceof AppError)) {
           throw new ProviderError(
             error.message,
             provider || 'unknown',
-            {
-              requestId,
-              agent,
-              retryable: false,
-              cause: error,
-            }
+            { requestId, agent, retryable: false, cause: error }
           )
         }
         throw error
       }
 
       // Calculate delay with exponential backoff
-      const delayMs = Math.min(initialDelay * Math.pow(factor, attempt), maxDelay)
+      const delayMs = Math.min(initialDelay! * Math.pow(factor!, attempt), maxDelay!)
 
       // Log retry attempt
       const errorMetadata = getErrorMetadata(error)

@@ -38,8 +38,12 @@ export async function POST(req: Request) {
       model: vercelGateway.languageModel('google/gemini-1.5-flash'),
       prompt: systemPrompt,
       system: 'You are a professional content writer.',
+      // Generate a session ID for this content generation request
+      const sessionId = `content-gen-${Date.now()}-${Math.random().toString(36).substring(7)}`
+      
       experimental_telemetry: createTelemetryConfig('content-generate-api', {
         userId: user?.id,
+        sessionId, // Langfuse session tracking for content generation
         topic,
         contentType: type,
         tone,

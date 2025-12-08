@@ -4,6 +4,7 @@
 import { config } from 'dotenv'
 import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
+// @ts-expect-error - @langchain/openai may not be installed in all environments
 import { OpenAIEmbeddings } from '@langchain/openai'
 
 // Load environment variables

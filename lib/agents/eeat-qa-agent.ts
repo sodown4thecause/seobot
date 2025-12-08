@@ -68,6 +68,8 @@ export interface EEATQAParams {
     headings: string[]
   }>
   userId?: string // For usage logging
+  langfuseTraceId?: string // For grouping spans under a parent trace
+  sessionId?: string // For Langfuse session tracking
 }
 
 export interface EEATQAResult {
@@ -114,7 +116,9 @@ export class EEATQAAgent {
         prompt: userPrompt,
         temperature: 0.3, // Lower temperature for more consistent scoring
         experimental_telemetry: createTelemetryConfig('eeat-qa', {
-          userId: params.userId || '',
+          userId: params.userId,
+          sessionId: params.sessionId,
+          langfuseTraceId: params.langfuseTraceId,
           topic: params.topic,
           targetKeyword: params.targetKeyword,
           contentType: params.contentType || 'blog_post',

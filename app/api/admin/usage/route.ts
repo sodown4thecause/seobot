@@ -47,11 +47,8 @@ export async function GET(req: NextRequest) {
       query = query.lte('created_at', to)
     }
 
-    // Get total count for pagination
-    const { count: totalCount } = await query
-
     // Get paginated events
-    const { data: events, error: eventsError } = await query
+    const { data: events, error: eventsError, count: totalCount } = await query
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -60,38 +57,38 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch usage data' }, { status: 500 })
     }
 
-    // Build base query for aggregations
-    let baseQuery = supabase.from('ai_usage_events')
-    if (userId) baseQuery = baseQuery.eq('user_id', userId)
-    if (from) baseQuery = baseQuery.gte('created_at', from)
-    if (to) baseQuery = baseQuery.lte('created_at', to)
-
-    // Get total count (database-level)
-    const { count: totalCalls } = await baseQuery.select('*', { count: 'exact', head: true })
-
-    // Get unique user count (database-level via distinct)
-    const { count: activeUsers } = await baseQuery.select('user_id', { count: 'exact', head: true })
-
     // Use RPC functions for database-level aggregation (if available)
     // Otherwise fallback to limited queries
-    const { data: summaryData, error: summaryError } = await supabase.rpc('aggregate_usage_summary', {
-      p_user_id: userId || null,
-      p_from: from || null,
-      p_to: to || null
-    }).single().catch(() => ({ data: null, error: true }))
+    let summaryData = null
+    let summaryError: { message: string } | null = null
+    try {
+      const result = await supabase.rpc('aggregate_usage_summary', {
+        p_user_id: userId || null,
+        p_from: from || null,
+        p_to: to || null
+      }).single()
+      summaryData = result.data
+      summaryError = result.error
+    } catch {
+      summaryError = { message: 'RPC not available' }
+    }
 
     let summary
     if (summaryError || !summaryData) {
-      // Fallback: Fetch only aggregated fields with limit to prevent memory issues
-      const { data: aggData } = await baseQuery
-        .select('metadata, prompt_tokens, completion_tokens')
-        .limit(5000) // Reasonable limit for aggregation
-      
-      const totalCost = aggData?.reduce((sum, e) => sum + (Number(e.metadata?.cost_usd) || 0), 0) || 0
-      const totalTokens = aggData?.reduce((sum, e) => sum + (e.prompt_tokens || 0) + (e.completion_tokens || 0), 0) || 0
+      // Fallback: Build aggregation query
+      let aggQuery = supabase.from('ai_usage_events').select('metadata, prompt_tokens, completion_tokens')
+      if (userId) aggQuery = aggQuery.eq('user_id', userId)
+      if (from) aggQuery = aggQuery.gte('created_at', from)
+      if (to) aggQuery = aggQuery.lte('created_at', to)
+
+      const { data: aggData } = await aggQuery.limit(5000) // Reasonable limit for aggregation
+
+      const totalCost = aggData?.reduce((sum: number, e: { metadata?: { cost_usd?: number }; prompt_tokens?: number; completion_tokens?: number }) => sum + (Number(e.metadata?.cost_usd) || 0), 0) || 0
+      const totalTokens = aggData?.reduce((sum: number, e: { metadata?: { cost_usd?: number }; prompt_tokens?: number; completion_tokens?: number }) => sum + (e.prompt_tokens || 0) + (e.completion_tokens || 0), 0) || 0
+      const totalCalls = totalCount || 0
       summary = {
-        totalCalls: totalCalls || 0,
-        activeUsers: activeUsers || 0,
+        totalCalls,
+        activeUsers: 0, // Would need distinct query
         totalCost,
         totalTokens,
         avgCostPerCall: totalCalls ? totalCost / totalCalls : 0,

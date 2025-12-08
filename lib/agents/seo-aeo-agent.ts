@@ -14,6 +14,8 @@ export interface SEOAEOParams {
   targetPlatforms?: string[]
   researchData?: any
   userId?: string // For usage logging
+  langfuseTraceId?: string // For grouping spans under a parent trace
+  sessionId?: string // For Langfuse session tracking
 }
 
 export interface SEOAEOResult {
@@ -62,6 +64,8 @@ Format as JSON.`
         abortSignal: controller.signal, // AI SDK 6: Use abortSignal instead of signal
         experimental_telemetry: createTelemetryConfig('seo-aeo', {
           userId: params.userId,
+          sessionId: params.sessionId,
+          langfuseTraceId: params.langfuseTraceId,
           topic: params.topic,
           keywords: params.keywords,
           targetPlatforms: params.targetPlatforms,
@@ -79,8 +83,8 @@ Format as JSON.`
             userId: params.userId,
             agentType: 'seo_aeo',
             model: 'google/gemini-2.5-flash',
-            promptTokens: usage?.promptTokens || 0,
-            completionTokens: usage?.completionTokens || 0,
+            promptTokens: usage?.inputTokens || 0,
+            completionTokens: usage?.outputTokens || 0,
             metadata: {
               topic: params.topic,
               keywords: params.keywords,

@@ -1,10 +1,10 @@
 /**
  * Tool Schema Validator for AI SDK 6 & Vercel Gateway Compatibility
- * 
+ *
  * Validates and sanitizes tool schemas to ensure they pass Vercel AI Gateway validation
  * and are compatible with AI SDK 6 requirements.
- * 
- * Note: AI SDK 6 uses 'parameters' property, but we support 'inputSchema' for backward compatibility
+ *
+ * Note: AI SDK 6 uses 'inputSchema' property (not 'parameters')
  */
 
 import { z } from 'zod'
@@ -21,6 +21,16 @@ export interface ToolValidationOptions {
   strictMode?: boolean
   fixInvalidSchemas?: boolean
   logErrors?: boolean
+}
+
+// Helper to get schema from tool (AI SDK 6 uses inputSchema)
+function getToolSchema(tool: Tool): z.ZodSchema | undefined {
+  return (tool as any).inputSchema ?? (tool as any).parameters
+}
+
+// Helper to set schema on tool
+function setToolSchema(tool: Tool, schema: z.ZodSchema): Tool {
+  return { ...tool, inputSchema: schema } as Tool
 }
 
 /**
@@ -41,30 +51,21 @@ export function validateToolSchema(
       errors.push('Tool must have a non-empty description string')
     }
 
-    // Support both parameters (AI SDK 6) and inputSchema (Legacy/Custom)
-    const schema = tool.parameters || (tool as any).inputSchema
-    
+    // AI SDK 6 uses inputSchema (support legacy parameters for compatibility)
+    const schema = getToolSchema(tool)
+
     if (!schema) {
-      errors.push('Tool must have parameters (or inputSchema) object')
+      errors.push('Tool must have inputSchema object')
     }
 
     // Validate schema structure
     if (schema) {
-      // Check if we're validating parameters or inputSchema
-      const isParameters = !!tool.parameters
-      
       const schemaValidation = validateInputSchema(schema, strictMode)
       errors.push(...schemaValidation.errors)
       warnings.push(...schemaValidation.warnings)
 
       if (fixInvalidSchemas && schemaValidation.sanitizedSchema) {
-        sanitizedTool = {
-          ...tool,
-          // Always set parameters for AI SDK 6 compatibility
-          parameters: schemaValidation.sanitizedSchema,
-          // If we found inputSchema, keep it for backward compatibility
-          ...(!isParameters ? { inputSchema: schemaValidation.sanitizedSchema } : {})
-        }
+        sanitizedTool = setToolSchema(tool, schemaValidation.sanitizedSchema)
       }
     }
 
@@ -259,13 +260,13 @@ export function createSafeTool(
   // Return a safe fallback tool
   return {
     description: tool.description || 'Fallback tool',
-    parameters: z.object({
+    inputSchema: z.object({
       query: z.string().describe('User query')
     }),
     execute: async () => {
       return fallbackMessage
     }
-  }
+  } as Tool
 }
 
 /**

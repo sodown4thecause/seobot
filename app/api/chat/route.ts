@@ -5,7 +5,7 @@ import {
   CoreMessage,
   stepCountIs,
   createIdGenerator,
-  type Message,
+  type UIMessage,
 } from "ai";
 import { after } from "next/server";
 import { trace } from "@opentelemetry/api";
@@ -63,7 +63,7 @@ interface ChatContext {
 }
 
 interface RequestBody {
-  messages?: Message[]; // Message[] from @ai-sdk/react useChat
+  messages?: UIMessage[]; // UIMessage[] from @ai-sdk/react useChat
   chatId?: string;
   conversationId?: string;
   agentId?: string;
@@ -148,17 +148,27 @@ const handler = async (req: Request) => {
       });
     }
 
-    const activeConversationId = conversationRecord?.id ?? requestedConversationId;
+    // Ensure we always have a conversation ID for authenticated users
+    let activeConversationId = conversationRecord?.id ?? requestedConversationId;
+    
+    // If user is authenticated but we still don't have a conversation ID, force create one
+    if (!activeConversationId && user) {
+      console.log('[Chat API] No conversation ID available, creating new conversation for message persistence');
+      try {
+        const newConv = await ensureConversationForUser(supabase, user.id, undefined, resolvedAgentType);
+        activeConversationId = newConv.id;
+        conversationRecord = newConv;
+        console.log('[Chat API] Created new conversation:', activeConversationId);
+      } catch (e) {
+        console.error('[Chat API] Failed to create conversation for message persistence:', e);
+      }
+    }
 
     // Extract last user message content for intent detection
     const lastMsg = normalizedMessages[normalizedMessages.length - 1];
-    const lastUserMessageContent = typeof lastMsg.content === 'string'
-      ? lastMsg.content
-      : Array.isArray(lastMsg.content)
-        ? lastMsg.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
-        : Array.isArray(lastMsg.parts)
-          ? lastMsg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
-          : '';
+    const lastUserMessageContent = Array.isArray(lastMsg.parts)
+      ? lastMsg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
+      : '';
 
     // WORKFLOW DETECTION: Check if user wants to run a workflow
     const { detectWorkflow, isWorkflowRequest, extractWorkflowId } =
@@ -314,7 +324,8 @@ const handler = async (req: Request) => {
             }
 
             // Use new RAG + EEAT feedback loop orchestrator
-            const result = await ragWriterOrchestrator.generateContent({
+            const orchestrator = new RAGWriterOrchestrator();
+            const result = await orchestrator.generateContent({
               ...args,
               userId: user?.id,
             });
@@ -557,19 +568,19 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
       ],
       experimental_telemetry: createTelemetryConfig('chat-stream', {
         userId: user?.id,
+        sessionId: activeConversationId || context?.conversationId, // Langfuse session tracking
         agentType: routingResult.agent,
         page: context?.page,
         isOnboarding: !!isOnboarding,
         onboardingStep: onboardingContext?.currentStep,
         workflowId: workflowId || undefined,
         toolsCount: Object.keys(validatedTools).length,
-        conversationId: activeConversationId,
-        mcpToolsEnabled: {
-          dataforseo: routingResult.agent === 'seo-aeo' || routingResult.agent === 'content',
-          firecrawl: routingResult.agent === 'seo-aeo' || routingResult.agent === 'content',
-          jina: routingResult.agent === 'content',
-          winston: routingResult.agent === 'content',
-        },
+        conversationId: activeConversationId, // Keep for backward compatibility
+        // MCP tools enabled as individual boolean flags (objects not allowed in telemetry)
+        mcpDataforseoEnabled: routingResult.agent === 'seo-aeo' || routingResult.agent === 'content',
+        mcpFirecrawlEnabled: routingResult.agent === 'seo-aeo' || routingResult.agent === 'content',
+        mcpJinaEnabled: routingResult.agent === 'content',
+        mcpWinstonEnabled: routingResult.agent === 'content',
       }),
       onFinish: async ({ response, usage }) => {
         const { messages: finalMessages } = response;
@@ -583,9 +594,9 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
               conversationId: activeConversationId || context?.conversationId,
               agentType: 'general',
               model: CHAT_MODEL_ID,
-              promptTokens: usage?.promptTokens || 0,
-              completionTokens: usage?.completionTokens || 0,
-              toolCalls: response.steps?.reduce((sum: number, step: any) => sum + (step.toolCalls?.length || 0), 0) || 0,
+              promptTokens: usage?.inputTokens || 0,
+              completionTokens: usage?.outputTokens || 0,
+              toolCalls: (response as any).steps?.reduce((sum: number, step: any) => sum + (step.toolCalls?.length || 0), 0) || 0,
               metadata: {
                 onboarding: !!onboardingContext,
               },
@@ -595,34 +606,8 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
           }
         }
 
-        // Save messages after completion
-        if (user && !authError) {
-          try {
-            const lastMessage = finalMessages[finalMessages.length - 1];
-            if (lastMessage && lastMessage.role === 'assistant') {
-              let content = "";
-              if (typeof lastMessage.content === 'string') {
-                content = lastMessage.content;
-              } else if (Array.isArray(lastMessage.content)) {
-                content = lastMessage.content
-                  .filter(c => c.type === 'text')
-                  .map(c => (c as any).text)
-                  .join('');
-              }
-
-              const chatMessage = {
-                user_id: user.id,
-                role: 'assistant',
-                content: content,
-                metadata: onboardingContext ? { onboarding: onboardingContext } : {},
-              };
-
-              await supabase.from("chat_messages").insert(chatMessage);
-            }
-          } catch (error) {
-            console.error("Error saving chat messages:", error);
-          }
-        }
+        // Note: Assistant messages are saved in toUIMessageStreamResponse onFinish callback
+        // to the correct 'messages' table with proper conversation_id
       },
     });
 
@@ -652,51 +637,75 @@ ${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n
       originalMessages: incomingMessages, // Use original Message[] from useChat
       generateMessageId: serverMessageIdGenerator,
       onFinish: async ({ messages: uiMessages }) => {
+        console.log('[Chat API] toUIMessageStreamResponse onFinish:', {
+          hasMessages: !!uiMessages?.length,
+          messageCount: uiMessages?.length || 0,
+          activeConversationId,
+          hasUser: !!user,
+        });
+
         if (!uiMessages?.length || !activeConversationId || !user) {
+          console.warn('[Chat API] Skipping assistant message save - missing required data:', {
+            hasMessages: !!uiMessages?.length,
+            activeConversationId,
+            hasUser: !!user,
+          });
           return;
         }
 
         const finalAssistantMessage = uiMessages[uiMessages.length - 1];
         if (finalAssistantMessage?.role !== 'assistant') {
+          console.warn('[Chat API] Last message is not assistant, skipping save');
           return;
         }
 
-        // Log tool invocations for debugging image generation
-        if (finalAssistantMessage.toolInvocations) {
+        // Log tool invocations for debugging image generation (AI SDK 6 uses parts)
+        const toolParts = finalAssistantMessage.parts?.filter((p: any) => p.type === 'tool-invocation') || [];
+        if (toolParts.length > 0) {
           console.log('[Chat API] Final assistant message tool invocations:', {
-            count: finalAssistantMessage.toolInvocations.length,
-            tools: finalAssistantMessage.toolInvocations.map((t: any) => ({
-              toolName: t.toolName,
-              hasResult: !!t.result,
-              resultKeys: t.result ? Object.keys(t.result) : [],
+            count: toolParts.length,
+            tools: toolParts.map((t: any) => ({
+              toolName: t.toolInvocation?.toolName,
+              hasResult: !!t.toolInvocation?.result,
+              resultKeys: t.toolInvocation?.result ? Object.keys(t.toolInvocation.result) : [],
             })),
           });
 
           // Log image tool results specifically
-          const imageTools = finalAssistantMessage.toolInvocations.filter(
-            (t: any) => t.toolName === 'gateway_image' && t.state === 'result'
+          const imageTools = toolParts.filter(
+            (t: any) => t.toolInvocation?.toolName === 'gateway_image' && t.toolInvocation?.state === 'result'
           );
           if (imageTools.length > 0) {
             console.log('[Chat API] Image tool results:', imageTools.map((t: any) => ({
               // Safety check for result properties
-              hasFiles: t.result && Array.isArray(t.result.files),
-              filesCount: t.result?.files?.length || 0,
-              hasParts: t.result && Array.isArray(t.result.parts),
-              partsCount: t.result?.parts?.length || 0,
-              hasUrl: !!t.result?.url,
+              hasFiles: t.toolInvocation?.result && Array.isArray(t.toolInvocation.result.files),
+              filesCount: t.toolInvocation?.result?.files?.length || 0,
+              hasParts: t.toolInvocation?.result && Array.isArray(t.toolInvocation.result.parts),
+              partsCount: t.toolInvocation?.result?.parts?.length || 0,
+              hasUrl: !!t.toolInvocation?.result?.url,
             })));
           }
         }
 
         try {
+          const normalizedMessage = normalizeUIMessage(finalAssistantMessage as GenericUIMessage);
+          console.log('[Chat API] Saving assistant message:', {
+            conversationId: activeConversationId,
+            messageId: normalizedMessage.id,
+            role: normalizedMessage.role,
+            partsCount: normalizedMessage.parts?.length || 0,
+            hasTextParts: normalizedMessage.parts?.some((p: any) => p.type === 'text') || false,
+          });
+          
           await saveConversationMessage(
             supabase,
             activeConversationId,
-            normalizeUIMessage(finalAssistantMessage as GenericUIMessage),
+            normalizedMessage,
             { metadata: { source: 'assistant' } },
           );
+          console.log('[Chat API] ✓ Assistant message saved successfully');
         } catch (error) {
-          console.error('[Chat API] Failed to persist assistant message', error);
+          console.error('[Chat API] Failed to persist assistant message:', error);
         }
       },
     });

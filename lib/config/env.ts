@@ -68,7 +68,9 @@ const serverEnvSchema = z.object({
   LANGFUSE_ENABLED: z.string().optional(),
   LANGFUSE_SECRET_KEY: z.string().min(1).optional(),
   LANGFUSE_PUBLIC_KEY: z.string().min(1).optional(),
+  // Support both LANGFUSE_BASEURL and LANGFUSE_BASE_URL for compatibility
   LANGFUSE_BASEURL: z.string().url().optional(),
+  LANGFUSE_BASE_URL: z.string().url().optional(),
   LANGFUSE_DEBUG: z.string().optional(),
   // LangWatch API key (can use Langfuse keys if LangWatch is not available)
   LANGWATCH_API_KEY: z.string().min(1).optional(),

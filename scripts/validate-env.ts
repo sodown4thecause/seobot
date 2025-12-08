@@ -1,18 +1,38 @@
 #!/usr/bin/env tsx
 /**
  * Environment Variable Validation Script
- * 
+ *
  * Validates environment variables against the Zod schema in lib/config/env.ts
  * This script is designed to be run in CI/CD pipelines to catch missing or invalid
  * environment variables before deployment.
- * 
+ *
  * Usage:
  *   tsx scripts/validate-env.ts
  *   npm run validate:env
  */
 
-import { serverEnvSchema, clientEnvSchema } from '../lib/config/env'
+import { config } from 'dotenv'
+import { resolve } from 'path'
 import { z } from 'zod'
+
+// Load environment variables from .env.local and .env
+config({ path: resolve(process.cwd(), '.env.local') })
+config({ path: resolve(process.cwd(), '.env') })
+
+// Import schemas directly to avoid server-only check in validation script
+// These match the schemas in lib/config/env.ts
+const serverEnvSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url({ message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL' }),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required'),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
+  DATAFORSEO_LOGIN: z.string().email({ message: 'DATAFORSEO_LOGIN must be a valid email' }),
+  DATAFORSEO_PASSWORD: z.string().min(1, 'DATAFORSEO_PASSWORD is required'),
+}).passthrough()
+
+const clientEnvSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url({ message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL' }),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required'),
+}).passthrough()
 
 // Parse process.env directly (same as env.ts does)
 function validateEnv() {

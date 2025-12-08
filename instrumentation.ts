@@ -31,11 +31,19 @@ export async function register() {
         return span.otelSpan.instrumentationScope.name !== 'next.js';
       };
 
+      // Support both LANGFUSE_BASEURL and LANGFUSE_BASE_URL for compatibility
+      const baseUrl = process.env.LANGFUSE_BASEURL || 
+                      process.env.LANGFUSE_BASE_URL || 
+                      'https://cloud.langfuse.com'
+      
+      const debug = process.env.LANGFUSE_DEBUG === 'true'
+
       // Create LangfuseSpanProcessor with configuration
       const langfuseSpanProcessor = new LangfuseSpanProcessor({
         shouldExportSpan,
         // Langfuse credentials are read from environment variables:
-        // LANGFUSE_SECRET_KEY, LANGFUSE_PUBLIC_KEY, LANGFUSE_BASE_URL
+        // LANGFUSE_SECRET_KEY, LANGFUSE_PUBLIC_KEY, LANGFUSE_BASE_URL (or LANGFUSE_BASEURL)
+        // Base URL is set via environment variable or defaults to cloud.langfuse.com
       });
 
       // Create and register the tracer provider
@@ -49,7 +57,13 @@ export async function register() {
       // @ts-ignore - exporting for use in API routes
       global.langfuseSpanProcessor = langfuseSpanProcessor;
 
-      console.log('[Langfuse] OpenTelemetry instrumentation registered with LangfuseSpanProcessor');
+      if (debug) {
+        console.log('[Langfuse] OpenTelemetry instrumentation registered with LangfuseSpanProcessor');
+        console.log('[Langfuse] Base URL:', baseUrl);
+        console.log('[Langfuse] Debug mode: enabled');
+      } else {
+        console.log('[Langfuse] OpenTelemetry instrumentation registered with LangfuseSpanProcessor');
+      }
     } catch (error) {
       console.error('[Langfuse] Failed to initialize OpenTelemetry:', error);
     }

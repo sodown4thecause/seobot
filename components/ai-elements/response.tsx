@@ -14,7 +14,7 @@ const Streamdown = dynamic(
 type StreamdownProps = ComponentProps<typeof Streamdown>;
 
 type ResponseProps = Omit<StreamdownProps, 'children'> & {
-  children?: React.ReactNode;
+  children?: string;
   /** Show blinking cursor at end of response during streaming */
   isStreaming?: boolean;
 };
@@ -50,7 +50,7 @@ export const Response = memo(
         )}
         {...props}
       >
-        {children}
+        {children ?? ''}
       </Streamdown>
       <style jsx global>{`
         /* Blinking cursor that appears at the end of streaming content */

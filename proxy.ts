@@ -22,10 +22,9 @@ export async function proxy(req: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+  // Use getUser() to validate the session and get user info
+  // This is the recommended approach for middleware per Supabase docs
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
 
   if (authError && authError.status !== 401) {
     console.warn('[Auth middleware] Failed to fetch Supabase user', authError.message)

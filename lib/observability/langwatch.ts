@@ -31,6 +31,8 @@ export interface LogTracePayload {
   model: string
   telemetry?: Record<string, unknown>
   metadata?: Record<string, unknown>
+  userId?: string // Langfuse user ID for user tracking
+  sessionId?: string // Langfuse session ID for session grouping
 }
 
 /**
@@ -42,6 +44,9 @@ export interface EvaluatePayload {
   context?: Record<string, unknown>
   scores?: Record<string, number>
   metadata?: Record<string, unknown>
+  userId?: string // Langfuse user ID for user tracking
+  sessionId?: string // Langfuse session ID for session grouping
+  langfuseTraceId?: string // Parent trace ID to link evaluation to main trace
 }
 
 /**
@@ -66,7 +71,12 @@ export class LangWatch {
   constructor(config?: LangWatchConfig) {
     // Use LangWatch API key if provided, otherwise fall back to Langfuse keys
     const apiKey = config?.apiKey || serverEnv.LANGWATCH_API_KEY || serverEnv.LANGFUSE_SECRET_KEY
-    const baseUrl = config?.baseUrl || serverEnv.LANGWATCH_BASE_URL || serverEnv.LANGFUSE_BASEURL || 'https://cloud.langfuse.com'
+    // Support both LANGFUSE_BASEURL and LANGFUSE_BASE_URL for compatibility
+    const baseUrl = config?.baseUrl || 
+                    serverEnv.LANGWATCH_BASE_URL || 
+                    serverEnv.LANGFUSE_BASEURL || 
+                    serverEnv.LANGFUSE_BASE_URL || 
+                    'https://cloud.langfuse.com'
 
     this.enabled = !!apiKey && serverEnv.LANGFUSE_ENABLED !== 'false'
 
@@ -106,6 +116,8 @@ export class LangWatch {
       const trace = this.langfuse.trace({
         id: payload.traceId,
         name: `agent:${payload.agent}`,
+        userId: payload.userId, // Langfuse user tracking
+        sessionId: payload.sessionId, // Langfuse session tracking
         metadata: {
           agent: payload.agent,
           model: payload.model,
@@ -150,8 +162,13 @@ export class LangWatch {
 
     try {
       // Create a trace for this evaluation
+      // If langfuseTraceId is provided, link to parent trace by using it as the trace ID
+      // Otherwise, create a new trace
       const trace = this.langfuse.trace({
+        id: payload.langfuseTraceId, // Link to parent trace if provided
         name: `evaluation:${payload.evaluationId}`,
+        userId: payload.userId, // Langfuse user tracking
+        sessionId: payload.sessionId, // Langfuse session tracking
         metadata: {
           evaluationId: payload.evaluationId,
           ...payload.context,
@@ -185,7 +202,15 @@ export class LangWatch {
       // This logic can be customized per evaluation schema
       const passed = this.determinePassStatus(payload.evaluationId, payload.scores || {})
 
-      await this.langfuse.flushAsync()
+      // Flush with error handling for debug mode
+      try {
+        await this.langfuse.flushAsync()
+      } catch (flushError) {
+        if (serverEnv.LANGFUSE_DEBUG === 'true') {
+          console.warn('[LangWatch] Failed to flush evaluation trace:', flushError)
+        }
+        // Continue even if flush fails
+      }
 
       return {
         evaluationId: payload.evaluationId,
@@ -194,6 +219,7 @@ export class LangWatch {
         metadata: {
           ...payload.metadata,
           traceId: trace.id,
+          langfuseTraceId: payload.langfuseTraceId,
         },
       }
     } catch (error) {

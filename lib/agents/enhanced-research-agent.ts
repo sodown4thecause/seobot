@@ -8,6 +8,25 @@ import { retrieveAgentDocuments } from '@/lib/ai/content-rag'
 import { mcpDataforseoTools } from '@/lib/mcp/dataforseo/index'
 import { mcpFirecrawlTools } from '@/mcps/mcp.firecrawl.dev/fc-9b271ecf3a944c3faf93489565547fc8/v2/mcp/index'
 
+// Helper to execute MCP tools (they only need args, not the full AI SDK context)
+// The execute function can return string | AsyncIterable<string> | PromiseLike<string>
+const executeTool = async <T>(
+  tool: { execute?: (args: T, ctx?: any) => string | AsyncIterable<string> | PromiseLike<string> },
+  args: T
+): Promise<string> => {
+  if (!tool.execute) throw new Error('Tool does not have execute function')
+  const result = tool.execute(args, { toolCallId: 'agent-exec', messages: [] })
+  // Handle different return types
+  if (typeof result === 'string') return result
+  if ('then' in result) return await result
+  // AsyncIterable - collect all chunks
+  let collected = ''
+  for await (const chunk of result) {
+    collected += chunk
+  }
+  return collected
+}
+
 export interface EnhancedResearchParams {
   topic: string
   targetKeyword: string
@@ -73,7 +92,7 @@ export class EnhancedResearchAgent {
       // Step 1: Detect search intent using DataForSEO
       let searchIntent: EnhancedResearchResult['searchIntent'] | undefined
       try {
-        const intentResult = await mcpDataforseoTools.dataforseo_labs_search_intent.execute({
+        const intentResult = await executeTool(mcpDataforseoTools.dataforseo_labs_search_intent, {
           keywords: [params.targetKeyword],
           language_code: params.languageCode || 'en',
         })
@@ -106,11 +125,13 @@ export class EnhancedResearchAgent {
             endpoint: 'serp_organic_live_advanced',
             agentType: 'enhanced_research',
           },
-          () => mcpDataforseoTools.serp_organic_live_advanced.execute({
+          () => executeTool(mcpDataforseoTools.serp_organic_live_advanced, {
             keyword: params.targetKeyword,
             language_code: params.languageCode || 'en',
             location_name: params.location || 'United States',
+            search_engine: 'google',
             depth: 10,
+            max_crawl_pages: 1,
             device: 'desktop',
           })
         )
@@ -150,9 +171,9 @@ export class EnhancedResearchAgent {
                 endpoint: 'firecrawl_scrape',
                 agentType: 'enhanced_research',
               },
-              () => mcpFirecrawlTools.firecrawl_scrape.execute({
+              () => executeTool(mcpFirecrawlTools.firecrawl_scrape, {
                 url,
-                formats: ['markdown'],
+                formats: ['markdown'] as const,
               })
             )
 

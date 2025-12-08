@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
-import { Outfit, Inter } from "next/font/google";
+import { Noto_Sans } from "next/font/google";
 import "./globals.css";
 
-const outfit = Outfit({
+const notoSans = Noto_Sans({
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-noto-sans",
   display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -27,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${outfit.variable} ${inter.variable} font-sans antialiased`}
+        className={`${notoSans.variable} font-sans antialiased`}
       >
         {children}
       </body>
