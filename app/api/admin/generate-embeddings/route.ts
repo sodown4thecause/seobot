@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateEmbedding } from '@/lib/ai/embeddings'
+import { requireAdminMiddleware } from '@/lib/auth/admin-middleware'
+import { NextRequest } from 'next/server'
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // Check admin access
+  const adminCheck = await requireAdminMiddleware(req)
+  if (adminCheck) {
+    return adminCheck
+  }
+
   try {
     console.log('[Embedding Generator] Starting...')
     
@@ -96,7 +104,12 @@ export async function POST() {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Check admin access
+  const adminCheck = await requireAdminMiddleware(req)
+  if (adminCheck) {
+    return adminCheck
+  }
   try {
     const supabase = await createClient()
     

@@ -12,12 +12,6 @@ interface RequestBody {
 }
 
 export async function POST(req: Request) {
-  // Check rate limit
-  const rateLimitResponse = await rateLimitMiddleware(req as any, 'KEYWORDS')
-  if (rateLimitResponse) {
-    return rateLimitResponse
-  }
-
   try {
     const body = (await req.json()) as RequestBody
     const { keywords, location } = body
@@ -34,6 +28,12 @@ export async function POST(req: Request) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check rate limit (after getting user for better identification)
+    const rateLimitResponse = await rateLimitMiddleware(req as any, 'KEYWORDS', user.id)
+    if (rateLimitResponse) {
+      return rateLimitResponse
     }
 
     // Get keyword data from DataForSEO

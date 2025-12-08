@@ -27,7 +27,7 @@ export const ConversationContent = ({
   className,
   ...props
 }: ConversationContentProps) => (
-  <StickToBottom.Content className={cn("p-4", className)} {...props} />
+  <StickToBottom.Content className={cn("px-4 py-4 md:px-6", className)} {...props} />
 );
 
 export type ConversationEmptyStateProps = ComponentProps<"div"> & {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { serverEnv } from '@/lib/config/env';
 import { researchTopic, fetchLatestStats, analyzeTrends } from '@/lib/api/perplexity-service';
+import { rateLimitMiddleware } from '@/lib/redis/rate-limit';
 
 export const runtime = 'edge';
 
@@ -31,6 +32,12 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check rate limit for content research (AI-intensive operation)
+    const rateLimitResponse = await rateLimitMiddleware(request, 'CONTENT_GENERATION', user.id);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     const body: RequestBody = await request.json();

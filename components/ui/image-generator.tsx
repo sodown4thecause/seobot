@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import { Image as ImageIcon, Download, Sparkles, Loader2, Wand2 } from 'lucide-react'
-import { SEOPrompts, type GeminiImageRequest } from '@/lib/ai/image-generation'
+import { SEOPrompts, type GeminiImageRequest } from '@/lib/ai/image-generation-types'
 
 export function ImageGenerator() {
   const [prompt, setPrompt] = useState('')
