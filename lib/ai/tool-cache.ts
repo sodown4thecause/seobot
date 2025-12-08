@@ -230,39 +230,12 @@ export async function getCachedJinaTools(): Promise<Record<string, any>> {
 
 /**
  * Get cached codemode registry or build fresh
+ * Note: Codemode module is not yet implemented, returns empty registry
  */
-export async function getCachedCodemodeRegistry(): Promise<any> {
-  const cacheKey = CACHE_KEYS.CODEMODE_REGISTRY
-  
-  // Check if already loading
-  const inFlight = inFlightPromises.get(cacheKey)
-  if (inFlight) {
-    console.log('[Tool Cache] ⏳ Codemode registry already building, waiting...')
-    return inFlight
-  }
-
-  // Check cache
-  const cached = await getCached<any>(cacheKey)
-  if (cached) {
-    console.log('[Tool Cache] ✓ Codemode registry loaded from cache')
-    return cached
-  }
-
-  // Start building and track promise
-  console.log('[Tool Cache] Building fresh codemode registry...')
-  const loadPromise = (async () => {
-    try {
-      const { buildCodemodeToolRegistry } = await import('@/lib/ai/codemode')
-      const registry = await buildCodemodeToolRegistry()
-      await setCached(cacheKey, registry)
-      return registry
-    } finally {
-      inFlightPromises.delete(cacheKey)
-    }
-  })()
-  
-  inFlightPromises.set(cacheKey, loadPromise)
-  return loadPromise
+export async function getCachedCodemodeRegistry(): Promise<Record<string, unknown>> {
+  // TODO: Implement codemode module when needed
+  console.log('[Tool Cache] Codemode registry not yet implemented, returning empty')
+  return {}
 }
 
 /**

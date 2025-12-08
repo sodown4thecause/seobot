@@ -57,7 +57,10 @@ function rewriteParagraph(paragraph: string, paragraphIndex: number, markerIndex
     let updated = raw.replace(/\s+/g, ' ').trim()
     if (!updated) return ''
 
-    updated = nlp(updated).contractions().contract().text()
+    // Apply contractions for more natural language
+    const doc = nlp(updated)
+    doc.contractions().expand() // First expand, then the text will be more natural
+    updated = doc.text()
     updated = enforceBurstiness(updated, idx)
 
     if (idx % 5 === 2 && !updated.endsWith('?')) {

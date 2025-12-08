@@ -59,10 +59,9 @@ export class OrchestratorAgent {
 
     try {
       // Cache the full workflow to improve performance
-      const cacheKey = `${AEO_CACHE_PREFIXES.WORKFLOW}:${params.type}:${params.topic}`
-
       return await cachedAEOCall(
-        cacheKey,
+        AEO_CACHE_PREFIXES.WORKFLOW,
+        { type: params.type, topic: params.topic },
         async () => {
           // Step 1: Research Phase
           console.log('[Orchestrator] Phase 1: Research')
@@ -78,6 +77,7 @@ export class OrchestratorAgent {
             keywords: params.keywords,
             targetPlatforms: params.targetPlatforms || ['chatgpt', 'perplexity'],
             researchData: researchResult,
+            userId: params.userId,
           })
 
           // Step 3: Content Generation
@@ -122,7 +122,7 @@ export class OrchestratorAgent {
             console.warn('[Orchestrator] Image generation failed:', error)
           }
 
-          let finalContent = maxWords
+          const finalContent = maxWords
             ? this.trimToWordCount(qaResult.content, maxWords)
             : qaResult.content
 
@@ -158,7 +158,7 @@ export class OrchestratorAgent {
             suggestions: qaResult.suggestions,
           }
         },
-        AEO_CACHE_TTL.WORKFLOW
+        { ttl: AEO_CACHE_TTL.WORKFLOW }
       )
     } catch (error) {
       console.error('[Orchestrator] Error in content generation:', error)

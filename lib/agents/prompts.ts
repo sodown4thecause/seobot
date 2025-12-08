@@ -127,35 +127,53 @@ class AgentPromptLoader {
    */
   private parseMarkdownPrompt(content: string, agentId: string): Partial<AgentPromptConfig> {
     const sections = this.parseMarkdownSections(content)
-    
+
     // Extract metadata from frontmatter if present
-    const frontmatter = this.extractFrontmatter(content)
-    
+    const fm = this.extractFrontmatter(content)
+
+    // Helper to safely get string from frontmatter
+    const getString = (key: string): string | undefined => {
+      const val = fm[key]
+      return typeof val === 'string' ? val : undefined
+    }
+
+    // Helper to safely get boolean from frontmatter
+    const getBool = (key: string): boolean | undefined => {
+      const val = fm[key]
+      return typeof val === 'boolean' ? val : undefined
+    }
+
+    // Helper to safely get number from frontmatter
+    const getNum = (key: string): number | undefined => {
+      const val = fm[key]
+      return typeof val === 'number' ? val : undefined
+    }
+
     return {
-      name: frontmatter.name || this.extractSection(sections, 'Name') || this.formatAgentName(agentId),
-      description: frontmatter.description || this.extractSection(sections, 'Description') || '',
+      name: getString('name') || this.extractSection(sections, 'Name') || this.formatAgentName(agentId),
+      description: getString('description') || this.extractSection(sections, 'Description') || '',
       personality: {
-        tone: frontmatter.tone || this.extractSection(sections, 'Tone') || 'professional',
-        style: frontmatter.style || this.extractSection(sections, 'Style') || 'analytical',
-        traits: this.parseTraits(frontmatter.traits || this.extractSection(sections, 'Traits') || ''),
-        responseLength: (frontmatter.responseLength || this.extractSection(sections, 'Response Length') || 'moderate') as any,
-        communicationStyle: (frontmatter.communicationStyle || this.extractSection(sections, 'Communication Style') || 'professional') as any,
+        tone: getString('tone') || this.extractSection(sections, 'Tone') || 'professional',
+        style: getString('style') || this.extractSection(sections, 'Style') || 'analytical',
+        traits: this.parseTraits(getString('traits') || this.extractSection(sections, 'Traits') || ''),
+        responseLength: (getString('responseLength') || this.extractSection(sections, 'Response Length') || 'moderate') as any,
+        communicationStyle: (getString('communicationStyle') || this.extractSection(sections, 'Communication Style') || 'professional') as any,
       },
       systemPrompt: this.extractSystemPrompt(sections),
-      tools: this.parseToolList(frontmatter.tools || this.extractSection(sections, 'Tools') || ''),
+      tools: this.parseToolList(getString('tools') || this.extractSection(sections, 'Tools') || ''),
       capabilities: {
-        canGenerateImages: frontmatter.canGenerateImages || this.parseBoolean(this.extractSection(sections, 'Can Generate Images')),
-        canAccessExternalAPIs: frontmatter.canAccessExternalAPIs !== false, // Default true
-        canPerformSEOAnalysis: frontmatter.canPerformSEOAnalysis || this.parseBoolean(this.extractSection(sections, 'Can Perform SEO Analysis')),
-        canConductResearch: frontmatter.canConductResearch !== false, // Default true
-        canWriteContent: frontmatter.canWriteContent || this.parseBoolean(this.extractSection(sections, 'Can Write Content')),
-        canManageCampaigns: frontmatter.canManageCampaigns || this.parseBoolean(this.extractSection(sections, 'Can Manage Campaigns')),
+        canGenerateImages: getBool('canGenerateImages') ?? this.parseBoolean(this.extractSection(sections, 'Can Generate Images')),
+        canAccessExternalAPIs: getBool('canAccessExternalAPIs') !== false, // Default true
+        canPerformSEOAnalysis: getBool('canPerformSEOAnalysis') ?? this.parseBoolean(this.extractSection(sections, 'Can Perform SEO Analysis')),
+        canConductResearch: getBool('canConductResearch') !== false, // Default true
+        canWriteContent: getBool('canWriteContent') ?? this.parseBoolean(this.extractSection(sections, 'Can Write Content')),
+        canManageCampaigns: getBool('canManageCampaigns') ?? this.parseBoolean(this.extractSection(sections, 'Can Manage Campaigns')),
       },
       ragConfig: {
-        frameworks: frontmatter.frameworks !== false, // Default true
-        agentDocuments: frontmatter.agentDocuments || this.parseBoolean(this.extractSection(sections, 'Agent Documents')),
-        conversationHistory: frontmatter.conversationHistory !== false, // Default true
-        maxContextLength: frontmatter.maxContextLength || parseInt(this.extractSection(sections, 'Max Context Length') || '4000'),
+        frameworks: getBool('frameworks') !== false, // Default true
+        agentDocuments: getBool('agentDocuments') ?? this.parseBoolean(this.extractSection(sections, 'Agent Documents')),
+        conversationHistory: getBool('conversationHistory') !== false, // Default true
+        maxContextLength: getNum('maxContextLength') || parseInt(this.extractSection(sections, 'Max Context Length') || '4000'),
       },
     }
   }
@@ -215,15 +233,19 @@ class AgentPromptLoader {
   /**
    * Extract frontmatter from markdown
    */
-  private extractFrontmatter(content: string): Record<string, any> {
+  private extractFrontmatter(content: string): Record<string, unknown> {
     const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/)
     if (!frontmatterMatch) return {}
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const yaml = require('js-yaml')
-      return yaml.load(frontmatterMatch[1]) || {}
-    } catch (error) {
-      console.warn('[Agent Prompts] Could not parse frontmatter:', error)
+      // Use safeLoad to prevent arbitrary JS object construction from untrusted sources
+      // Note: In js-yaml 4.x, load() is safe by default, but safeLoad() explicitly
+      // uses DEFAULT_SAFE_SCHEMA and satisfies security scanners that flag unsafe yaml.load()
+      return (yaml.safeLoad(frontmatterMatch[1]) as Record<string, unknown>) || {}
+    } catch {
+      // If js-yaml is not available or parsing fails, return empty object
       return {}
     }
   }

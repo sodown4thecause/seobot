@@ -20,9 +20,10 @@ const openai = serverEnv.OPENAI_API_KEY
 const gateway = serverEnv.AI_GATEWAY_API_KEY
   ? createGateway({
       apiKey: serverEnv.AI_GATEWAY_API_KEY,
-      baseURL: serverEnv.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1',
+      baseURL: serverEnv.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1/ai',
     })
   : null;
+
 
 export const vercelGateway = {
   languageModel(modelId: string): any {
@@ -91,28 +92,32 @@ export const vercelGateway = {
   },
 
   imageModel(modelId: string): any {
-    // Image generation through Gateway is not supported by Vercel AI SDK
-    // Gateway uses text-based models and doesn't have image.* methods
-    // We must use direct providers for image generation
-    
     console.log('[Gateway] Image generation requested for:', modelId);
-    console.log('[Gateway] Note: Image generation requires direct provider (Gateway not supported)');
-    
-    // Use direct providers only
-    if (modelId.startsWith('openai/')) {
-      if (openai) {
-        console.log('[Gateway] Using direct OpenAI for image:', modelId);
-        return openai.image(modelId.replace('openai/', ''));
+
+    // Prefer Vercel AI Gateway for observability and routing
+    if (gateway?.imageModel) {
+      try {
+        console.log('[Gateway] Using gateway image model for:', modelId);
+        return gateway.imageModel(modelId as any);
+      } catch (error) {
+        console.warn('[Gateway] Gateway imageModel failed, falling back to direct providers', error);
       }
-      throw new Error('OpenAI API key required for image generation');
     }
     
     if (modelId.startsWith('google/')) {
       if (google) {
-        console.log('[Gateway] Using direct Google for image:', modelId);
+        console.log('[Gateway] Using Google provider for image:', modelId);
         return google(modelId.replace('google/', '')) as any;
       }
       throw new Error('Google API key required for image generation');
+    }
+
+    if (modelId.startsWith('openai/')) {
+      if (openai?.image) {
+        console.log('[Gateway] Using direct OpenAI for image:', modelId);
+        return openai.image(modelId.replace('openai/', ''));
+      }
+      throw new Error('OpenAI API key required for image generation');
     }
     
     throw new Error(`Unsupported image model ID: ${modelId}`);

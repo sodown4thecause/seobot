@@ -1,6 +1,6 @@
 /**
  * Tool Schema Validator for AI SDK 6 & Vercel Gateway Compatibility
- * 
+ *
  * Validates and sanitizes tool schemas to ensure they pass Vercel AI Gateway validation
  * and are compatible with AI SDK 6 requirements.
  */
@@ -21,6 +21,16 @@ export interface ToolValidationOptions {
   logErrors?: boolean
 }
 
+// Helper to get schema from tool (AI SDK 6 uses inputSchema)
+function getToolSchema(tool: Tool): z.ZodSchema | undefined {
+  return (tool as any).inputSchema ?? (tool as any).parameters
+}
+
+// Helper to set schema on tool
+function setToolSchema(tool: Tool, schema: z.ZodSchema): Tool {
+  return { ...tool, inputSchema: schema } as Tool
+}
+
 /**
  * Validates a tool schema against AI SDK 6 and Vercel Gateway requirements
  */
@@ -39,21 +49,19 @@ export function validateToolSchema(
       errors.push('Tool must have a non-empty description string')
     }
 
-    if (!tool.parameters) {
-      errors.push('Tool must have parameters object')
+    const schema = getToolSchema(tool)
+    if (!schema) {
+      errors.push('Tool must have inputSchema object')
     }
 
-    // Validate parameters schema structure
-    if (tool.parameters) {
-      const schemaValidation = validateParametersSchema(tool.parameters, strictMode)
+    // Validate schema structure
+    if (schema) {
+      const schemaValidation = validateParametersSchema(schema, strictMode)
       errors.push(...schemaValidation.errors)
       warnings.push(...schemaValidation.warnings)
 
       if (fixInvalidSchemas && schemaValidation.sanitizedSchema) {
-        sanitizedTool = {
-          ...tool,
-          parameters: schemaValidation.sanitizedSchema
-        }
+        sanitizedTool = setToolSchema(tool, schemaValidation.sanitizedSchema)
       }
     }
 
@@ -254,13 +262,13 @@ export function createSafeTool(
   // Return a safe fallback tool
   return {
     description: tool.description || 'Fallback tool',
-    parameters: z.object({
+    inputSchema: z.object({
       query: z.string().describe('User query')
     }),
     execute: async () => {
       return fallbackMessage
     }
-  }
+  } as Tool
 }
 
 /**

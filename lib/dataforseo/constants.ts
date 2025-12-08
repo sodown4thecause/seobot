@@ -68,13 +68,33 @@ export const DOMAIN_ENDPOINTS = {
 } as const
 
 // ============================================================================
-// AI OPTIMIZATION ENDPOINTS
+// AI OPTIMIZATION ENDPOINTS (all live endpoints for fast responses)
 // ============================================================================
 
 export const AI_ENDPOINTS = {
-  KEYWORD_SEARCH_VOLUME: '/dataforseo_labs/google/keyword_overview/live',
-  CHATGPT_SCRAPER: '/dataforseo_labs/google/chatgpt_search_results/live',
-  CHATGPT_RESPONSES: '/dataforseo_labs/google/chatgpt_responses/live',
+  // LLM Mentions - already live by default (no task-based option)
+  LLM_MENTIONS_SEARCH: '/ai_optimization/llm_mentions/search',
+  LLM_MENTIONS_AGGREGATED: '/ai_optimization/llm_mentions/aggregated_metrics',
+  LLM_MENTIONS_TOP_DOMAINS: '/ai_optimization/llm_mentions/top_domains',
+  LLM_MENTIONS_TOP_PAGES: '/ai_optimization/llm_mentions/top_pages',
+
+  // AI Keyword Data - live endpoint
+  AI_KEYWORD_SEARCH_VOLUME: '/ai_optimization/ai_keyword_data/keywords_search_volume/live',
+
+  // ChatGPT LLM Scraper - live endpoints
+  CHATGPT_LLM_SCRAPER_LIVE: '/ai_optimization/chat_gpt/llm_scraper/live/advanced',
+
+  // ChatGPT LLM Responses - live endpoint
+  CHATGPT_LLM_RESPONSES_LIVE: '/ai_optimization/chat_gpt/llm_responses/live',
+
+  // Gemini LLM Responses - live endpoint
+  GEMINI_LLM_RESPONSES_LIVE: '/ai_optimization/gemini/llm_responses/live',
+
+  // Claude LLM Responses - live endpoint
+  CLAUDE_LLM_RESPONSES_LIVE: '/ai_optimization/claude/llm_responses/live',
+
+  // Perplexity LLM Responses - live only (no task-based)
+  PERPLEXITY_LLM_RESPONSES_LIVE: '/ai_optimization/perplexity/llm_responses/live',
 } as const
 
 // ============================================================================
