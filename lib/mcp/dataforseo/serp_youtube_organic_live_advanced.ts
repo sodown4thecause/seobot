@@ -10,7 +10,7 @@ export const serp_youtube_organic_live_advancedToolWithClient = (
   tool({
     description:
       "provides top 20 blocks of youtube search engine results for a keyword",
-    parameters: z.object({
+    inputSchema: z.object({
       keyword: z.string().describe("Search keyword"),
       location_name: z.string().describe(`full name of the location
 required field
@@ -52,7 +52,7 @@ max value: 700`,
         )
         .default(20),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "serp_youtube_organic_live_advanced",
@@ -73,3 +73,4 @@ max value: 700`,
       }
     },
   });
+

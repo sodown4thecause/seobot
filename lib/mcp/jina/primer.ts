@@ -9,8 +9,8 @@ export const primerToolWithClient = (
 ) =>
   tool({
     description: `Get up-to-date contextual information of the current session to provide localized, time-aware responses. Use this when you need to know the current time, user's location, or network environment to give more relevant and personalized information.`,
-    parameters: z.object({}),
-    execute: async (args): Promise<string> => {
+    inputSchema: z.object({}),
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "primer",
@@ -31,3 +31,4 @@ export const primerToolWithClient = (
       }
     },
   });
+

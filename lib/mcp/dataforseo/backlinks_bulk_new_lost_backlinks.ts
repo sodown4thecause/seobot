@@ -10,7 +10,7 @@ export const backlinks_bulk_new_lost_backlinksToolWithClient = (
   tool({
     description: `This endpoint will provide you with the number of referring domains pointing to domains, subdomains, and pages specified in the targets array. The returned numbers are based on all live referring domains, that is, total number of domains pointing to the target with any type of backlinks (e.g., nofollow, noreferrer, ugc, sponsored etc) that were found during the latest check.
 Note that if you indicate a domain as a target, you will get result for the root domain (domain with all of its subdomains), e.g. dataforseo.com and app.dataforseo.com`,
-    parameters: z.object({
+    inputSchema: z.object({
       targets: z.array(z.string())
         .describe(`domains, subdomains or webpages to get rank for
 required field
@@ -49,7 +49,7 @@ example:
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_bulk_new_lost_backlinks",
@@ -70,3 +70,4 @@ example:
       }
     },
   });
+

@@ -9,7 +9,7 @@ export const dataforseo_labs_bulk_keyword_difficultyToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the Keyword Difficulty metric for a maximum of 1,000 keywords in one API request. Keyword Difficulty stands for the relative difficulty of ranking in the first top-10 organic results for the related keyword. Keyword Difficulty in DataForSEO API responses indicates the chance of getting in top-10 organic results for a keyword on a logarithmic scale from 0 to 100.`,
-    parameters: z.object({
+    inputSchema: z.object({
       keywords: z.array(z.string()).describe(`target keywords
 required field
 UTF-8 encoding
@@ -34,7 +34,7 @@ example:
         )
         .default("en"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_bulk_keyword_difficulty",
@@ -55,3 +55,4 @@ example:
       }
     },
   });
+
