@@ -9,7 +9,7 @@ export const keywords_data_dataforseo_trends_exploreToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the keyword popularity data from DataForSEO Trends. You can check keyword trends for Google Search, Google News, and Google Shopping`,
-    parameters: z.object({
+    inputSchema: z.object({
       location_name: z
         .union([
           z.string().describe(`full name of the location
@@ -75,7 +75,7 @@ export const keywords_data_dataforseo_trends_exploreToolWithClient = (
         )
         .default("past_7_days"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "keywords_data_dataforseo_trends_explore",
@@ -96,3 +96,4 @@ export const keywords_data_dataforseo_trends_exploreToolWithClient = (
       }
     },
   });
+

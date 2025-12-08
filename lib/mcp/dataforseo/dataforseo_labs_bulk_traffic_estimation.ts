@@ -9,7 +9,7 @@ export const dataforseo_labs_bulk_traffic_estimationToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with estimated monthly traffic volumes for up to 1,000 domains, subdomains, or webpages. Along with organic search traffic estimations, you will also get separate values for paid search, featured snippet, and local pack results.`,
-    parameters: z.object({
+    inputSchema: z.object({
       targets: z.array(z.string())
         .describe(`target domains, subdomains, and webpages.
         you can specify domains, subdomains, and webpages in this field;
@@ -42,7 +42,7 @@ example:
         )
         .default(true),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_bulk_traffic_estimation",
@@ -63,3 +63,4 @@ example:
       }
     },
   });
+

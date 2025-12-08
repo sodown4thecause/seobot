@@ -9,7 +9,7 @@ export const dataforseo_labs_google_domain_rank_overviewToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with ranking and traffic data from organic and paid search for the specified domain. You will be able to review the domain ranking distribution in SERPs as well as estimated monthly traffic volume for both organic and paid results.`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string().describe("target domain"),
       location_name: z
         .string()
@@ -37,7 +37,7 @@ example:
         )
         .default(true),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_domain_rank_overview",
@@ -58,3 +58,4 @@ example:
       }
     },
   });
+

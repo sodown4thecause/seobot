@@ -9,7 +9,7 @@ export const read_urlToolWithClient = (
 ) =>
   tool({
     description: `Extract and convert web page content to clean, readable markdown format. Perfect for reading articles, documentation, blog posts, or any web content. Use this when you need to analyze text content from websites, bypass paywalls, or get structured data.`,
-    parameters: z.object({
+    inputSchema: z.object({
       url: z
         .string().url()
         .describe(
@@ -28,7 +28,7 @@ export const read_urlToolWithClient = (
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "read_url",
@@ -49,3 +49,4 @@ export const read_urlToolWithClient = (
       }
     },
   });
+

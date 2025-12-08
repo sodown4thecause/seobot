@@ -9,7 +9,7 @@ export const content_analysis_summaryToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with an overview of citation data available for the target keyword`,
-    parameters: z.object({
+    inputSchema: z.object({
       keyword: z.string().describe(`target keyword
         Note: to match an exact phrase instead of a stand-alone keyword, use double quotes and backslashes;`),
       keyword_fields: z
@@ -104,7 +104,7 @@ probability per each sentiment is more than or equal to the specified value`,
         )
         .default(1),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "content_analysis_summary",
@@ -125,4 +125,5 @@ probability per each sentiment is more than or equal to the specified value`,
       }
     },
   });
+
 

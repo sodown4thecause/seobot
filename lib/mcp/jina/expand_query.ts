@@ -9,14 +9,14 @@ export const expand_queryToolWithClient = (
 ) =>
   tool({
     description: `Expand and rewrite search queries based on an up-to-date query expansion model. This tool takes an initial query and returns multiple expanded queries that can be used for more diversed and deeper searches. Useful for improving deep research results by searching broader and deeper.`,
-    parameters: z.object({
+    inputSchema: z.object({
       query: z
         .string()
         .describe(
           "The search query to expand (e.g., 'machine learning', 'climate change')",
         ),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "expand_query",
@@ -37,3 +37,4 @@ export const expand_queryToolWithClient = (
       }
     },
   });
+
