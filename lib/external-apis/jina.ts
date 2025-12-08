@@ -1,7 +1,9 @@
 // Jina Reader API Integration
 // Scrapes and converts web pages to clean markdown
 
-const JINA_API_KEY = process.env.JINA_API_KEY
+import { serverEnv } from '@/lib/config/env'
+
+const JINA_API_KEY = serverEnv.JINA_API_KEY
 const JINA_READER_URL = 'https://r.jina.ai'
 
 export interface JinaReaderOptions {

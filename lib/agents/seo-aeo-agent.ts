@@ -5,12 +5,17 @@
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { generateText } from 'ai'
+import { serverEnv } from '@/lib/config/env'
+import { createTelemetryConfig } from '@/lib/observability/langfuse'
 
 export interface SEOAEOParams {
   topic: string
   keywords: string[]
   targetPlatforms?: string[]
   researchData?: any
+  userId?: string // For usage logging
+  langfuseTraceId?: string // For grouping spans under a parent trace
+  sessionId?: string // For Langfuse session tracking
 }
 
 export interface SEOAEOResult {
@@ -50,13 +55,45 @@ Format as JSON.`
         controller.abort()
       }, timeoutMs)
 
-      const { text } = (await generateText({
-        model: vercelGateway.languageModel('anthropic/claude-haiku-4.5' as GatewayModelId),
+      const { text, usage } = await generateText({
+        // Use Gemini 2.5 Flash for better tool orchestration and faster responses
+        model: vercelGateway.languageModel('google/gemini-2.5-flash' as GatewayModelId),
         prompt,
         temperature: 0.4,
-        maxRetries: 2, // AI SDK 6: Add retries for transient failures
-        signal: controller.signal,
-      })) as { text: string }
+        maxRetries: 3, // AI SDK 6: Add retries for transient failures
+        abortSignal: controller.signal, // AI SDK 6: Use abortSignal instead of signal
+        experimental_telemetry: createTelemetryConfig('seo-aeo', {
+          userId: params.userId,
+          sessionId: params.sessionId,
+          langfuseTraceId: params.langfuseTraceId,
+          topic: params.topic,
+          keywords: params.keywords,
+          targetPlatforms: params.targetPlatforms,
+          hasResearchData: !!params.researchData,
+          provider: 'google',
+          model: 'gemini-2.5-flash',
+        }),
+      })
+
+      // Log usage
+      if (params.userId) {
+        try {
+          const { logAIUsage } = await import('@/lib/analytics/usage-logger');
+          await logAIUsage({
+            userId: params.userId,
+            agentType: 'seo_aeo',
+            model: 'google/gemini-2.5-flash',
+            promptTokens: usage?.inputTokens || 0,
+            completionTokens: usage?.outputTokens || 0,
+            metadata: {
+              topic: params.topic,
+              keywords: params.keywords,
+            },
+          });
+        } catch (error) {
+          console.error('[SEO/AEO Agent] Error logging usage:', error);
+        }
+      }
 
       clearTimeout(timeout)
       console.log('[SEO/AEO Agent] ✓ Strategy generation completed')

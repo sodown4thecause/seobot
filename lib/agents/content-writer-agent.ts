@@ -6,6 +6,11 @@ import { generateText } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { getContentGuidance } from '@/lib/ai/content-rag'
+import { serverEnv } from '@/lib/config/env'
+import { withAgentRetry } from '@/lib/errors/retry'
+import { ProviderError } from '@/lib/errors/types'
+import { logAgentExecution } from '@/lib/errors/logger'
+import { createTelemetryConfig } from '@/lib/observability/langfuse'
 
 export interface ContentWriteParams {
   type: 'blog_post' | 'article' | 'social_media' | 'landing_page'
@@ -16,6 +21,14 @@ export interface ContentWriteParams {
   researchContext?: any
   seoStrategy?: any
   userId?: string
+  langfuseTraceId?: string // For grouping spans under a parent trace
+  sessionId?: string // For Langfuse session tracking
+  // Revision support
+  previousDraft?: string
+  improvementInstructions?: string[]
+  dataforseoMetrics?: any
+  qaReport?: any
+  revisionRound?: number
 }
 
 export interface ContentWriteResult {
@@ -43,26 +56,100 @@ export class ContentWriterAgent {
     const prompt = this.buildPrompt(params)
 
     // Generate content using Claude via Vercel AI Gateway for superior quality
-    try {
-      const { text } = await generateText({
-        model: vercelGateway.languageModel('google/gemini-3-pro-preview' as GatewayModelId),
-        system: this.buildSystemPrompt(guidance),
-        prompt: prompt,
-        temperature: 0.7,
-      })
+    return logAgentExecution(
+      'content-writer',
+      async () => {
+        return withAgentRetry(
+          async () => {
+            const { text, usage } = await generateText({
+              model: vercelGateway.languageModel('anthropic/claude-sonnet-4' as GatewayModelId),
+              system: this.buildSystemPrompt(guidance),
+              prompt: prompt,
+              temperature: 0.7,
+              experimental_telemetry: createTelemetryConfig(
+                params.revisionRound ? 'content-writer-revision' : 'content-writer',
+                {
+                  userId: params.userId,
+                  sessionId: params.sessionId,
+                  langfuseTraceId: params.langfuseTraceId,
+                  contentType: params.type,
+                  topic: params.topic,
+                  keywords: params.keywords,
+                  wordCount: params.wordCount,
+                  revisionRound: params.revisionRound,
+                  hasImprovementInstructions: !!params.improvementInstructions,
+                  learningsApplied: this.countLearnings(guidance),
+                  provider: 'anthropic',
+                  model: 'claude-sonnet-4',
+                }
+              ),
+            })
 
-      console.log('[Content Writer] ✓ Content generated')
+            // Log usage
+            if (params.userId) {
+              try {
+                const { logAIUsage } = await import('@/lib/analytics/usage-logger');
+                await logAIUsage({
+                  userId: params.userId,
+                  agentType: 'content_writer',
+                  model: 'anthropic/claude-sonnet-4',
+                  promptTokens: usage?.inputTokens || 0,
+                  completionTokens: usage?.outputTokens || 0,
+                  metadata: {
+                    content_type: params.type,
+                    topic: params.topic,
+                  },
+                });
+              } catch (error) {
+                console.error('[Content Writer] Error logging usage:', error);
+              }
+            }
 
-      return {
-        content: text,
+            console.log('[Content Writer] ✓ Content generated')
+
+            return {
+              content: text,
+              metadata: {
+                learningsApplied: this.countLearnings(guidance),
+              },
+            }
+          },
+          {
+            retries: 2,
+            agent: 'content-writer',
+            provider: 'anthropic',
+            onRetry: (error, attempt, delay) => {
+              console.warn(
+                `[Content Writer] Retry attempt ${attempt} after ${delay}ms:`,
+                error.message
+              )
+            },
+          }
+        )
+      },
+      {
+        provider: 'anthropic',
+        userId: params.userId,
         metadata: {
-          learningsApplied: this.countLearnings(guidance),
+          contentType: params.type,
+          topic: params.topic,
+          revisionRound: params.revisionRound,
         },
       }
-    } catch (error) {
-      console.error('[Content Writer] Error generating content:', error)
+    ).catch((error) => {
+      // Convert to ProviderError if needed
+      if (!(error instanceof ProviderError)) {
+        throw new ProviderError(
+          error instanceof Error ? error.message : 'Content generation failed',
+          'anthropic',
+          {
+            agent: 'content-writer',
+            cause: error instanceof Error ? error : undefined,
+          }
+        )
+      }
       throw error
-    }
+    })
   }
 
   private buildSystemPrompt(guidance: string): string {
@@ -88,7 +175,13 @@ Focus on creating content that:
   }
 
   private buildPrompt(params: ContentWriteParams): string {
-    let prompt = `Write a ${params.type.replace('_', ' ')} about "${params.topic}".
+    // If this is a revision, build revision prompt
+    if (params.previousDraft && params.improvementInstructions) {
+      return this.buildRevisionPrompt(params)
+    }
+
+    // Otherwise, build initial draft prompt
+    const prompt = `Write a ${params.type.replace('_', ' ')} about "${params.topic}".
 
 Target Keywords: ${params.keywords.join(', ')}
 ${params.tone ? `Tone: ${params.tone}` : ''}
@@ -99,6 +192,34 @@ ${params.researchContext ? `\nResearch Context:\n${JSON.stringify(params.researc
 ${params.seoStrategy ? `\nSEO Strategy:\n${JSON.stringify(params.seoStrategy, null, 2)}` : ''}
 
 Write the complete content now. Make it engaging, informative, and human-like.`
+
+    return prompt
+  }
+
+  private buildRevisionPrompt(params: ContentWriteParams): string {
+    const instructions = params.improvementInstructions?.join('\n- ') || 'Improve the content quality.'
+
+    const prompt = `Revise the following content based on quality review feedback.
+
+ORIGINAL DRAFT:
+${params.previousDraft}
+
+IMPROVEMENT INSTRUCTIONS:
+- ${instructions}
+
+${params.dataforseoMetrics ? `\nDataForSEO Metrics:\n${JSON.stringify(params.dataforseoMetrics, null, 2)}` : ''}
+
+${params.qaReport ? `\nQA Report Summary:\n${JSON.stringify(params.qaReport, null, 2)}` : ''}
+
+REQUIREMENTS:
+- Keep the core topic and keywords: ${params.keywords.join(', ')}
+${params.tone ? `- Maintain tone: ${params.tone}` : ''}
+${params.wordCount ? `- Target word count: ${params.wordCount}` : ''}
+- Address ALL improvement instructions above
+- Do not change the fundamental structure unless specifically requested
+- Enhance citations, data points, and depth as instructed
+
+Write the revised, improved content now.`
 
     return prompt
   }

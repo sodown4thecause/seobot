@@ -1,7 +1,9 @@
 // Perplexity API Integration
 // Search for authoritative sources and citations
 
-const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY
+import { serverEnv } from '@/lib/config/env'
+
+const PERPLEXITY_API_KEY = serverEnv.PERPLEXITY_API_KEY
 const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions'
 
 export interface PerplexitySearchOptions {
