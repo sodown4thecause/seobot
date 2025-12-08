@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Intent - Brand Assets</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center p-8 space-y-16">
+
+    <!-- Section Header -->
+    <div class="text-center space-y-2 mt-8">
+        <h1 class="text-3xl font-bold text-gray-200">Brand Assets</h1>
+        <p class="text-gray-400">Identity System for Flow Intent</p>
+    </div>
+
+    <!-- 1. LOGOS SECTION -->
+    <div class="w-full max-w-4xl space-y-8">
+        <div class="border-b border-slate-800 pb-2 mb-6">
+            <h2 class="text-xl font-semibold text-slate-400">1. Logomark</h2>
+        </div>
+
+        <!-- Variation 1: Main Horizontal Logo -->
+        <div class="flex flex-col items-center space-y-4">
+            <span class="text-xs uppercase tracking-widest text-gray-500">Primary Horizontal</span>
+            <div class="p-12 border border-slate-700 rounded-xl bg-black shadow-2xl w-full flex justify-center">
+                <!-- SVG LOGO START -->
+                <svg width="240" height="60" viewBox="0 0 240 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Abstract Flow Icon -->
+                    <path d="M15 45C15 45 25 10 45 15C65 20 50 45 65 45C80 45 75 15 75 15" 
+                          stroke="url(#paint0_linear)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="75" cy="15" r="3" fill="#22D3EE" />
+                    
+                    <!-- Text -->
+                    <text x="95" y="40" fill="white" font-size="28" font-family="Inter, sans-serif" font-weight="700" letter-spacing="-0.5">
+                        Flow<tspan font-weight="400" fill="#94A3B8">Intent</tspan>
+                    </text>
+    
+                    <!-- Gradient Definition for the Swoosh -->
+                    <defs>
+                        <linearGradient id="paint0_linear" x1="15" y1="45" x2="75" y2="15" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#4ADE80" /> <!-- Green -->
+                            <stop offset="1" stop-color="#22D3EE" /> <!-- Cyan -->
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <!-- SVG LOGO END -->
+            </div>
+        </div>
+
+        <!-- Variation 2: Icon Only -->
+        <div class="flex flex-col items-center space-y-4">
+            <span class="text-xs uppercase tracking-widest text-gray-500">App Icon / Favicon</span>
+            <div class="p-8 border border-slate-700 rounded-xl bg-black shadow-2xl">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 48C12 48 22 13 42 18C62 23 47 48 62 48" 
+                          stroke="url(#paint_icon)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="paint_icon" x1="12" y1="48" x2="62" y2="18" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#4ADE80" />
+                            <stop offset="1" stop-color="#22D3EE" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. COLORS SECTION -->
+    <div class="w-full max-w-4xl space-y-6">
+        <div class="border-b border-slate-800 pb-2 mb-6">
+            <h2 class="text-xl font-semibold text-slate-400">2. Color Palette</h2>
+        </div>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 w-full">
+            <!-- Green -->
+            <div class="space-y-3 group cursor-pointer">
+                <div class="h-28 rounded-2xl bg-[#4ADE80] shadow-lg group-hover:scale-105 transition-transform duration-300"></div>
+                <div class="text-center">
+                    <p class="font-bold text-white">Neon Green</p>
+                    <p class="text-xs text-gray-400 font-mono bg-slate-800 py-1 px-2 rounded mt-1 inline-block">#4ADE80</p>
+                </div>
+            </div>
+            <!-- Cyan -->
+            <div class="space-y-3 group cursor-pointer">
+                <div class="h-28 rounded-2xl bg-[#22D3EE] shadow-lg group-hover:scale-105 transition-transform duration-300"></div>
+                <div class="text-center">
+                    <p class="font-bold text-white">Flow Cyan</p>
+                    <p class="text-xs text-gray-400 font-mono bg-slate-800 py-1 px-2 rounded mt-1 inline-block">#22D3EE</p>
+                </div>
+            </div>
+            <!-- Gradient Preview -->
+            <div class="space-y-3 col-span-2 md:col-span-1 group cursor-pointer">
+                <div class="h-28 rounded-2xl bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] shadow-lg group-hover:scale-105 transition-transform duration-300"></div>
+                <div class="text-center">
+                    <p class="font-bold text-white">Primary Gradient</p>
+                    <p class="text-xs text-gray-400 font-mono bg-slate-800 py-1 px-2 rounded mt-1 inline-block">Linear L-R</p>
+                </div>
+            </div>
+            <!-- Dark Bg -->
+            <div class="space-y-3 group cursor-pointer">
+                <div class="h-28 rounded-2xl bg-[#020617] border border-slate-700 shadow-lg group-hover:scale-105 transition-transform duration-300"></div>
+                <div class="text-center">
+                    <p class="font-bold text-white">Void Black</p>
+                    <p class="text-xs text-gray-400 font-mono bg-slate-800 py-1 px-2 rounded mt-1 inline-block">#020617</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. TYPOGRAPHY SECTION -->
+    <div class="w-full max-w-4xl space-y-6">
+        <div class="border-b border-slate-800 pb-2 mb-6">
+            <h2 class="text-xl font-semibold text-slate-400">3. Typography</h2>
+        </div>
+        
+        <div class="p-8 border border-slate-700 rounded-xl bg-slate-800/50 w-full flex flex-col md:flex-row justify-between items-center gap-8">
+            <div class="space-y-2 text-center md:text-left">
+                <p class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-white to-gray-400">Aa</p>
+                <p class="text-sm text-gray-400 font-mono">Inter Bold (700)</p>
+            </div>
+            <div class="space-y-2 text-center md:text-left">
+                <p class="text-5xl font-semibold text-gray-200">Aa</p>
+                <p class="text-sm text-gray-400 font-mono">Inter SemiBold (600)</p>
+            </div>
+            <div class="space-y-2 text-center md:text-left">
+                <p class="text-5xl font-normal text-gray-300">Aa</p>
+                <p class="text-sm text-gray-400 font-mono">Inter Regular (400)</p>
+            </div>
+            <div class="md:text-right text-center space-y-3 max-w-xs pl-0 md:pl-8 md:border-l border-slate-600">
+                <p class="text-2xl font-bold leading-tight text-white">Flow Intent is the future of SEO.</p>
+                <p class="text-sm text-gray-400">Use 'Inter' for a clean, highly legible, and modern aesthetic.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. UI COMPONENTS SECTION -->
+    <div class="w-full max-w-4xl space-y-6">
+        <div class="border-b border-slate-800 pb-2 mb-6">
+            <h2 class="text-xl font-semibold text-slate-400">4. UI Components</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+            <!-- Primary Button -->
+            <div class="p-8 border border-slate-700 rounded-xl bg-black flex flex-col items-center justify-center space-y-6">
+                <span class="text-xs uppercase tracking-widest text-gray-500">Primary CTA</span>
+                <button class="px-8 py-3 rounded-full font-bold text-slate-900 bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all transform hover:-translate-y-1">
+                    Get Started
+                </button>
+            </div>
+            <!-- Secondary Button -->
+            <div class="p-8 border border-slate-700 rounded-xl bg-black flex flex-col items-center justify-center space-y-6">
+                <span class="text-xs uppercase tracking-widest text-gray-500">Secondary / Ghost</span>
+                <button class="px-8 py-3 rounded-full font-bold text-white border border-[#22D3EE] hover:bg-[#22D3EE]/10 transition-colors">
+                    Learn More
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. SOCIAL MEDIA ASSET -->
+    <div class="w-full max-w-4xl space-y-6 mb-20">
+        <div class="border-b border-slate-800 pb-2 mb-6">
+            <h2 class="text-xl font-semibold text-slate-400">5. Social Media Cover</h2>
+        </div>
+
+        <div class="w-full aspect-[1.91/1] bg-black rounded-xl overflow-hidden relative border border-slate-700 group shadow-2xl">
+             <!-- Background Pattern -->
+            <svg class="absolute inset-0 w-full h-full opacity-20" width="100%" height="100%">
+                 <pattern id="pattern-circles" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+                     <circle cx="1.5" cy="1.5" r="1.5" fill="#22D3EE" />
+                 </pattern>
+                 <rect x="0" y="0" width="100%" height="100%" fill="url(#pattern-circles)" />
+            </svg>
+            
+            <!-- Glow Effect -->
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#4ADE80] opacity-10 blur-[100px] rounded-full"></div>
+
+            <!-- Content Center -->
+            <div class="absolute inset-0 flex flex-col items-center justify-center z-10">
+                 <!-- Reusing the SVG Icon path here larger -->
+                 <svg width="100" height="100" viewBox="0 0 80 60" fill="none" class="mb-4 drop-shadow-[0_0_15px_rgba(74,222,128,0.5)]">
+                    <path d="M15 45C15 45 25 10 45 15C65 20 50 45 65 45C80 45 75 15 75 15" 
+                      stroke="url(#paint_social)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="paint_social" x1="15" y1="45" x2="75" y2="15" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#4ADE80" />
+                            <stop offset="1" stop-color="#22D3EE" />
+                        </linearGradient>
+                    </defs>
+                 </svg>
+                 <h2 class="text-5xl font-bold tracking-tight text-white">Flow Intent</h2>
+                 <div class="h-1 w-20 bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] rounded-full my-4"></div>
+                 <p class="text-slate-300 text-lg tracking-wide">Next Generation SEO Intelligence</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

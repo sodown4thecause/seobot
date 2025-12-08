@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2025-12-04T13:40:41.655Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Task Master",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Secure environment variables & secret validation",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down the environment variable audit, zod schema creation, client refactoring, and CI validation into subtasks.",
+			"reasoning": "This task involves security-sensitive refactoring, schema validation with zod, removing direct env access across clients and APIs, and adding CI checks. It requires careful coordination to avoid leaking secrets and ensure robust validation, plus testing at multiple levels, making it moderately complex."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Implement API rate limiting for AI-intensive routes",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divide into Redis integration, middleware implementation, and testing subtasks.",
+			"reasoning": "Implementing reusable rate limiting middleware with Redis fallback involves integrating external services, designing middleware for multiple routes, and ensuring proper error handling and logging. Testing includes unit, integration, and load tests, which adds moderate complexity."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Standardize agent & API error handling with retries",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Create subtasks for error type definitions, retry helper implementation, agent wrapping, and API error mapping.",
+			"reasoning": "This task requires designing a consistent error handling framework with custom error types, implementing retry logic with exponential backoff, wrapping multiple agents to attach metadata and logging, and mapping errors to structured API responses. Testing retry logic and error propagation adds to complexity."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Integrate LangWatch telemetry & LLM-as-a-judge evaluations",
+			"complexityScore": 8,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Split into SDK setup, telemetry instrumentation, evaluation schema definition, pipeline integration, and results feedback subtasks.",
+			"reasoning": "Integrating an external telemetry SDK into a multi-agent pipeline with custom evaluation schemas and feedback loops involves complex instrumentation, API interactions, and data flow coordination. Ensuring telemetry accuracy and integration testing with sandbox environments increases complexity."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Configure Supabase connection pooling & query guards",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Outline subtasks for connection string update, singleton client pattern, query timeout/cancellation, and query optimization review.",
+			"reasoning": "This task requires modifying database connection handling to enable pooling, implementing singleton patterns to avoid multiple clients, adding query cancellation support, and reviewing heavy queries for best practices. Load testing and monitoring add to the technical challenge."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Implement caching for repeated SEO & research data",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divide into cache layer implementation, client wrapping for cache usage, and monitoring instrumentation subtasks.",
+			"reasoning": "Adding a caching layer with Redis or KV store, wrapping external API calls to use cache, and tracking cache hit/miss metrics is moderately complex. It involves key design, TTL management, and integration with existing clients, plus testing for cache effectiveness."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Improve streaming response error recovery",
+			"complexityScore": 8,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Create subtasks for stream pipeline error handling, client retry UI, server-side buffering, logging integration, and testing.",
+			"reasoning": "Enhancing streaming SSE responses with error recovery requires advanced stream control, client-side UI changes for retry and resume, server buffering of state, and robust logging. Testing involves simulating stream errors and network failures, making it a complex task."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Set up staging environment & deployment workflow",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down provisioning, CI workflow creation, data seeding, and documentation subtasks.",
+			"reasoning": "Creating a staging environment with separate configs, CI deployment gates, database seeding, and documentation involves infrastructure setup, automation scripting, and coordination across systems. Ensuring smooth promotion and monitoring adds moderate complexity."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Implement critical automated test coverage",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Divide into unit tests for agents, integration tests for workflows, E2E scenarios, coverage enforcement, and flakiness monitoring subtasks.",
+			"reasoning": "Building comprehensive test coverage across unit, integration, and E2E layers requires designing tests for multiple components, mocking external APIs, enforcing coverage thresholds, and tracking test reliability. This is a substantial but standard complexity task."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Privacy, consent, and documentation readiness",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Split into privacy policy drafting, cookie consent implementation, and API/user documentation subtasks.",
+			"reasoning": "Delivering legal and user-facing documentation plus implementing cookie consent involves content creation, UI components, and integration with analytics. While important, it is less technically complex than backend or infrastructure tasks."
+		}
+	]
+}

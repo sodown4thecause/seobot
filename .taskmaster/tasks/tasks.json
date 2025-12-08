@@ -1,0 +1,566 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Secure environment variables & secret validation",
+        "description": "Audit and refactor environment variable handling so all sensitive keys stay server-side and are validated at startup.",
+        "details": "- Centralize env handling in `lib/config/env.ts` using `zod` to validate shape, required/optional keys, and allowed exposure (public vs server-only).\n- Remove direct `process.env.*` access from MCP clients and API handlers; import the typed config instead.\n- Example pseudo-code:\n```ts\nconst EnvSchema = z.object({\n  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),\n  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),\n  GOOGLE_API_KEY: z.string().min(32),\n  // ...\n}).superRefine(({NEXT_PUBLIC_SUPABASE_ANON_KEY}) => {\n  if (!NEXT_PUBLIC_SUPABASE_ANON_KEY.startsWith('ey')) throw new Error('Invalid anon key');\n});\nexport const env = EnvSchema.parse(process.env);\n```\n- Add CI check to fail build if validation fails.\n- Update MCP clients (`lib/mcp/**/client.ts`) to ensure credentials never leak to browser bundles (use server-only modules or dynamic import with `next/dynamic` server).",
+        "testStrategy": "- Unit test `env` module with mocked `process.env` to ensure validation errors throw for missing/invalid keys.\n- Static analysis: run `next build` and verify no `process.env.SECRET` references in client bundles via `next build --profiling`.\n- Manual QA: run app with intentionally missing key to confirm friendly error message.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Audit current environment variable usage",
+            "description": "Review all code to identify direct process.env accesses and classify environment variables by sensitivity and usage context (server-only vs public).",
+            "dependencies": [],
+            "details": "Scan MCP clients, API handlers, and other modules for direct process.env usage. Document which variables are sensitive and where they are used to inform refactoring and schema design.\n<info added on 2025-12-04T13:46:01.462Z>\nAudit identified 162 process.env references across TypeScript files. MCP clients under lib/mcp/**/client.ts already depend on serverEnv from lib/config/env.ts, but env.ts still references process.env directly within functions (lines 62-86, 106-107). Remaining direct usages occur in app/api routes (chat, admin, cron, images), lib/agents (research, content-writer, eeat-qa, etc.), lib/**/*-service.ts (white-label, video, schema-markup, podcast), scripts/*.ts, lib/external-apis (perplexity, jina, humanization-service), lib/supabase/server.ts, lib/redis/client.ts, lib/config/quality-thresholds.ts, and instrumentation.ts. Cataloged variables include public NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SITE_URL; server-only secrets such as SUPABASE_SERVICE_ROLE_KEY and provider API keys (OPENAI, GOOGLE, PERPLEXITY, JINA, FIRECRAWL, WINSTON_AI, RYTR, DATAFORSEO_LOGIN/PASSWORD); feature flags like LANGFUSE_ENABLED, LANGFUSE_SECRET_KEY, LANGFUSE_PUBLIC_KEY, ENABLE_CODEMODE_PRIMARY; and config values including MIN_DATAFORSEO_SCORE, MIN_EEAT_SCORE, CRON_SECRET. Next actions: move parsing and validation in lib/config/env.ts into the schema layer, add custom validators (e.g., anon key prefix), enforce server-only access per Next.js guidance, and refactor all direct process.env sites to consume the typed config.\n</info added on 2025-12-04T13:46:01.462Z>",
+            "status": "done",
+            "testStrategy": "Code review and static analysis to ensure all direct process.env usages are identified."
+          },
+          {
+            "id": 2,
+            "title": "Create and implement Zod schema for environment variables",
+            "description": "Define a comprehensive Zod schema in lib/config/env.ts to validate environment variables' presence, types, formats, and exposure level (public vs server-only).",
+            "dependencies": [
+              1
+            ],
+            "details": "Use z.object() to define required and optional keys with constraints (e.g., string length, URL format). Add superRefine for custom validations like anon key prefix. Parse process.env at startup and export typed env object for use.\n<info added on 2025-12-04T13:47:37.962Z>\nImplemented comprehensive `serverEnvSchema` parsing directly against `process.env`, added Supabase key prefix guard plus all audited variables (XAI/Google APIs, Langfuse suite, CRON_SECRET, NEXT_PUBLIC_SITE_URL, numeric quality thresholds with preprocessing), enabled `.passthrough()`, and enhanced error surfacing with separate missing/invalid buckets and actionable guidance. Protected module with `import 'server-only'` (package added in package.json) and now export typed `serverEnv`/`clientEnv` ready for downstream refactors.\n</info added on 2025-12-04T13:47:37.962Z>",
+            "status": "done",
+            "testStrategy": "Unit tests mocking process.env to verify validation errors for missing or invalid keys; manual testing with invalid env values."
+          },
+          {
+            "id": 3,
+            "title": "Refactor MCP clients and API handlers to use typed config",
+            "description": "Remove all direct process.env.* accesses from MCP clients and API handlers; replace with imports from the typed env config module.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Update client.ts files under lib/mcp/** to import env from lib/config/env.ts. Ensure server-only secrets are never bundled in client code by using server-only modules or dynamic imports with next/dynamic server option.\n<info added on 2025-12-04T13:48:46.886Z>\nCompleted refactors: lib/supabase/server.ts now reads Supabase credentials via serverEnv and clientEnv; lib/external-apis/perplexity.ts and lib/external-apis/jina.ts consume PERPLEXITY_API_KEY and JINA_API_KEY from serverEnv; lib/config/quality-thresholds.ts loads all thresholds from serverEnv; lib/redis/client.ts uses serverEnv values for both Redis credential references; app/api/cron/aggregate-learnings/route.ts ensures CRON_SECRET comes from serverEnv; lib/auth/actions.ts now references serverEnv.NEXT_PUBLIC_SITE_URL; MCP clients already point at serverEnv. Remaining work covers the roughly 20 API route handlers under app/api, about 10 agent modules under lib/agents, roughly 15 service files under lib using the -service suffix, assorted scripts in scripts, and instrumentation.ts for Langfuse config. Next focus is refactoring the API routes and agent modules since they pose the highest risk for leaking secrets.\n</info added on 2025-12-04T13:48:46.886Z>\n<info added on 2025-12-04T13:52:18.158Z>\nRefactored 13 priority API route handlers to import serverEnv or clientEnv from lib/config/env.ts, eliminating direct process.env reads and ensuring secret keys (e.g., PERPLEXITY_API_KEY, CRON_SECRET) stay server-only: app/api/admin/knowledge/upload, generate-image, images/generate, ab-testing, competitor/alerts, white-label, team, collaboration, local-seo/profile, schema/markup, podcast/transcribe, video/seo, and chat. Updated five agent modules (lib/agents/tools.ts, research-agent.ts, content-writer-agent.ts, eeat-qa-agent.ts, seo-aeo-agent.ts) to rely exclusively on the typed env config so no agent bundles server secrets. Totals to date: 25 files refactored (7 infra, 13 routes, 5 agents). Remaining scope: ~15 lib/**/*-service.ts files, scripts/*.ts, instrumentation.ts, lib/ai/image-generation.ts, and lib/external-apis/humanization-service.ts, with services next in the queue.\n</info added on 2025-12-04T13:52:18.158Z>\n<info added on 2025-12-04T13:55:38.767Z>\nCompleted refactor of 37 files: 7 core infrastructure modules (supabase/server.ts, redis/client.ts, perplexity and jina external APIs, quality-thresholds.ts, auth/actions.ts, cron route), 13 app/api/** handlers, 5 agent modules, 8 service files (white-label, video, schema, podcast, local-seo, competitor, collaboration, ab-testing), and 4 additional critical files (instrumentation.ts, image-generation.ts, humanization-service.ts, rag-service.ts). All server-only secrets now route through serverEnv, client-exposed keys use clientEnv, server-only modules import 'server-only', and the Zod schema enforces validation with clearer error messaging. Remaining lower-priority work: scripts directory (~10 files) and test files. Subtask ready to hand off to 1.4 (CI validation step).\n</info added on 2025-12-04T13:55:38.767Z>",
+            "status": "done",
+            "testStrategy": "Static analysis to confirm no process.env.SECRET references in client bundles; manual QA to verify no secret leakage."
+          },
+          {
+            "id": 4,
+            "title": "Add CI validation step for environment variable schema",
+            "description": "Integrate a continuous integration check that runs environment variable validation and fails the build if validation errors occur.",
+            "dependencies": [
+              2
+            ],
+            "details": "Add a script in the CI pipeline that imports and runs the env schema parse. If validation fails, the build should fail with clear error messages. This ensures environment variables are always validated before deployment.",
+            "status": "in-progress",
+            "testStrategy": "Run CI pipeline with intentionally invalid or missing environment variables to confirm build failure and error reporting."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Implement API rate limiting for AI-intensive routes",
+        "description": "Add reusable rate limiting middleware to guard chat, content, and SEO endpoints from abuse.",
+        "details": "- Use Upstash Redis (if `REDIS_URL`) with `@upstash/ratelimit` or fallback to in-memory sliding window for development.\n- Middleware location: `lib/middleware/rate-limit.ts`, invoked in `/app/api/chat`, `/api/content/*`, `/api/keywords/research`, etc.\n- Pseudo-code:\n```ts\nconst limiter = new Ratelimit({\n  redis: Redis.fromEnv(),\n  limiter: Ratelimit.slidingWindow(20, '1m'),\n});\nexport async function enforceRateLimit(userId: string, route: string) {\n  const { success, reset, remaining } = await limiter.limit(`${userId}:${route}`);\n  if (!success) throw new RateLimitError({ reset, remaining });\n}\n```\n- Return standardized 429 JSON with retry-after header.\n- Log hits via `mcp_usage_logs` for analytics.",
+        "testStrategy": "- Unit test middleware with mocked Redis to assert window counts and 429 responses.\n- Integration test via supertest hitting `/api/chat` > limit to confirm blocking.\n- Load test (k6) hitting endpoints to ensure limits enforced and latency acceptable (<50ms overhead).",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Integrate Upstash Redis and fallback in-memory store for rate limiting",
+            "description": "Set up Upstash Redis connection using environment variable REDIS_URL and implement fallback to an in-memory sliding window rate limiter for development environments.",
+            "dependencies": [],
+            "details": "Implement Redis client initialization in `lib/middleware/rate-limit.ts` using `Redis.fromEnv()`. If REDIS_URL is not set, use an in-memory sliding window algorithm to track request counts per user and route. Ensure atomic increment and expiration logic for Redis keys. Provide a unified interface for rate limiting operations regardless of backend.",
+            "status": "pending",
+            "testStrategy": "Unit test Redis connection logic and fallback behavior by mocking environment variables and verifying correct store selection."
+          },
+          {
+            "id": 2,
+            "title": "Develop reusable rate limiting middleware for AI-intensive API routes",
+            "description": "Create middleware function to enforce rate limits on chat, content, and SEO API endpoints, returning standardized 429 responses and logging usage.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement middleware in `lib/middleware/rate-limit.ts` that calls the rate limiter with keys combining userId and route. On limit exceeded, throw a RateLimitError with reset and remaining info. Middleware should catch this error and respond with HTTP 429 JSON including retry-after header. Integrate logging of each hit to `mcp_usage_logs` for analytics. Apply middleware to `/app/api/chat`, `/api/content/*`, `/api/keywords/research` routes.",
+            "status": "pending",
+            "testStrategy": "Unit test middleware behavior with mocked rate limiter to verify correct blocking and response format. Integration test with API endpoints to confirm enforcement."
+          },
+          {
+            "id": 3,
+            "title": "Implement comprehensive testing for rate limiting functionality",
+            "description": "Create unit, integration, and load tests to verify correct rate limiting behavior, error handling, and performance overhead.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Write unit tests mocking Redis and in-memory stores to assert correct counting and limit enforcement. Use supertest or similar to integration test API endpoints by exceeding limits and verifying 429 responses. Conduct load testing (e.g., with k6) to ensure rate limiting is enforced under high request volumes and latency overhead remains below 50ms.",
+            "status": "pending",
+            "testStrategy": "Automated test suite running unit and integration tests in CI. Load tests executed in staging environment with metrics collection for latency and error rates."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Standardize agent & API error handling with retries",
+        "description": "Create shared error utility for agents and API routes to ensure consistent messaging and retry logic.",
+        "details": "- Add `lib/errors/types.ts` defining custom errors (RateLimitError, ProviderError, ValidationError).\n- Implement `withAgentRetry(agentFn, {retries, backoff})` helper using exponential backoff for transient provider failures.\n- Wrap agents (`enhanced-research-agent`, `content-writer-agent`, etc.) to catch errors, attach metadata (agent, provider, requestId), and log via Axiom.\n- API routes catch known errors and map to structured JSON `{code, message, details}`.\n- Pseudo-code:\n```ts\nexport async function withAgentRetry(fn, opts={retries:2}) {\n  for (let attempt=0; attempt<=opts.retries; attempt++) {\n    try { return await fn(); }\n    catch (err) {\n      if (!isRetryable(err) || attempt===opts.retries) throw err;\n      await delay(2 ** attempt * 200);\n    }\n  }\n}\n```\n- Update streaming responses to propagate structured error events.",
+        "testStrategy": "- Unit tests for `withAgentRetry` verifying retry count and backoff timing via fake timers.\n- Integration test hitting `/api/content/generate` with mocked failing provider to confirm error payloads.\n- Manual QA: trigger DataForSEO outage via mock to ensure fallback messaging surfaces.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define custom error types in lib/errors/types.ts",
+            "description": "Create custom error classes RateLimitError, ProviderError, and ValidationError extending the base Error class with proper naming and constructors.",
+            "dependencies": [],
+            "details": "Implement TypeScript classes for each error type in lib/errors/types.ts, ensuring each sets the error name correctly and extends Error. Include any relevant properties or metadata for each error type to support detailed error handling.",
+            "status": "pending",
+            "testStrategy": "Unit tests to verify error instances have correct names, messages, and inheritance from Error."
+          },
+          {
+            "id": 2,
+            "title": "Implement withAgentRetry helper with exponential backoff",
+            "description": "Develop the withAgentRetry function to wrap agent calls, retrying on transient errors with exponential backoff and configurable retry count.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a reusable async function withAgentRetry that accepts an agent function and options for retries and backoff. Implement retry logic using exponential backoff delays, checking if errors are retryable before retrying, and throwing the error if retries are exhausted.",
+            "status": "pending",
+            "testStrategy": "Unit tests using fake timers to verify retry count, backoff timing, and correct error propagation."
+          },
+          {
+            "id": 3,
+            "title": "Wrap agents to catch errors, attach metadata, and log",
+            "description": "Modify agents like enhanced-research-agent and content-writer-agent to catch errors, enrich them with metadata (agent, provider, requestId), and log details via Axiom.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Update agent implementations to use try-catch blocks around their main logic. On catching errors, attach relevant metadata fields and send structured logs to Axiom for monitoring. Ensure errors are rethrown or handled appropriately after logging.",
+            "status": "pending",
+            "testStrategy": "Integration tests to confirm errors are caught, metadata is attached, and logs are sent. Manual QA to simulate errors and verify logging."
+          },
+          {
+            "id": 4,
+            "title": "Map API route errors to structured JSON responses",
+            "description": "Implement error handling in API routes to catch known custom errors and return consistent JSON responses with code, message, and details.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Update API route handlers to catch errors thrown by agents or other logic. Detect custom error types and map them to structured JSON objects containing standardized fields such as code, message, and optional details. Ensure streaming responses propagate structured error events as needed.",
+            "status": "pending",
+            "testStrategy": "Integration tests hitting API endpoints with mocked errors to verify JSON error payloads. Manual QA to trigger errors and confirm client receives structured responses."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Integrate LangWatch telemetry & LLM-as-a-judge evaluations",
+        "description": "Wire LangWatch SDK into the multi-agent pipeline for telemetry, evaluations, and prompt feedback loops.",
+        "details": "- Install LangWatch client and configure with `LANGWATCH_API_KEY` in server-only module `lib/observability/langwatch.ts`.\n- Instrument Vercel AI SDK calls by enabling `experimental_telemetry` and forwarding traces to LangWatch.\n- Define evaluation schemas per agent (content quality, EEAT, SEO) and register them via LangWatch API.\n- After each RAG pipeline run, send payload: content, scores, metadata, version.\n- Pseudo-code snippet:\n```ts\nimport { LangWatch } from '@langwatch/sdk';\nconst lw = new LangWatch({ apiKey: env.LANGWATCH_API_KEY });\nawait lw.logTrace({\n  traceId,\n  agent: 'content-writer',\n  model: 'gemini-2.0-flash',\n  telemetry,\n});\nawait lw.evaluate({\n  evaluationId: 'eeat_judge_v1',\n  content,\n  context: { userId, topic },\n});\n```\n- Surface evaluation results back to `content_quality_reviews` for record and revision loop triggers.",
+        "testStrategy": "- Mock LangWatch client in unit tests to ensure logs/evaluations invoked once per pipeline run.\n- Integration test running `/api/content/generate` to confirm LangWatch endpoints hit (use Vercel preview env & LangWatch sandbox key).\n- Observability QA: verify traces appear in LangWatch dashboard with correct metadata.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up LangWatch SDK in server module",
+            "description": "Install and configure the LangWatch client with the API key in the server-only module `lib/observability/langwatch.ts`.",
+            "dependencies": [],
+            "details": "Install the LangWatch SDK package, create the `langwatch.ts` file under `lib/observability`, and initialize the LangWatch client using the `LANGWATCH_API_KEY` environment variable. Ensure the module is server-only to keep keys secure.",
+            "status": "pending",
+            "testStrategy": "Unit test the module to verify the LangWatch client initializes correctly with the API key."
+          },
+          {
+            "id": 2,
+            "title": "Instrument Vercel AI SDK calls for telemetry",
+            "description": "Enable telemetry on Vercel AI SDK calls by activating `experimental_telemetry` and forwarding traces to LangWatch.",
+            "dependencies": [
+              1
+            ],
+            "details": "Modify the multi-agent pipeline to enable the `experimental_telemetry` flag on Vercel AI SDK calls. Configure the telemetry system to forward trace data to LangWatch using the SDK's tracing capabilities.",
+            "status": "pending",
+            "testStrategy": "Integration test to confirm telemetry data is sent to LangWatch dashboard after AI SDK calls."
+          },
+          {
+            "id": 3,
+            "title": "Define and register evaluation schemas per agent",
+            "description": "Create evaluation schemas for each agent (content quality, EEAT, SEO) and register them via the LangWatch API.",
+            "dependencies": [
+              1
+            ],
+            "details": "Design JSON schemas representing evaluation criteria for each agent type. Use LangWatch API to register these schemas so evaluations can be structured and standardized.",
+            "status": "pending",
+            "testStrategy": "Unit test schema validation and API registration calls; mock LangWatch API to verify correct schema submission."
+          },
+          {
+            "id": 4,
+            "title": "Integrate evaluation payload sending after RAG pipeline runs",
+            "description": "After each retrieval-augmented generation (RAG) pipeline execution, send content, scores, metadata, and version payloads to LangWatch.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Implement logic to collect evaluation results and relevant metadata after each RAG pipeline run. Use LangWatch SDK methods to send this data payload for telemetry and evaluation tracking.",
+            "status": "pending",
+            "testStrategy": "Integration test running the RAG pipeline and verifying payloads are sent and received by LangWatch endpoints."
+          },
+          {
+            "id": 5,
+            "title": "Surface evaluation results to content quality reviews",
+            "description": "Feed back evaluation results into the `content_quality_reviews` system to trigger record updates and revision loops.",
+            "dependencies": [
+              4
+            ],
+            "details": "Develop functionality to consume evaluation results from LangWatch and update the `content_quality_reviews` records accordingly. Implement triggers for revision workflows based on evaluation feedback.",
+            "status": "pending",
+            "testStrategy": "End-to-end test verifying that evaluation results update review records and trigger revision processes as expected."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Configure Supabase connection pooling & query guards",
+        "description": "Enable pooling to prevent connection exhaustion and ensure query best practices.",
+        "details": "- Update `lib/supabase/server.ts` to use `pgbouncer`-compatible connection string (`?pgbouncer=true`) or Supabase Pooler URL.\n- Use singleton pattern per Edge runtime invocation to avoid multiple client instantiations.\n- Add timeout and cancellation support using `AbortController` for long queries.\n- Review heavy queries (vector search) ensuring `select` columns limited.\n- Pseudo-code:\n```ts\nlet supabase: SupabaseClient | null = null;\nexport const getSupabase = () => {\n  if (!supabase) {\n    supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {\n      db: { schema: 'public', pool: { enabled: true } },\n    });\n  }\n  return supabase;\n};\n```\n- Document pool sizing assumptions in README.",
+        "testStrategy": "- Load test with artillery hitting DB-heavy endpoints to confirm connection count stays below threshold (monitor via Supabase dashboard).\n- Unit test ensures singleton reused.\n- Manual QA: simulate pool exhaustion prior to change to verify fix reduces `too many clients` errors.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update Supabase connection string for pooling",
+            "description": "Modify the connection string in lib/supabase/server.ts to use the pgbouncer-compatible or Supabase Pooler URL to enable connection pooling.",
+            "dependencies": [],
+            "details": "Retrieve the transaction mode pooler connection string from Supabase dashboard, append '?pgbouncer=true' if needed, and replace the existing direct connection string in lib/supabase/server.ts. Ensure the port is set to 6543 for pooling. Validate the connection string format matches Supabase's recommended pooled connection strings.",
+            "status": "pending",
+            "testStrategy": "Verify connection string update by checking connection count in Supabase dashboard and confirm no direct connections are used during load testing."
+          },
+          {
+            "id": 2,
+            "title": "Implement singleton pattern for Supabase client",
+            "description": "Refactor Supabase client instantiation to use a singleton pattern per Edge runtime invocation to avoid multiple client instances.",
+            "dependencies": [
+              1
+            ],
+            "details": "In lib/supabase/server.ts, declare a module-scoped variable to hold the SupabaseClient instance. Implement a getter function that initializes the client only once using the pooled connection string and returns the same instance on subsequent calls. This reduces overhead and prevents connection exhaustion.",
+            "status": "pending",
+            "testStrategy": "Unit test to ensure multiple calls to getSupabase return the same client instance. Monitor connection usage under concurrent requests to confirm singleton behavior."
+          },
+          {
+            "id": 3,
+            "title": "Add query timeout and cancellation support",
+            "description": "Enhance Supabase queries to support timeout and cancellation using AbortController for long-running queries.",
+            "dependencies": [
+              2
+            ],
+            "details": "Integrate AbortController in query execution logic to allow cancellation signals. Set reasonable timeout durations for queries and abort them if exceeded. Update API handlers or functions that perform heavy queries to pass the AbortSignal to Supabase client methods.",
+            "status": "pending",
+            "testStrategy": "Simulate long-running queries and verify they are cancelled after timeout. Confirm no hanging connections remain and proper error handling occurs on cancellation."
+          },
+          {
+            "id": 4,
+            "title": "Review and optimize heavy queries for best practices",
+            "description": "Audit heavy queries such as vector searches to ensure they limit selected columns and follow query best practices to reduce load.",
+            "dependencies": [
+              3
+            ],
+            "details": "Analyze existing heavy queries in the codebase, especially vector search implementations. Refactor queries to select only necessary columns instead of '*'. Document any query optimizations and update README with pool sizing assumptions and query guidelines.",
+            "status": "pending",
+            "testStrategy": "Perform query profiling to measure execution time and resource usage before and after optimization. Confirm reduced load and improved performance under test scenarios."
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Implement caching for repeated SEO & research data",
+        "description": "Add a lightweight caching layer for DataForSEO SERP results and research agent outputs to reduce cost and latency.",
+        "details": "- Use Redis (Upstash) or Supabase KV for caching.\n- Create `lib/cache/index.ts` with `getCache(key)` and `setCache(key, value, ttlSeconds)` helpers.\n- Key strategy: hash of `{endpoint, params}`; TTL 12h for SERP, 2h for research snapshots.\n- Wrap DataForSEO client and Perplexity requests with cache lookup before HTTP call.\n- Pseudo-code:\n```ts\nconst key = cacheKey('serp', { keyword, location });\nconst cached = await cache.get(key);\nif (cached) return cached;\nconst fresh = await dataforseo.serp(params);\nawait cache.set(key, fresh, 43200);\nreturn fresh;\n```\n- Track cache hits/misses via `mcp_usage_logs` for monitoring.",
+        "testStrategy": "- Unit tests mocking cache store to ensure hits prevent external calls.\n- Integration test calling `/api/content/research` twice with same payload verifying 2nd call faster and no outbound request (assert via mock).\n- Monitor metrics: instrumentation to log hit ratio >60% for repeated keywords.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Cache Layer with Redis or Supabase KV",
+            "description": "Develop the core caching utilities including getCache and setCache functions in lib/cache/index.ts using Redis (Upstash) or Supabase KV as the backend store.",
+            "dependencies": [],
+            "details": "Create a cache module with two main helpers: getCache(key) to retrieve cached data and setCache(key, value, ttlSeconds) to store data with expiration. Use a key generation strategy hashing the endpoint and parameters. Implement TTL of 12 hours for SERP data and 2 hours for research snapshots. Ensure serialization and deserialization of cached data. Use Upstash Redis client or Supabase KV SDK for storage.",
+            "status": "pending",
+            "testStrategy": "Unit tests mocking Redis or KV store to verify correct get/set behavior and TTL enforcement."
+          },
+          {
+            "id": 2,
+            "title": "Wrap DataForSEO and Perplexity Clients with Cache Lookup",
+            "description": "Modify DataForSEO SERP client and Perplexity research agent to first check cache before making HTTP requests, returning cached data if available.",
+            "dependencies": [
+              1
+            ],
+            "details": "Integrate cache layer by wrapping API calls: generate cache key from request parameters, call getCache(key), if hit return cached data immediately; if miss, perform HTTP request, then setCache(key, response, ttl) before returning fresh data. Follow the provided pseudo-code pattern. Apply 12h TTL for SERP and 2h TTL for research snapshots. Ensure seamless fallback to fresh data on cache miss.",
+            "status": "pending",
+            "testStrategy": "Integration tests calling API endpoints twice with identical parameters to confirm second call hits cache and avoids external HTTP requests."
+          },
+          {
+            "id": 3,
+            "title": "Add Monitoring for Cache Hits and Misses",
+            "description": "Implement instrumentation to log cache hit and miss events into mcp_usage_logs for monitoring cache effectiveness and usage metrics.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Extend cache helpers or client wrappers to record each cache access outcome (hit or miss) into the mcp_usage_logs system. Include relevant metadata such as cache key, timestamp, and request context. This data will enable tracking cache hit ratios and performance impact. Ensure logging does not significantly impact latency.",
+            "status": "pending",
+            "testStrategy": "Verify logs are correctly recorded on cache hits and misses during API calls; monitor hit ratio metrics to ensure expected caching behavior."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Improve streaming response error recovery",
+        "description": "Add resilience for SSE/streaming chat responses so users get graceful fallbacks when streams fail mid-response.",
+        "details": "- Update `app/api/chat/route.ts` to wrap stream pipeline with `ReadableStream` controller that catches errors and emits final `event: error` chunk.\n- Implement client-side handler to display retry CTA and optionally resume from last chunk.\n- Add server-side buffering of last agent state so retry can continue without re-running full pipeline.\n- Pseudo-code:\n```ts\nconst stream = new ReadableStream({\n  async start(controller) {\n    try {\n      for await (const chunk of agentStream) controller.enqueue(chunk);\n    } catch (err) {\n      controller.enqueue(encodeEvent('error', { message: serializeError(err) }));\n    } finally {\n      controller.close();\n    }\n  }\n});\n```\n- Log failures to Axiom with trace ids for debugging.",
+        "testStrategy": "- Automated test mocking stream error halfway and asserting error event emitted.\n- Browser E2E (Playwright) verifying UI shows retry message and user can resume.\n- Chaos test by forcing network abort to ensure controller closes cleanly without hanging requests.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement server-side stream pipeline error handling",
+            "description": "Update the server stream pipeline to wrap the agent stream with a ReadableStream controller that catches errors and emits a final error event chunk.",
+            "dependencies": [],
+            "details": "Modify `app/api/chat/route.ts` to create a ReadableStream that asynchronously reads from the agent stream, enqueues chunks, and on error, enqueues an encoded error event before closing the stream. Ensure proper error serialization and stream closure.",
+            "status": "pending",
+            "testStrategy": "Unit test mocking stream errors to verify error event emission and stream closure."
+          },
+          {
+            "id": 2,
+            "title": "Develop client-side retry UI and resume logic",
+            "description": "Create a client-side handler to detect stream errors, display a retry call-to-action (CTA), and optionally resume streaming from the last received chunk.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement event listeners on the SSE client to handle error events emitted by the server. Show a retry button or message when errors occur. Support resuming the stream from the last known event ID or chunk to avoid restarting the entire response.",
+            "status": "pending",
+            "testStrategy": "Browser end-to-end tests simulating stream errors to verify UI retry display and successful resume behavior."
+          },
+          {
+            "id": 3,
+            "title": "Add server-side buffering of last agent state for retry continuation",
+            "description": "Implement buffering on the server to store the last agent state so that retries can continue streaming without re-running the full pipeline from scratch.",
+            "dependencies": [
+              1
+            ],
+            "details": "Enhance the server stream logic to maintain a buffer or snapshot of the last sent agent state. On retry requests, use this buffered state to resume streaming from the last point, improving efficiency and user experience.",
+            "status": "pending",
+            "testStrategy": "Integration tests verifying that retry requests resume from buffered state without full pipeline re-execution."
+          },
+          {
+            "id": 4,
+            "title": "Integrate logging of stream failures with trace IDs",
+            "description": "Add logging of streaming failures to Axiom or equivalent logging system, including trace IDs for easier debugging and correlation.",
+            "dependencies": [
+              1
+            ],
+            "details": "Instrument the stream pipeline error handling code to log detailed error information and trace identifiers to Axiom. Ensure logs capture error messages, stack traces, and relevant context for troubleshooting.",
+            "status": "pending",
+            "testStrategy": "Verify logs are generated on stream errors with correct trace IDs and error details."
+          },
+          {
+            "id": 5,
+            "title": "Create comprehensive testing for streaming error recovery",
+            "description": "Develop automated and manual tests to simulate stream errors, network failures, and verify graceful error handling, retry UI, resume functionality, and clean stream closure.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Write unit tests mocking stream errors to assert error event emission. Implement Playwright E2E tests to simulate network aborts and verify retry UI and resume. Perform chaos testing to ensure the stream controller closes cleanly without hanging requests.",
+            "status": "pending",
+            "testStrategy": "Automated unit and E2E tests plus manual chaos testing to validate robustness of error recovery mechanisms."
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Set up staging environment & deployment workflow",
+        "description": "Create staging stack with environment-specific configs, database, and CI deployment gates.",
+        "details": "- Provision Vercel staging project linked to `staging` branch; configure environment variables (separate Supabase project, LangWatch sandbox key, etc.).\n- Add GitHub Action: on PR merge to `staging`, run tests → deploy preview → run smoke tests → promote to staging.\n- Seed staging Supabase with anonymized fixtures (sample business profiles, keywords) via migration script.\n- Document environment differences in `DEPLOYMENT_CHECKLIST.md`.\n- Pseudo-code snippet for workflow YAML:\n```yaml\njobs:\n  deploy-staging:\n    steps:\n      - run: pnpm test\n      - run: pnpm lint\n      - run: vercel deploy --prebuilt --prod --env=staging\n```\n- Ensure monitoring hooks (Axiom, LangWatch) target staging datasets.",
+        "testStrategy": "- CI verification: pipeline must fail if tests fail; confirm artifacts show in GitHub Actions.\n- Manual smoke test post-deploy using script hitting `/api/health` and `/api/content/generate`.\n- Audit: confirm staging env keys differ from production via `env diff` script.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Provision Vercel Staging Project and Configure Environment Variables",
+            "description": "Set up a dedicated Vercel project for the staging environment linked to the 'staging' branch, and configure all necessary environment variables including separate Supabase project keys and LangWatch sandbox keys.",
+            "dependencies": [],
+            "details": "Create a new Vercel project or environment specifically for staging. Link it to the 'staging' Git branch. Add environment variables unique to staging such as Supabase staging project URL and keys, LangWatch sandbox API keys, and any other environment-specific secrets. Ensure these variables are scoped only to the staging environment in Vercel settings.",
+            "status": "pending",
+            "testStrategy": "Verify that the staging deployment uses the correct environment variables by inspecting the deployed app's configuration and confirming it connects to the staging Supabase project and uses sandbox keys."
+          },
+          {
+            "id": 2,
+            "title": "Implement GitHub Actions CI Workflow for Staging Deployment",
+            "description": "Create a GitHub Actions workflow triggered on pull request merges to the 'staging' branch that runs tests, deploys a preview, runs smoke tests, and promotes the deployment to staging.",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop a GitHub Actions YAML workflow that triggers on PR merges to 'staging'. The workflow should run unit and lint tests, deploy the preview build to Vercel with the staging environment, execute smoke tests against the deployed preview (e.g., hitting /api/health and /api/content/generate endpoints), and upon success, promote the deployment to the staging environment. Include failure handling to prevent promotion if tests fail.",
+            "status": "pending",
+            "testStrategy": "Test the workflow by merging a PR to 'staging' and verify that tests run, deployment occurs, smoke tests pass, and the deployment is promoted. Confirm failure cases prevent promotion."
+          },
+          {
+            "id": 3,
+            "title": "Seed Staging Supabase Database with Anonymized Fixtures",
+            "description": "Create and run a migration script to seed the staging Supabase database with anonymized sample data such as business profiles and keywords for realistic testing.",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop a migration or seed script that inserts anonymized fixture data into the staging Supabase database. This data should include sample business profiles, keywords, and other relevant entities to simulate production-like data without exposing sensitive information. Automate running this script as part of the staging environment setup or deployment process.",
+            "status": "pending",
+            "testStrategy": "Run the seed script against the staging database and verify that the anonymized data is correctly inserted and accessible. Confirm no sensitive production data is included."
+          },
+          {
+            "id": 4,
+            "title": "Document Staging Environment Differences and Deployment Checklist",
+            "description": "Create and maintain documentation outlining the differences between staging and production environments, including environment variables, deployment steps, and monitoring setup.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Write detailed documentation in 'DEPLOYMENT_CHECKLIST.md' describing environment-specific configurations, how to provision and deploy the staging environment, how to seed the database, and how to verify monitoring hooks (Axiom, LangWatch) are correctly targeting staging datasets. Include instructions for developers and operators to follow during deployment and troubleshooting.",
+            "status": "pending",
+            "testStrategy": "Review the documentation for completeness and clarity. Use it to perform a fresh staging environment setup and deployment to confirm accuracy and usability."
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Implement critical automated test coverage",
+        "description": "Add unit, integration, and E2E tests covering agents, RAG pipeline, onboarding, and content generation flows.",
+        "details": "- Testing stack: Vitest (unit/integration) + Playwright (E2E) already configured? ensure setup.\n- Unit tests for each agent verifying tool invocation order and fallback logic (mock Vercel AI SDK).\n- Integration test hitting `/api/content/generate` with mocked external APIs verifying multi-agent workflow and DB writes.\n- Playwright scenario: user completes onboarding, generates content, sees QA scores.\n- Add coverage thresholds (e.g., 80%) enforced in CI.\n- Pseudo-code example (Vitest):\n```ts\ntest('RAG orchestrator stops after thresholds met', async () => {\n  mockScores({ dataforseo: 75, eeat: 80 });\n  const result = await orchestrateContent(payload);\n  expect(result.revisionCount).toBe(1);\n});\n```\n- Seed DB with fixtures via test helpers using Supabase local emulator.",
+        "testStrategy": "- CI job running `pnpm test --coverage` and `pnpm playwright test`.\n- Use mocked responses to avoid API costs; ensure contract tests validate schema vs. DataForSEO responses via `msw`.\n- Track flakiness metrics; tests must pass deterministically 3 consecutive runs before merge.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Verify and Configure Testing Stack",
+            "description": "Ensure Vitest and Playwright are properly installed and configured for unit, integration, and E2E testing.",
+            "dependencies": [],
+            "details": "Check that Vitest is set up for unit and integration tests and Playwright is installed and configured for E2E tests, including browser setup and test scripts in package.json. Confirm local Supabase emulator is ready for DB fixtures.",
+            "status": "pending",
+            "testStrategy": "Run sample Vitest and Playwright tests to confirm environment setup."
+          },
+          {
+            "id": 2,
+            "title": "Implement Unit Tests for Agents",
+            "description": "Write unit tests for each agent to verify tool invocation order and fallback logic using mocked Vercel AI SDK.",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop Vitest unit tests that mock the Vercel AI SDK to validate each agent's behavior, including correct sequence of tool calls and fallback mechanisms. Use test helpers to seed DB fixtures as needed.",
+            "status": "pending",
+            "testStrategy": "Verify tests cover all agents and pass deterministically with mocked dependencies."
+          },
+          {
+            "id": 3,
+            "title": "Develop Integration Tests for RAG Pipeline and Content Generation",
+            "description": "Create integration tests hitting `/api/content/generate` endpoint with mocked external APIs to verify multi-agent workflow and database writes.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Use Vitest to write integration tests that simulate the full content generation workflow, mocking external API responses and asserting correct DB state changes. Seed DB with fixtures via Supabase local emulator.",
+            "status": "pending",
+            "testStrategy": "Assert API responses and DB writes are correct; tests run reliably with mocked APIs."
+          },
+          {
+            "id": 4,
+            "title": "Create Playwright E2E Scenarios for Onboarding and Content Generation",
+            "description": "Implement Playwright end-to-end tests simulating user onboarding, content generation, and QA score display flows.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Write Playwright scripts that automate user interactions through onboarding, content creation, and viewing QA scores, verifying UI and backend integration. Integrate with Vitest if applicable for unified test runs.",
+            "status": "pending",
+            "testStrategy": "Run E2E tests in CI to ensure flows complete successfully and UI elements appear as expected."
+          },
+          {
+            "id": 5,
+            "title": "Add Coverage Thresholds and Flakiness Monitoring",
+            "description": "Enforce minimum test coverage thresholds (e.g., 80%) in CI and implement flakiness tracking to ensure test reliability.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Configure coverage reporting in Vitest and Playwright runs, set CI to fail if coverage is below threshold. Track test flakiness by requiring tests to pass 3 consecutive runs before merge. Use mocked responses to avoid API costs and ensure deterministic tests.",
+            "status": "pending",
+            "testStrategy": "Verify CI fails on low coverage; monitor flakiness metrics and confirm tests pass consistently."
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Privacy, consent, and documentation readiness",
+        "description": "Deliver required privacy policy, cookie consent, API docs, and beta user guide.",
+        "details": "- Draft privacy policy & cookie notice aligned with GDPR/CCPA, host at `/legal/privacy` & `/legal/cookies` via MDX pages.\n- Implement cookie consent banner (e.g., shadcn Dialog) that stores preference in `localStorage` and respects for analytics scripts.\n- Create API reference (OpenAPI or typedoc) covering key endpoints; publish at `/docs/api`.\n- Beta user guide markdown describing onboarding, content workflows, troubleshooting; link inside dashboard.\n- Pseudo-code for consent state:\n```ts\nconst [consent, setConsent] = useState(localStorage.getItem('consent'));\nif (!consent) return <ConsentBanner onAccept={() => localStorage.setItem('consent','accepted')} />;\n```\n- Version docs and include in deployment checklist.",
+        "testStrategy": "- Content review checklist ensuring legal text accessible and responsive.\n- Automated test verifying consent banner renders on first load and suppresses after acceptance.\n- Link checker script ensuring `/docs/api` endpoints reachable and return 200.\n- Manual QA: ask legal stakeholder to approve policy text.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Draft GDPR and CCPA-compliant Privacy Policy and Cookie Notice",
+            "description": "Create detailed privacy policy and cookie notice documents aligned with GDPR and CCPA requirements, to be hosted at `/legal/privacy` and `/legal/cookies` as MDX pages.",
+            "dependencies": [],
+            "details": "Research GDPR and CCPA legal requirements for privacy policies and cookie notices, including data collection, usage, sharing, user rights, and contact information. Draft clear, accessible documents covering these aspects. Format as MDX pages and prepare for deployment at specified routes.",
+            "status": "pending",
+            "testStrategy": "Conduct content review with legal stakeholders to ensure compliance and clarity. Verify accessibility and responsiveness of hosted pages."
+          },
+          {
+            "id": 2,
+            "title": "Implement Cookie Consent Banner with Preference Storage",
+            "description": "Develop and integrate a cookie consent banner UI component that obtains user consent, stores preferences in localStorage, and controls analytics script execution accordingly.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use a UI component library (e.g., shadcn Dialog) to build the consent banner. Implement logic to check localStorage for consent state and display banner if consent is absent. On acceptance, store consent in localStorage and suppress banner on subsequent visits. Ensure analytics scripts respect consent state.",
+            "status": "pending",
+            "testStrategy": "Automated tests to verify banner renders on first visit and hides after acceptance. Manual QA to confirm analytics scripts activate only after consent."
+          },
+          {
+            "id": 3,
+            "title": "Create and Publish API Reference and Beta User Guide Documentation",
+            "description": "Generate comprehensive API reference documentation covering key endpoints and author a beta user guide describing onboarding, workflows, and troubleshooting; publish API docs at `/docs/api` and link user guide inside the dashboard.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use OpenAPI or typedoc to document API endpoints with descriptions, parameters, and responses. Write beta user guide in markdown format covering onboarding steps, content workflows, and troubleshooting tips. Integrate links to these documents in the application UI and include versioning and deployment checklist updates.",
+            "status": "pending",
+            "testStrategy": "Run link checker scripts to ensure documentation URLs are reachable and return HTTP 200. Perform manual QA to verify documentation accuracy and accessibility within the dashboard."
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-12-04T13:38:48.672Z",
+      "updated": "2025-12-04T13:59:17.370Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
