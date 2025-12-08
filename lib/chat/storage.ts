@@ -71,7 +71,7 @@ export const normalizeUIMessage = (message: MessageInput): GenericUIMessage => {
   }
 }
 
-export const mapRowToUIMessage = (row: MessageRow): GenericUIMessage => {
+export const mapRowToUIMessage = (row: MessageRow): GenericUIMessage & { content: string; createdAt: string } => {
   const metadata = (row.metadata || {}) as Record<string, any>
   const parts = Array.isArray(metadata.parts) ? metadata.parts : undefined
   const uiMessageId = typeof metadata.ui_message_id === 'string' ? metadata.ui_message_id : row.id
@@ -83,6 +83,9 @@ export const mapRowToUIMessage = (row: MessageRow): GenericUIMessage => {
     role: row.role as GenericUIMessage['role'],
     parts: parts && parts.length > 0 ? parts : defaultParts,
     metadata: metadata.metadata ?? metadata,
+    // Include content and createdAt for components that expect these fields
+    content: row.content,
+    createdAt: row.created_at ?? new Date().toISOString(),
   }
 }
 

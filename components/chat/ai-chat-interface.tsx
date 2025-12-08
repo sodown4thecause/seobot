@@ -568,34 +568,61 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     }
   }, [agentPreference, initialMessage, setMessages])
 
+  // Sync internal conversationId state with prop when prop changes
+  // This ensures useChat uses the correct conversation ID
   useEffect(() => {
-    console.log('[AIChatInterface] Bootstrap effect triggered', {
+    if (conversationIdProp && conversationIdProp !== conversationId) {
+      console.log('[AIChatInterface] Syncing conversationId from prop:', conversationIdProp)
+      setConversationId(conversationIdProp)
+    }
+  }, [conversationIdProp, conversationId])
+
+  // Initial bootstrap on mount
+  useEffect(() => {
+    if (hasInitializedRef.current) return
+    hasInitializedRef.current = true
+
+    console.log('[AIChatInterface] Initial mount bootstrap', { conversationIdProp, conversationId })
+    if (conversationIdProp) {
+      lastLoadedConversationId.current = conversationIdProp
+      bootstrapConversation(conversationIdProp)
+    } else {
+      bootstrapConversation()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Handle conversation changes after initial mount
+  useEffect(() => {
+    // Skip if not yet initialized
+    if (!hasInitializedRef.current) return
+
+    console.log('[AIChatInterface] Conversation change effect', {
       conversationIdProp,
       lastLoaded: lastLoadedConversationId.current,
       conversationId,
     })
+
+    // Handle when prop changes to a different conversation
     if (conversationIdProp) {
       if (lastLoadedConversationId.current === conversationIdProp) {
-        console.log('[AIChatInterface] Skipping bootstrap - already loaded this conversation')
-        // Make sure we're not stuck in loading state
+        console.log('[AIChatInterface] Skipping - already loaded this conversation')
         setIsBootstrapping(false)
         return
       }
       lastLoadedConversationId.current = conversationIdProp
-      console.log('[AIChatInterface] Bootstrapping conversation:', conversationIdProp)
+      console.log('[AIChatInterface] Loading conversation:', conversationIdProp)
+      // Clear messages first to prevent showing stale data
+      setMessages([])
       bootstrapConversation(conversationIdProp)
-      return
-    }
-
-    if (!conversationId) {
-      console.log('[AIChatInterface] Bootstrapping new conversation')
+    } else if (lastLoadedConversationId.current !== null) {
+      // Prop changed from a conversation to null (new conversation requested)
+      console.log('[AIChatInterface] Prop cleared, creating new conversation')
+      lastLoadedConversationId.current = null
+      setMessages([])
       bootstrapConversation()
-    } else {
-      // We have a conversationId already, no need to bootstrap
-      console.log('[AIChatInterface] Already have conversationId, skipping bootstrap')
-      setIsBootstrapping(false)
     }
-  }, [conversationIdProp, conversationId, bootstrapConversation])
+  }, [conversationIdProp, bootstrapConversation, setMessages])
 
   useEffect(() => {
     if (!conversationIdProp) {
