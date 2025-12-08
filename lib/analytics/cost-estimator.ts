@@ -44,7 +44,7 @@ const PRICING_MAP: Record<string, Record<string, number>> = {
   
   // Google/Gemini models
   'google/gemini-2.0-flash': { input: 0.000075, output: 0.0003 },
-  'google/gemini-2.0-flash-exp': { input: 0.000075, output: 0.0003 },
+  'google/gemini-2.5-flash': { input: 0.000075, output: 0.0003 },
   'google/gemini-3-pro-preview': { input: 0.000125, output: 0.0005 },
   'google/gemini-1.5-pro': { input: 0.00125, output: 0.005 },
   

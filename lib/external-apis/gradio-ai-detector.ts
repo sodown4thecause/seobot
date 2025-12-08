@@ -40,11 +40,15 @@ export async function detectAIContentWithGradio(
 
     // Extract percentage
     const percentageMatch = resultString.match(/\*\*([\d.]+)%\*\*/);
-    const percentage = percentageMatch ? parseFloat(percentageMatch[1]) : 0;
 
     // Extract label (Human or AI)
     const labelMatch = resultString.match(/<b>(Human|AI)\s*written<\/b>/i);
-    const label = labelMatch ? labelMatch[1].toLowerCase() : 'human'; // Default to human if parsing fails
+
+    // If parsing fails, default to treating content as human (safe neutral default)
+    // Set percentage=100 and label='human' so humanLikelihood=100, aiLikelihood=0
+    const parseFailed = !percentageMatch || !labelMatch;
+    const percentage = parseFailed ? 100 : parseFloat(percentageMatch[1]);
+    const label = parseFailed ? 'human' : labelMatch[1].toLowerCase();
 
     let aiLikelihood = 0;
     let humanLikelihood = 0;

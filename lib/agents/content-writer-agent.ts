@@ -117,7 +117,7 @@ export class ContentWriterAgent {
           {
             retries: 2,
             agent: 'content-writer',
-            provider: 'google',
+            provider: 'anthropic',
             onRetry: (error, attempt, delay) => {
               console.warn(
                 `[Content Writer] Retry attempt ${attempt} after ${delay}ms:`,
@@ -128,7 +128,7 @@ export class ContentWriterAgent {
         )
       },
       {
-        provider: 'google',
+        provider: 'anthropic',
         userId: params.userId,
         metadata: {
           contentType: params.type,
@@ -141,7 +141,7 @@ export class ContentWriterAgent {
       if (!(error instanceof ProviderError)) {
         throw new ProviderError(
           error instanceof Error ? error.message : 'Content generation failed',
-          'google',
+          'anthropic',
           {
             agent: 'content-writer',
             cause: error instanceof Error ? error : undefined,

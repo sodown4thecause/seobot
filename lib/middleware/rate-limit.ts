@@ -67,7 +67,8 @@ async function setEntry(
   ttlSeconds: number
 ): Promise<void> {
   try {
-    await redis.setex(`ratelimit:${key}`, ttlSeconds, JSON.stringify(entry));
+    // Upstash Redis client handles JSON serialization automatically
+    await redis.setex(`ratelimit:${key}`, ttlSeconds, entry);
   } catch (error) {
     console.error('[RateLimit] Error setting entry in Redis:', error);
   }

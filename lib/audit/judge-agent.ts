@@ -16,8 +16,8 @@ import {
   type AIPerception,
 } from './schemas'
 
-// Model ID for judge analysis (Gemini 2.0 Flash via Gateway)
-const JUDGE_MODEL_ID = 'google/gemini-2.0-flash-exp' as GatewayModelId
+// Model ID for judge analysis (Gemini 2.5 Flash via Gateway)
+const JUDGE_MODEL_ID = 'google/gemini-2.5-flash' as GatewayModelId
 
 export interface JudgeResult {
   success: boolean

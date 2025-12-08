@@ -12,8 +12,8 @@ import type { GatewayModelId } from '@ai-sdk/gateway'
 import { mcpFirecrawlTools } from '@/lib/mcp/firecrawl/index'
 import { EntityProfileSchema, type EntityProfile } from './schemas'
 
-// Model ID for extraction (Gemini 2.0 Flash via Gateway)
-const EXTRACTION_MODEL_ID = 'google/gemini-2.0-flash-exp' as GatewayModelId
+// Model ID for extraction (Gemini 2.5 Flash via Gateway)
+const EXTRACTION_MODEL_ID = 'google/gemini-2.5-flash' as GatewayModelId
 
 export interface ExtractionResult {
   success: boolean

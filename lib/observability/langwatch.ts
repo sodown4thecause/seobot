@@ -45,8 +45,8 @@ export interface EvaluatePayload {
   scores?: Record<string, number>
   metadata?: Record<string, unknown>
   userId?: string // Langfuse user ID for user tracking
-  sessionId?: string // Langfuse session ID for session grouping
-  langfuseTraceId?: string // Parent trace ID to link evaluation to main trace
+  sessionId?: string // Langfuse session ID for session grouping (use same sessionId as parent to group traces)
+  langfuseTraceId?: string // Parent trace ID stored in metadata for reference (use sessionId for actual grouping)
 }
 
 /**
@@ -161,16 +161,20 @@ export class LangWatch {
     }
 
     try {
+      // Generate a unique ID for this evaluation trace
+      const evaluationTraceId = `eval-${payload.evaluationId}-${Date.now()}`
+
       // Create a trace for this evaluation
-      // If langfuseTraceId is provided, link to parent trace by using it as the trace ID
-      // Otherwise, create a new trace
+      // If langfuseTraceId is provided, we record it in metadata for reference
+      // and use the same sessionId to group related traces together
       const trace = this.langfuse.trace({
-        id: payload.langfuseTraceId, // Link to parent trace if provided
+        id: evaluationTraceId, // Unique ID for this evaluation trace
         name: `evaluation:${payload.evaluationId}`,
         userId: payload.userId, // Langfuse user tracking
-        sessionId: payload.sessionId, // Langfuse session tracking
+        sessionId: payload.sessionId, // Langfuse session tracking - groups related traces
         metadata: {
           evaluationId: payload.evaluationId,
+          parentTraceId: payload.langfuseTraceId, // Reference to parent trace for manual linking
           ...payload.context,
           ...payload.metadata,
         },

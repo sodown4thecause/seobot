@@ -536,7 +536,7 @@ export class RAGWriterOrchestrator {
                 `Revisions: ${revisionRound}`,
               ],
               successful: isSuccessful,
-              feedback: finalQAReport.improvement_suggestions?.join('; ') || null,
+              feedback: finalQAReport.improvement_instructions?.join('; ') || null,
             })
             console.log(`[Orchestrator] 📚 Learning stored (successful: ${isSuccessful})`)
           } catch (learningError) {

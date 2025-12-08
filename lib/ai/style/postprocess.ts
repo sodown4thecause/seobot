@@ -59,7 +59,7 @@ function rewriteParagraph(paragraph: string, paragraphIndex: number, markerIndex
 
     // Apply contractions for more natural language
     const doc = nlp(updated)
-    doc.contractions().expand() // First expand, then the text will be more natural
+    doc.contractions().contract() // Contract expanded forms for natural language
     updated = doc.text()
     updated = enforceBurstiness(updated, idx)
 

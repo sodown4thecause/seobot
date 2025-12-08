@@ -1,4 +1,5 @@
 import { cacheGet, cacheSet } from '@/lib/redis/client'
+import { createHash } from 'crypto'
 
 export const AEO_CACHE_PREFIXES = {
   WORKFLOW: 'aeo:workflow:',
@@ -26,9 +27,9 @@ export async function cachedAEOCall<T>(
   fn: () => Promise<T>,
   options?: { ttl?: number }
 ): Promise<T> {
-  // Build cache key from prefix and key data
-  const keyHash = JSON.stringify(keyData)
-  const key = `${prefix}${Buffer.from(keyHash).toString('base64').substring(0, 32)}`
+  // Build cache key from prefix and key data using SHA-256 hash to prevent collisions
+  const keyHash = createHash('sha256').update(JSON.stringify(keyData)).digest('hex')
+  const key = `${prefix}${keyHash}`
 
   // Default TTL to 1 hour if not specified
   const ttl = options?.ttl ?? 60 * 60
