@@ -24,17 +24,19 @@ Please, keep in mind that filters are associated with a certain object in the re
         arguments: args,
       });
 
-      // Handle different content types from MCP
-      if (Array.isArray(result.content)) {
+      // Handle different content types from MCP with defensive null/undefined handling
+      if (result.content === undefined || result.content === null) {
+        return "{}";
+      } else if (Array.isArray(result.content)) {
         return result.content
           .map((item: unknown) =>
-            typeof item === "string" ? item : JSON.stringify(item),
+            typeof item === "string" ? item : JSON.stringify(item ?? null),
           )
           .join("\n");
       } else if (typeof result.content === "string") {
         return result.content;
       } else {
-        return JSON.stringify(result.content);
+        return JSON.stringify(result.content ?? null);
       }
     },
   });
