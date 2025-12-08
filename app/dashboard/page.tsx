@@ -9,10 +9,6 @@ export default function DashboardPage() {
   const activeConversationId = state.activeConversation?.id
   const activeAgentId = state.activeAgent?.id
 
-  // Create a stable key that changes when conversation or agent changes
-  // This forces AIChatInterface to remount with fresh state
-  const chatKey = `chat-${activeConversationId ?? 'new'}-${activeAgentId ?? 'general'}`
-
   return (
     <div className="relative min-h-[calc(100vh-8rem)] flex flex-col bg-[#1a1a1a]">
       <motion.div
@@ -22,7 +18,6 @@ export default function DashboardPage() {
         className="flex-1 px-6 pt-6"
       >
         <AIChatInterface
-          key={chatKey}
           context={{ page: 'dashboard', conversationId: activeConversationId }}
           placeholder="Ask anything..."
           className="h-full"

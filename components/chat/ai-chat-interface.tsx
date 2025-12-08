@@ -568,67 +568,53 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     }
   }, [agentPreference, initialMessage, setMessages])
 
-  // Sync internal conversationId state with prop when prop changes
-  // This ensures useChat uses the correct conversation ID
+  // Sync conversationId from prop - this triggers useChat to switch conversations
   useEffect(() => {
-    if (conversationIdProp && conversationIdProp !== conversationId) {
+    if (conversationIdProp !== undefined && conversationIdProp !== conversationId) {
       console.log('[AIChatInterface] Syncing conversationId from prop:', conversationIdProp)
       setConversationId(conversationIdProp)
     }
   }, [conversationIdProp, conversationId])
 
-  // Initial bootstrap on mount
+  // Load messages when conversationId state changes (after useChat has reinitialized)
   useEffect(() => {
-    if (hasInitializedRef.current) return
-    hasInitializedRef.current = true
-
-    console.log('[AIChatInterface] Initial mount bootstrap', { conversationIdProp, conversationId })
-    if (conversationIdProp) {
-      lastLoadedConversationId.current = conversationIdProp
-      bootstrapConversation(conversationIdProp)
-    } else {
-      bootstrapConversation()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Handle conversation changes after initial mount
-  useEffect(() => {
-    // Skip if not yet initialized
-    if (!hasInitializedRef.current) return
-
-    console.log('[AIChatInterface] Conversation change effect', {
-      conversationIdProp,
-      lastLoaded: lastLoadedConversationId.current,
-      conversationId,
-    })
-
-    // Handle when prop changes to a different conversation
-    if (conversationIdProp) {
-      if (lastLoadedConversationId.current === conversationIdProp) {
-        console.log('[AIChatInterface] Skipping - already loaded this conversation')
-        setIsBootstrapping(false)
-        return
+    const loadMessagesForConversation = async (convId: string) => {
+      setIsBootstrapping(true)
+      try {
+        console.log('[AIChatInterface] Loading messages for:', convId)
+        const response = await fetch(`/api/conversations/${convId}/messages`)
+        if (response.ok) {
+          const data = await response.json()
+          const historyMessages = data?.messages ?? []
+          console.log('[AIChatInterface] Loaded', historyMessages.length, 'messages')
+          if (mountedRef.current) {
+            setMessages(historyMessages)
+          }
+        }
+      } catch (error) {
+        console.error('[AIChatInterface] Error loading messages:', error)
+      } finally {
+        if (mountedRef.current) {
+          setIsBootstrapping(false)
+        }
       }
-      lastLoadedConversationId.current = conversationIdProp
-      console.log('[AIChatInterface] Loading conversation:', conversationIdProp)
-      // Clear messages first to prevent showing stale data
-      setMessages([])
-      bootstrapConversation(conversationIdProp)
-    } else if (lastLoadedConversationId.current !== null) {
-      // Prop changed from a conversation to null (new conversation requested)
-      console.log('[AIChatInterface] Prop cleared, creating new conversation')
-      lastLoadedConversationId.current = null
-      setMessages([])
+    }
+
+    // Skip if we already loaded this conversation
+    if (lastLoadedConversationId.current === conversationId) {
+      console.log('[AIChatInterface] Already loaded conversation:', conversationId)
+      return
+    }
+
+    if (conversationId) {
+      lastLoadedConversationId.current = conversationId
+      loadMessagesForConversation(conversationId)
+    } else if (!hasInitializedRef.current) {
+      // First mount with no conversation - bootstrap to get/create one
+      hasInitializedRef.current = true
       bootstrapConversation()
     }
-  }, [conversationIdProp, bootstrapConversation, setMessages])
-
-  useEffect(() => {
-    if (!conversationIdProp) {
-      lastLoadedConversationId.current = null
-    }
-  }, [conversationIdProp])
+  }, [conversationId, setMessages, bootstrapConversation])
 
   const handleSendMessage = (data: { text: string }) => {
     if (!data.text.trim()) return

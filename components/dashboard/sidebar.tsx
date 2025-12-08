@@ -5,9 +5,6 @@ import Link from 'next/link'
 import {
   type LucideIcon,
   Home,
-  LayoutTemplate,
-  Compass,
-  Wallet,
   Search,
   Command,
   MoreHorizontal,
@@ -17,7 +14,6 @@ import {
   Pin,
   Archive,
   Edit3,
-  History,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -37,11 +33,7 @@ export interface SidebarProps {
 
 const MAIN_NAV = [
   { name: 'Home', href: '/dashboard', icon: Home },
-  { name: 'Templates', href: '/dashboard/templates', icon: LayoutTemplate },
-  { name: 'Explore', href: '/dashboard/explore', icon: Compass },
   { name: 'Blog', href: '/dashboard/blog', icon: BookOpen },
-  { name: 'History', href: '/dashboard/history', icon: History },
-  { name: 'Wallet', href: '/dashboard/wallet', icon: Wallet },
 ]
 
 const safeFormatDistanceToNow = (date: Date) => {

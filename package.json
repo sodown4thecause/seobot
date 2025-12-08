@@ -19,6 +19,7 @@
     "load:test": "k6 run tests/load/k6-rate-limit.js",
     "seed:frameworks": "tsx scripts/seed-frameworks.ts",
     "seed:files": "tsx scripts/seed-from-files.ts",
+    "seed:rag-documents": "tsx scripts/seed-rag-documents.ts",
     "bmad:refresh": "bmad-method install -f -i codex",
     "bmad:list": "bmad-method list:agents",
     "bmad:validate": "bmad-method validate",

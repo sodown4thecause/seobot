@@ -14,6 +14,7 @@ import { getLangWatchClient } from '@/lib/observability/langwatch'
 import { EVALUATION_SCHEMAS } from '@/lib/observability/evaluation-schemas'
 import { createIdGenerator } from 'ai'
 import { startActiveObservation, updateActiveTrace } from '@langfuse/tracing'
+import { storeAndLearn } from '@/lib/ai/learning-storage'
 
 export interface RAGWriterParams {
   type: 'blog_post' | 'article' | 'social_media' | 'landing_page'
@@ -514,6 +515,35 @@ export class RAGWriterOrchestrator {
 
         console.log('[Orchestrator] ? Content generation complete')
         console.log(`[Orchestrator] Final scores - Overall: ${finalScores.overall}, Revisions: ${revisionRound}`)
+
+        // Store learning for cross-user feedback loop
+        // This enables future content to benefit from this generation's quality scores
+        const isSuccessful = finalScores.overall >= QUALITY_THRESHOLDS.MIN_OVERALL_SCORE
+        if (params.userId) {
+          try {
+            await storeAndLearn({
+              userId: params.userId,
+              contentType: params.type,
+              topic: params.topic,
+              keywords: params.keywords || [],
+              aiDetectionScore: 100 - finalScores.eeat, // Invert EEAT score as proxy for AI detection
+              humanProbability: finalScores.eeat, // EEAT score as proxy for human-like content
+              techniques: [
+                `EEAT: ${finalScores.eeat}`,
+                `DataForSEO: ${finalScores.dataforseo}`,
+                `Depth: ${finalScores.depth}`,
+                `Factual: ${finalScores.factual}`,
+                `Revisions: ${revisionRound}`,
+              ],
+              successful: isSuccessful,
+              feedback: finalQAReport.improvement_suggestions?.join('; ') || null,
+            })
+            console.log(`[Orchestrator] 📚 Learning stored (successful: ${isSuccessful})`)
+          } catch (learningError) {
+            console.error('[Orchestrator] Failed to store learning:', learningError)
+            // Don't fail the main flow if learning storage fails
+          }
+        }
 
         const result = {
           content: bestDraft,

@@ -33,14 +33,14 @@ export async function POST(req: Request) {
     Include headings, bullet points, and short paragraphs.
     Optimize for the provided keywords naturally.`;
 
+    // Generate a session ID for this content generation request
+    const sessionId = `content-gen-${Date.now()}-${Math.random().toString(36).substring(7)}`
+
     // Generate content using Gemini via Gateway
     const result = streamText({
       model: vercelGateway.languageModel('google/gemini-1.5-flash'),
       prompt: systemPrompt,
       system: 'You are a professional content writer.',
-      // Generate a session ID for this content generation request
-      const sessionId = `content-gen-${Date.now()}-${Math.random().toString(36).substring(7)}`
-      
       experimental_telemetry: createTelemetryConfig('content-generate-api', {
         userId: user?.id,
         sessionId, // Langfuse session tracking for content generation
