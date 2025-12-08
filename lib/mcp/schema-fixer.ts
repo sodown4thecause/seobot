@@ -242,21 +242,23 @@ export function fixAllMCPTools(
   useStrictValidation = false
 ): Record<string, Tool> {
   console.log(`[Schema Fixer] Starting to fix ${Object.keys(allTools).length} MCP tools`)
-  
+
   // Step 1: Try to fix existing schemas
-  let fixedTools = fixMCPToolSchemas(allTools)
-  
+  const fixedTools = fixMCPToolSchemas(allTools)
+
   // Step 2: Apply fallbacks for any that failed
+  // IMPORTANT: Pass original allTools so tools that failed in step 1 can receive fallback schemas
+  let finalTools = fixedTools
   if (!useStrictValidation) {
-    fixedTools = applyFallbackSchemas(fixedTools)
+    finalTools = applyFallbackSchemas(allTools)
   }
-  
+
   // Step 3: Validate results
-  const validation = validateFixedTools(fixedTools)
-  
+  const validation = validateFixedTools(finalTools)
+
   if (validation.invalid.length > 0) {
     console.error(`[Schema Fixer] ${validation.invalid.length} tools still have invalid schemas:`, validation.invalid)
   }
-  
-  return fixedTools
+
+  return finalTools
 }
