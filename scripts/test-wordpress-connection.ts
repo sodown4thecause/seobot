@@ -23,7 +23,8 @@ async function testWordPressConnection() {
             console.log(`   Author: ${firstPost.author.name}`)
             console.log(`   Date: ${firstPost.date}`)
             console.log(`   Has featured image: ${!!firstPost.featuredImage}`)
-            console.log(`   Categories: ${firstPost.categories?.nodes.map(c => c.name).join(', ') || 'None'}`)
+            const categoryNames = firstPost.categories?.nodes?.map(c => c.name).join(', ') || 'None'
+            console.log(`   Categories: ${categoryNames}`)
 
             // Test fetching a single post
             console.log(`\n📖 Fetching single post by slug: ${firstPost.slug}`)

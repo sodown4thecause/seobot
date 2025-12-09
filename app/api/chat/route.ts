@@ -68,7 +68,7 @@ interface RequestBody {
 
 export async function POST(req: Request) {
   console.log('[Chat API] POST handler called');
-  
+
   // Check rate limit
   const rateLimitResponse = await rateLimitMiddleware(req as any, "CHAT");
   if (rateLimitResponse) {
@@ -202,7 +202,7 @@ export async function POST(req: Request) {
 
     // LOAD MCP TOOLS based on selected agent
     console.log(`[Chat API] Loading MCP tools for ${routingResult.agent} agent`);
-    
+
     const allMCPTools: Record<string, any> = {};
     const toolLoadingResults = {
       dataforseo: { loaded: 0, failed: false },
@@ -220,9 +220,9 @@ export async function POST(req: Request) {
         // Apply schema fixes to MCP tools
         const fixedSEOTools = fixAllMCPTools(dataforSEOTools);
         Object.assign(allMCPTools, fixedSEOTools);
-        toolLoadingResults.dataforseo = { 
-          loaded: Object.keys(fixedSEOTools).length, 
-          failed: false 
+        toolLoadingResults.dataforseo = {
+          loaded: Object.keys(fixedSEOTools).length,
+          failed: false
         };
         console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedSEOTools).length} DataForSEO tools`);
       } catch (error) {
@@ -239,9 +239,9 @@ export async function POST(req: Request) {
         const firecrawlMCPTools = await getFirecrawlTools();
         const fixedFirecrawlTools = fixAllMCPTools(firecrawlMCPTools);
         Object.assign(allMCPTools, fixedFirecrawlTools);
-        toolLoadingResults.firecrawl = { 
-          loaded: Object.keys(fixedFirecrawlTools).length, 
-          failed: false 
+        toolLoadingResults.firecrawl = {
+          loaded: Object.keys(fixedFirecrawlTools).length,
+          failed: false
         };
         console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedFirecrawlTools).length} Firecrawl tools`);
       } catch (error) {
@@ -258,9 +258,9 @@ export async function POST(req: Request) {
         const jinaMCPTools = await getJinaTools();
         const fixedJinaTools = fixAllMCPTools(jinaMCPTools);
         Object.assign(allMCPTools, fixedJinaTools);
-        toolLoadingResults.jina = { 
-          loaded: Object.keys(fixedJinaTools).length, 
-          failed: false 
+        toolLoadingResults.jina = {
+          loaded: Object.keys(fixedJinaTools).length,
+          failed: false
         };
         console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedJinaTools).length} Jina tools`);
       } catch (error) {
@@ -277,9 +277,9 @@ export async function POST(req: Request) {
         const winstonTools = await getWinstonTools();
         const fixedWinstonTools = fixAllMCPTools(winstonTools);
         Object.assign(allMCPTools, fixedWinstonTools);
-        toolLoadingResults.winston = { 
-          loaded: Object.keys(fixedWinstonTools).length, 
-          failed: false 
+        toolLoadingResults.winston = {
+          loaded: Object.keys(fixedWinstonTools).length,
+          failed: false
         };
         console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedWinstonTools).length} Winston tools`);
       } catch (error) {
@@ -291,7 +291,7 @@ export async function POST(req: Request) {
     // Add content quality tools (Winston AI + Rytr) - Load based on agent type
     let contentQualityTools: Record<string, any> = {};
     let enhancedContentTools: Record<string, any> = {};
-    
+
     if (routingResult.agent === 'content') {
       contentQualityTools = getContentQualityTools();
       enhancedContentTools = getEnhancedContentQualityTools();
@@ -328,7 +328,7 @@ export async function POST(req: Request) {
         }),
         execute: async ({ query }: any) => {
           console.log(`[Chat API] 🔍 Web search executing for: ${query}`);
-          
+
           const analysis = `Based on market research, here are your key competitors in the SEO/AEO chatbot niche:
 
 **Major SEO Tools with AI Features:**
@@ -356,7 +356,7 @@ export async function POST(req: Request) {
 ✓ Integrated content quality validation (Winston AI)
 ✓ Direct AEO optimization for ChatGPT, Claude, Perplexity
 ✓ Automated research and writing workflows`;
-          
+
           console.log(`[Chat API] ✓ Web search completed successfully`);
           return analysis;
         },
@@ -380,7 +380,7 @@ export async function POST(req: Request) {
         execute: async (args: any) => {
           try {
             console.log('[Orchestrator Tool] 🚀 Starting execution with args:', args);
-            
+
             // Pass userId for learning storage
             const result = await orchestrator.generateContent({
               ...args,
@@ -391,14 +391,14 @@ export async function POST(req: Request) {
             console.log('[Orchestrator Tool] ✓ Orchestrator completed successfully');
             console.log('[Orchestrator Tool] Content length:', result.content?.length || 0);
             console.log('[Orchestrator Tool] Metadata:', result.metadata);
-            
+
             // Return simple content string for AI SDK 6 tool result handling
             const contentResult = result.content || "Content generation completed but no content was returned.";
-            
+
             console.log('[Orchestrator Tool] 📤 Returning content to AI SDK 6');
             console.log('[Orchestrator Tool] Content length:', contentResult.length);
             console.log('[Orchestrator Tool] Content preview:', contentResult.substring(0, 200) + '...');
-            
+
             return contentResult;
           } catch (error) {
             console.error("[Chat API] Orchestrator error:", error);
@@ -417,7 +417,7 @@ export async function POST(req: Request) {
     console.log(`[Chat API] Total MCP tools loaded: ${Object.keys(allMCPTools).length}`);
     const essentialMCPTools = loadEssentialTools(allMCPTools);
     console.log(`[Chat API] Essential tools selected: ${Object.keys(essentialMCPTools).length}`);
-    
+
     // IMPORTANT: Always include the orchestrator tool for content creation
     const coreTools = {
       ...orchestratorTool, // Always include orchestrator
@@ -425,11 +425,11 @@ export async function POST(req: Request) {
       ...webSearchTool,    // Always include web search
     };
     console.log(`[Chat API] ✓ Core tools included:`, Object.keys(coreTools));
-    
+
     // Add content quality tools for content agent
-    const agentSpecificTools = routingResult.agent === 'content' ? 
+    const agentSpecificTools = routingResult.agent === 'content' ?
       { ...contentQualityTools, ...enhancedContentTools } : {};
-    
+
     // Log tool loading summary
     console.log('[Chat API] Tool loading summary:', {
       dataforseo: toolLoadingResults.dataforseo,
@@ -472,10 +472,10 @@ export async function POST(req: Request) {
       totalToolsCount: Object.keys(allTools).length,
       toolNames: Object.keys(allTools)
     });
-    
+
     // Implement selective tool loading - only enable core tools that pass validation
     const ENABLE_TOOLS = true;
-    
+
     // Create a safe tool set with only known-good tools
     const safeTools = {
       // Only enable the core tools we know have correct schemas
@@ -484,15 +484,15 @@ export async function POST(req: Request) {
       generate_researched_content: orchestratorTool.generate_researched_content,
       client_ui: allTools.client_ui,
     };
-    
+
     // Filter out any undefined tools
     const filteredSafeTools = Object.fromEntries(
       Object.entries(safeTools).filter(([key, value]) => value !== undefined)
     );
-    
+
     // Re-enable tools - let AI SDK 6 handle tool results properly
     const validatedTools = ENABLE_TOOLS ? filteredSafeTools : {};
-    
+
     // Log final validated tools that will be used
     console.log('[Chat API] ✓ Final validated tools for streamText:', {
       count: Object.keys(validatedTools).length,
@@ -501,7 +501,7 @@ export async function POST(req: Request) {
 
     // Convert UI messages to core messages for AI SDK 6
     console.log('[Chat API] Converting messages to core messages for AI SDK 6');
-    
+
     // Validate messages before conversion
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       console.error('[Chat API] Invalid messages for conversion:', messages);
@@ -510,7 +510,7 @@ export async function POST(req: Request) {
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
-    
+
     // Convert simple messages to CoreMessage format for AI SDK 6
     let coreMessages: CoreMessage[] = [];
     try {
@@ -533,9 +533,9 @@ export async function POST(req: Request) {
               .map((p: any) => p.text)
               .join('');
           }
-          
+
           // Sanitize content
-          content = content?.trim() || ' '; 
+          content = content?.trim() || ' ';
 
           const lastMsg = coreMessages[coreMessages.length - 1];
           if (lastMsg && lastMsg.role === 'user') {
@@ -547,7 +547,7 @@ export async function POST(req: Request) {
               // But for simple text we usually use string. AI SDK handles this.
               // We force string for simplicity here as per our push below.
               if (Array.isArray(lastMsg.content)) {
-                 (lastMsg.content as any).push({ type: 'text', text: '\n' + content });
+                (lastMsg.content as any).push({ type: 'text', text: '\n' + content });
               }
             }
           } else {
@@ -592,7 +592,7 @@ export async function POST(req: Request) {
           }
         }
       }
-      
+
       // Log conversion result for debugging
       console.log('[Chat API] ✓ Successfully converted to CoreMessages:', {
         count: coreMessages.length,
@@ -636,14 +636,6 @@ export async function POST(req: Request) {
       },
       // Force text generation after tool execution
       toolChoice: 'auto', // Let AI decide when to use tools vs generate text
-      // Add instruction to system about requiring text responses
-      experimental_providerMetadata: {
-        anthropic: {
-          cacheControl: {
-            type: 'ephemeral'
-          }
-        }
-      },
       onError: (error) => {
         console.error('[Chat API] Streaming error:', {
           message: error?.message,
@@ -651,7 +643,7 @@ export async function POST(req: Request) {
           stack: error?.stack,
           error
         });
-        
+
         // Try to identify if it's a tool schema error
         if (error?.message?.includes('toolConfig') || error?.message?.includes('inputSchema')) {
           console.error('[Chat API] Tool schema validation error detected. This may be due to invalid MCP tool schemas.');
@@ -659,7 +651,7 @@ export async function POST(req: Request) {
       },
       onFinish: async ({ response }) => {
         const { messages: finalMessages } = response;
-        
+
         // INTERCEPT TOOL RESULTS: Check if the last message contains tool calls
         console.log('[Chat API] onFinish - Final messages:', finalMessages.length);
         if (finalMessages.length > 0) {
@@ -667,11 +659,11 @@ export async function POST(req: Request) {
           console.log('[Chat API] Last message:', {
             role: lastMessage.role,
             contentType: typeof lastMessage.content,
-            hasToolCalls: Array.isArray(lastMessage.content) ? 
+            hasToolCalls: Array.isArray(lastMessage.content) ?
               lastMessage.content.some((part: any) => part.type === 'tool-call') : false
           });
         }
-        
+
         // Save messages after completion
         if (user && !authError) {
           // We need to adapt standard messages to our DB schema
@@ -688,18 +680,18 @@ export async function POST(req: Request) {
                   .map(c => (c as any).text)
                   .join('');
               }
-              
+
               const chatMessage = {
                 user_id: user.id,
                 role: 'assistant',
                 content: content,
                 metadata: onboardingContext ? { onboarding: onboardingContext } : {},
               };
-              
+
               await supabase.from("chat_messages").insert(chatMessage);
-              
+
               if (isOnboarding && onboardingContext?.data) {
-                 await saveOnboardingProgress(supabase, user.id, onboardingContext.data);
+                await saveOnboardingProgress(supabase, user.id, onboardingContext.data);
               }
             }
           } catch (error) {

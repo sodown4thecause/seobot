@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenAI } from 'openai'
-import pdf from 'pdf-parse/lib/pdf-parse'
+import { PDFParse } from 'pdf-parse'
 
 export const runtime = 'nodejs' // Need Node.js runtime for file processing
 
@@ -12,10 +12,13 @@ const openai = new OpenAI({
 // Helper to extract text from different file types
 async function extractText(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer())
-  
+
   if (file.type === 'application/pdf') {
-    const data = await pdf(buffer)
-    return data.text
+    // Using pdf-parse v2.4.5 new PDFParse class API
+    const pdfParser = new PDFParse({ data: new Uint8Array(buffer) })
+    const result = await pdfParser.getText()
+    await pdfParser.destroy()
+    return result.text
   } else if (file.type === 'text/markdown' || file.type === 'text/plain') {
     return buffer.toString('utf-8')
   } else if (file.name.endsWith('.md') || file.name.endsWith('.markdown')) {
@@ -23,7 +26,7 @@ async function extractText(file: File): Promise<string> {
   } else if (file.name.endsWith('.txt')) {
     return buffer.toString('utf-8')
   }
-  
+
   // Default: try to read as text
   return buffer.toString('utf-8')
 }
@@ -71,7 +74,7 @@ export async function POST(request: NextRequest) {
     // Extract text from file
     console.log('[Admin] Extracting text from file:', file.name)
     const content = await extractText(file)
-    
+
     if (!content || content.trim().length === 0) {
       return NextResponse.json(
         { error: 'Could not extract text from file' },

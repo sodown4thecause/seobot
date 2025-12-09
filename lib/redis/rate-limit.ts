@@ -181,6 +181,8 @@ export function createRateLimitResponse(result: {
 
   if (result.reset !== undefined) {
     headers.set('X-RateLimit-Reset', Math.ceil(result.reset / 1000).toString())
+    const retryAfterSeconds = Math.max(0, Math.ceil((result.reset - Date.now()) / 1000))
+    headers.set('Retry-After', retryAfterSeconds.toString())
   }
 
   return new Response(
