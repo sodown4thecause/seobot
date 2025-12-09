@@ -26,10 +26,13 @@ BEGIN
   END IF;
 
   -- Calculate cost based on model
+  -- Updated 2025 pricing rates
   IF v_provider = 'google' THEN
-    -- Gemini models: 0.000075 per 1K input, 0.0003 per 1K output
-    v_input_cost := (p_prompt_tokens::NUMERIC / 1000) * 0.000075;
-    v_output_cost := (p_completion_tokens::NUMERIC / 1000) * 0.0003;
+    -- Gemini models: Updated 2025 rates
+    -- Default to Flash rates: 0.0001 per 1K input, 0.0004 per 1K output
+    -- Note: For specific models (Flash Lite, 2.5 Pro, 2.0 Flash), see cost-estimator.ts
+    v_input_cost := (p_prompt_tokens::NUMERIC / 1000) * 0.0001;
+    v_output_cost := (p_completion_tokens::NUMERIC / 1000) * 0.0004;
     v_cost := v_input_cost + v_output_cost;
   ELSIF v_provider = 'openai' THEN
     IF p_model LIKE '%gpt-4-turbo%' THEN
@@ -51,7 +54,10 @@ BEGIN
     END IF;
     v_cost := v_input_cost + v_output_cost;
   ELSIF v_provider = 'anthropic' THEN
-    -- Claude models: 0.003 per 1K input, 0.015 per 1K output (default)
+    -- Claude models: Updated 2025 rates
+    -- Default Sonnet: 0.003 per 1K input, 0.015 per 1K output
+    -- Note: For Opus ($0.015/$0.075) and Haiku variants, see cost-estimator.ts
+    -- This migration uses Sonnet rates as default for backfill
     v_input_cost := (p_prompt_tokens::NUMERIC / 1000) * 0.003;
     v_output_cost := (p_completion_tokens::NUMERIC / 1000) * 0.015;
     v_cost := v_input_cost + v_output_cost;

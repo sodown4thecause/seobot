@@ -157,6 +157,11 @@ async function storeChunk(chunk: DocumentChunk): Promise<boolean> {
     const embedding = await generateEmbedding(chunk.content)
     
     // Insert into agent_documents
+    // Ensure metadata is JSON-serializable, fallback to empty object if missing
+    const metadata = chunk.metadata && typeof chunk.metadata === 'object' 
+      ? chunk.metadata 
+      : {}
+    
     const { error } = await supabase
       .from('agent_documents')
       .insert({
@@ -164,6 +169,7 @@ async function storeChunk(chunk: DocumentChunk): Promise<boolean> {
         content: chunk.content,
         agent_type: chunk.agent_type,
         embedding: embedding,
+        metadata: metadata,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -199,10 +205,11 @@ async function main() {
   const sourceFile = 'seo-comprehensive-guide.md'
   console.log(`Removing existing chunks from: ${sourceFile}`)
 
+  // Use metadata->>'source_file' for exact source matching instead of fragile title matching
   const { error: deleteError } = await supabase
     .from('agent_documents')
     .delete()
-    .like('title', '%SEO%')
+    .eq('metadata->>source_file', sourceFile)
     .eq('agent_type', 'content_writer')
 
   if (deleteError) {

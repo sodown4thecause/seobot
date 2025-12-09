@@ -72,6 +72,18 @@ vi.mock('@/lib/analytics/api-tracker', () => ({
 }))
 
 describe('API Route Rate Limiting Integration', () => {
+  // Factory function to create a fresh NextRequest for each handler call
+  function createRequest(url: string, body: any, ip: string): NextRequest {
+    return new NextRequest(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': ip,
+      },
+      body: JSON.stringify(body),
+    })
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     // Mock Redis as unavailable to use in-memory fallback
@@ -97,29 +109,24 @@ describe('API Route Rate Limiting Integration', () => {
     })
 
     it('should block requests exceeding rate limit', async () => {
-      const req = new NextRequest('http://localhost/api/chat', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-forwarded-for': '192.168.1.101',
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
-      })
+      const body = {
+        messages: [{ role: 'user', content: 'Hello' }],
+      }
 
-      // Make requests up to the limit
+      // Make requests up to the limit - create fresh request for each call
       for (let i = 0; i < 10; i++) {
+        const req = createRequest('http://localhost/api/chat', body, '192.168.1.101')
         await chatPOST(req)
       }
 
-      // Next request should be rate limited
+      // Next request should be rate limited - create fresh request
+      const req = createRequest('http://localhost/api/chat', body, '192.168.1.101')
       const response = await chatPOST(req)
       expect(response.status).toBe(429)
 
-      const body = await response.json()
-      expect(body.error).toContain('Too many chat requests')
-      expect(body.retryAfter).toBeGreaterThan(0)
+      const responseBody = await response.json()
+      expect(responseBody.error).toContain('Too many chat requests')
+      expect(responseBody.retryAfter).toBeGreaterThan(0)
     })
   })
 
@@ -141,23 +148,18 @@ describe('API Route Rate Limiting Integration', () => {
     })
 
     it('should block requests exceeding hourly limit', async () => {
-      const req = new NextRequest('http://localhost/api/keywords/research', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-forwarded-for': '192.168.1.103',
-        },
-        body: JSON.stringify({
-          keywords: ['test keyword'],
-        }),
-      })
+      const body = {
+        keywords: ['test keyword'],
+      }
 
-      // Make requests up to the limit (10 per hour)
+      // Make requests up to the limit (10 per hour) - create fresh request for each call
       for (let i = 0; i < 10; i++) {
+        const req = createRequest('http://localhost/api/keywords/research', body, '192.168.1.103')
         await keywordsPOST(req)
       }
 
-      // Next request should be rate limited
+      // Next request should be rate limited - create fresh request
+      const req = createRequest('http://localhost/api/keywords/research', body, '192.168.1.103')
       const response = await keywordsPOST(req)
       expect(response.status).toBe(429)
     })
@@ -183,25 +185,20 @@ describe('API Route Rate Limiting Integration', () => {
     })
 
     it('should block requests exceeding rate limit', async () => {
-      const req = new NextRequest('http://localhost/api/content/generate', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-forwarded-for': '192.168.1.105',
-        },
-        body: JSON.stringify({
-          topic: 'Test topic',
-          type: 'blog',
-          tone: 'professional',
-        }),
-      })
+      const body = {
+        topic: 'Test topic',
+        type: 'blog',
+        tone: 'professional',
+      }
 
-      // Make requests up to the limit (5 per minute)
+      // Make requests up to the limit (5 per minute) - create fresh request for each call
       for (let i = 0; i < 5; i++) {
+        const req = createRequest('http://localhost/api/content/generate', body, '192.168.1.105')
         await contentGeneratePOST(req)
       }
 
-      // Next request should be rate limited
+      // Next request should be rate limited - create fresh request
+      const req = createRequest('http://localhost/api/content/generate', body, '192.168.1.105')
       const response = await contentGeneratePOST(req)
       expect(response.status).toBe(429)
     })
@@ -231,38 +228,23 @@ describe('API Route Rate Limiting Integration', () => {
 
   describe('Different IP Addresses', () => {
     it('should rate limit per IP address independently', async () => {
-      const req1 = new NextRequest('http://localhost/api/chat', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-forwarded-for': '192.168.1.200',
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
-      })
+      const body = {
+        messages: [{ role: 'user', content: 'Hello' }],
+      }
 
-      const req2 = new NextRequest('http://localhost/api/chat', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-forwarded-for': '192.168.1.201',
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
-      })
-
-      // Exceed limit for IP 1
+      // Exceed limit for IP 1 - create fresh request for each call
       for (let i = 0; i < 10; i++) {
+        const req1 = createRequest('http://localhost/api/chat', body, '192.168.1.200')
         await chatPOST(req1)
       }
 
-      // IP 1 should be blocked
+      // IP 1 should be blocked - create fresh request
+      const req1 = createRequest('http://localhost/api/chat', body, '192.168.1.200')
       const response1 = await chatPOST(req1)
       expect(response1.status).toBe(429)
 
-      // IP 2 should still work
+      // IP 2 should still work - create fresh request
+      const req2 = createRequest('http://localhost/api/chat', body, '192.168.1.201')
       const response2 = await chatPOST(req2)
       expect(response2.status).not.toBe(429)
     })

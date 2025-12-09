@@ -19,18 +19,37 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 async function backfillCosts() {
   console.log('Starting cost backfill...\n')
 
-  // Get all events without cost_usd in metadata
-  const { data: allEvents, error: fetchError } = await supabase
-    .from('ai_usage_events')
-    .select('id, model, prompt_tokens, completion_tokens, tool_calls, metadata')
-    .order('created_at', { ascending: true })
+  // Fetch events in batches to avoid memory issues with large datasets
+  const BATCH_SIZE = 1000
+  let offset = 0
+  let allEvents: any[] = []
 
-  if (fetchError) {
-    console.error('Error fetching events:', fetchError)
-    process.exit(1)
+  while (true) {
+    const { data, error: fetchError } = await supabase
+      .from('ai_usage_events')
+      .select('id, model, prompt_tokens, completion_tokens, tool_calls, metadata')
+      .order('created_at', { ascending: true })
+      .range(offset, offset + BATCH_SIZE - 1)
+
+    if (fetchError) {
+      console.error('Error fetching events:', fetchError)
+      process.exit(1)
+    }
+
+    if (!data || data.length === 0) {
+      break
+    }
+
+    allEvents.push(...data)
+
+    if (data.length < BATCH_SIZE) {
+      break
+    }
+
+    offset += BATCH_SIZE
   }
 
-  if (!allEvents || allEvents.length === 0) {
+  if (allEvents.length === 0) {
     console.log('No events found.')
     return
   }

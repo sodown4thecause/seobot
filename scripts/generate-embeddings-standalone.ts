@@ -54,16 +54,21 @@ async function main() {
   
   if (error) {
     console.error('[Embedding Generator] Error fetching documents:', error)
-    return
+    throw error
   }
   
   if (!documents || documents.length === 0) {
     console.log('[Embedding Generator] No documents need embeddings')
     
     // Check total count
-    const { count } = await supabase
+    const { count, error: countError } = await supabase
       .from('agent_documents')
       .select('*', { count: 'exact', head: true })
+    
+    if (countError) {
+      console.error('[Embedding Generator] Error fetching document count:', countError)
+      throw countError
+    }
     
     console.log(`[Embedding Generator] Total documents in database: ${count}`)
     return
