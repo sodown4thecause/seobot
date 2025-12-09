@@ -59,8 +59,8 @@ function toMarkdown(content: string, metadata?: ExportRequest['metadata']): stri
     // Bold and italic
     .replace(/<strong[^>]*>(.*?)<\/strong>/g, '**$1**')
     .replace(/<b[^>]*>(.*?)<\/b>/g, '**$1**')
-    .replace(/<em[^>]*>(.*?)<\/em>/g, '*${1}*')
-    .replace(/<i[^>]*>(.*?)<\/i>/g, '*${1}*')
+    .replace(/<em[^>]*>(.*?)<\/em>/g, '*$1*')
+    .replace(/<i[^>]*>(.*?)<\/i>/g, '*$1*')
     // Links
     .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g, '[$2]($1)')
     // Lists

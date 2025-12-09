@@ -109,6 +109,16 @@ const handler = async (req: Request) => {
       // We don't set authError to avoid triggering downstream logic that expects a specific Supabase error shape
     }
 
+    // Apply rate limiting
+    const rateLimitResponse = await rateLimitMiddleware(
+      req as unknown as import('next/server').NextRequest,
+      'CHAT',
+      user?.id
+    );
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const requestedConversationId = chatId || (context as any)?.conversationId;
     const resolvedAgentType = agentId || (context as any)?.agentType || 'general';
 
@@ -346,7 +356,7 @@ const handler = async (req: Request) => {
 - **Factual Accuracy**: ${result.qualityScores.factual}/100
 - **Revision Rounds**: ${result.revisionCount}
 
-${result.qaReport.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n${result.qaReport.improvement_instructions.slice(0, 3).map((inst: string, i: number) => `${i + 1}. ${inst}`).join('\n')}` : ''}
+${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n${result.qaReport.improvement_instructions.slice(0, 3).map((inst: string, i: number) => `${i + 1}. ${inst}`).join('\n')}` : ''}
 `;
 
             contentResult = contentResult + scoreSummary;

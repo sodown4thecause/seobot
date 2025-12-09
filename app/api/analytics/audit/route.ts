@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { serverEnv, clientEnv } from '@/lib/config/env'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { isAdmin } from '@/lib/auth/admin-check'
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  clientEnv.NEXT_PUBLIC_SUPABASE_URL,
+  serverEnv.SUPABASE_SERVICE_ROLE_KEY
 )
 
 export async function POST(request: NextRequest) {
@@ -54,6 +57,20 @@ export async function POST(request: NextRequest) {
 // Get analytics summary (admin only)
 export async function GET(request: NextRequest) {
   try {
+    // Check admin authentication
+    const supabaseAuth = await createServerClient()
+    const { data: { user } } = await supabaseAuth.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check admin access
+    const admin = await isAdmin(user.id)
+    if (!admin) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+    }
+
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '7')
 

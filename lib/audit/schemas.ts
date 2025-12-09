@@ -21,6 +21,8 @@ export const AuditRequestSchema = z.object({
   utmSource: z.string().optional(),
   utmMedium: z.string().optional(),
   utmCampaign: z.string().optional(),
+  // Privacy consent for data collection (IP address, analytics)
+  consent: z.boolean().optional(),
 })
 
 export type AuditRequest = z.infer<typeof AuditRequestSchema>

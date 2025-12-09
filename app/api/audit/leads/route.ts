@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createHmac } from 'crypto'
+import { serverEnv, clientEnv } from '@/lib/config/env'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { isAdmin } from '@/lib/auth/admin-check'
+
+/**
+ * Generate a pseudonymous ID for an email address using HMAC-SHA256.
+ * Normalizes email (lowercase, trim) before hashing for consistency.
+ */
+function hashEmail(email: string): string {
+  const normalized = email.toLowerCase().trim()
+  const secret = serverEnv.SUPABASE_SERVICE_ROLE_KEY // Use existing server secret
+  return createHmac('sha256', secret).update(normalized).digest('hex').slice(0, 16)
+}
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  clientEnv.NEXT_PUBLIC_SUPABASE_URL,
+  serverEnv.SUPABASE_SERVICE_ROLE_KEY
 )
 
 export async function POST(request: NextRequest) {
@@ -44,9 +58,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save lead' }, { status: 500 })
     }
 
-    // Track conversion event
+    // Track conversion event (log pseudonymous ID, not PII)
     console.log('[Audit Leads] Lead captured:', {
-      email: email.toLowerCase().trim(),
+      leadHash: hashEmail(email),
       brandName,
       score,
       grade,
@@ -60,9 +74,23 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get leads (admin only - add auth later)
+// Get leads (admin only)
 export async function GET(request: NextRequest) {
   try {
+    // Check admin authentication
+    const supabaseAuth = await createServerClient()
+    const { data: { user } } = await supabaseAuth.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check admin access
+    const admin = await isAdmin(user.id)
+    if (!admin) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+    }
+
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')

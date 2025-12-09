@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import DOMPurify from 'isomorphic-dompurify'
 
 interface BlogContentProps {
     content: string
@@ -8,6 +9,8 @@ interface BlogContentProps {
 }
 
 export function BlogContent({ content, className }: BlogContentProps) {
+    const sanitizedContent = DOMPurify.sanitize(content)
+
     return (
         <div
             className={cn(
@@ -46,7 +49,7 @@ export function BlogContent({ content, className }: BlogContentProps) {
                 'prose-td:border-white/[0.08] prose-td:text-zinc-300',
                 className
             )}
-            dangerouslySetInnerHTML={{ __html: content }}
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
     )
 }

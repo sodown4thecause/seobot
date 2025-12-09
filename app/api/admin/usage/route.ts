@@ -81,17 +81,21 @@ export async function GET(req: NextRequest) {
       if (from) aggQuery = aggQuery.gte('created_at', from)
       if (to) aggQuery = aggQuery.lte('created_at', to)
 
-      const { data: aggData } = await aggQuery.limit(5000) // Reasonable limit for aggregation
+      // Note: Limited to 5000 records for performance. For complete aggregation,
+      // consider creating a database function or materialized view for large datasets.
+      const { data: aggData, count: aggCount } = await aggQuery.limit(5000)
 
       const totalCost = aggData?.reduce((sum: number, e: { metadata?: { cost_usd?: number }; prompt_tokens?: number; completion_tokens?: number }) => sum + (Number(e.metadata?.cost_usd) || 0), 0) || 0
       const totalTokens = aggData?.reduce((sum: number, e: { metadata?: { cost_usd?: number }; prompt_tokens?: number; completion_tokens?: number }) => sum + (e.prompt_tokens || 0) + (e.completion_tokens || 0), 0) || 0
       const totalCalls = totalCount || 0
+      const isPartialData = (aggData?.length ?? 0) >= 5000
       summary = {
         totalCalls,
         activeUsers: 0, // Would need distinct query
         totalCost,
         totalTokens,
         avgCostPerCall: totalCalls ? totalCost / totalCalls : 0,
+        isPartialData, // True if aggregation hit the 5000 record limit
       }
     } else {
       summary = summaryData

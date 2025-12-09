@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import DOMPurify from 'isomorphic-dompurify'
 import { getPosts } from '@/lib/wordpress'
 import { Navbar } from '@/components/navbar'
 
@@ -72,7 +73,7 @@ export default async function BlogPage() {
 
                                 <div
                                     className="text-zinc-400 line-clamp-3 text-sm leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: post.excerpt }}
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.excerpt) }}
                                 />
 
                                 <div className="mt-6 flex items-center text-sm font-medium text-white group-hover:text-indigo-300 transition-colors">

@@ -31,6 +31,36 @@ const supabase = createClient(
 // Cache TTL: 24 hours for audit results
 const CACHE_TTL = 60 * 60 * 24
 
+/**
+ * Anonymize IP address for privacy compliance.
+ * IPv4: Zero the last octet (e.g., 192.168.1.100 -> 192.168.1.0)
+ * IPv6: Zero the last 80 bits (e.g., 2001:db8::1 -> 2001:db8::)
+ */
+function anonymizeIp(ip: string | null): string | null {
+  if (!ip) return null
+
+  // Handle comma-separated list (x-forwarded-for may have multiple IPs)
+  const firstIp = ip.split(',')[0].trim()
+
+  // IPv6 detection
+  if (firstIp.includes(':')) {
+    // Zero the last 80 bits by keeping only the first 48 bits (3 segments)
+    const segments = firstIp.split(':')
+    const anonymized = segments.slice(0, 3).join(':') + '::'
+    return anonymized
+  }
+
+  // IPv4: zero the last octet
+  const octets = firstIp.split('.')
+  if (octets.length === 4) {
+    octets[3] = '0'
+    return octets.join('.')
+  }
+
+  // If we can't parse it, return null rather than storing raw
+  return null
+}
+
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
 
@@ -52,7 +82,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { url, brandName, email, utmSource, utmMedium, utmCampaign } = parseResult.data
+    const { url, brandName, email, utmSource, utmMedium, utmCampaign, consent } = parseResult.data
 
     // 3. Check cache first (avoid redundant API calls)
     const cacheKey = `aeo-audit:${brandName.toLowerCase()}:${new URL(url).hostname}`
@@ -72,23 +102,37 @@ export async function POST(req: NextRequest) {
     // 4. Create lead record if email provided
     let leadId: string | null = null
     if (email) {
+      // Anonymize IP for privacy - only store if consent given, otherwise omit
+      const rawIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+      const anonymizedIp = consent ? anonymizeIp(rawIp) : null
+
       const { data: lead, error: leadError } = await supabase
         .from('aeo_leads')
         .insert({
           email,
           brand_name: brandName,
           url,
-          ip_address: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
+          ip_address: anonymizedIp,
           user_agent: req.headers.get('user-agent'),
           referrer: req.headers.get('referer'),
           utm_source: utmSource,
           utm_medium: utmMedium,
           utm_campaign: utmCampaign,
+          data_consent: consent ?? false, // Track consent for retention policies
         })
         .select('id')
         .single()
 
-      if (!leadError && lead) {
+      if (leadError) {
+        // Log error with context but exclude PII
+        console.error('[AEO Audit] Failed to create lead record:', {
+          error: leadError.message,
+          code: leadError.code,
+          brandName,
+          hasEmail: !!email,
+          hasConsent: !!consent,
+        })
+      } else if (lead) {
         leadId = lead.id
       }
     }

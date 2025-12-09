@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useMemo } from 'react'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { useAgent } from '@/components/providers/agent-provider'
 
@@ -18,7 +19,13 @@ export default function DashboardPage() {
         className="flex-1 px-6 pt-6"
       >
         <AIChatInterface
-          context={{ page: 'dashboard', conversationId: activeConversationId }}
+          context={useMemo(
+            () => ({
+              page: 'dashboard',
+              conversationId: activeConversationId,
+            }),
+            [activeConversationId]
+          )}
           placeholder="Ask anything..."
           className="h-full"
           conversationId={activeConversationId}

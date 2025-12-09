@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { ArrowUp } from 'lucide-react'
+import { ArrowUp, Image, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ChatInputProps {
@@ -22,6 +22,8 @@ export function ChatInput({
   disabled = false,
   placeholder = 'Send a message...',
   className,
+  onImageGenerate,
+  onWebSearch,
 }: ChatInputProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
@@ -45,6 +47,32 @@ export function ChatInput({
   return (
     <div className={cn("w-full", className)}>
       <div className="relative flex items-center bg-[#2f2f2f] rounded-xl border border-zinc-700/30">
+        {/* Action buttons - image generate and web search */}
+        <div className="flex items-center gap-1 pl-2">
+          {onImageGenerate && (
+            <button
+              type="button"
+              onClick={onImageGenerate}
+              disabled={disabled}
+              title="Generate image"
+              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Image className="w-4 h-4" />
+            </button>
+          )}
+          {onWebSearch && (
+            <button
+              type="button"
+              onClick={onWebSearch}
+              disabled={disabled}
+              title="Search the web"
+              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
         {/* Text input */}
         <textarea
           ref={textareaRef}

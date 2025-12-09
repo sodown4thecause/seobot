@@ -366,11 +366,12 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   // Start with false - the bootstrap effect will set to true when it starts
   const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
-  const hasInitializedRef = useRef(false)
-  const mountedRef = useRef(true)
-  const lastLoadedConversationId = useRef<string | null>(null)
-  const agentPreference = agentIdProp ?? (chatContext as any)?.agentId ?? 'general'
-  const bootstrapTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+   const hasInitializedRef = useRef(false)
+   const mountedRef = useRef(true)
+   const lastLoadedConversationId = useRef<string | null>(null)
+   const agentPreference = agentIdProp ?? (chatContext as any)?.agentId ?? 'general'
+   const bootstrapTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+   const bootstrapAbortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     return () => {
@@ -378,17 +379,48 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       if (bootstrapTimeoutRef.current) {
         clearTimeout(bootstrapTimeoutRef.current)
       }
+      if (bootstrapAbortControllerRef.current) {
+        bootstrapAbortControllerRef.current.abort()
+      }
     }
   }, [])
 
 
+  // Stabilize mergedContext by memoizing based on primitive dependencies
+  // Extract primitive values from chatContext to avoid object reference instability
+  const contextKey = useMemo(() => {
+    if (!chatContext) return ''
+    // Create a stable key from primitive values in chatContext
+    const keys = Object.keys(chatContext).sort()
+    return JSON.stringify(
+      keys.reduce((acc, key) => {
+        const value = (chatContext as any)[key]
+        // Only include primitive values or serializable objects
+        if (value === null || value === undefined) {
+          acc[key] = value
+        } else if (typeof value === 'object') {
+          // For objects, include a stable representation
+          acc[key] = JSON.stringify(value)
+        } else {
+          acc[key] = value
+        }
+        return acc
+      }, {} as Record<string, any>)
+    )
+  }, [chatContext])
+
+  // mergedContext depends only on stable primitive values, not the chatContext object reference
+  // This ensures it only recreates when actual values change, not when the object reference changes
+  // When contextKey changes, we know the values changed, so we can safely use current chatContext
   const mergedContext = useMemo(
     () => ({
       ...(chatContext || {}),
       agentId: agentPreference,
       conversationId,
     }),
-    [chatContext, agentPreference, conversationId]
+    // Use contextKey (stable string) instead of chatContext (unstable object reference)
+    // contextKey changes only when actual values change, making this dependency stable
+    [contextKey, agentPreference, conversationId]
   )
 
   const statusToneClassMap: Record<'neutral' | 'warning' | 'success' | 'error', string> = {
@@ -428,21 +460,31 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     setIsBootstrapping(true)
     setBootError(null)
 
-    // Clear any existing timeout
+    // Clear any existing timeout and abort controller
     if (bootstrapTimeoutRef.current) {
       clearTimeout(bootstrapTimeoutRef.current)
     }
+    if (bootstrapAbortControllerRef.current) {
+      bootstrapAbortControllerRef.current.abort()
+    }
+
+    // Create new abort controller for this bootstrap attempt
+    bootstrapAbortControllerRef.current = new AbortController()
+    const signal = bootstrapAbortControllerRef.current.signal
 
     // Set a safety timeout to prevent infinite loading
     const timeoutPromise = new Promise<'timeout'>((resolve) => {
-      bootstrapTimeoutRef.current = setTimeout(() => resolve('timeout'), 8000)
+      bootstrapTimeoutRef.current = setTimeout(() => {
+        // Abort in-flight requests when timeout fires
+        bootstrapAbortControllerRef.current?.abort()
+        resolve('timeout')
+      }, 8000)
     })
 
     const bootstrapPromise = (async () => {
-      const controller = new AbortController()
-      const signal = controller.signal
-
       try {
+        // Check if already aborted before starting
+        if (signal.aborted) return 'aborted' as const
         if (overrideConversationId && mountedRef.current) {
           setMessages([])
         }
@@ -459,12 +501,13 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               workingConversation = latestPayload?.conversations?.[0] ?? null
             }
           } catch (error) {
-            if ((error as Error).name !== 'AbortError') {
-              console.warn('[AIChatInterface] Error loading conversations', error)
+            if ((error as Error).name === 'AbortError') {
+              return 'aborted' as const
             }
+            console.warn('[AIChatInterface] Error loading conversations', error)
           }
 
-          if (!workingConversation) {
+          if (!workingConversation && !signal.aborted) {
             try {
               const createResponse = await fetch('/api/conversations', {
                 method: 'POST',
@@ -477,9 +520,10 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 workingConversation = createdPayload?.conversation ?? null
               }
             } catch (error) {
-              if ((error as Error).name !== 'AbortError') {
-                console.warn('[AIChatInterface] Error creating conversation', error)
+              if ((error as Error).name === 'AbortError') {
+                return 'aborted' as const
               }
+              console.warn('[AIChatInterface] Error creating conversation', error)
             }
           }
         }
@@ -508,38 +552,42 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 ]
               }
 
-              if (mountedRef.current) {
+              if (mountedRef.current && !signal.aborted) {
                 setConversationId(workingConversation.id)
                 setMessages(historyMessages)
                 console.log('[AIChatInterface] Messages set successfully')
               }
             } else {
               console.warn('[AIChatInterface] Failed to load history, status:', historyResponse.status)
-              if (mountedRef.current) {
+              if (mountedRef.current && !signal.aborted) {
                 setConversationId(workingConversation.id)
                 setMessages([])
               }
             }
           } catch (error) {
-            if ((error as Error).name !== 'AbortError') {
-              console.warn('[AIChatInterface] Error loading history', error)
+            if ((error as Error).name === 'AbortError') {
+              return 'aborted' as const
             }
-            if (mountedRef.current) {
+            console.warn('[AIChatInterface] Error loading history', error)
+            if (mountedRef.current && !signal.aborted) {
               setConversationId(workingConversation.id)
               setMessages([])
             }
           }
         } else {
           console.log('[AIChatInterface] No conversation to load')
-          if (mountedRef.current) {
+          if (mountedRef.current && !signal.aborted) {
             setConversationId(null)
             setMessages([])
           }
         }
         return 'success' as const
       } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          return 'aborted' as const
+        }
         console.error('[AIChatInterface] Failed to bootstrap chat', error)
-        if (mountedRef.current) {
+        if (mountedRef.current && !signal.aborted) {
           setConversationId(null)
           setMessages([])
         }
@@ -552,18 +600,21 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
     if (result === 'timeout') {
       console.warn('[AIChatInterface] Bootstrap timed out, allowing user to proceed')
+      // Note: abort was already called in timeoutPromise
       if (mountedRef.current) {
         setConversationId(null)
         setMessages([])
       }
     }
 
+    // Cleanup timeout and abort controller
     if (bootstrapTimeoutRef.current) {
       clearTimeout(bootstrapTimeoutRef.current)
       bootstrapTimeoutRef.current = null
     }
+    bootstrapAbortControllerRef.current = null
 
-    if (mountedRef.current) {
+    if (mountedRef.current && result !== 'aborted') {
       setIsBootstrapping(false)
     }
   }, [agentPreference, initialMessage, setMessages])
