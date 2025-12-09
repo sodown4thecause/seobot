@@ -1,23 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllCacheStats, pruneAllCaches } from '@/lib/utils/cache';
-import { getRateLimitStats } from '@/lib/middleware/rate-limit';
-
-export const runtime = 'edge';
+import { getRateLimitStats } from '@/lib/redis/rate-limit';
+import { createClient } from '@/lib/supabase/server';
+import { isAdmin } from '@/lib/auth/admin-check';
 
 /**
  * Admin endpoint to get system statistics
- * In production, this should be protected with admin authentication
+ * Protected with admin authentication
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Add admin authentication check
-    // const isAdmin = await checkAdminAuth(request);
-    // if (!isAdmin) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    // }
+    // Check admin authentication
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!(await isAdmin(user.id))) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+    }
 
     const cacheStats = getAllCacheStats();
-    const rateLimitStats = getRateLimitStats();
+    const rateLimitStats = await getRateLimitStats();
 
     return NextResponse.json({
       success: true,
@@ -38,10 +44,21 @@ export async function GET(request: NextRequest) {
 
 /**
  * Admin endpoint to trigger cache cleanup
+ * Protected with admin authentication
  */
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Add admin authentication check
+    // Check admin authentication
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!(await isAdmin(user.id))) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+    }
 
     const body = await request.json();
     const action = body.action;

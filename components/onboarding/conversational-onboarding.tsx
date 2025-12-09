@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { OnboardingProgressBar } from '@/components/onboarding/progress-bar'
 import { 
@@ -140,10 +140,18 @@ export function ConversationalOnboarding({ userId, onComplete }: ConversationalO
       {/* Chat Interface - Full Screen */}
       <div className="flex-1 overflow-hidden">
         <AIChatInterface
-          context={{
-            page: 'onboarding',
-            onboarding: onboardingState,
-          }}
+          context={useMemo(
+            () => ({
+              page: 'onboarding',
+              onboarding: onboardingState,
+            }),
+            [
+              onboardingState.currentStep,
+              onboardingState.progress,
+              onboardingState.isComplete,
+              JSON.stringify(onboardingState.data),
+            ]
+          )}
           onComponentSubmit={handleComponentSubmit}
           className="h-full"
           placeholder="Type your response..."

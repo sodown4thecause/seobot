@@ -1,84 +1,35 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { AIChatInterface } from '@/components/chat/ai-chat-interface'
-import { WorkflowSelector, WorkflowProgress } from '@/components/workflows'
 import { motion } from 'framer-motion'
-import type { WorkflowExecution } from '@/lib/workflows/types'
-import { useToast } from '@/hooks/use-toast'
+import { useMemo } from 'react'
+import { AIChatInterface } from '@/components/chat/ai-chat-interface'
+import { useAgent } from '@/components/providers/agent-provider'
 
 export default function DashboardPage() {
-  const [workflowExecution, setWorkflowExecution] = useState<WorkflowExecution | null>(null)
-  const [isExecuting, setIsExecuting] = useState(false)
-  const [workflowResults, setWorkflowResults] = useState<any>(null)
-  const { toast } = useToast()
-
-  const handleWorkflowStart = async (workflowId: string) => {
-    console.log('[Dashboard] Starting workflow:', workflowId)
-    setIsExecuting(true)
-    setWorkflowResults(null)
-
-    try {
-      // Call workflow API
-      const response = await fetch('/api/workflows/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workflowId,
-          userQuery: `Execute the ${workflowId} workflow`,
-          conversationId: crypto.randomUUID(),
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Workflow execution failed')
-      }
-
-      const data = await response.json()
-      console.log('[Dashboard] Workflow completed:', data)
-
-      setWorkflowExecution(data.execution)
-      setWorkflowResults(data.results)
-
-      toast({
-        title: 'Workflow Completed!',
-        description: `Successfully executed ${workflowId} workflow`,
-      })
-    } catch (error) {
-      console.error('[Dashboard] Workflow error:', error)
-      toast({
-        title: 'Workflow Failed',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsExecuting(false)
-    }
-  }
+  const { state } = useAgent()
+  const activeConversationId = state.activeConversation?.id
+  const activeAgentId = state.activeAgent?.id
 
   return (
-    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col">
-      {/* Content */}
+    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col bg-[#1a1a1a]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         className="flex-1 px-6 pt-6"
       >
-        {/* Workflow Selector */}
-        <WorkflowSelector onWorkflowStart={handleWorkflowStart} className="mb-6" />
-
-        {/* Workflow Progress */}
-        {isExecuting && workflowExecution && (
-          <WorkflowProgress execution={workflowExecution} className="mb-6" />
-        )}
-
-        {/* Chat Interface */}
         <AIChatInterface
-          context={{ page: 'dashboard' }}
+          context={useMemo(
+            () => ({
+              page: 'dashboard',
+              conversationId: activeConversationId,
+            }),
+            [activeConversationId]
+          )}
           placeholder="Ask anything..."
           className="h-full"
-          workflowResults={workflowResults}
+          conversationId={activeConversationId}
+          agentId={activeAgentId}
         />
       </motion.div>
     </div>

@@ -11,6 +11,7 @@
 import { NextRequest } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
+import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'edge'
 
@@ -49,7 +50,7 @@ function toMarkdown(content: string, metadata?: ExportRequest['metadata']): stri
   }
 
   // Convert HTML-like tags to markdown
-  let markdownContent = content
+  const markdownContent = content
     // Headers
     .replace(/<h1[^>]*>(.*?)<\/h1>/g, '# $1\n')
     .replace(/<h2[^>]*>(.*?)<\/h2>/g, '## $1\n')
@@ -58,8 +59,8 @@ function toMarkdown(content: string, metadata?: ExportRequest['metadata']): stri
     // Bold and italic
     .replace(/<strong[^>]*>(.*?)<\/strong>/g, '**$1**')
     .replace(/<b[^>]*>(.*?)<\/b>/g, '**$1**')
-    .replace(/<em[^>]*>(.*?)<\/em>/g, '*${1}*')
-    .replace(/<i[^>]*>(.*?)<\/i>/g, '*${1}*')
+    .replace(/<em[^>]*>(.*?)<\/em>/g, '*$1*')
+    .replace(/<i[^>]*>(.*?)<\/i>/g, '*$1*')
     // Links
     .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g, '[$2]($1)')
     // Lists
@@ -188,7 +189,7 @@ function toText(content: string, metadata?: ExportRequest['metadata']): string {
   if (author || date || tags) text += '\n'
 
   // Strip HTML tags and convert to text
-  let textContent = content
+  const textContent = content
     .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/&nbsp;/g, ' ') // Replace non-breaking spaces
     .replace(/&amp;/g, '&')
@@ -222,13 +223,17 @@ function toJSON(content: string, metadata?: ExportRequest['metadata']): string {
 }
 
 export async function POST(req: NextRequest) {
-  // Check rate limit
-  const rateLimitResponse = await rateLimitMiddleware(req, 'EXPORT')
-  if (rateLimitResponse) {
-    return rateLimitResponse
-  }
-
   try {
+    // Get user for rate limiting
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Check rate limit (after getting user for better identification)
+    const rateLimitResponse = await rateLimitMiddleware(req, 'EXPORT', user?.id)
+    if (rateLimitResponse) {
+      return rateLimitResponse
+    }
+
     const body: ExportRequest = await req.json()
 
     if (!body.content || !body.format) {
