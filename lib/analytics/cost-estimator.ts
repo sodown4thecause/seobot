@@ -156,3 +156,4 @@ export function extractProviderFromModel(modelId: string): AIProvider {
   return 'vercel_gateway' // Default to gateway if unknown
 }
 
+

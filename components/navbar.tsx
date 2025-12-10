@@ -48,6 +48,22 @@ export function Navbar() {
                                 </NavigationMenuLink>
                             </NavigationMenuItem>
 
+                            <NavigationMenuItem>
+                                <NavigationMenuLink asChild>
+                                    <Link href="/case-studies" className={navigationMenuTriggerStyle()}>
+                                        Case Studies
+                                    </Link>
+                                </NavigationMenuLink>
+                            </NavigationMenuItem>
+
+                            <NavigationMenuItem>
+                                <NavigationMenuLink asChild>
+                                    <Link href="/resources" className={navigationMenuTriggerStyle()}>
+                                        Resources
+                                    </Link>
+                                </NavigationMenuLink>
+                            </NavigationMenuItem>
+
                         </NavigationMenuList>
                     </NavigationMenu>
                 </div>

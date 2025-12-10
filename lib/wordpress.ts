@@ -233,3 +233,313 @@ export async function getAllPostSlugs(): Promise<string[]> {
     const data = await fetchGraphQL<any>(query)
     return data.posts.nodes.map((post: any) => post.slug)
 }
+
+/**
+ * Fetch all case studies
+ */
+export async function getCaseStudies(first = 10, after?: string): Promise<PostsResponse> {
+    const query = `
+    query GetCaseStudies($first: Int!, $after: String) {
+      caseStudies(first: $first, after: $after, where: { status: PUBLISH }) {
+        nodes {
+          id
+          title
+          slug
+          excerpt
+          date
+          author {
+            node {
+              name
+              avatar {
+                url
+              }
+            }
+          }
+          featuredImage {
+            node {
+              sourceUrl
+              altText
+            }
+          }
+          categories {
+            nodes {
+              name
+              slug
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  `
+
+    const data = await fetchGraphQL<any>(query, { first, after })
+
+    // Transform the response to match our interface
+    return {
+        posts: {
+            nodes: data.caseStudies.nodes.map((post: any) => ({
+                id: post.id,
+                title: post.title,
+                slug: post.slug,
+                excerpt: post.excerpt,
+                content: '',
+                date: post.date,
+                author: {
+                    name: post.author?.node?.name || 'Unknown',
+                    avatar: post.author?.node?.avatar?.url,
+                },
+                featuredImage: post.featuredImage?.node
+                    ? {
+                        sourceUrl: post.featuredImage.node.sourceUrl,
+                        altText: post.featuredImage.node.altText || post.title,
+                    }
+                    : undefined,
+                categories: post.categories,
+            })),
+            pageInfo: data.caseStudies.pageInfo,
+        },
+    }
+}
+
+/**
+ * Fetch a single case study by slug
+ */
+export async function getCaseStudyBySlug(slug: string): Promise<WordPressPost | null> {
+    const query = `
+    query GetCaseStudyBySlug($slug: ID!) {
+      caseStudy(id: $slug, idType: SLUG) {
+        id
+        title
+        slug
+        content
+        excerpt
+        date
+        author {
+          node {
+            name
+            avatar {
+              url
+            }
+          }
+        }
+        featuredImage {
+          node {
+            sourceUrl
+            altText
+          }
+        }
+        categories {
+          nodes {
+            name
+            slug
+          }
+        }
+      }
+    }
+  `
+
+    const data = await fetchGraphQL<any>(query, { slug })
+
+    if (!data.caseStudy) {
+        return null
+    }
+
+    const post = data.caseStudy
+
+    return {
+        id: post.id,
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        content: post.content,
+        date: post.date,
+        author: {
+            name: post.author?.node?.name || 'Unknown',
+            avatar: post.author?.node?.avatar?.url,
+        },
+        featuredImage: post.featuredImage?.node
+            ? {
+                sourceUrl: post.featuredImage.node.sourceUrl,
+                altText: post.featuredImage.node.altText || post.title,
+            }
+            : undefined,
+        categories: post.categories,
+    }
+}
+
+/**
+ * Get all case study slugs for static generation
+ */
+export async function getAllCaseStudySlugs(): Promise<string[]> {
+    const query = `
+    query GetAllCaseStudySlugs {
+      caseStudies(first: 1000, where: { status: PUBLISH }) {
+        nodes {
+          slug
+        }
+      }
+    }
+  `
+
+    const data = await fetchGraphQL<any>(query)
+    return data.caseStudies.nodes.map((post: any) => post.slug)
+}
+
+/**
+ * Fetch all resources
+ */
+export async function getResources(first = 10, after?: string): Promise<PostsResponse> {
+    const query = `
+    query GetResources($first: Int!, $after: String) {
+      resources(first: $first, after: $after, where: { status: PUBLISH }) {
+        nodes {
+          id
+          title
+          slug
+          excerpt
+          date
+          author {
+            node {
+              name
+              avatar {
+                url
+              }
+            }
+          }
+          featuredImage {
+            node {
+              sourceUrl
+              altText
+            }
+          }
+          categories {
+            nodes {
+              name
+              slug
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  `
+
+    const data = await fetchGraphQL<any>(query, { first, after })
+
+    // Transform the response to match our interface
+    return {
+        posts: {
+            nodes: data.resources.nodes.map((post: any) => ({
+                id: post.id,
+                title: post.title,
+                slug: post.slug,
+                excerpt: post.excerpt,
+                content: '',
+                date: post.date,
+                author: {
+                    name: post.author?.node?.name || 'Unknown',
+                    avatar: post.author?.node?.avatar?.url,
+                },
+                featuredImage: post.featuredImage?.node
+                    ? {
+                        sourceUrl: post.featuredImage.node.sourceUrl,
+                        altText: post.featuredImage.node.altText || post.title,
+                    }
+                    : undefined,
+                categories: post.categories,
+            })),
+            pageInfo: data.resources.pageInfo,
+        },
+    }
+}
+
+/**
+ * Fetch a single resource by slug
+ */
+export async function getResourceBySlug(slug: string): Promise<WordPressPost | null> {
+    const query = `
+    query GetResourceBySlug($slug: ID!) {
+      resource(id: $slug, idType: SLUG) {
+        id
+        title
+        slug
+        content
+        excerpt
+        date
+        author {
+          node {
+            name
+            avatar {
+              url
+            }
+          }
+        }
+        featuredImage {
+          node {
+            sourceUrl
+            altText
+          }
+        }
+        categories {
+          nodes {
+            name
+            slug
+          }
+        }
+      }
+    }
+  `
+
+    const data = await fetchGraphQL<any>(query, { slug })
+
+    if (!data.resource) {
+        return null
+    }
+
+    const post = data.resource
+
+    return {
+        id: post.id,
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        content: post.content,
+        date: post.date,
+        author: {
+            name: post.author?.node?.name || 'Unknown',
+            avatar: post.author?.node?.avatar?.url,
+        },
+        featuredImage: post.featuredImage?.node
+            ? {
+                sourceUrl: post.featuredImage.node.sourceUrl,
+                altText: post.featuredImage.node.altText || post.title,
+            }
+            : undefined,
+        categories: post.categories,
+    }
+}
+
+/**
+ * Get all resource slugs for static generation
+ */
+export async function getAllResourceSlugs(): Promise<string[]> {
+    const query = `
+    query GetAllResourceSlugs {
+      resources(first: 1000, where: { status: PUBLISH }) {
+        nodes {
+          slug
+        }
+      }
+    }
+  `
+
+    const data = await fetchGraphQL<any>(query)
+    return data.resources.nodes.map((post: any) => post.slug)
+}
