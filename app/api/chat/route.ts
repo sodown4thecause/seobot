@@ -396,7 +396,6 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       execute: async ({ component }) => {
         return { displayed: true, component };
       },
->>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
     });
 
     const gatewayImageTool = tool({
