@@ -9,7 +9,7 @@ export const on_page_content_parsingToolWithClient = (
 ) =>
   tool({
     description: `This endpoint allows parsing the content on any page you specify and will return the structured content of the target page, including link URLs, anchors, headings, and textual content.`,
-    parameters: z.object({
+    inputSchema: z.object({
       url: z.string().describe("URL of the page to parse"),
       enable_javascript: z
         .boolean()
@@ -28,7 +28,7 @@ export const on_page_content_parsingToolWithClient = (
         .describe("Accept-Language header value")
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "on_page_content_parsing",
@@ -49,3 +49,4 @@ export const on_page_content_parsingToolWithClient = (
       }
     },
   });
+

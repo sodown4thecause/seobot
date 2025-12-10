@@ -3,70 +3,74 @@ import {
   convertToCoreMessages,
   tool,
   CoreMessage,
-  CoreUserMessage,
-  CoreAssistantMessage,
-  CoreToolMessage,
   stepCountIs,
+  createIdGenerator,
+  type UIMessage,
 } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { after } from "next/server";
+import { trace } from "@opentelemetry/api";
+import {
+  observe,
+  updateActiveObservation,
+  updateActiveTrace,
+} from "@langfuse/tracing";
 import { createClient } from "@/lib/supabase/server";
+import { serverEnv } from "@/lib/config/env";
 import { buildOnboardingSystemPrompt } from "@/lib/onboarding/prompts";
 import {
   type OnboardingData,
   type OnboardingStep,
 } from "@/lib/onboarding/state";
-import { serverEnv } from "@/lib/config/env";
-import {
-  findRelevantFrameworks,
-  formatFrameworksForPrompt,
-  batchIncrementUsage,
-} from "@/lib/ai/rag-service";
-import { handleDataForSEOFunctionCall } from "@/lib/ai/dataforseo-tools";
 import { getDataForSEOTools } from "@/lib/mcp/dataforseo-client";
 import { getFirecrawlTools } from "@/lib/mcp/firecrawl-client";
 import { getJinaTools } from "@/lib/mcp/jina-client";
 import { getWinstonTools } from "@/lib/mcp/winston-client";
-import { validateToolsCollection, loadEssentialTools } from "@/lib/ai/tool-schema-validator-v6";
+import { loadToolsForAgent } from "@/lib/ai/tool-schema-validator-v6";
 import { fixAllMCPTools } from "@/lib/mcp/schema-fixer";
 import { getContentQualityTools } from "@/lib/ai/content-quality-tools";
 import { getEnhancedContentQualityTools } from "@/lib/ai/content-quality-enhancements";
 import { searchWithPerplexity } from "@/lib/external-apis/perplexity";
-// import { buildCodemodeToolRegistry, createCodemodeTool } from "@/lib/ai/codemode"; // DISABLED
 import { OrchestratorAgent } from "@/lib/agents/orchestrator";
-import { AgentRouter, type AgentType } from "@/lib/agents/agent-router";
+import { RAGWriterOrchestrator } from "@/lib/agents/rag-writer-orchestrator";
+import { AgentRouter } from "@/lib/agents/agent-router";
 import { vercelGateway } from "@/lib/ai/gateway-provider";
+import { generateImageWithGatewayGemini } from "@/lib/ai/image-generation";
 import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
 import { z } from "zod";
+import { researchAgentTool, competitorAgentTool, frameworkRagTool } from "@/lib/agents/tools";
+import { handleApiError } from "@/lib/errors/handlers";
+import { createTelemetryConfig } from "@/lib/observability/langfuse";
+import {
+  ensureConversationForUser,
+  loadConversationMessages,
+  normalizeUIMessage,
+  saveConversationMessage,
+  type GenericUIMessage,
+} from "@/lib/chat/storage";
 
-export const runtime = "edge";
+export const maxDuration = 300; // 5 minutes
 
 // Using Claude Haiku 4.5 via Vercel Gateway
 const CHAT_MODEL_ID = "anthropic/claude-haiku-4.5";
 
-interface ChatMessage {
-  role: "user" | "assistant" | "system";
-  content?: string; // Legacy format
-  parts?: Array<{ type: string; text?: string }>; // AI SDK v5 format
-}
-
-interface OnboardingContext {
-  currentStep?: number;
-  data?: OnboardingData;
-}
-
 interface ChatContext {
   page?: string;
-  onboarding?: OnboardingContext;
+  onboarding?: {
+    currentStep?: number;
+    data?: OnboardingData;
+  };
   [key: string]: unknown;
 }
 
 interface RequestBody {
-  messages: any[];
+  messages?: UIMessage[]; // UIMessage[] from @ai-sdk/react useChat
+  chatId?: string;
+  conversationId?: string;
+  agentId?: string;
   context?: ChatContext;
 }
 
-export async function POST(req: Request) {
+const handler = async (req: Request) => {
   console.log('[Chat API] POST handler called');
 
   // Check rate limit
@@ -75,45 +79,112 @@ export async function POST(req: Request) {
     return rateLimitResponse;
   }
 
+  // Log request details
+  const contentType = req.headers.get('content-type');
+  console.log('[Chat API] Content-Type:', contentType);
+
   try {
-    console.log('[Chat API] About to parse request body');
     const body = (await req.json()) as RequestBody;
-    console.log('[Chat API] Body parsed successfully');
-    const { messages, context } = body;
+    console.log('[Chat API] Request body:', JSON.stringify({
+      messagesCount: body.messages?.length,
+      hasContext: !!body.context,
+      chatId: body.chatId,
+    }));
 
-    // Debug logging
-    console.log('[Chat API] Request body:', JSON.stringify(body, null, 2));
-    console.log('[Chat API] Messages type:', typeof messages);
-    console.log('[Chat API] Messages is array:', Array.isArray(messages));
-    console.log('[Chat API] Messages length:', messages?.length);
-    console.log('[Chat API] First message:', messages?.[0]);
+    const { messages: incomingMessages, chatId, context } = body;
+    const agentId = (context as any)?.agentId || 'general';
 
-    // Validate messages
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    // Extract onboarding context for system prompt building
+    const onboardingContext = context?.onboarding;
+    const isOnboarding = context?.page === 'onboarding' || !!onboardingContext;
+
+    const supabase = await createClient();
+
+    // Get current user (needed for rate limiting)
+    let user = null;
+    let authError = null;
+
+    try {
+      const authResult = await supabase.auth.getUser();
+      user = authResult.data.user;
+      authError = authResult.error;
+    } catch (err) {
+      console.warn('[Chat API] Auth check failed (safe to ignore for anon usage):', err);
+      // Treat as anonymous user
+      user = null;
+      // We don't set authError to avoid triggering downstream logic that expects a specific Supabase error shape
+    }
+
+    // Apply rate limiting
+    const rateLimitResponse = await rateLimitMiddleware(
+      req as unknown as import('next/server').NextRequest,
+      'CHAT',
+      user?.id
+    );
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
+    const requestedConversationId = chatId || (context as any)?.conversationId;
+    const resolvedAgentType = agentId || (context as any)?.agentType || 'general';
+
+    let conversationRecord: Awaited<ReturnType<typeof ensureConversationForUser>> | null = null;
+
+    // If user is authenticated, ensure we have a conversation (create if needed)
+    if (user) {
+      try {
+        conversationRecord = await ensureConversationForUser(
+          supabase,
+          user.id,
+          requestedConversationId || undefined, // Create new if not provided
+          resolvedAgentType,
+        );
+      } catch (error) {
+        console.error('[Chat API] Conversation lookup/creation failed:', error);
+        // Don't fail the request - allow it to proceed without conversation persistence
+        // The conversation will be created on the next message if needed
+      }
+    }
+
+    // Validate incoming messages - should be Message[] from useChat
+    if (!Array.isArray(incomingMessages) || incomingMessages.length === 0) {
       return new Response(
         JSON.stringify({ error: "Messages array is required and must not be empty" }),
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const supabase = await createClient();
+    // Normalize messages to GenericUIMessage format for storage
+    const normalizedMessages = incomingMessages.map(msg => normalizeUIMessage(msg));
 
-    // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const lastUserMessage = normalizedMessages[normalizedMessages.length - 1];
+    if (lastUserMessage?.role === 'user' && conversationRecord) {
+      await saveConversationMessage(supabase, conversationRecord.id, lastUserMessage, {
+        metadata: { source: 'user' },
+      });
+    }
 
-    // Initialize Orchestrator
-    const orchestrator = new OrchestratorAgent();
-
-    // Extract onboarding context if present
-    const onboardingContext = context?.onboarding;
-    const isOnboarding = context?.page === "onboarding";
+    // Ensure we always have a conversation ID for authenticated users
+    let activeConversationId = conversationRecord?.id ?? requestedConversationId;
+    
+    // If user is authenticated but we still don't have a conversation ID, force create one
+    if (!activeConversationId && user) {
+      console.log('[Chat API] No conversation ID available, creating new conversation for message persistence');
+      try {
+        const newConv = await ensureConversationForUser(supabase, user.id, undefined, resolvedAgentType);
+        activeConversationId = newConv.id;
+        conversationRecord = newConv;
+        console.log('[Chat API] Created new conversation:', activeConversationId);
+      } catch (e) {
+        console.error('[Chat API] Failed to create conversation for message persistence:', e);
+      }
+    }
 
     // Extract last user message content for intent detection
-    const lastUserMessage = messages[messages.length - 1];
-    const lastUserMessageContent = lastUserMessage.content || "";
+    const lastMsg = normalizedMessages[normalizedMessages.length - 1];
+    const lastUserMessageContent = Array.isArray(lastMsg.parts)
+      ? lastMsg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
+      : '';
 
     // WORKFLOW DETECTION: Check if user wants to run a workflow
     const { detectWorkflow, isWorkflowRequest, extractWorkflowId } =
@@ -140,47 +211,34 @@ export async function POST(req: Request) {
       );
     }
 
-    // RAG: Detect if query needs framework assistance
-    const shouldUseRAG = detectFrameworkIntent(lastUserMessageContent);
-
-    let retrievedFrameworks: string = "";
-    let frameworkIds: string[] = [];
-
-    // RAG: Retrieve relevant frameworks if needed
-    if (shouldUseRAG && !isOnboarding) {
-      try {
-        const ragStartTime = Date.now();
-        const frameworks = await findRelevantFrameworks(
-          lastUserMessageContent,
-          {
-            maxResults: 3,
-          },
-        );
-
-        if (frameworks.length > 0) {
-          retrievedFrameworks = formatFrameworksForPrompt(frameworks);
-          frameworkIds = frameworks.map((f) => f.id);
-          const ragDuration = Date.now() - ragStartTime;
-          console.log(
-            `[Chat] RAG retrieved ${frameworks.length} frameworks in ${ragDuration}ms`,
-          );
-        }
-      } catch (error) {
-        // Graceful degradation: continue without RAG if retrieval fails
-        console.warn(
-          "[Chat] RAG retrieval failed, continuing without frameworks:",
-          error,
-        );
-      }
-    }
-
     // MULTI-AGENT ROUTING: Determine which specialized agent should handle this query
     const routingResult = AgentRouter.routeQuery(lastUserMessageContent, context);
     console.log('[Chat API] Agent routing result:', {
       agent: routingResult.agent,
       confidence: routingResult.confidence,
       reasoning: routingResult.reasoning,
-      toolsCount: routingResult.tools.length
+      toolsCount: routingResult.tools.length,
+      toolsSample: routingResult.tools.slice(0, 10) // Log first 10 tools
+    });
+
+    // Update Langfuse trace with conversation context and user input
+    // (After routingResult is defined so we can include agentType in metadata)
+    updateActiveObservation({
+      input: lastUserMessageContent,
+    });
+
+    updateActiveTrace({
+      name: "chat-message",
+      sessionId: activeConversationId || undefined, // Groups related messages together
+      userId: user?.id || undefined, // Track which user made the request
+      input: lastUserMessageContent,
+      metadata: {
+        agentType: routingResult.agent,
+        page: context?.page,
+        isOnboarding: !!isOnboarding,
+        onboardingStep: onboardingContext?.currentStep,
+        workflowId: workflowId || undefined,
+      },
     });
 
     // Build system prompt for the selected agent
@@ -194,97 +252,86 @@ export async function POST(req: Request) {
       );
     } else {
       systemPrompt = AgentRouter.getAgentSystemPrompt(routingResult.agent, context);
-      // Add RAG context if available
-      if (retrievedFrameworks) {
-        systemPrompt += `\n\nRelevant frameworks and best practices:\n${retrievedFrameworks}`;
-      }
     }
 
     // LOAD MCP TOOLS based on selected agent
     console.log(`[Chat API] Loading MCP tools for ${routingResult.agent} agent`);
 
     const allMCPTools: Record<string, any> = {};
-    const toolLoadingResults = {
-      dataforseo: { loaded: 0, failed: false },
-      firecrawl: { loaded: 0, failed: false },
-      jina: { loaded: 0, failed: false },
-      winston: { loaded: 0, failed: false }
-    };
 
     // Load DataForSEO tools for SEO/AEO agent
-    let seoTools: Record<string, any> = {};
     if (routingResult.agent === 'seo-aeo' || routingResult.agent === 'content') {
       try {
-        console.log('[Chat API] Loading DataForSEO MCP tools for', routingResult.agent, 'agent');
         const dataforSEOTools = await getDataForSEOTools();
-        // Apply schema fixes to MCP tools
         const fixedSEOTools = fixAllMCPTools(dataforSEOTools);
         Object.assign(allMCPTools, fixedSEOTools);
+<<<<<<< HEAD
         toolLoadingResults.dataforseo = {
           loaded: Object.keys(fixedSEOTools).length,
           failed: false
         };
         console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedSEOTools).length} DataForSEO tools`);
+=======
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
       } catch (error) {
         console.error('[Chat API] Failed to load DataForSEO tools:', error);
-        toolLoadingResults.dataforseo = { loaded: 0, failed: true };
       }
     }
 
     // Load Firecrawl tools for SEO/AEO and Content agents
-    let firecrawlTools: Record<string, any> = {};
     if (routingResult.agent === 'seo-aeo' || routingResult.agent === 'content') {
       try {
-        console.log('[Chat API] Loading Firecrawl MCP tools for', routingResult.agent, 'agent');
         const firecrawlMCPTools = await getFirecrawlTools();
         const fixedFirecrawlTools = fixAllMCPTools(firecrawlMCPTools);
         Object.assign(allMCPTools, fixedFirecrawlTools);
+<<<<<<< HEAD
         toolLoadingResults.firecrawl = {
           loaded: Object.keys(fixedFirecrawlTools).length,
           failed: false
         };
         console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedFirecrawlTools).length} Firecrawl tools`);
+=======
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
       } catch (error) {
         console.error('[Chat API] Failed to load Firecrawl tools:', error);
-        toolLoadingResults.firecrawl = { loaded: 0, failed: true };
       }
     }
 
     // Load Jina tools for Content agent
-    let jinaTools: Record<string, any> = {};
     if (routingResult.agent === 'content') {
       try {
-        console.log('[Chat API] Loading Jina MCP tools for content agent');
         const jinaMCPTools = await getJinaTools();
         const fixedJinaTools = fixAllMCPTools(jinaMCPTools);
         Object.assign(allMCPTools, fixedJinaTools);
+<<<<<<< HEAD
         toolLoadingResults.jina = {
           loaded: Object.keys(fixedJinaTools).length,
           failed: false
         };
         console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedJinaTools).length} Jina tools`);
+=======
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
       } catch (error) {
         console.error('[Chat API] Failed to load Jina tools:', error);
-        toolLoadingResults.jina = { loaded: 0, failed: true };
       }
     }
 
     // Load Winston tools for Content agent (RAG feedback loop)
-    let winstonMCPTools: Record<string, any> = {};
     if (routingResult.agent === 'content') {
       try {
-        console.log('[Chat API] Loading Winston MCP tools for content agent feedback loop');
         const winstonTools = await getWinstonTools();
         const fixedWinstonTools = fixAllMCPTools(winstonTools);
         Object.assign(allMCPTools, fixedWinstonTools);
+<<<<<<< HEAD
         toolLoadingResults.winston = {
           loaded: Object.keys(fixedWinstonTools).length,
           failed: false
         };
         console.log(`[Chat API] ✓ Loaded ${Object.keys(fixedWinstonTools).length} Winston tools`);
+=======
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
       } catch (error) {
         console.error('[Chat API] Failed to load Winston tools:', error);
-        toolLoadingResults.winston = { loaded: 0, failed: true };
       }
     }
 
@@ -295,9 +342,9 @@ export async function POST(req: Request) {
     if (routingResult.agent === 'content') {
       contentQualityTools = getContentQualityTools();
       enhancedContentTools = getEnhancedContentQualityTools();
-      console.log(`[Chat API] ✓ Loaded ${Object.keys(contentQualityTools).length + Object.keys(enhancedContentTools).length} content quality tools`);
     }
 
+<<<<<<< HEAD
     // Add Perplexity tool - Available for content and general agents via Vercel AI Gateway
     let perplexityTool: Record<string, any> = {};
     if (routingResult.agent === 'content' || routingResult.agent === 'general' || routingResult.agent === 'seo-aeo') {
@@ -364,10 +411,13 @@ export async function POST(req: Request) {
     };
 
     // Orchestrator Tool - Content Generation with Research & Feedback Loop
+=======
+    // Orchestrator Tool - Content Generation with RAG + EEAT Feedback Loop
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
     const orchestratorTool = {
       generate_researched_content: tool({
         description:
-          "Generate high-quality, researched, and SEO-optimized content (blog posts, articles). This tool runs a comprehensive workflow: Research -> RAG (Best Practices) -> Write -> QA (Winston/Rytr) -> Feedback Loop.",
+          "Generate high-quality, researched, and SEO-optimized content (blog posts, articles). This tool runs a comprehensive workflow: Research (Perplexity + RAG) -> Write -> DataForSEO Scoring -> EEAT QA Review -> Revision Feedback Loop.",
         inputSchema: z.object({
           topic: z.string().describe("The main topic of the content"),
           type: z
@@ -376,18 +426,34 @@ export async function POST(req: Request) {
           keywords: z.array(z.string()).describe("Target keywords"),
           tone: z.string().optional().describe("Desired tone (e.g., professional, casual)"),
           wordCount: z.number().optional().describe("Target word count"),
+          competitorUrls: z.array(z.string()).optional().describe("Optional competitor URLs for comparison"),
         }),
-        execute: async (args: any) => {
+        execute: async (args) => {
           try {
+<<<<<<< HEAD
             console.log('[Orchestrator Tool] 🚀 Starting execution with args:', args);
 
             // Pass userId for learning storage
+=======
+            console.log('[RAG Writer Orchestrator Tool] 🚀 Starting execution with args:', args);
+
+            // Check credit limit before expensive operation
+            const { checkCreditLimit } = await import('@/lib/usage/limit-check');
+            const limitCheck = await checkCreditLimit(user?.id);
+
+            if (!limitCheck.allowed) {
+              return `❌ Credit limit exceeded. ${limitCheck.reason || `You've used $${limitCheck.currentSpendUsd.toFixed(2)} of your $${limitCheck.limitUsd.toFixed(2)} monthly limit.`} Please contact support or wait until ${limitCheck.resetDate?.toLocaleDateString() || 'next month'} for your credits to reset.`;
+            }
+
+            // Use new RAG + EEAT feedback loop orchestrator
+            const orchestrator = new RAGWriterOrchestrator();
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
             const result = await orchestrator.generateContent({
               ...args,
               userId: user?.id,
-              targetPlatforms: ["chatgpt", "perplexity", "claude"], // Default targets
             });
 
+<<<<<<< HEAD
             console.log('[Orchestrator Tool] ✓ Orchestrator completed successfully');
             console.log('[Orchestrator Tool] Content length:', result.content?.length || 0);
             console.log('[Orchestrator Tool] Metadata:', result.metadata);
@@ -398,21 +464,39 @@ export async function POST(req: Request) {
             console.log('[Orchestrator Tool] 📤 Returning content to AI SDK 6');
             console.log('[Orchestrator Tool] Content length:', contentResult.length);
             console.log('[Orchestrator Tool] Content preview:', contentResult.substring(0, 200) + '...');
+=======
+            console.log('[RAG Writer Orchestrator Tool] ✓ Orchestrator completed successfully');
+            console.log(`[RAG Writer Orchestrator Tool] Quality Scores - Overall: ${result.qualityScores.overall}, EEAT: ${result.qualityScores.eeat}, Depth: ${result.qualityScores.depth}`);
+
+            // Format response with quality scores and QA insights
+            let contentResult = result.content || "Content generation completed but no content was returned.";
+
+            // Add quality score summary
+            const scoreSummary = `
+## Quality Scores
+- **Overall Quality**: ${result.qualityScores.overall}/100
+- **DataForSEO Score**: ${result.qualityScores.dataforseo}/100
+- **EEAT Score**: ${result.qualityScores.eeat}/100
+- **Content Depth**: ${result.qualityScores.depth}/100
+- **Factual Accuracy**: ${result.qualityScores.factual}/100
+- **Revision Rounds**: ${result.revisionCount}
+
+${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n${result.qaReport.improvement_instructions.slice(0, 3).map((inst: string, i: number) => `${i + 1}. ${inst}`).join('\n')}` : ''}
+`;
+
+            contentResult = contentResult + scoreSummary;
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
 
             return contentResult;
           } catch (error) {
-            console.error("[Chat API] Orchestrator error:", error);
-            const errorResult = {
-              success: false,
-              error: "Failed to generate content. Please try again.",
-            };
-            console.log('[Orchestrator Tool] ❌ Returning error result to AI SDK');
-            return errorResult;
+            console.error("[Chat API] RAG Writer Orchestrator error:", error);
+            return "Failed to generate content. Please try again.";
           }
         },
-      } as any),
+      }),
     };
 
+<<<<<<< HEAD
     // Load essential tools only to avoid gateway limits
     console.log(`[Chat API] Total MCP tools loaded: ${Object.keys(allMCPTools).length}`);
     const essentialMCPTools = loadEssentialTools(allMCPTools);
@@ -437,36 +521,170 @@ export async function POST(req: Request) {
       jina: toolLoadingResults.jina,
       winston: toolLoadingResults.winston,
       essential_selected: Object.keys(essentialMCPTools).length
+=======
+    // Define Client UI Tool
+    const clientUiTool = tool({
+      description:
+        "Display an interactive UI component to the user. Use this when you need to collect specific information or show structured data.",
+      inputSchema: z.object({
+        component: z
+          .enum([
+            "url_input",
+            "card_selector",
+            "location_picker",
+            "confirmation_buttons",
+            "loading_indicator",
+            "analysis_result",
+          ])
+          .describe("The type of component to display"),
+        props: z.object({}).passthrough().describe("The properties/data for the component"),
+      }),
+      execute: async ({ component }) => {
+        return { displayed: true, component };
+      },
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
     });
 
+    const gatewayImageTool = tool({
+      description: "Generate images with Google Gemini 2.5 Flash Image via Vercel AI Gateway. Use when the user asks for an image or wants edits/regenerations.",
+      inputSchema: z.object({
+        prompt: z.string().describe("Base prompt for the image"),
+        previousPrompt: z.string().optional().describe("Previous prompt to refine from"),
+        editInstructions: z.string().optional().describe("Refinements or edits requested by the user"),
+        size: z.enum(["1024x1024", "1792x1024", "1024x1792"]).optional(),
+        aspectRatio: z.enum(["1:1", "4:3", "3:4", "16:9", "9:16"]).optional(),
+        seed: z.number().optional().describe("Optional seed for deterministic output"),
+        n: z.number().optional().describe("Number of images to request (default 1)"),
+        abortTimeoutMs: z.number().optional().describe("Timeout in milliseconds for generation"),
+      }),
+      execute: async (args) => {
+        try {
+          console.log('[Chat API] Generating image with prompt:', args.prompt);
+
+          const response = await generateImageWithGatewayGemini({
+            prompt: args.prompt,
+            previousPrompt: args.previousPrompt,
+            editInstructions: args.editInstructions,
+            size: args.size,
+            aspectRatio: args.aspectRatio,
+            seed: args.seed,
+            n: args.n,
+            abortTimeoutMs: args.abortTimeoutMs || 60000,
+          });
+
+          console.log('[Chat API] Image generated, uploading to storage...');
+
+          // Upload images to Supabase storage to avoid payload size limits
+          const uploadedImages: { url: string; name: string; mediaType: string }[] = [];
+
+          for (let idx = 0; idx < response.images.length; idx++) {
+            const img = response.images[idx];
+            const fileName = `generated/${Date.now()}-${Math.random().toString(36).substring(7)}-${idx}.png`;
+
+            // Convert base64 to buffer
+            const imageBuffer = Buffer.from(img.base64, 'base64');
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('article-images')
+              .upload(fileName, imageBuffer, {
+                contentType: img.mediaType || 'image/png',
+                cacheControl: '31536000', // 1 year cache
+              });
+
+            if (uploadError) {
+              console.error('[Chat API] Failed to upload image to storage:', uploadError);
+              // Fall back to data URL (may still fail for large images)
+              uploadedImages.push({
+                url: img.dataUrl,
+                name: `image-${idx + 1}.png`,
+                mediaType: img.mediaType || 'image/png',
+              });
+              continue;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('article-images')
+              .getPublicUrl(fileName);
+
+            console.log('[Chat API] Image uploaded successfully:', publicUrl);
+            uploadedImages.push({
+              url: publicUrl,
+              name: `image-${idx + 1}.png`,
+              mediaType: img.mediaType || 'image/png',
+            });
+          }
+
+          const primary = uploadedImages[0];
+
+          return {
+            type: 'image',
+            model: 'google/gemini-2.5-flash-image',
+            prompt: response.prompt,
+            size: args.size || '1024x1024',
+            url: primary?.url,
+            imageUrl: primary?.url,
+            mediaType: primary?.mediaType,
+            warnings: response.warnings,
+            count: uploadedImages.length,
+            files: uploadedImages.map(img => ({
+              name: img.name,
+              mediaType: img.mediaType,
+              url: img.url,
+            })),
+            parts: uploadedImages.map(img => ({
+              type: 'file',
+              mimeType: img.mediaType,
+              name: img.name,
+              url: img.url,
+            })),
+            content: `Image generated successfully! [View Image](${primary?.url})`,
+          };
+        } catch (error: any) {
+          console.error('[Chat API] Gateway image tool failed:', error);
+          return {
+            type: 'image',
+            model: 'google/gemini-2.5-flash-image',
+            status: 'error',
+            errorMessage: error?.message || 'Image generation failed',
+          };
+        }
+      }
+    });
+
+    // Construct Final Tool Set
     const allTools = {
-      ...coreTools,              // Always include core tools (orchestrator, perplexity, web search)
-      ...agentSpecificTools,     // Content quality tools for content agent
-      ...essentialMCPTools,      // Selected MCP tools (DataForSEO, Firecrawl, Jina, Winston)
-      client_ui: tool({
-        description:
-          "Display an interactive UI component to the user. Use this when you need to collect specific information or show structured data.",
+      // Core Tools (Always available)
+      ...orchestratorTool,
+      client_ui: clientUiTool,
+      gateway_image: gatewayImageTool,
+
+      // Best Practice: Specialized Agents as Tools
+      research_agent: researchAgentTool,
+      competitor_analysis: competitorAgentTool,
+      consult_frameworks: frameworkRagTool,
+
+      // Kept for backward compatibility/Router specific requests (can be refactored to use research_agent)
+      // Perplexity specific tool for direct queries if requested by agent
+      perplexity_search: tool({
+        description: "Search the web using Perplexity AI via Vercel AI Gateway. Use this for specific research queries.",
         inputSchema: z.object({
-          component: z
-            .enum([
-              "url_input",
-              "card_selector",
-              "location_picker",
-              "confirmation_buttons",
-              "loading_indicator",
-              "analysis_result",
-            ])
-            .describe("The type of component to display"),
-          props: z.object({}).passthrough().describe("The properties/data for the component"),
+          query: z.string().describe("The search query"),
         }),
-        execute: async ({ component }: any) => {
-          // The client handles the actual display via tool call rendering.
-          // We return a result to indicate the UI request was sent.
-          return { displayed: true, component };
+        execute: async ({ query }) => {
+          return await searchWithPerplexity({ query });
         },
-      } as any),
+      }),
+      // Web search for competitors (legacy alias for AgentRouter compatibility)
+      web_search_competitors: competitorAgentTool,
+
+      // Agent Specific Tools
+      ...(routingResult.agent === 'content' ? { ...contentQualityTools, ...enhancedContentTools } : {}),
+
+      // MCP Tools (Loaded based on agent type)
+      ...loadToolsForAgent(routingResult.agent, allMCPTools),
     };
 
+<<<<<<< HEAD
     // Log before filtering tools
     console.log('[Chat API] All tools loaded:', {
       totalToolsCount: Object.keys(allTools).length,
@@ -493,12 +711,20 @@ export async function POST(req: Request) {
     // Re-enable tools - let AI SDK 6 handle tool results properly
     const validatedTools = ENABLE_TOOLS ? filteredSafeTools : {};
 
+=======
+    // Filter out any undefined tools and ensure valid schema
+    const validatedTools = Object.fromEntries(
+      Object.entries(allTools).filter(([_, v]) => v !== undefined)
+    );
+
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
     // Log final validated tools that will be used
     console.log('[Chat API] ✓ Final validated tools for streamText:', {
       count: Object.keys(validatedTools).length,
       tools: Object.keys(validatedTools)
     });
 
+<<<<<<< HEAD
     // Convert UI messages to core messages for AI SDK 6
     console.log('[Chat API] Converting messages to core messages for AI SDK 6');
 
@@ -613,27 +839,39 @@ export async function POST(req: Request) {
         JSON.stringify({ error: "Failed to convert messages for AI SDK 6" }),
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
+=======
+    // Debug incoming messages
+    console.log('[Chat API] Incoming messages count:', incomingMessages.length);
+
+    const serverMessageIdGenerator = createIdGenerator({ prefix: 'msg', size: 16 });
+
+    // Convert Message[] from useChat to CoreMessage[] for streamText
+    // convertToCoreMessages handles the conversion properly, preserving parts and toolInvocations
+    let coreMessages: CoreMessage[];
+    try {
+      coreMessages = convertToCoreMessages(incomingMessages);
+      console.log('[Chat API] Converted to CoreMessage[], count:', coreMessages.length);
+    } catch (err) {
+      console.error('[Chat API] convertToCoreMessages failed:', err);
+      // Fallback: convert normalized messages if direct conversion fails
+      coreMessages = convertToCoreMessages(normalizedMessages);
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
     }
 
-    // Use AI SDK 6 ToolLoopAgent pattern for proper step management and tool result rendering
-    // MANUAL AGENT LOOP: Force text response after tool calls
-    const result = streamText({
+    // Use AI SDK 6 with stopWhen conditions for tool loop control
+    const resultOrPromise = streamText({
       model: vercelGateway.languageModel(CHAT_MODEL_ID),
       messages: coreMessages,
       system: systemPrompt,
       tools: validatedTools,
-      // CRITICAL: Enable multi-step calls to generate text after tool execution
-      stopWhen: stepCountIs(10), // Stop after 10 steps maximum
-      experimental_telemetry: {
-        isEnabled: true,
-        functionId: "chat-api",
-        metadata: {
-          environment: process.env.NODE_ENV || "development",
-          runtime: "edge",
-          model: CHAT_MODEL_ID,
-          provider: "gateway",
+      toolChoice: 'auto',
+      // AI SDK 6: Model fallbacks via Vercel AI Gateway
+      providerOptions: {
+        gateway: {
+          models: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash'], // Fallback models
         },
       },
+<<<<<<< HEAD
       // Force text generation after tool execution
       toolChoice: 'auto', // Let AI decide when to use tools vs generate text
       onError: (error) => {
@@ -665,10 +903,35 @@ export async function POST(req: Request) {
         }
 
         // Save messages after completion
+=======
+      // AI SDK 6: Use stopWhen instead of maxSteps
+      stopWhen: [
+        stepCountIs(10), // Maximum 10 steps to prevent runaway costs
+      ],
+      experimental_telemetry: createTelemetryConfig('chat-stream', {
+        userId: user?.id,
+        sessionId: activeConversationId || context?.conversationId, // Langfuse session tracking
+        agentType: routingResult.agent,
+        page: context?.page,
+        isOnboarding: !!isOnboarding,
+        onboardingStep: onboardingContext?.currentStep,
+        workflowId: workflowId || undefined,
+        toolsCount: Object.keys(validatedTools).length,
+        conversationId: activeConversationId, // Keep for backward compatibility
+        // MCP tools enabled as individual boolean flags (objects not allowed in telemetry)
+        mcpDataforseoEnabled: routingResult.agent === 'seo-aeo' || routingResult.agent === 'content',
+        mcpFirecrawlEnabled: routingResult.agent === 'seo-aeo' || routingResult.agent === 'content',
+        mcpJinaEnabled: routingResult.agent === 'content',
+        mcpWinstonEnabled: routingResult.agent === 'content',
+      }),
+      onFinish: async ({ response, usage }) => {
+        const { messages: finalMessages } = response;
+
+        // Log AI usage
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
         if (user && !authError) {
-          // We need to adapt standard messages to our DB schema
-          // This is a simplified version of saving, you might need to adjust based on exact DB schema
           try {
+<<<<<<< HEAD
             const lastMessage = finalMessages[finalMessages.length - 1];
             if (lastMessage && lastMessage.role === 'assistant') {
               let content = "";
@@ -694,242 +957,150 @@ export async function POST(req: Request) {
                 await saveOnboardingProgress(supabase, user.id, onboardingContext.data);
               }
             }
+=======
+            const { logAIUsage, extractUsageFromResult } = await import('@/lib/analytics/usage-logger');
+            await logAIUsage({
+              userId: user.id,
+              conversationId: activeConversationId || context?.conversationId,
+              agentType: 'general',
+              model: CHAT_MODEL_ID,
+              promptTokens: usage?.inputTokens || 0,
+              completionTokens: usage?.outputTokens || 0,
+              toolCalls: (response as any).steps?.reduce((sum: number, step: any) => sum + (step.toolCalls?.length || 0), 0) || 0,
+              metadata: {
+                onboarding: !!onboardingContext,
+              },
+            });
+>>>>>>> 8390360ccfd918d99ad99d77f545e3a1fa0c9ae6
           } catch (error) {
-            console.error("Error saving chat messages:", error);
+            console.error('[Chat API] Error logging usage:', error);
           }
         }
 
-        // Track framework usage
-        if (frameworkIds.length > 0) {
-          batchIncrementUsage(frameworkIds).catch((err) =>
-            console.warn("[Chat] Failed to track framework usage:", err),
-          );
-        }
+        // Note: Assistant messages are saved in toUIMessageStreamResponse onFinish callback
+        // to the correct 'messages' table with proper conversation_id
       },
     });
 
-    // AI SDK v6 uses toUIMessageStreamResponse instead of toDataStreamResponse
+    // Handle potential Promise return (in case of version mismatch or async behavior)
+    let result = resultOrPromise;
+    if (resultOrPromise && typeof (resultOrPromise as any).then === 'function') {
+      console.log('[Chat API] streamText returned a Promise. Awaiting...');
+      result = await resultOrPromise;
+    }
+
+    console.log('[Chat API] streamText result keys:', Object.keys(result));
+
+    // Critical for serverless: flush traces before function terminates
+    // Get langfuseSpanProcessor from global (set in instrumentation.ts)
+    const langfuseSpanProcessor = (global as any).langfuseSpanProcessor;
+    if (langfuseSpanProcessor) {
+      after(async () => await langfuseSpanProcessor.forceFlush());
+    }
+
+    // AI SDK v6: Use toUIMessageStreamResponse for proper chat transport compatibility
+    // Pass originalMessages to prevent duplicate assistant messages (see troubleshooting guide)
     return result.toUIMessageStreamResponse({
       headers: {
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       },
+      originalMessages: incomingMessages, // Use original Message[] from useChat
+      generateMessageId: serverMessageIdGenerator,
+      onFinish: async ({ messages: uiMessages }) => {
+        console.log('[Chat API] toUIMessageStreamResponse onFinish:', {
+          hasMessages: !!uiMessages?.length,
+          messageCount: uiMessages?.length || 0,
+          activeConversationId,
+          hasUser: !!user,
+        });
+
+        if (!uiMessages?.length || !activeConversationId || !user) {
+          console.warn('[Chat API] Skipping assistant message save - missing required data:', {
+            hasMessages: !!uiMessages?.length,
+            activeConversationId,
+            hasUser: !!user,
+          });
+          return;
+        }
+
+        const finalAssistantMessage = uiMessages[uiMessages.length - 1];
+        if (finalAssistantMessage?.role !== 'assistant') {
+          console.warn('[Chat API] Last message is not assistant, skipping save');
+          return;
+        }
+
+        // Log tool invocations for debugging image generation (AI SDK 6 uses parts)
+        const toolParts = finalAssistantMessage.parts?.filter((p: any) => p.type === 'tool-invocation') || [];
+        if (toolParts.length > 0) {
+          console.log('[Chat API] Final assistant message tool invocations:', {
+            count: toolParts.length,
+            tools: toolParts.map((t: any) => ({
+              toolName: t.toolInvocation?.toolName,
+              hasResult: !!t.toolInvocation?.result,
+              resultKeys: t.toolInvocation?.result ? Object.keys(t.toolInvocation.result) : [],
+            })),
+          });
+
+          // Log image tool results specifically
+          const imageTools = toolParts.filter(
+            (t: any) => t.toolInvocation?.toolName === 'gateway_image' && t.toolInvocation?.state === 'result'
+          );
+          if (imageTools.length > 0) {
+            console.log('[Chat API] Image tool results:', imageTools.map((t: any) => ({
+              // Safety check for result properties
+              hasFiles: t.toolInvocation?.result && Array.isArray(t.toolInvocation.result.files),
+              filesCount: t.toolInvocation?.result?.files?.length || 0,
+              hasParts: t.toolInvocation?.result && Array.isArray(t.toolInvocation.result.parts),
+              partsCount: t.toolInvocation?.result?.parts?.length || 0,
+              hasUrl: !!t.toolInvocation?.result?.url,
+            })));
+          }
+        }
+
+        try {
+          const normalizedMessage = normalizeUIMessage(finalAssistantMessage as GenericUIMessage);
+          console.log('[Chat API] Saving assistant message:', {
+            conversationId: activeConversationId,
+            messageId: normalizedMessage.id,
+            role: normalizedMessage.role,
+            partsCount: normalizedMessage.parts?.length || 0,
+            hasTextParts: normalizedMessage.parts?.some((p: any) => p.type === 'text') || false,
+          });
+          
+          await saveConversationMessage(
+            supabase,
+            activeConversationId,
+            normalizedMessage,
+            { metadata: { source: 'assistant' } },
+          );
+          console.log('[Chat API] ✓ Assistant message saved successfully');
+        } catch (error) {
+          console.error('[Chat API] Failed to persist assistant message:', error);
+        }
+      },
     });
 
   } catch (error) {
-    const err = error as Error;
-    console.error("Chat API error:", err);
-    return new Response(
-      JSON.stringify({ error: err?.message || "Internal Server Error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
+    console.error("Chat API error:", error);
+
+    // Update trace with error before returning
+    updateActiveObservation({
+      output: error instanceof Error ? error.message : String(error),
+      level: "ERROR"
+    });
+    updateActiveTrace({
+      output: error instanceof Error ? error.message : String(error),
+    });
+    trace.getActiveSpan()?.end();
+
+    // Use standardized error handler
+    return handleApiError(error, "Failed to process chat request");
   }
-}
+};
 
-/**
- * Detect if user's query should trigger RAG framework retrieval
- */
-function detectFrameworkIntent(message: string): boolean {
-  const messageLower = message.toLowerCase();
-
-  // Action keywords indicating content creation
-  const actionKeywords = [
-    "write",
-    "create",
-    "generate",
-    "draft",
-    "compose",
-    "build",
-    "make",
-    "develop",
-    "produce",
-    "craft",
-  ];
-
-  // Content type keywords
-  const contentTypes = [
-    "blog post",
-    "article",
-    "landing page",
-    "email",
-    "ad",
-    "social post",
-    "tweet",
-    "copy",
-    "content",
-    "headline",
-    "title",
-    "description",
-    "snippet",
-    "schema", // Added schema to content types for SEO
-  ];
-
-  // Framework-specific keywords
-  const frameworkKeywords = [
-    "structure",
-    "framework",
-    "template",
-    "format",
-    "outline",
-    "organize",
-    "layout",
-    "pattern",
-  ];
-
-  // SEO-specific keywords
-  const seoKeywords = [
-    "seo",
-    "optimize",
-    "rank",
-    "serp",
-    "meta",
-    "keywords",
-    "snippet",
-    "featured",
-    "paa",
-    "people also ask",
-    "header",
-    "h1",
-    "h2",
-  ];
-
-  // Check if message contains relevant keywords
-  const hasActionKeyword = actionKeywords.some((kw) =>
-    messageLower.includes(kw),
-  );
-  const hasContentType = contentTypes.some((kw) => messageLower.includes(kw));
-  const hasFrameworkKeyword = frameworkKeywords.some((kw) =>
-    messageLower.includes(kw),
-  );
-  const hasSeoKeyword = seoKeywords.some((kw) => messageLower.includes(kw));
-
-  // Trigger RAG if:
-  // - Action keyword + content type ("write a blog post")
-  // - Framework keyword ("what structure should I use")
-  // - Action keyword + SEO keyword ("optimize my title")
-  return (
-    (hasActionKeyword && hasContentType) ||
-    hasFrameworkKeyword ||
-    (hasActionKeyword && hasSeoKeyword)
-  );
-}
-
-function buildGeneralSystemPrompt(
-  context?: ChatContext,
-  ragFrameworks?: string,
-): string {
-  const basePrompt = `You are an expert SEO assistant helping users improve their search rankings and create optimized content. You are friendly, professional, and provide actionable advice.
-
-Your capabilities include:
-- Analyzing websites and competitors
-- Finding keyword opportunities
-- Creating SEO-optimized content
-- Validating content quality and originality
-- Providing strategic recommendations
-- Guiding users through setup processes
-
-You have access to 40+ SEO tools through the DataForSEO MCP server. These tools use simplified filter schemas optimized for LLM usage, making them easy to use. The tools cover:
-- AI Optimization (ChatGPT, Claude, Perplexity analysis)
-- Keyword Research (search volume, suggestions, difficulty)
-- SERP Analysis (Google rankings, SERP features)
-- Competitor Analysis (domain overlap, competitor discovery)
-- Domain Analysis (traffic, keywords, rankings, technologies)
-- On-Page Analysis (content parsing, Lighthouse audits)
-- Content Generation (optimized content creation)
-
-For high-quality article or blog post requests, use the 'generate_researched_content' tool. This specialized tool handles the entire workflow:
-1. Deep research on the topic
-2. RAG-based optimization using best practices
-3. Content writing with "human-like" quality
-4. Automated QA loop with Winston AI (detection) and Rytr (improvement)
-5. Continuous learning loop
-
-You also have access to content quality and generation tools:
-- Winston AI: Plagiarism detection, AI content detection, SEO validation
-- Rytr AI: SEO content generation, meta titles/descriptions, content improvement
-- Firecrawl: Web scraping and content extraction
-- Perplexity: Citation-based research with authoritative sources
-- OpenAI: Chat completions and embeddings
-
-When generating or validating content:
-1. Use Rytr to generate SEO-optimized content with proper tone and keywords
-2. Use Winston AI to validate content for plagiarism and AI detection
-3. Ensure all content is original, engaging, and SEO-compliant
-4. Provide recommendations for improving content quality
-
-Be conversational and helpful. Ask clarifying questions when needed. Keep responses concise but informative.`;
-
-  let prompt = basePrompt;
-
-  // Inject RAG frameworks if available
-  if (ragFrameworks && ragFrameworks.length > 0) {
-    prompt += "\n\n" + ragFrameworks;
-  }
-
-  if (context) {
-    prompt += `\n\nCurrent Context: ${JSON.stringify(context)}`;
-  }
-
-  return prompt;
-}
-
-async function saveChatMessages(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  messages: ChatMessage[],
-  onboardingContext?: OnboardingContext,
-) {
-  try {
-    const lastMessage = messages[messages.length - 1];
-    const content =
-      lastMessage.parts?.find((p) => p.type === "text")?.text ||
-      lastMessage.content ||
-      "";
-    const chatMessage = {
-      user_id: userId,
-      role: lastMessage.role,
-      content: content,
-      metadata: onboardingContext ? { onboarding: onboardingContext } : {},
-    };
-
-    await supabase.from("chat_messages").insert(chatMessage);
-  } catch (error) {
-    console.error("Error saving chat messages:", error);
-  }
-}
-
-async function saveOnboardingProgress(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  data: OnboardingData,
-) {
-  try {
-    // Check if profile exists
-    const { data: existing } = await supabase
-      .from("business_profiles")
-      .select("id")
-      .eq("user_id", userId)
-      .single();
-
-    const profileData: Record<string, unknown> = {
-      user_id: userId,
-      website_url: data.websiteUrl || null,
-      industry: data.industry || null,
-      goals: data.goals || null,
-      locations: data.location ? [data.location] : null,
-      content_frequency: data.contentFrequency || null,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (existing) {
-      await supabase
-        .from("business_profiles")
-        .update(profileData)
-        .eq("user_id", userId);
-    } else {
-      await supabase.from("business_profiles").insert(profileData);
-    }
-  } catch (error) {
-    console.error("Error saving onboarding progress:", error);
-  }
-}
+// Wrap handler with observe() to create a Langfuse trace
+export const POST = observe(handler, {
+  name: "handle-chat-message",
+  endOnExit: false, // Don't end observation until stream finishes
+});

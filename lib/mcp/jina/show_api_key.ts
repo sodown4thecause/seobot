@@ -9,8 +9,8 @@ export const show_api_keyToolWithClient = (
 ) =>
   tool({
     description: `Return the bearer token from the Authorization header of the MCP settings, which is used to debug.`,
-    parameters: z.object({}),
-    execute: async (args): Promise<string> => {
+    inputSchema: z.object({}),
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "show_api_key",
@@ -31,3 +31,4 @@ export const show_api_keyToolWithClient = (
       }
     },
   });
+

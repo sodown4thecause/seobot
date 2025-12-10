@@ -8,7 +8,6 @@
  * - Edge-compatible implementation (no Node.js APIs)
  */
 
-import { createClient } from '@supabase/supabase-js'
 import { generateEmbedding } from './embedding'
 import { type FrameworkCategory } from './framework-seeds'
 import { LRUCache } from 'lru-cache'
@@ -20,6 +19,7 @@ import {
   CACHE_PREFIXES,
   CACHE_TTL,
 } from '../redis/client'
+import { createAdminClient } from '@/lib/supabase/server'
 
 // ============================================================================
 // TYPES
@@ -103,24 +103,15 @@ function getCacheKey(query: string, options: RetrievalOptions = {}): string {
 }
 
 // ============================================================================
-// SUPABASE CLIENT (CLIENT-SIDE)
+// SUPABASE CLIENT (SERVER-SIDE WITH POOLING)
 // ============================================================================
 
-let supabaseClient: ReturnType<typeof createClient> | null = null
-
+/**
+ * Get Supabase client for RAG operations
+ * Uses admin client singleton for connection pooling
+ */
 function getSupabaseClient() {
-  if (!supabaseClient) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-    if (!url || !anonKey) {
-      throw new Error('Supabase environment variables not configured')
-    }
-
-    supabaseClient = createClient(url, anonKey)
-  }
-
-  return supabaseClient
+  return createAdminClient()
 }
 
 // ============================================================================
@@ -311,11 +302,11 @@ export async function findRelevantFrameworks(
       return []
     }
 
-    // Fetch full framework details
+    // Fetch full framework details (optimized: select only needed columns)
     const frameworkIds = data.map((r) => r.id)
     const { data: fullFrameworks, error: fetchError } = await supabase
       .from('writing_frameworks')
-      .select('*')
+      .select('id, name, description, structure, examples, category, metadata')
       .in('id', frameworkIds)
 
     if (fetchError || !fullFrameworks) {
@@ -453,19 +444,16 @@ export async function incrementFrameworkUsage(
     
     // Fire-and-forget: don't await
     // Note: Supabase doesn't support raw SQL in update, so we fetch and update
-    // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
     supabase
       .from('writing_frameworks')
       .select('usage_count')
       .eq('id', frameworkId)
       .single()
       .then(({ data: current }) => {
-        if (current && typeof (current as any).usage_count === 'number') {
-          const usageCount = (current as any).usage_count + 1
-          // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
+        if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
+          const usageCount = (current as Record<string, unknown>).usage_count as number + 1
           return supabase
             .from('writing_frameworks')
-            // @ts-ignore
             .update({ usage_count: usageCount })
             .eq('id', frameworkId)
         }
@@ -498,19 +486,16 @@ export async function batchIncrementUsage(
     // Update all frameworks in one query
     // Note: Supabase doesn't support raw SQL, so we need to fetch and update individually
     for (const frameworkId of frameworkIds) {
-      // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
       supabase
         .from('writing_frameworks')
         .select('usage_count')
         .eq('id', frameworkId)
         .single()
         .then(({ data: current }) => {
-          if (current && typeof (current as any).usage_count === 'number') {
-            const usageCount = (current as any).usage_count + 1
-            // @ts-ignore - writing_frameworks table type not fully defined in Supabase types
+          if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
+            const usageCount = (current as Record<string, unknown>).usage_count as number + 1
             return supabase
               .from('writing_frameworks')
-              // @ts-ignore
               .update({ usage_count: usageCount })
               .eq('id', frameworkId)
           }

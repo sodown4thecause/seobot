@@ -14,10 +14,12 @@ import {
   Target,
   Search,
   Users,
+  DollarSign,
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Overview', href: '/admin', icon: Home },
+  { name: 'Usage Analytics', href: '/admin/usage', icon: DollarSign },
   { name: 'API Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Knowledge Base', href: '/admin/knowledge', icon: Database },
   { name: 'Settings', href: '/admin/settings', icon: Settings },

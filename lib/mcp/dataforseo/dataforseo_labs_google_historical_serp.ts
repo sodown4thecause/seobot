@@ -9,7 +9,7 @@ export const dataforseo_labs_google_historical_serpToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with Google SERPs collected within the specified time frame. You will also receive a complete overview of featured snippets and other extra elements that were present within the specified dates. The data will allow you to analyze the dynamics of keyword rankings over time for the specified keyword and location.`,
-    parameters: z.object({
+    inputSchema: z.object({
       keyword: z.string().describe("target keyword"),
       location_name: z
         .string()
@@ -31,7 +31,7 @@ example:
         )
         .default("en"),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_historical_serp",
@@ -52,3 +52,4 @@ example:
       }
     },
   });
+

@@ -1,64 +1,45 @@
-import { generateObject, generateText } from 'ai'
+import 'server-only'
+import { Buffer } from 'node:buffer'
+import { generateObject, generateText, experimental_generateImage as generateImage } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { serverEnv } from '@/lib/config/env'
+import { createTelemetryConfig } from '@/lib/observability/langfuse'
+import { createAdminClient } from '@/lib/supabase/server'
+import { vercelGateway } from '@/lib/ai/gateway-provider'
+
+// Re-export types for backward compatibility (these can be imported from image-generation-types.ts for client code)
+export type {
+  ImageGenerationOptions,
+  GeneratedImage,
+  ImageSuggestion,
+  GatewayGeminiImageOptions,
+  GatewayGeminiImageResult,
+  GatewayGeminiImageResponse,
+  GeminiImageRequest,
+  GeminiGeneratedImage,
+} from './image-generation-types'
+export { SEOPrompts } from './image-generation-types'
+
+import type {
+  ImageGenerationOptions,
+  GeneratedImage,
+  ImageSuggestion,
+  GatewayGeminiImageOptions,
+  GatewayGeminiImageResult,
+  GatewayGeminiImageResponse,
+  GeminiImageRequest,
+  GeminiGeneratedImage,
+} from './image-generation-types'
 
 // Initialize AI providers
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+  apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Supabase client for storing generated images (lazy initialization)
-let supabaseClient: ReturnType<typeof createClient> | null = null
-
+// Use singleton admin client for Supabase operations
 function getSupabase() {
-  if (!supabaseClient) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase configuration is missing')
-    }
-    
-    supabaseClient = createClient(supabaseUrl, supabaseKey)
-  }
-  return supabaseClient
-}
-
-export interface ImageGenerationOptions {
-  prompt: string
-  style?: 'realistic' | 'illustration' | 'diagram' | 'infographic' | 'abstract'
-  size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792'
-  quality?: 'standard' | 'hd'
-  numberOfImages?: number
-  articleContext?: {
-    title: string
-    content: string
-    targetKeyword: string
-    brandVoice?: string
-  }
-}
-
-export interface GeneratedImage {
-  id: string
-  url: string
-  altText: string
-  caption?: string
-  metadata: {
-    prompt: string
-    style: string
-    size: string
-    provider: string
-    generatedAt: string
-  }
-}
-
-export interface ImageSuggestion {
-  type: 'hero' | 'infographic' | 'diagram' | 'illustration' | 'chart'
-  prompt: string
-  description: string
-  placement: 'top' | 'middle' | 'bottom' | 'inline'
-  priority: 'high' | 'medium' | 'low'
+  return createAdminClient()
 }
 
 /**
@@ -106,6 +87,13 @@ Return as JSON array.`
       model: google('gemini-2.5-pro'),
       prompt,
       schema: imageSuggestionSchema,
+      experimental_telemetry: createTelemetryConfig('image-suggestions', {
+        title,
+        targetKeyword,
+        contentLength: content.length,
+        provider: 'google',
+        model: 'gemini-2.5-pro',
+      }),
     })
 
     return object as ImageSuggestion[]
@@ -153,6 +141,14 @@ Return only the enhanced prompt, no explanations.`
     const result = await generateText({
       model: google('gemini-2.5-pro'),
       prompt: contextualPrompt,
+      experimental_telemetry: createTelemetryConfig('image-prompt-enhance', {
+        style,
+        hasArticleContext: !!articleContext,
+        articleTitle: articleContext?.title,
+        targetKeyword: articleContext?.targetKeyword,
+        provider: 'google',
+        model: 'gemini-2.5-pro',
+      }),
     })
 
     return result.text
@@ -178,7 +174,7 @@ export async function generateImageWithOpenAI(
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${serverEnv.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -271,6 +267,13 @@ Return only the alt text, no quotes or explanations.`
     const result = await generateText({
       model: google('gemini-2.5-pro'),
       prompt: altPrompt,
+      experimental_telemetry: createTelemetryConfig('image-alt-text-generation', {
+        hasArticleContext: !!articleContext,
+        articleTitle: articleContext?.title,
+        targetKeyword: articleContext?.targetKeyword,
+        provider: 'google',
+        model: 'gemini-2.5-pro',
+      }),
     })
 
     return (result.text || 'AI-generated image for article content').substring(0, 125)
@@ -358,24 +361,81 @@ export function getImageGenerationCost(
   return numberOfImages * baseCost * (sizeMultiplier[size as keyof typeof sizeMultiplier] || 1)
 }
 
+export async function generateImageWithGatewayGemini(
+  options: GatewayGeminiImageOptions
+): Promise<GatewayGeminiImageResponse> {
+  const {
+    prompt,
+    previousPrompt,
+    editInstructions,
+    size = '1024x1024',
+    aspectRatio,
+    n = 1,
+    seed,
+    abortTimeoutMs = 45000,
+  } = options
+
+  const promptParts = [prompt]
+  if (previousPrompt) {
+    promptParts.push(`Previous prompt: ${previousPrompt}`)
+  }
+  if (editInstructions) {
+    promptParts.push(`Refinement request: ${editInstructions}`)
+  }
+
+  const details: string[] = []
+  if (size) details.push(`Target size: ${size}`)
+  if (aspectRatio) details.push(`Aspect ratio: ${aspectRatio}`)
+  if (n && n > 1) details.push(`Number of images: ${n}`)
+  if (seed !== undefined) details.push(`Seed: ${seed}`)
+  if (details.length) {
+    promptParts.push(details.join(' | '))
+  }
+
+  const finalPrompt = promptParts.filter(Boolean).join('\n\n').trim()
+
+  const model = vercelGateway.languageModel('google/gemini-2.5-flash-image')
+
+  const result = await generateText({
+    model,
+    prompt: finalPrompt,
+    abortSignal: AbortSignal.timeout(abortTimeoutMs),
+  })
+
+  const fileImages = (result.files || []).filter(f => f.mediaType?.startsWith('image/'))
+
+  if (!fileImages.length) {
+    throw new Error('No image generated from gateway Gemini')
+  }
+
+  const images: GatewayGeminiImageResult[] = fileImages.map((file, index) => {
+    const mediaType = file.mediaType || 'image/png'
+    const base64 = (file as any).base64
+      || ((file as any).uint8Array ? Buffer.from((file as any).uint8Array).toString('base64') : '')
+
+    if (!base64) {
+      throw new Error('Image payload missing base64 data')
+    }
+
+    return {
+      id: `gemini-gateway-${Date.now()}-${index}`,
+      base64,
+      dataUrl: `data:${mediaType};base64,${base64}`,
+      mediaType,
+    }
+  })
+
+  return {
+    prompt: finalPrompt,
+    images,
+    warnings: (result as any).warnings,
+    providerMetadata: (result as any).providerMetadata,
+  }
+}
+
 // ============================================================================
 // GEMINI 2.5 FLASH IMAGE GENERATION
 // ============================================================================
-
-export interface GeminiImageRequest {
-  prompt: string
-  size?: 'small' | 'medium' | 'large'
-  style?: 'realistic' | 'artistic' | 'illustrated' | 'photographic'
-  type?: 'blog' | 'social' | 'product' | 'infographic' | 'custom'
-}
-
-export interface GeminiGeneratedImage {
-  id: string
-  data: Uint8Array
-  mediaType: string
-  prompt: string
-  timestamp: number
-}
 
 /**
  * Generate image using Google Gemini 2.5 Flash Image
@@ -384,7 +444,8 @@ export interface GeminiGeneratedImage {
 export async function generateImageWithGemini(
   request: GeminiImageRequest
 ): Promise<GeminiGeneratedImage> {
-  const { GoogleGenAI } = require('@google/genai')
+  // Dynamic import for optional dependency
+  const { GoogleGenAI } = await import('@google/genai')
   
   try {
     const { prompt, size = 'medium', style = 'realistic', type = 'blog' } = request
@@ -411,7 +472,7 @@ export async function generateImageWithGemini(
 
     // Initialize Google GenAI
     const ai = new GoogleGenAI({
-      apiKey: process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_API_KEY,
+      apiKey: serverEnv.GOOGLE_CLOUD_API_KEY || serverEnv.GOOGLE_API_KEY,
     })
 
     const generationConfig = {
@@ -435,14 +496,20 @@ export async function generateImageWithGemini(
 
     // Extract image from response
     const candidate = response.candidates[0]
+    if (!candidate.content?.parts) {
+      throw new Error('No content parts found in response')
+    }
     const imagePart = candidate.content.parts.find((part: any) => part.inlineData)
-    
+
     if (!imagePart || !imagePart.inlineData) {
       throw new Error('No image data found in response')
     }
 
     // Convert base64 to Uint8Array
     const base64Data = imagePart.inlineData.data
+    if (!base64Data) {
+      throw new Error('No image data found in response')
+    }
     const binaryString = atob(base64Data)
     const uint8Array = new Uint8Array(binaryString.length)
     for (let i = 0; i < binaryString.length; i++) {
@@ -480,6 +547,10 @@ export async function editImageWithGemini(
       prompt: `${editPrompt}. Maintain the original composition and quality.
               Make precise, natural-looking changes. High resolution output.`,
       maxOutputTokens: 1000,
+      experimental_telemetry: createTelemetryConfig('image-edit', {
+        provider: 'google',
+        model: 'gemini-2.5-flash-image-preview',
+      }),
     })
 
     // Note: In AI SDK v5, image editing might need to be done differently
@@ -530,41 +601,4 @@ export async function generateImageVariationsWithGemini(
   return successful
 }
 
-/**
- * SEO-optimized image prompts for common article types
- */
-export const SEOPrompts = {
-  blogFeatured: (topic: string, keywords: string[] = []) =>
-    `Professional blog featured image for: ${topic}.
-     Include keywords: ${keywords.join(', ')}.
-     Clean, modern design with space for text overlay.
-     High quality, professional appearance.`,
-
-  socialShare: (title: string, brand?: string) =>
-    `Social media shareable image for: "${title}".
-     ${brand ? `Brand: ${brand}.` : ''}
-     Eye-catching, engaging design optimized for social media.
-     Vibrant colors, clear typography, share-friendly.`,
-
-  productShowcase: (product: string, features: string[] = []) =>
-    `Product showcase image for: ${product}.
-     Features: ${features.join(', ')}.
-     Clean white background, professional product photography,
-     commercial quality, e-commerce optimized.`,
-
-  infographic: (topic: string, dataPoints: string[] = []) =>
-    `Infographic about: ${topic}.
-     Data: ${dataPoints.join(', ')}.
-     Clean data visualization, charts and graphs,
-     informative design with clear hierarchy.`,
-
-  howTo: (title: string, steps: string[] = []) =>
-    `How-to illustration for: ${title}.
-     Steps: ${steps.slice(0, 3).join(', ')}.
-     Step-by-step visual guide, instructional design.`,
-
-  comparison: (item1: string, item2: string, category: string) =>
-    `Comparison between ${item1} vs ${item2} in ${category}.
-     Split-screen layout, clear differentiation,
-     professional design, easy to understand.`,
-}
+// SEOPrompts is now exported from image-generation-types.ts

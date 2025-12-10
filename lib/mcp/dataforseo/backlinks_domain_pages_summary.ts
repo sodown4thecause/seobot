@@ -9,7 +9,7 @@ export const backlinks_domain_pages_summaryToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with detailed summary data on all backlinks and related metrics for each page of the target domain or subdomain you specify. If you indicate a single page as a target, you will get comprehensive summary data on all backlinks for that page`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string()
         .describe(`domain, subdomain or webpage to get backlinks for
         required field
@@ -79,7 +79,7 @@ example:
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_domain_pages_summary",
@@ -100,4 +100,5 @@ example:
       }
     },
   });
+
 

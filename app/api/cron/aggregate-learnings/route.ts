@@ -1,5 +1,6 @@
 import { aggregateBestPractices } from '@/lib/ai/learning-storage';
 import { NextResponse } from 'next/server';
+import { serverEnv } from '@/lib/config/env';
 
 export const runtime = 'edge';
 
@@ -8,7 +9,7 @@ export async function GET(req: Request) {
     // Check for authorization (e.g., a secret key in headers)
     // In production, you should set CRON_SECRET environment variable
     const authHeader = req.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (serverEnv.CRON_SECRET && authHeader !== `Bearer ${serverEnv.CRON_SECRET}`) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
@@ -44,6 +45,7 @@ export async function GET(req: Request) {
     );
   }
 }
+
 
 
 

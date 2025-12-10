@@ -5,7 +5,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 
-export type APIService = 
+export type APIService =
   | 'dataforseo'
   | 'perplexity'
   | 'openai'
@@ -13,6 +13,8 @@ export type APIService =
   | 'rytr'
   | 'winston'
   | 'jina'
+  | 'rate-limit'
+  | 'gemini'
 
 interface APICallMetadata {
   service: APIService
@@ -26,7 +28,7 @@ interface APICallMetadata {
 }
 
 // Cost per 1K tokens/requests for each service
-const SERVICE_COSTS = {
+const SERVICE_COSTS: Record<APIService, Record<string, number>> = {
   openai: {
     'gpt-4o-mini-input': 0.00015, // per 1K tokens
     'gpt-4o-mini-output': 0.0006, // per 1K tokens
@@ -53,6 +55,14 @@ const SERVICE_COSTS = {
   },
   winston: {
     'detect': 0.001, // per request
+  },
+  gemini: {
+    'gemini-2.0-flash': 0.0001, // per 1K tokens (input)
+    'gemini-2.5-flash': 0.00015, // per 1K tokens (input)
+    'gemini-2.5-pro': 0.00125, // per 1K tokens (input)
+  },
+  'rate-limit': {
+    'default': 0, // no cost for rate limit tracking
   },
 }
 
@@ -130,7 +140,7 @@ export async function trackAPICallWithTiming<T>(
 ): Promise<T> {
   const startTime = Date.now()
   let statusCode = 200
-  let result: T
+  let result: T | undefined
 
   try {
     result = await apiCall()
@@ -140,7 +150,7 @@ export async function trackAPICallWithTiming<T>(
     throw error
   } finally {
     const durationMs = Date.now() - startTime
-    const tokensUsed = result && calculateTokens ? calculateTokens(result) : undefined
+    const tokensUsed = result !== undefined && calculateTokens ? calculateTokens(result) : undefined
 
     await trackAPICall(userId, {
       service,

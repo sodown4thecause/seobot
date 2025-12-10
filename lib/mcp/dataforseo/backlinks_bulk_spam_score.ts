@@ -9,7 +9,7 @@ export const backlinks_bulk_spam_scoreToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with spam scores of the domains, subdomains, and pages you specified in the targets array. Spam Score is DataForSEO’s proprietary metric that indicates how “spammy” your target is on a scale from 0 to 100`,
-    parameters: z.object({
+    inputSchema: z.object({
       targets: z.array(z.string())
         .describe(`domains, subdomains or webpages to get rank for
 required field
@@ -30,7 +30,7 @@ example:
 "www.trustpilot.com"
 ]`),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "backlinks_bulk_spam_score",
@@ -51,3 +51,4 @@ example:
       }
     },
   });
+

@@ -28,7 +28,9 @@ export class ImageAgent {
       });
 
       console.log('[Image Agent] ✓ Image generated via Gemini');
-      return Buffer.from(geminiImage.data).toString('base64');
+      const base64 = Buffer.from(geminiImage.data).toString('base64');
+      const mimeType = geminiImage.mediaType || 'image/png';
+      return `data:${mimeType};base64,${base64}`;
     } catch (error) {
       console.error('[Image Agent] Error generating image:', error);
       throw error;

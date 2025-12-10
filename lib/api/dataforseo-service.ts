@@ -239,3 +239,184 @@ export async function relevantPages(params: {
     limit: params.limit ?? 100,
   })
 }
+
+// ============================================================================
+// AEO AUDITOR - AI Optimization APIs
+// ============================================================================
+
+/**
+ * LLM Mentions Search Live - Check how often a brand is mentioned in LLM results
+ * Uses the live endpoint for real-time results
+ * @see https://docs.dataforseo.com/v3/ai_optimization-llm_mentions-search-live/
+ */
+export async function llmMentionsSearch(params: {
+  brandName: string
+  limit?: number
+  platform?: 'google' | 'chat_gpt'
+  location_code?: number
+  language_code?: string
+}) {
+  return doFetch<{
+    tasks: Array<{
+      result?: Array<{
+        total_count?: number
+        items_count?: number
+        items?: Array<{
+          platform?: string
+          question?: string
+          answer?: string
+          sources?: Array<{
+            title?: string
+            domain?: string
+            url?: string
+            snippet?: string
+          }>
+          ai_search_volume?: number
+        }>
+      }>
+    }>
+  }>('/ai_optimization/llm_mentions/search/live', {
+    target: [
+      {
+        keyword: params.brandName,
+        search_scope: ['answer'], // Search for brand mentions in AI answers
+        match_type: 'word_match',
+      },
+    ],
+    platform: params.platform ?? 'google', // Google AI Overview by default
+    location_code: params.location_code ?? 2840, // USA
+    language_code: params.language_code ?? 'en',
+    limit: params.limit ?? 20,
+  })
+}
+
+/**
+ * LLM Mentions Aggregated Metrics - Get consolidated mention metrics
+ * Returns total mentions count, impressions, and other aggregated data
+ * @see https://docs.dataforseo.com/v3/ai_optimization-llm_mentions-aggregated_metrics-live/
+ */
+export async function llmMentionsAggregated(params: {
+  brandName: string
+  domain?: string
+  platform?: 'google' | 'chat_gpt'
+  location_code?: number
+  language_code?: string
+}) {
+  const target: Array<{ keyword?: string; domain?: string; search_scope?: string[] }> = []
+
+  // Add keyword target for brand name mentions
+  target.push({
+    keyword: params.brandName,
+    search_scope: ['answer'],
+  })
+
+  // Optionally add domain target if provided
+  if (params.domain) {
+    target.push({
+      domain: params.domain.replace(/^https?:\/\//, '').replace(/^www\./, ''),
+      search_scope: ['sources'],
+    })
+  }
+
+  return doFetch<{
+    tasks: Array<{
+      result?: Array<{
+        total_count?: number
+        total_ai_search_volume?: number
+        aggregated_data?: Array<{
+          type?: string
+          value?: string
+          mentions_count?: number
+          ai_search_volume?: number
+        }>
+      }>
+    }>
+  }>('/ai_optimization/llm_mentions/aggregated_metrics/live', {
+    target,
+    platform: params.platform ?? 'google',
+    location_code: params.location_code ?? 2840,
+    language_code: params.language_code ?? 'en',
+  })
+}
+
+/**
+ * LLM Responses Live - Get real-time responses from LLMs about a topic
+ * Uses ChatGPT by default for comprehensive responses
+ */
+export async function llmResponsesLive(params: {
+  prompt: string
+  model?: 'gpt-4o' | 'gpt-4o-mini' | 'gpt-4-turbo'
+}) {
+  return doFetch<any>('/ai_optimization/chat_gpt/llm_responses/live', {
+    prompt: params.prompt,
+    model: params.model ?? 'gpt-4o-mini',
+  })
+}
+
+/**
+ * Google Knowledge Graph check via SERP - Determines if a brand is recognized as an Entity
+ */
+export async function knowledgeGraphCheck(params: {
+  brandName: string
+  location_code?: number
+  language_code?: string
+}) {
+  const result = await doFetch<{
+    tasks: Array<{
+      result?: Array<{
+        items?: Array<{
+          type: string
+          knowledge_graph?: Record<string, unknown>
+          [key: string]: unknown
+        }>
+      }>
+    }>
+  }>('/serp/google/organic/live/advanced', {
+    keyword: params.brandName,
+    location_code: params.location_code ?? 2840,
+    language_code: params.language_code ?? 'en',
+    device: 'desktop',
+  })
+
+  if (!result.success) return result
+
+  // Extract Knowledge Graph from SERP items
+  const items = result.data?.tasks?.[0]?.result?.[0]?.items ?? []
+  const knowledgeGraph = items.find((item) => item.type === 'knowledge_graph')
+
+  return {
+    success: true,
+    data: {
+      exists: !!knowledgeGraph,
+      knowledgeGraph: knowledgeGraph?.knowledge_graph ?? null,
+      rawItems: items.filter((item) => item.type === 'knowledge_graph'),
+    },
+  }
+}
+
+/**
+ * On-Page Content Parsing - Extract structured content from a URL
+ * Useful for understanding page structure and schema presence
+ */
+export async function onPageContentParsing(params: {
+  url: string
+}) {
+  return doFetch<any>('/on_page/content_parsing', {
+    url: params.url,
+  })
+}
+
+/**
+ * On-Page Instant Pages - Quick analysis of a single page
+ */
+export async function onPageInstantAnalysis(params: {
+  url: string
+  enable_javascript?: boolean
+}) {
+  return doFetch<any>('/on_page/instant_pages', {
+    url: params.url,
+    enable_javascript: params.enable_javascript ?? true,
+    load_resources: true,
+    enable_browser_rendering: true,
+  })
+}

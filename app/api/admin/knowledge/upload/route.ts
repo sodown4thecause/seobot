@@ -2,11 +2,12 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenAI } from 'openai'
 import { PDFParse } from 'pdf-parse'
+import { serverEnv } from '@/lib/config/env'
 
 export const runtime = 'nodejs' // Need Node.js runtime for file processing
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: serverEnv.OPENAI_API_KEY,
 })
 
 // Helper to extract text from different file types

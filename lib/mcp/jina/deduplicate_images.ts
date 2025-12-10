@@ -9,7 +9,7 @@ export const deduplicate_imagesToolWithClient = (
 ) =>
   tool({
     description: `Get top-k semantically unique images (URLs or base64-encoded) using Jina CLIP v2 embeddings and submodular optimization. Use this when you have many visually similar images and want the most diverse subset.`,
-    parameters: z.object({
+    inputSchema: z.object({
       images: z
         .array(z.string())
         .describe(
@@ -22,7 +22,7 @@ export const deduplicate_imagesToolWithClient = (
         )
         .optional(),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "deduplicate_images",
@@ -43,3 +43,4 @@ export const deduplicate_imagesToolWithClient = (
       }
     },
   });
+

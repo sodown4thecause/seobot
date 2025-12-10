@@ -19,7 +19,8 @@ export default function DashboardLayout({
   return (
     <ChatModeProvider>
       <AgentProvider>
-        <div className="min-h-screen bg-background flex text-foreground">
+        <div className="min-h-screen bg-[#1a1a1a] flex text-foreground relative overflow-hidden">
+
           {/* Sidebar */}
           <Sidebar
             collapsed={sidebarCollapsed}
@@ -30,8 +31,8 @@ export default function DashboardLayout({
           {/* Main Content Area */}
           <main
             className={cn(
-              'flex-1 min-h-screen transition-all duration-300 bg-background',
-              sidebarCollapsed ? 'ml-[72px]' : 'ml-[250px]'
+              'flex-1 min-h-screen transition-all duration-300 relative z-10',
+              sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'
             )}
           >
             {children}

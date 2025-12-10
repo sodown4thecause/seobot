@@ -9,7 +9,7 @@ export const dataforseo_labs_google_ranked_keywordsToolWithClient = (
 ) =>
   tool({
     description: `This endpoint will provide you with the list of keywords that any domain or webpage is ranking for. You will also get SERP elements related to the keyword position, as well as impressions, monthly searches and other data relevant to the returned keywords.`,
-    parameters: z.object({
+    inputSchema: z.object({
       target: z.string().describe(`domain name or page url
 required field
 the domain name of the target website or URL of the target webpage;
@@ -104,7 +104,7 @@ example:
         )
         .default(false),
     }),
-    execute: async (args): Promise<string> => {
+    execute: async (args) => {
       const client = await getClient();
       const result = await client.callTool({
         name: "dataforseo_labs_google_ranked_keywords",
@@ -125,3 +125,4 @@ example:
       }
     },
   });
+
