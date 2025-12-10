@@ -60,6 +60,10 @@ const isMongoId = (value: string | undefined): boolean =>
   !!value && /^[a-f\d]{24}$/i.test(value)
 
 async function fetchJson<T>(path: string): Promise<T> {
+  if (!serverEnv.RYTR_API_KEY) {
+    throw new Error('RYTR_API_KEY is not configured. Please set it in your environment variables.')
+  }
+
   const response = await fetch(`${RYTR_API_BASE}/${path}`, {
     headers: {
       'Authentication': `Bearer ${serverEnv.RYTR_API_KEY}`,

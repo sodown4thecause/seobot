@@ -60,9 +60,9 @@ const serverEnvSchema = z.object({
   APIFY_API_KEY: z.string().min(1).optional(),
   FIRECRAWL_API_KEY: z.string().min(1).optional(),
 
-  // Content Quality & Generation APIs
-  WINSTON_AI_API_KEY: z.string().min(1, 'WINSTON_AI_API_KEY is required'),
-  RYTR_API_KEY: z.string().min(1, 'RYTR_API_KEY is required'),
+  // Content Quality & Generation APIs (optional - only needed for enhanced content quality features)
+  WINSTON_AI_API_KEY: z.string().min(1).optional(),
+  RYTR_API_KEY: z.string().min(1).optional(),
 
   // LangWatch / Langfuse (optional monitoring)
   LANGFUSE_ENABLED: z.string().optional(),

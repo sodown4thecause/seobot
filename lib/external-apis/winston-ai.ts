@@ -50,6 +50,10 @@ export async function checkPlagiarism(
     throw new Error('Text content is required for plagiarism check')
   }
 
+  if (!serverEnv.WINSTON_AI_API_KEY) {
+    throw new Error('WINSTON_AI_API_KEY is not configured. Please set it in your environment variables.')
+  }
+
   try {
     const response = await fetch(`${WINSTON_API_BASE}/plagiarism`, {
       method: 'POST',
@@ -132,6 +136,10 @@ export async function checkAiContent(text: string): Promise<{
   isAiGenerated: boolean
   confidence: 'low' | 'medium' | 'high'
 }> {
+  if (!serverEnv.WINSTON_AI_API_KEY) {
+    throw new Error('WINSTON_AI_API_KEY is not configured. Please set it in your environment variables.')
+  }
+
   try {
     const response = await fetch(`${WINSTON_API_BASE}/ai-detection`, {
       method: 'POST',
