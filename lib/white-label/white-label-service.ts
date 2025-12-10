@@ -384,7 +384,7 @@ Create an HTML email template that:
 Return only the HTML template, no explanations.`
 
     const result = await generateText({
-      model: google('gemini-3-pro-preview'),
+      model: google('gemini-3-pro-preview') as any,
       prompt,
     })
 

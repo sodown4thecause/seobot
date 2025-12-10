@@ -54,37 +54,37 @@ import { dataForSEOClient } from './client'
 // ============================================================================
 
 // Keywords (7 tools)
-import * as keywordsModule from './modules/keywords'
+import * as keywordsModule from './modules/keywords/index'
 export const keywords = keywordsModule
 export type { KeywordModule } from './types'
 
 // SERP Analysis (6 tools)
-import * as serpModule from './modules/serp'
+import * as serpModule from './modules/serp/index'
 export const serp = serpModule
 export type { SERPModule } from './types'
 
 // Competitors (4 tools)
-import * as competitorsModule from './modules/competitors'
+import * as competitorsModule from './modules/competitors/index'
 export const competitors = competitorsModule
 export type { CompetitorModule } from './types'
 
 // Domain Analysis (6 tools)
-import * as domainModule from './modules/domain'
+import * as domainModule from './modules/domain/index'
 export const domain = domainModule
 export type { DomainModule } from './types'
 
 // AI Optimization (3 tools)
-import * as aiModule from './modules/ai'
+import * as aiModule from './modules/ai/index'
 export const ai = aiModule
 export type { AIModule } from './types'
 
 // On-Page Analysis (3 tools)
-import * as onPageModule from './modules/onPage'
+import * as onPageModule from './modules/onPage/index'
 export const onPage = onPageModule
 export type { OnPageModule } from './types'
 
 // Content (3 tools)
-import * as contentModule from './modules/content'
+import * as contentModule from './modules/content/index'
 export const content = contentModule
 export type { ContentModule } from './types'
 

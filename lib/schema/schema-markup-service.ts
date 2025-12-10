@@ -170,7 +170,7 @@ Generate a complete, valid schema.org JSON-LD structure that:
 Return only the JSON-LD schema object, no explanations or markdown formatting.`
 
     const { object } = await generateObject({
-      model: google('gemini-3-pro-preview'),
+      model: google('gemini-3-pro-preview') as any,
       prompt,
       schema: z.record(z.unknown()),
     })
@@ -435,7 +435,7 @@ Instructions:
 Return only the completed JSON schema, no explanations.`
 
     const { object } = await generateObject({
-      model: google('gemini-3-pro-preview'),
+      model: google('gemini-3-pro-preview') as any,
       prompt,
       schema: z.record(z.unknown()),
     })

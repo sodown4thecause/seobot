@@ -35,6 +35,8 @@ export interface EnhancedResearchParams {
   languageCode?: string
   location?: string
   userId?: string // For usage logging
+  langfuseTraceId?: string // Optional: link to Langfuse trace
+  sessionId?: string // Optional: link to session
 }
 
 export interface EnhancedResearchResult {

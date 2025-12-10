@@ -1,5 +1,12 @@
 import * as React from "react"
 
+// Define ToastAction component first so it can be referenced in types
+const ToastAction = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>((props, ref) => React.createElement('button', { ref, ...props }))
+ToastAction.displayName = "ToastAction"
+
 type ToastActionElement = React.ReactElement<typeof ToastAction>
 
 export interface ToasterToast {
@@ -190,13 +197,4 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
-
-// Add a dummy ToastAction component for type checking
-const ToastAction = React.forwardRef<
-  HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->((props, ref) => React.createElement('button', { ref, ...props }))
-ToastAction.displayName = "ToastAction"
-
-export { ToastAction }
+export { useToast, toast, ToastAction }

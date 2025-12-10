@@ -434,7 +434,7 @@ Return as JSON array of tasks.`
     )
 
     const { object } = await generateObject({
-      model: google('gemini-3-pro-preview'),
+      model: google('gemini-3-pro-preview') as any,
       prompt,
       schema: optimizationTaskSchema,
     })
@@ -615,7 +615,7 @@ Return as JSON with three arrays: blogPosts, socialMediaPosts, landingPages.`
     })
 
     const { object } = await generateObject({
-      model: google('gemini-3-pro-preview'),
+      model: google('gemini-3-pro-preview') as any,
       prompt,
       schema: contentIdeasSchema,
     })

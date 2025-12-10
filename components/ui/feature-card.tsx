@@ -6,11 +6,13 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 
-export interface FeatureCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onDrag' | 'onDragStart' | 'onDragEnd' | 'onAnimationStart' | 'onAnimationEnd'> {
+export interface FeatureCardProps {
   icon: LucideIcon
   title: string
   description: string
   badge?: string | React.ReactNode
+  className?: string
+  onClick?: () => void
 }
 
 export function FeatureCard({
@@ -19,11 +21,12 @@ export function FeatureCard({
   description,
   badge,
   className,
-  ...props
+  onClick,
 }: FeatureCardProps) {
   return (
     <motion.div
       whileHover={{ y: -2 }}
+      onClick={onClick}
       className={cn(
         'relative group cursor-pointer',
         'bg-zinc-900 border border-zinc-800 rounded-lg p-6 md:p-8',
@@ -31,7 +34,6 @@ export function FeatureCard({
         'hover:border-zinc-600',
         className
       )}
-      {...props}
     >
       {/* Badge */}
       {badge && (

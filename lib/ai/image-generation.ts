@@ -84,7 +84,7 @@ Return as JSON array.`
     )
 
     const { object } = await generateObject({
-      model: google('gemini-2.5-pro'),
+      model: google('gemini-2.5-pro') as any,
       prompt,
       schema: imageSuggestionSchema,
       experimental_telemetry: createTelemetryConfig('image-suggestions', {
@@ -139,7 +139,7 @@ Return only the enhanced prompt, no explanations.`
 
   try {
     const result = await generateText({
-      model: google('gemini-2.5-pro'),
+      model: google('gemini-2.5-pro') as any,
       prompt: contextualPrompt,
       experimental_telemetry: createTelemetryConfig('image-prompt-enhance', {
         style,
@@ -265,7 +265,7 @@ Requirements:
 Return only the alt text, no quotes or explanations.`
 
     const result = await generateText({
-      model: google('gemini-2.5-pro'),
+      model: google('gemini-2.5-pro') as any,
       prompt: altPrompt,
       experimental_telemetry: createTelemetryConfig('image-alt-text-generation', {
         hasArticleContext: !!articleContext,
@@ -543,7 +543,7 @@ export async function editImageWithGemini(
     console.log(`[GeminiImageGen] Editing image with prompt: ${editPrompt}`)
 
     const result = await generateText({
-      model: google('gemini-2.5-flash-image-preview'),
+      model: google('gemini-2.5-flash-image-preview') as any,
       prompt: `${editPrompt}. Maintain the original composition and quality.
               Make precise, natural-looking changes. High resolution output.`,
       maxOutputTokens: 1000,

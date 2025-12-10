@@ -313,6 +313,8 @@ export async function addContentComment(params: {
       throw new Error('User profile not found')
     }
 
+    const userProfile = profile // TypeScript now knows profile is not null
+
     return {
       id: data.id,
       contentId: data.content_id,
@@ -325,9 +327,9 @@ export async function addContentComment(params: {
       resolvedBy: data.resolved_by,
       resolvedAt: data.resolved_at,
       userProfile: {
-        name: profile.name || '',
-        email: profile.email || '',
-        avatar: profile.avatar_url || null
+        name: userProfile.name || '',
+        email: userProfile.email || '',
+        avatar: userProfile.avatar_url || null
       },
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -613,7 +615,7 @@ Return as JSON with keys: suggestedReviewers, potentialIssues, optimizationTips`
     })
 
     const { object } = await generateObject({
-      model: google('gemini-3-pro-preview'),
+      model: google('gemini-3-pro-preview') as any,
       prompt,
       schema: collaborationInsightsSchema,
     })
