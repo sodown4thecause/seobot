@@ -48,7 +48,7 @@ export async function checkCreditLimit(
       .single()
 
     // If no limits record exists, create one with default $1 for beta
-    let monthlyLimit = BETA_LIMITS.MAX_SPEND_USD
+    let monthlyLimit: number = BETA_LIMITS.MAX_SPEND_USD
     let isUnlimited = false
     let isPaused = false
     let pauseUntil: Date | undefined
@@ -66,7 +66,7 @@ export async function checkCreditLimit(
         })
         .select()
         .single()
-      
+
       if (newLimit) {
         monthlyLimit = Number(newLimit.monthly_credit_limit_usd)
         isUnlimited = newLimit.is_unlimited
@@ -232,7 +232,7 @@ export async function checkEstimatedCost(
   estimatedCostUsd: number
 ): Promise<LimitCheckResult> {
   const currentCheck = await checkCreditLimit(userId)
-  
+
   if (!currentCheck.allowed) {
     return currentCheck
   }
@@ -244,7 +244,7 @@ export async function checkEstimatedCost(
     ...currentCheck,
     allowed: !wouldExceed,
     remainingUsd: Math.max(0, currentCheck.remainingUsd - estimatedCostUsd),
-    reason: wouldExceed 
+    reason: wouldExceed
       ? `This operation would exceed your monthly limit of $${currentCheck.limitUsd.toFixed(2)}`
       : undefined,
   }
