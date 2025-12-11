@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { serverEnv } from '@/lib/config/env'
+import { isIpBlocked, getClientIp } from '@/lib/auth/ip-block-check'
+import { NextRequest } from 'next/server'
 
 type AuthState = {
   error?: string
@@ -29,9 +31,26 @@ export async function signUp(prevState: AuthState, formData: FormData): Promise<
     return { error: firstError, fields: { email } }
   }
 
+  // Check if IP is blocked before allowing signup
+  const hdrs = await headers()
+  const forwarded = hdrs.get('x-forwarded-for')
+  const realIp = hdrs.get('x-real-ip')
+  const cfConnectingIp = hdrs.get('cf-connecting-ip')
+  
+  const ipAddress = forwarded?.split(',')[0].trim() || realIp || cfConnectingIp || 'unknown'
+  
+  if (ipAddress !== 'unknown') {
+    const ipCheck = await isIpBlocked(ipAddress)
+    if (ipCheck.blocked) {
+      return {
+        error: 'This IP address has been blocked from creating new accounts. If you believe this is an error, please contact support.',
+        fields: { email }
+      }
+    }
+  }
+
   const supabase = await createClient()
 
-  const hdrs = await headers()
   const origin = hdrs.get('origin') ?? serverEnv.NEXT_PUBLIC_SITE_URL ?? ''
   const emailRedirectTo = `${origin}/auth/callback`
 

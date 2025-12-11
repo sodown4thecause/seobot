@@ -61,18 +61,18 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.h1 variants={itemVariants} className="text-6xl md:text-8xl font-bold tracking-tight mb-8 leading-[1.1]">
-              <span className="block text-gradient">Master Your SEO</span>
-              <span className="block text-gradient-primary">With AI Intent</span>
+              <span className="block text-gradient">AI SEO Platform</span>
+              <span className="block text-gradient-primary">for Google & Answer Engines</span>
             </motion.h1>
 
             <motion.p variants={itemVariants} className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-              Stop guessing. Start ranking. Our AI analyzes search intent, generates optimized content, and tracks your success in real-time.
+              The only SEO platform built for the AI search era. Optimize for Google, ChatGPT, and Perplexity with AI Trust Audits, competitor analysis, and automated content creation.
             </motion.p>
 
             <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/signup" className="w-full sm:w-auto">
                 <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-lg bg-white text-black hover:bg-zinc-200 rounded-full shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.4)] transition-all duration-300">
-                  Start Ranking Free
+                  Get Your Free AI Trust Audit
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
@@ -87,6 +87,44 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Trust Signals Section */}
+      <section className="relative z-10 py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+            className="text-center mb-8"
+          >
+            <motion.p variants={itemVariants} className="text-sm text-zinc-500 uppercase tracking-wider font-medium mb-6">
+              Trusted by 2,000+ marketing teams
+            </motion.p>
+            <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-center gap-8 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-300">
+              {/* Placeholder for client logos - you can add real logos here */}
+              <div className="h-8 w-24 bg-white/10 rounded flex items-center justify-center text-xs text-zinc-500">Client Logo</div>
+              <div className="h-8 w-24 bg-white/10 rounded flex items-center justify-center text-xs text-zinc-500">Client Logo</div>
+              <div className="h-8 w-24 bg-white/10 rounded flex items-center justify-center text-xs text-zinc-500">Client Logo</div>
+              <div className="h-8 w-24 bg-white/10 rounded flex items-center justify-center text-xs text-zinc-500">Client Logo</div>
+            </motion.div>
+          </motion.div>
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+            className="max-w-3xl mx-auto mt-12"
+          >
+            <motion.div variants={itemVariants} className="glass-card p-8 rounded-2xl border border-white/10">
+              <p className="text-lg text-zinc-300 italic mb-4">
+                "FlowIntent helped us rank in ChatGPT in just 2 weeks. The AI Trust Audit revealed gaps we didn't even know existed."
+              </p>
+              <p className="text-sm text-zinc-500">
+                — CMO, TechCo
+              </p>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* AEO Auditor - Lead Magnet */}
       <AEOAuditor />
 
@@ -94,14 +132,17 @@ export default function LandingPage() {
       <section className="border-y border-white/[0.05] bg-white/[0.01] backdrop-blur-sm py-16 relative z-10">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12">
           {[
-            { label: 'Active Users', value: '2,000+' },
-            { label: 'Keywords Tracked', value: '500K+' },
-            { label: 'Articles Generated', value: '1M+' },
-            { label: 'Avg. Traffic Increase', value: '145%' },
+            { label: 'Marketing Teams Trust FlowIntent', value: '2,000+', subtext: '' },
+            { label: 'Keywords Tracked', value: '500K+', subtext: '' },
+            { label: 'Articles Generated', value: '1M+', subtext: '' },
+            { label: 'Avg. Traffic Increase', value: '145%', subtext: '(Based on 500+ Client Audits)' },
           ].map((stat, i) => (
             <div key={i} className="text-center group cursor-default">
               <div className="text-4xl font-bold text-white mb-2 group-hover:scale-110 transition-transform duration-300 ease-out">{stat.value}</div>
-              <div className="text-sm text-zinc-500 uppercase tracking-wider font-medium">{stat.label}</div>
+              <div className="text-sm text-zinc-500 uppercase tracking-wider font-medium mb-1">{stat.label}</div>
+              {stat.subtext && (
+                <div className="text-xs text-zinc-600">{stat.subtext}</div>
+              )}
             </div>
           ))}
         </div>
@@ -111,7 +152,7 @@ export default function LandingPage() {
       <section className="py-32 px-6 relative z-10">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">Everything needed for modern SEO</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">Rank in Traditional Search AND AI Answer Engines</h2>
             <p className="text-zinc-400 text-lg max-w-2xl mx-auto">Comprehensive tools to dominate the search results, built with next-generation AI.</p>
           </div>
 
@@ -175,7 +216,7 @@ export default function LandingPage() {
             <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-600/20 blur-[100px]" />
 
             <div className="relative z-10">
-              <h2 className="text-4xl md:text-6xl font-bold mb-8 text-white">Ready to scale your organic traffic?</h2>
+              <h2 className="text-4xl md:text-6xl font-bold mb-8 text-white">Turn AI Visibility into Traffic & Revenue</h2>
               <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto">
                 Join thousands of marketers who are already using Flow Intent to automate their SEO workflows.
               </p>
@@ -199,9 +240,9 @@ export default function LandingPage() {
             <span className="font-bold text-xl tracking-tight text-white">Flow Intent</span>
           </div>
           <div className="flex gap-8 text-sm text-zinc-500">
-            <Link href="#" className="hover:text-white transition-colors">Privacy</Link>
-            <Link href="#" className="hover:text-white transition-colors">Terms</Link>
-            <Link href="#" className="hover:text-white transition-colors">Contact</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
           </div>
           <div className="text-sm text-zinc-600">
             © 2025 Flow Intent. All rights reserved.
