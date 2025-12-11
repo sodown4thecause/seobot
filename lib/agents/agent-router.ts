@@ -33,7 +33,44 @@ export class AgentRouter {
       }
     }
 
-    // 2. SEO/AEO AGENT - Handle analytics, technical SEO, competitor analysis
+    // 2. CONTENT AGENT - Handle content creation, optimization, humanization
+    // PRIORITY: Check content creation BEFORE SEO analytics to avoid false routing
+    if (this.isContentCreationQuery(messageLower)) {
+      return {
+        agent: 'content',
+        confidence: 0.9,
+        reasoning: 'Query requires content creation with research, optimization, and humanization',
+        tools: [
+          // Core content tools
+          'generate_researched_content',
+          'perplexity_search',
+
+          // ===== FIRECRAWL (Research) =====
+          'firecrawl_scrape',
+          'firecrawl_search',
+          'firecrawl_crawl',
+
+          // ===== CONTENT ANALYSIS =====
+          'content_analysis_search',
+          'content_analysis_summary',
+          'content_analysis_phrase_trends',
+
+          // ===== KEYWORD OPTIMIZATION =====
+          'keywords_data_google_ads_search_volume',
+          'dataforseo_labs_search_intent',
+          'dataforseo_labs_google_keyword_suggestions',
+
+          // Jina advanced tools
+          'read_url',
+          'search_web',
+          'expand_query',
+          'parallel_search_web',
+          'sort_by_relevance'
+        ]
+      }
+    }
+
+    // 3. SEO/AEO AGENT - Handle analytics, technical SEO, competitor analysis
     if (this.isSEOAnalyticsQuery(messageLower)) {
       return {
         agent: 'seo-aeo',
@@ -119,42 +156,6 @@ export class AgentRouter {
           'firecrawl_map',
           'firecrawl_extract',
           'firecrawl_check_crawl_status'
-        ]
-      }
-    }
-
-    // 3. CONTENT AGENT - Handle content creation, optimization, humanization
-    if (this.isContentCreationQuery(messageLower)) {
-      return {
-        agent: 'content',
-        confidence: 0.9,
-        reasoning: 'Query requires content creation with research, optimization, and humanization',
-        tools: [
-          // Core content tools
-          'generate_researched_content',
-          'perplexity_search',
-
-          // ===== FIRECRAWL (Research) =====
-          'firecrawl_scrape',
-          'firecrawl_search',
-          'firecrawl_crawl',
-
-          // ===== CONTENT ANALYSIS =====
-          'content_analysis_search',
-          'content_analysis_summary',
-          'content_analysis_phrase_trends',
-
-          // ===== KEYWORD OPTIMIZATION =====
-          'keywords_data_google_ads_search_volume',
-          'dataforseo_labs_search_intent',
-          'dataforseo_labs_google_keyword_suggestions',
-
-          // Jina advanced tools
-          'read_url',
-          'search_web',
-          'expand_query',
-          'parallel_search_web',
-          'sort_by_relevance'
         ]
       }
     }
@@ -282,14 +283,20 @@ export class AgentRouter {
    */
   private static isContentCreationQuery(message: string): boolean {
     const contentKeywords = [
-      // Content creation
+      // Explicit blog/article patterns (HIGHEST PRIORITY - check these first)
+      'blog post', 'blog article', 'write a blog', 'create a blog',
+      'write me a', 'create me a', 'generate a blog', 'generate a post',
+      'write an article', 'create an article', 'draft a blog',
+      'write about', 'article about', 'post about', 'blog about',
+
+      // Content creation verbs
       'write', 'create', 'generate', 'draft', 'compose', 'build',
       'make', 'develop', 'produce', 'craft',
 
       // Content types
       'blog post', 'article', 'content', 'landing page', 'copy',
       'email', 'social post', 'tweet', 'headline', 'title',
-      'meta description', 'snippet',
+      'meta description', 'snippet', 'blog',
 
       // Content optimization
       'optimize', 'improve', 'enhance', 'rewrite', 'edit',

@@ -153,7 +153,16 @@ export class ContentWriterAgent {
   }
 
   private buildSystemPrompt(guidance: string): string {
+    const dateCtx = this.getDateContext();
     return `You are an expert SEO/AEO content writer. Your goal is to create engaging, human-like content that ranks well in both traditional search engines and AI answer engines.
+
+CRITICAL DATE REQUIREMENTS:
+- Today's date is: ${dateCtx.currentDate}
+- Current year: ${dateCtx.currentYear}, Current quarter: ${dateCtx.quarter}
+- For titles, stats, and forward-looking content, use TARGET YEAR: ${dateCtx.targetYear}
+- NEVER reference years before ${dateCtx.currentYear - 1} in titles or as "current" data
+- Prioritize recent data from ${dateCtx.currentYear} or projections for ${dateCtx.targetYear}
+- Example: Instead of "2024 Trends", use "${dateCtx.targetYear} Trends"
 
 CRITICAL: You must apply the following successful patterns and learnings from previous content:
 ${guidance}
@@ -180,8 +189,14 @@ Focus on creating content that:
       return this.buildRevisionPrompt(params)
     }
 
+    const dateCtx = this.getDateContext();
+
     // Otherwise, build initial draft prompt
     const prompt = `Write a ${params.type.replace('_', ' ')} about "${params.topic}".
+
+DATE CONTEXT: Today is ${dateCtx.currentDate}. Target year for content: ${dateCtx.targetYear}.
+Use current and future-focused language. Any statistics should be from ${dateCtx.currentYear} or later.
+Titles should reference ${dateCtx.targetYear}, not past years.
 
 Target Keywords: ${params.keywords.join(', ')}
 ${params.tone ? `Tone: ${params.tone}` : ''}
@@ -228,6 +243,26 @@ Write the revised, improved content now.`
     // Count how many learning patterns are in the guidance
     const learningMarkers = guidance.match(/##\s+\d+\./g)
     return learningMarkers ? learningMarkers.length : 0
+  }
+
+  /**
+   * Get date context with Q4 → next year targeting for SEO freshness
+   */
+  private getDateContext(): { currentDate: string; targetYear: number; currentYear: number; quarter: string } {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const quarter = month <= 3 ? 'Q1' : month <= 6 ? 'Q2' : month <= 9 ? 'Q3' : 'Q4';
+
+    // Q4 logic: target next year for forward-looking content
+    const targetYear = quarter === 'Q4' ? currentYear + 1 : currentYear;
+
+    return {
+      currentDate: now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      targetYear,
+      currentYear,
+      quarter
+    };
   }
 }
 

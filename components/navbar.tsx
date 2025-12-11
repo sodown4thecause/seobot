@@ -43,23 +43,7 @@ export function Navbar() {
                             <NavigationMenuItem>
                                 <NavigationMenuLink asChild>
                                     <Link href="/blog" className={navigationMenuTriggerStyle()}>
-                                        Blog
-                                    </Link>
-                                </NavigationMenuLink>
-                            </NavigationMenuItem>
-
-                            <NavigationMenuItem>
-                                <NavigationMenuLink asChild>
-                                    <Link href="/case-studies" className={navigationMenuTriggerStyle()}>
-                                        Case Studies
-                                    </Link>
-                                </NavigationMenuLink>
-                            </NavigationMenuItem>
-
-                            <NavigationMenuItem>
-                                <NavigationMenuLink asChild>
-                                    <Link href="/resources" className={navigationMenuTriggerStyle()}>
-                                        Resources
+                                        Knowledge Hub
                                     </Link>
                                 </NavigationMenuLink>
                             </NavigationMenuItem>
