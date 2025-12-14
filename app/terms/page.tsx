@@ -1,0 +1,196 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'Terms of Service | FlowIntent',
+  description: 'FlowIntent terms of service. Read our terms and conditions for using the platform.',
+}
+
+export default function TermsPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+      <div className="container mx-auto px-4 py-16 max-w-4xl">
+        <div className="mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            Terms of Service
+          </h1>
+          <p className="text-gray-400">
+            Last updated: December 14, 2025
+          </p>
+        </div>
+
+        <div className="prose prose-invert max-w-none">
+          <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-6 mb-8">
+            <p className="mb-0 text-gray-300">
+              By using FlowIntent, you agree to these terms. Please read them carefully before accessing the platform.
+            </p>
+          </div>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">1. Acceptance of Terms</h2>
+          <p className="text-gray-300 mb-6">
+            By creating an account or using FlowIntent, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree, you may not use the service.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">2. Service Description</h2>
+          <p className="text-gray-300 mb-4">
+            FlowIntent is an AI-powered SEO platform that provides:
+          </p>
+          <ul className="text-gray-300 space-y-2 mb-6">
+            <li>AI Trust Audits showing how AI chatbots represent your brand</li>
+            <li>Content optimization for traditional search engines and AI answer engines</li>
+            <li>SEO research and competitive analysis</li>
+            <li>Automated content generation</li>
+          </ul>
+          <p className="text-gray-300 mb-6">
+            We reserve the right to modify, suspend, or discontinue any part of the service at any time.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">3. Beta Program and Usage Limits</h2>
+          <p className="text-gray-300 mb-4">
+            FlowIntent is currently in beta with the following terms:
+          </p>
+          <ul className="text-gray-300 space-y-2 mb-6">
+            <li><strong>Usage limit:</strong> $1 USD in API usage per week for beta accounts</li>
+            <li><strong>Account pause:</strong> Accounts exceeding the limit are paused for 7 days</li>
+            <li><strong>IP blocking:</strong> Repeated limit violations may result in IP blocking</li>
+            <li><strong>Character limit:</strong> Chat responses limited to 4,000 characters during beta</li>
+            <li><strong>Upgrade path:</strong> Email support@flowintent.com to request early Premium access</li>
+          </ul>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">4. User Accounts</h2>
+          <p className="text-gray-300 mb-4">
+            You are responsible for:
+          </p>
+          <ul className="text-gray-300 space-y-2 mb-6">
+            <li>Maintaining the confidentiality of your account credentials</li>
+            <li>All activities that occur under your account</li>
+            <li>Notifying us immediately of unauthorized access</li>
+            <li>Providing accurate and current information</li>
+          </ul>
+          <p className="text-gray-300 mb-6">
+            We reserve the right to suspend or terminate accounts that violate these terms.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">5. Acceptable Use</h2>
+          <p className="text-gray-300 mb-4">
+            You may NOT use FlowIntent to:
+          </p>
+          <ul className="text-gray-300 space-y-2 mb-6">
+            <li>Violate laws or regulations</li>
+            <li>Infringe intellectual property rights</li>
+            <li>Distribute malware, spam, or harmful content</li>
+            <li>Attempt to bypass usage limits or security measures</li>
+            <li>Reverse engineer, decompile, or disassemble the service</li>
+            <li>Create multiple accounts to evade limits</li>
+            <li>Resell or redistribute our service without permission</li>
+          </ul>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">6. Content and Intellectual Property</h2>
+          
+          <h3 className="text-xl font-semibold mt-6 mb-3">Your Content</h3>
+          <p className="text-gray-300 mb-6">
+            You retain ownership of content you input into FlowIntent. You grant us a license to use, store, and process your content solely to provide the service.
+          </p>
+
+          <h3 className="text-xl font-semibold mt-6 mb-3">Generated Content</h3>
+          <p className="text-gray-300 mb-6">
+            You own the content generated by FlowIntent for you, subject to our right to use anonymized data for service improvement. AI-generated content should be reviewed and edited before publication.
+          </p>
+
+          <h3 className="text-xl font-semibold mt-6 mb-3">Our Platform</h3>
+          <p className="text-gray-300 mb-6">
+            FlowIntent's code, design, features, and branding are our intellectual property. You may not copy, reproduce, or create derivative works without written permission.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">7. Third-Party Services</h2>
+          <p className="text-gray-300 mb-6">
+            FlowIntent integrates with third-party services (Anthropic, OpenAI, Perplexity, DataForSEO). Your use of these services through FlowIntent is subject to their respective terms and privacy policies.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">8. Payment and Refunds</h2>
+          <p className="text-gray-300 mb-4">
+            For the beta program:
+          </p>
+          <ul className="text-gray-300 space-y-2 mb-6">
+            <li>The service is provided free of charge</li>
+            <li>No refunds are available for free accounts</li>
+          </ul>
+          <p className="text-gray-300 mb-6">
+            When Premium plans launch, payment terms will be clearly disclosed before purchase.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">9. Disclaimers</h2>
+          <p className="text-gray-300 mb-4">
+            FlowIntent is provided "as is" without warranties of any kind. We do not guarantee:
+          </p>
+          <ul className="text-gray-300 space-y-2 mb-6">
+            <li>Uninterrupted or error-free service</li>
+            <li>Specific SEO or ranking results</li>
+            <li>Accuracy of AI-generated content</li>
+            <li>Compatibility with all systems</li>
+          </ul>
+          <p className="text-gray-300 mb-6">
+            AI-generated content should always be reviewed, fact-checked, and edited before use.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">10. Limitation of Liability</h2>
+          <p className="text-gray-300 mb-6">
+            To the maximum extent permitted by law, FlowIntent and its affiliates are not liable for indirect, incidental, consequential, or punitive damages arising from your use of the service. Our total liability is limited to the amount you paid in the past 12 months (currently $0 for beta users).
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">11. Indemnification</h2>
+          <p className="text-gray-300 mb-6">
+            You agree to indemnify and hold harmless FlowIntent from claims, damages, and expenses arising from your use of the service, violation of these terms, or infringement of third-party rights.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">12. Termination</h2>
+          <p className="text-gray-300 mb-4">
+            We may terminate or suspend your account:
+          </p>
+          <ul className="text-gray-300 space-y-2 mb-6">
+            <li>For violation of these terms</li>
+            <li>For fraudulent or abusive activity</li>
+            <li>If required by law</li>
+            <li>At our discretion with reasonable notice</li>
+          </ul>
+          <p className="text-gray-300 mb-6">
+            You may delete your account at any time. Upon termination, your access ends immediately.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">13. Changes to Terms</h2>
+          <p className="text-gray-300 mb-6">
+            We may update these terms as the service evolves. Material changes will be announced via email and on our website. Continued use after changes constitutes acceptance.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">14. Governing Law</h2>
+          <p className="text-gray-300 mb-6">
+            These terms are governed by the laws of the United States. Disputes will be resolved in the appropriate courts of that jurisdiction.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-8 mb-4">15. Contact</h2>
+          <p className="text-gray-300 mb-4">
+            Questions about these terms?
+          </p>
+          <p className="text-gray-300 mb-6">
+            Email: <a href="mailto:legal@flowintent.com" className="text-blue-400 hover:text-blue-300">legal@flowintent.com</a>
+          </p>
+
+          <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 mt-8">
+            <p className="text-gray-300 mb-4">
+              <strong>Related:</strong>
+            </p>
+            <div className="flex gap-4 flex-wrap">
+              <Link href="/privacy" className="text-blue-400 hover:text-blue-300">
+                Privacy Policy →
+              </Link>
+              <Link href="/contact" className="text-blue-400 hover:text-blue-300">
+                Contact Us →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+

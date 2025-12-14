@@ -1,0 +1,35 @@
+# FlowIntent
+
+> AI-powered SEO platform that optimizes for Google, ChatGPT, and Perplexity. Get AI Trust Audits, competitor analysis, and automated content creation.
+
+FlowIntent is the first SEO platform built for both traditional search engines and AI answer engines. We help businesses rank in Google while ensuring accurate representation in ChatGPT, Perplexity, and other AI assistants.
+
+## Most important
+
+- [Get Your Free AI Trust Audit](https://flowintent.com/audit): Discover how AI chatbots represent your brand
+- [Answer Engine Optimization Guide](https://flowintent.com/guides/answer-engine-optimization): Complete guide to AEO
+- [Pricing](https://flowintent.com/prices): Free beta access and upcoming premium plan
+
+## Product
+
+- [Home](https://flowintent.com): Platform overview and key features
+- [Pricing](https://flowintent.com/prices): Plans and features
+- [FAQ](https://flowintent.com/faq): Frequently asked questions about AEO and FlowIntent
+
+## Guides
+
+- [Answer Engine Optimization (AEO)](https://flowintent.com/guides/answer-engine-optimization): What is AEO and why it matters
+- [AEO vs GEO](https://flowintent.com/guides/aeo-vs-geo): Understanding the difference between Answer Engine and Generative Engine Optimization
+- [ChatGPT SEO](https://flowintent.com/guides/chatgpt-seo): How to optimize for ChatGPT search and citations
+
+## Docs
+
+- [Documentation](https://flowintent.com/docs): How FlowIntent works and platform architecture
+- [Knowledge Hub](https://flowintent.com/blog): Latest articles on SEO, AEO, and AI search
+
+## Optional
+
+- [Contact](https://flowintent.com/contact): Get in touch with our team
+- [Privacy Policy](https://flowintent.com/privacy): How we handle your data
+- [Terms of Service](https://flowintent.com/terms): Terms and conditions
+

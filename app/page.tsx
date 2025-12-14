@@ -239,7 +239,10 @@ export default function LandingPage() {
             </div>
             <span className="font-bold text-xl tracking-tight text-white">Flow Intent</span>
           </div>
-          <div className="flex gap-8 text-sm text-zinc-500">
+          <div className="flex flex-wrap gap-6 text-sm text-zinc-500 justify-center">
+            <Link href="/guides" className="hover:text-white transition-colors">Guides</Link>
+            <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
+            <Link href="/docs" className="hover:text-white transition-colors">Docs</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
