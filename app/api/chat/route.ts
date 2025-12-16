@@ -53,8 +53,8 @@ import {
 
 export const maxDuration = 300; // 5 minutes
 
-// Using Claude Haiku 4.5 via Vercel Gateway
-const CHAT_MODEL_ID = "anthropic/claude-haiku-4.5";
+// Using Gemini 2.0 Flash - fast and cost-effective (Claude requires AI Gateway)
+const CHAT_MODEL_ID = "google/gemini-2.0-flash";
 
 interface ChatContext {
   page?: string;
