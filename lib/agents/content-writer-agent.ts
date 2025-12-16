@@ -20,6 +20,7 @@ export interface ContentWriteParams {
   wordCount?: number
   researchContext?: any
   seoStrategy?: any
+  fraseContentBrief?: string // Frase optimization guidance for SEO/AEO
   userId?: string
   langfuseTraceId?: string // For grouping spans under a parent trace
   sessionId?: string // For Langfuse session tracking
@@ -206,7 +207,9 @@ ${params.researchContext ? `\nResearch Context:\n${JSON.stringify(params.researc
 
 ${params.seoStrategy ? `\nSEO Strategy:\n${JSON.stringify(params.seoStrategy, null, 2)}` : ''}
 
-Write the complete content now. Make it engaging, informative, and human-like.`
+${params.fraseContentBrief ? `\n🎯 FRASE SEO/AEO OPTIMIZATION BRIEF (CRITICAL - Follow closely for maximum SEO impact):\n${params.fraseContentBrief}\n` : ''}
+
+Write the complete content now. Make it engaging, informative, and human-like.${params.fraseContentBrief ? ' Pay special attention to the Frase optimization brief above for maximum SEO/AEO performance.' : ''}`
 
     return prompt
   }

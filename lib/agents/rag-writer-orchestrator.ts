@@ -8,6 +8,7 @@ import { ContentWriterAgent } from './content-writer-agent'
 import { DataForSEOScoringAgent } from './dataforseo-scoring-agent'
 import { EEATQAAgent } from './eeat-qa-agent'
 import { SEOAEOSyntaxAgent } from './seo-aeo-syntax-agent'
+import { FraseOptimizationAgent } from './frase-optimization-agent'
 import { createClient } from '@/lib/supabase/server'
 import { QUALITY_THRESHOLDS, shouldTriggerRevision } from '@/lib/config/quality-thresholds'
 import { getLangWatchClient } from '@/lib/observability/langwatch'
@@ -35,10 +36,17 @@ export interface RAGWriterResult {
     eeat: number
     depth: number
     factual: number
+    frase: number
     overall: number
   }
   revisionCount: number
   qaReport: any
+  fraseOptimization?: {
+    score: number
+    contentBrief: any
+    recommendations: any
+    searchIntent?: string
+  }
   metadata: {
     researchSummary?: string
     citations?: Array<{ url: string; title?: string }>
@@ -55,6 +63,7 @@ export class RAGWriterOrchestrator {
   private scoringAgent: DataForSEOScoringAgent
   private qaAgent: EEATQAAgent
   private syntaxAgent: SEOAEOSyntaxAgent
+  private fraseAgent: FraseOptimizationAgent
   private langWatch = getLangWatchClient()
   private traceIdGenerator = createIdGenerator()
 
@@ -64,6 +73,7 @@ export class RAGWriterOrchestrator {
     this.scoringAgent = new DataForSEOScoringAgent()
     this.qaAgent = new EEATQAAgent()
     this.syntaxAgent = new SEOAEOSyntaxAgent()
+    this.fraseAgent = new FraseOptimizationAgent()
   }
 
   /**
@@ -158,6 +168,43 @@ export class RAGWriterOrchestrator {
         sessionId, // Link to session
       })
 
+      // Step 1.5: Frase Content Brief Generation (SEO/AEO Optimization)
+      console.log('[Orchestrator] Phase 1.5: Frase Content Brief')
+      let fraseOptimizationResult: any = null
+      let fraseContentBrief = ''
+
+      try {
+        const fraseTraceId = this.traceIdGenerator()
+        await this.langWatch.logTrace({
+          traceId: fraseTraceId,
+          agent: 'frase-optimization',
+          model: 'frase-api',
+          userId: params.userId,
+          sessionId,
+          telemetry: {
+            topic: params.topic,
+            targetKeyword: params.keywords[0] || params.topic,
+          },
+        })
+
+        fraseOptimizationResult = await this.fraseAgent.optimizeContent({
+          targetKeyword: params.keywords[0] || params.topic,
+          competitorUrls: params.competitorUrls || researchResult.competitorSnippets.map(c => c.url),
+          language: 'en',
+          country: 'us',
+          userId: params.userId,
+          contentType: params.type,
+        })
+
+        // Create a comprehensive content brief from Frase results
+        fraseContentBrief = this.formatFraseContentBrief(fraseOptimizationResult)
+
+        console.log(`[Orchestrator] ✓ Frase brief generated - Search Intent: ${fraseOptimizationResult.searchIntent}, Topics: ${fraseOptimizationResult.contentBrief.topicClusters?.length || 0}`)
+      } catch (fraseError) {
+        console.error('[Orchestrator] Frase optimization failed, continuing without it:', fraseError)
+        // Continue without Frase if it fails - don't break the pipeline
+      }
+
       // Step 2: Initial Draft
       console.log('[Orchestrator] Phase 2: Initial Draft')
       const writerTraceId = this.traceIdGenerator()
@@ -181,6 +228,7 @@ export class RAGWriterOrchestrator {
         tone: params.tone,
         wordCount: params.wordCount,
         researchContext: researchResult.combinedSummary,
+        fraseContentBrief, // Frase optimization guidance
         userId: params.userId,
         langfuseTraceId: traceId, // Link to parent trace
         sessionId, // Link to session
@@ -270,10 +318,11 @@ export class RAGWriterOrchestrator {
       // Step 3-5: Scoring, QA, and Revision Loop
       let finalScores: any = {}
       let finalQAReport: any = {}
+      let finalFraseOptimization: any = null
       let bestDraft = currentDraft.content
 
       while (revisionRound <= QUALITY_THRESHOLDS.MAX_REVISION_ROUNDS) {
-        console.log(`[Orchestrator] Phase 3-5: Scoring + QA (Round ${revisionRound + 1})`)
+        console.log(`[Orchestrator] Phase 3-5: Scoring + QA + Frase (Round ${revisionRound + 1})`)
 
         // Step 3: DataForSEO Scoring
         const scoringResult = await this.scoringAgent.analyzeContent({
@@ -306,12 +355,42 @@ export class RAGWriterOrchestrator {
           sessionId, // Link to session
         })
 
+        // Step 4.5: Frase Content Analysis (evaluate against SERP)
+        let fraseContentAnalysis: any = null
+        let fraseScore = 50 // Default score if Frase fails
+
+        try {
+          fraseContentAnalysis = await this.fraseAgent.optimizeContent({
+            content: currentDraft.content, // Analyze the current draft
+            targetKeyword: params.keywords[0] || params.topic,
+            competitorUrls: params.competitorUrls || researchResult.competitorSnippets.map(c => c.url),
+            language: 'en',
+            country: 'us',
+            userId: params.userId,
+            contentType: params.type,
+          })
+
+          fraseScore = fraseContentAnalysis.optimizationScore
+          finalFraseOptimization = {
+            score: fraseScore,
+            contentBrief: fraseContentAnalysis.contentBrief,
+            recommendations: fraseContentAnalysis.recommendations,
+            searchIntent: fraseContentAnalysis.searchIntent,
+          }
+
+          console.log(`[Orchestrator] ✓ Frase content analysis - Score: ${fraseScore}, Missing Topics: ${fraseContentAnalysis.recommendations.missingTopics?.length || 0}`)
+        } catch (fraseError) {
+          console.error('[Orchestrator] Frase content analysis failed:', fraseError)
+          // Continue without Frase score
+        }
+
         // Store quality review
         const overallScore = this.calculateOverallScore(
           scoringResult.dataforseoQualityScore,
           qaResult.qaReport.eeat_score,
           qaResult.qaReport.depth_score,
-          qaResult.qaReport.factual_score
+          qaResult.qaReport.factual_score,
+          fraseScore
         )
 
         finalScores = {
@@ -319,6 +398,7 @@ export class RAGWriterOrchestrator {
           eeat: qaResult.qaReport.eeat_score,
           depth: qaResult.qaReport.depth_score,
           factual: qaResult.qaReport.factual_score,
+          frase: fraseScore,
           overall: overallScore,
         }
 
@@ -472,6 +552,24 @@ export class RAGWriterOrchestrator {
         console.log(`[Orchestrator] Triggering revision (Round ${revisionRound + 1})`)
         revisionRound++
 
+        // Combine QA and Frase improvement instructions
+        const combinedInstructions = [
+          ...(qaResult.qaReport.improvement_instructions || []),
+          ...(fraseContentAnalysis?.recommendations?.optimizationTips || []),
+        ]
+
+        // Add Frase-specific recommendations if available
+        if (fraseContentAnalysis?.recommendations?.missingTopics?.length > 0) {
+          combinedInstructions.push(
+            `Cover these missing topics: ${fraseContentAnalysis.recommendations.missingTopics.slice(0, 5).join(', ')}`
+          )
+        }
+        if (fraseContentAnalysis?.recommendations?.missingQuestions?.length > 0) {
+          combinedInstructions.push(
+            `Answer these user questions: ${fraseContentAnalysis.recommendations.missingQuestions.slice(0, 3).join('; ')}`
+          )
+        }
+
         const revisedDraft = await this.writerAgent.write({
           type: params.type,
           topic: params.topic,
@@ -479,11 +577,12 @@ export class RAGWriterOrchestrator {
           tone: params.tone,
           wordCount: params.wordCount,
           researchContext: researchResult.combinedSummary,
+          fraseContentBrief, // Continue using Frase brief for revisions
           userId: params.userId,
           langfuseTraceId: traceId, // Link to parent trace
           sessionId, // Link to session
           previousDraft: currentDraft.content,
-          improvementInstructions: qaResult.qaReport.improvement_instructions,
+          improvementInstructions: combinedInstructions,
           dataforseoMetrics: scoringResult.metrics,
           qaReport: qaResult.qaReport,
           revisionRound,
@@ -552,6 +651,7 @@ export class RAGWriterOrchestrator {
           qualityScores: finalScores,
           revisionCount: revisionRound,
           qaReport: finalQAReport,
+          fraseOptimization: finalFraseOptimization,
           metadata: {
             researchSummary: researchResult.combinedSummary,
             citations: researchResult.citations,
@@ -627,21 +727,104 @@ export class RAGWriterOrchestrator {
   }
 
   /**
-   * Calculate overall weighted quality score
+   * Calculate overall weighted quality score (including Frase)
    */
   private calculateOverallScore(
     dataforseo: number,
     eeat: number,
     depth: number,
-    factual: number
+    factual: number,
+    frase: number = 50
   ): number {
     const weights = QUALITY_THRESHOLDS.SCORING_WEIGHTS
+    // Adjust weights to accommodate Frase (reduce others proportionally)
+    const adjustedWeights = {
+      dataforseo: weights.dataforseo * 0.85, // 25.5% (was 30%)
+      eeat: weights.eeat * 0.85, // 21.25% (was 25%)
+      depth: weights.depth * 0.85, // 21.25% (was 25%)
+      factual: weights.factual * 0.85, // 17% (was 20%)
+      frase: 0.15, // 15% - Frase SEO/AEO optimization score
+    }
+
     return Math.round(
-      dataforseo * weights.dataforseo +
-      eeat * weights.eeat +
-      depth * weights.depth +
-      factual * weights.factual
+      dataforseo * adjustedWeights.dataforseo +
+      eeat * adjustedWeights.eeat +
+      depth * adjustedWeights.depth +
+      factual * adjustedWeights.factual +
+      frase * adjustedWeights.frase
     )
+  }
+
+  /**
+   * Format Frase optimization result into a content brief for the writer
+   */
+  private formatFraseContentBrief(fraseResult: any): string {
+    if (!fraseResult) return ''
+
+    const brief: string[] = []
+
+    // Search Intent
+    if (fraseResult.searchIntent) {
+      brief.push(`📊 Search Intent: ${fraseResult.searchIntent.toUpperCase()}`)
+    }
+
+    // Topic Clusters
+    if (fraseResult.contentBrief?.topicClusters?.length > 0) {
+      brief.push('\n🎯 Key Topics to Cover (in order of importance):')
+      fraseResult.contentBrief.topicClusters.slice(0, 15).forEach((topic: any, idx: number) => {
+        brief.push(`  ${idx + 1}. ${topic.topic} (importance: ${Math.round((topic.importance || 0) * 100)}%)`)
+      })
+    }
+
+    // Questions to Answer
+    if (fraseResult.contentBrief?.questions?.length > 0) {
+      brief.push('\n❓ User Questions to Answer:')
+      fraseResult.contentBrief.questions.slice(0, 10).forEach((q: string) => {
+        brief.push(`  • ${q}`)
+      })
+    }
+
+    // Suggested Headings
+    if (fraseResult.contentBrief?.headings?.length > 0) {
+      brief.push('\n📑 Recommended Headings (based on SERP analysis):')
+      fraseResult.contentBrief.headings.slice(0, 8).forEach((h: any) => {
+        brief.push(`  • ${h.heading}`)
+      })
+    }
+
+    // Key Terms
+    if (fraseResult.contentBrief?.keyTerms?.length > 0) {
+      const terms = fraseResult.contentBrief.keyTerms.slice(0, 20).map((t: any) => t.term).join(', ')
+      brief.push(`\n🔑 Important Terms to Include: ${terms}`)
+    }
+
+    // Competitor Insights
+    if (fraseResult.contentBrief?.competitorInsights) {
+      const insights = fraseResult.contentBrief.competitorInsights
+      brief.push('\n📈 Competitor Benchmarks:')
+      if (insights.avgWordCount) {
+        brief.push(`  • Target word count: ${insights.avgWordCount}+ words`)
+      }
+      if (insights.avgHeadingCount) {
+        brief.push(`  • Target headings: ${insights.avgHeadingCount}+ headings`)
+      }
+      if (insights.topPerformingUrls?.length > 0) {
+        brief.push('  • Top performing competitors:')
+        insights.topPerformingUrls.slice(0, 3).forEach((url: any) => {
+          brief.push(`    - ${url.title || url.url}`)
+        })
+      }
+    }
+
+    // Optimization Recommendations
+    if (fraseResult.recommendations?.suggestedTopics?.length > 0) {
+      brief.push('\n💡 Content Recommendations:')
+      fraseResult.recommendations.suggestedTopics.slice(0, 5).forEach((topic: string) => {
+        brief.push(`  • Include: ${topic}`)
+      })
+    }
+
+    return brief.join('\n')
   }
 
   /**
