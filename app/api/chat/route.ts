@@ -751,97 +751,10 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       },
     });
 
-    // Wrap the response stream to enforce beta character limit (4000 chars)
-    if (!originalStream.body) {
-      return originalStream;
-    }
-
-    const reader = originalStream.body.getReader();
-    const decoder = new TextDecoder();
-    const encoder = new TextEncoder();
-    let totalChars = 0;
-    let buffer = '';
-    let truncated = false;
-
-    const limitedStream = new ReadableStream({
-      async start(controller) {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              // Flush remaining buffer if under limit
-              if (buffer && !truncated) {
-                if (totalChars + buffer.length <= BETA_LIMITS.MAX_RESPONSE_CHARS) {
-                  controller.enqueue(encoder.encode(buffer));
-                } else {
-                  const remaining = BETA_LIMITS.MAX_RESPONSE_CHARS - totalChars;
-                  controller.enqueue(encoder.encode(buffer.substring(0, remaining)));
-                  controller.enqueue(encoder.encode('\n\n[Response truncated due to beta mode limits. Please email ' + BETA_LIMITS.UPGRADE_EMAIL + ' to upgrade for longer responses.]'));
-                }
-              }
-              controller.close();
-              break;
-            }
-
-            const chunk = decoder.decode(value, { stream: true });
-            buffer += chunk;
-
-            // Process complete lines (SSE format)
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-            for (const line of lines) {
-              if (truncated) {
-                // Skip remaining data after truncation
-                continue;
-              }
-
-              if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.substring(6));
-                  // Check if this is a text delta
-                  if (data.type === 'text-delta' && data.textDelta) {
-                    const textLength = data.textDelta.length;
-                    if (totalChars + textLength > BETA_LIMITS.MAX_RESPONSE_CHARS) {
-                      // Truncate this delta
-                      const remaining = BETA_LIMITS.MAX_RESPONSE_CHARS - totalChars;
-                      if (remaining > 0) {
-                        data.textDelta = data.textDelta.substring(0, remaining);
-                        totalChars = BETA_LIMITS.MAX_RESPONSE_CHARS;
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-                        // Send truncation notice
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text-delta', textDelta: '\n\n[Response truncated due to beta mode limits. Please email ' + BETA_LIMITS.UPGRADE_EMAIL + ' to upgrade for longer responses.]' })}\n\n`));
-                        truncated = true;
-                        controller.close();
-                        return;
-                      }
-                    } else {
-                      totalChars += textLength;
-                    }
-                  }
-                  // Forward the data line
-                  controller.enqueue(encoder.encode(`${line}\n\n`));
-                } catch (e) {
-                  // Not JSON, forward as-is
-                  controller.enqueue(encoder.encode(`${line}\n\n`));
-                }
-              } else {
-                // Forward non-data lines (like 'event:', etc.)
-                controller.enqueue(encoder.encode(`${line}\n\n`));
-              }
-            }
-          }
-        } catch (error) {
-          console.error('[Chat API] Error in character limit stream:', error);
-          controller.error(error);
-        }
-      },
-    });
-
-    return new Response(limitedStream, {
-      headers: originalStream.headers,
-      status: originalStream.status,
-    });
+    // Return the stream directly - beta character limiting was breaking AI SDK v6 streaming
+    // The wrapper incorrectly parsed SSE format and used wrong property names (textDelta vs delta)
+    // TODO: Re-implement character limiting properly if needed in the future
+    return originalStream;
 
   } catch (error) {
     console.error("Chat API error:", error);
