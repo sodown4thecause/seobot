@@ -110,7 +110,7 @@ export class EEATQAAgent {
       const userPrompt = this.buildReviewPrompt(params, objectiveMetrics)
 
       const { object: qaReport, usage } = await generateObject({
-        model: vercelGateway.languageModel('anthropic/claude-sonnet-4' as GatewayModelId),
+        model: vercelGateway.languageModel('google/gemini-2.5-pro-preview-06-05' as GatewayModelId),
         schema: QA_REPORT_SCHEMA,
         system: systemPrompt,
         prompt: userPrompt,
@@ -127,8 +127,8 @@ export class EEATQAAgent {
           hasResearchDocs: !!params.researchDocs,
           objectiveWordCount: objectiveMetrics.wordCount,
           objectiveCitationCount: objectiveMetrics.citationCount,
-          provider: 'anthropic',
-          model: 'claude-sonnet-4',
+          provider: 'google',
+          model: 'gemini-2.5-pro-preview-06-05',
         }),
       })
 
@@ -139,7 +139,7 @@ export class EEATQAAgent {
           await logAIUsage({
             userId: params.userId,
             agentType: 'eeat_qa',
-            model: 'anthropic/claude-sonnet-4',
+            model: 'google/gemini-2.5-pro-preview-06-05',
             promptTokens: (usage as any)?.promptTokens || (usage as any)?.inputTokens || 0,
             completionTokens: (usage as any)?.completionTokens || (usage as any)?.outputTokens || 0,
             metadata: {

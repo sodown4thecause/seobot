@@ -53,8 +53,8 @@ import {
 
 export const maxDuration = 300; // 5 minutes
 
-// Using Gemini 2.0 Flash - fast and cost-effective (Claude requires AI Gateway)
-const CHAT_MODEL_ID = "google/gemini-2.0-flash";
+// Using DeepSeek V3.2 Thinking - advanced reasoning model for chat
+const CHAT_MODEL_ID = "deepseek/deepseek-reasoner";
 
 interface ChatContext {
   page?: string;

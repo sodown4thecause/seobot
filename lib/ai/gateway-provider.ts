@@ -1,5 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createDeepSeek } from '@ai-sdk/deepseek';
 import { createGateway } from '@ai-sdk/gateway';
 import { serverEnv } from '@/lib/config/env';
 
@@ -13,6 +15,18 @@ const google = serverEnv.GOOGLE_API_KEY
 const openai = serverEnv.OPENAI_API_KEY
   ? createOpenAI({
       apiKey: serverEnv.OPENAI_API_KEY,
+    })
+  : null;
+
+const anthropic = serverEnv.ANTHROPIC_API_KEY
+  ? createAnthropic({
+      apiKey: serverEnv.ANTHROPIC_API_KEY,
+    })
+  : null;
+
+const deepseek = serverEnv.DEEPSEEK_API_KEY
+  ? createDeepSeek({
+      apiKey: serverEnv.DEEPSEEK_API_KEY,
     })
   : null;
 
@@ -31,15 +45,15 @@ export const vercelGateway = {
     console.log('[Gateway] Gateway configured:', !!gateway);
     console.log('[Gateway] OpenAI configured:', !!openai);
     console.log('[Gateway] Google configured:', !!google);
+    console.log('[Gateway] Anthropic configured:', !!anthropic);
+    console.log('[Gateway] DeepSeek configured:', !!deepseek);
     
-    // TEMP: Prefer direct providers over gateway for testing streaming
+    // OpenAI models
     if (modelId.startsWith('openai/')) {
-      // Try direct OpenAI first
       if (openai) {
         console.log('[Gateway] Using direct OpenAI provider for:', modelId);
         return openai(modelId.replace('openai/', ''));
       }
-      // Fallback to Gateway if OpenAI key missing
       if (gateway) {
         console.log('[Gateway] Using gateway for:', modelId);
         return gateway(modelId);
@@ -47,18 +61,43 @@ export const vercelGateway = {
       throw new Error('Neither OPENAI_API_KEY nor AI_GATEWAY_API_KEY is configured');
     }
 
-    // Google provider
+    // Google models
     if (modelId.startsWith('google/')) {
       if (google) {
         console.log('[Gateway] Using Google provider for:', modelId);
         return google(modelId.replace('google/', ''));
       }
-      // Fallback to Gateway if Google key missing but Gateway exists
       if (gateway) {
         console.log('[Gateway] Falling back to gateway for Google model:', modelId);
         return gateway(modelId);
       }
       throw new Error('Neither GOOGLE_API_KEY nor AI_GATEWAY_API_KEY is configured');
+    }
+
+    // Anthropic models
+    if (modelId.startsWith('anthropic/')) {
+      if (anthropic) {
+        console.log('[Gateway] Using Anthropic provider for:', modelId);
+        return anthropic(modelId.replace('anthropic/', ''));
+      }
+      if (gateway) {
+        console.log('[Gateway] Falling back to gateway for Anthropic model:', modelId);
+        return gateway(modelId);
+      }
+      throw new Error('Neither ANTHROPIC_API_KEY nor AI_GATEWAY_API_KEY is configured');
+    }
+
+    // DeepSeek models
+    if (modelId.startsWith('deepseek/')) {
+      if (deepseek) {
+        console.log('[Gateway] Using DeepSeek provider for:', modelId);
+        return deepseek(modelId.replace('deepseek/', ''));
+      }
+      if (gateway) {
+        console.log('[Gateway] Falling back to gateway for DeepSeek model:', modelId);
+        return gateway(modelId);
+      }
+      throw new Error('Neither DEEPSEEK_API_KEY nor AI_GATEWAY_API_KEY is configured');
     }
     
     // Try gateway for other models

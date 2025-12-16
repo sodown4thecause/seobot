@@ -62,7 +62,7 @@ export class ContentWriterAgent {
         return withAgentRetry(
           async () => {
             const { text, usage } = await generateText({
-              model: vercelGateway.languageModel('anthropic/claude-sonnet-4' as GatewayModelId),
+              model: vercelGateway.languageModel('anthropic/claude-haiku-4.5' as GatewayModelId),
               system: this.buildSystemPrompt(guidance),
               prompt: prompt,
               temperature: 0.7,
@@ -80,7 +80,7 @@ export class ContentWriterAgent {
                   hasImprovementInstructions: !!params.improvementInstructions,
                   learningsApplied: this.countLearnings(guidance),
                   provider: 'anthropic',
-                  model: 'claude-sonnet-4',
+                  model: 'claude-haiku-4.5',
                 }
               ),
             })
@@ -92,7 +92,7 @@ export class ContentWriterAgent {
                 await logAIUsage({
                   userId: params.userId,
                   agentType: 'content_writer',
-                  model: 'anthropic/claude-sonnet-4',
+                  model: 'anthropic/claude-haiku-4.5',
                   promptTokens: usage?.inputTokens || 0,
                   completionTokens: usage?.outputTokens || 0,
                   metadata: {
