@@ -452,6 +452,14 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     id: conversationId ?? 'dashboard-chat',
     experimental_throttle: 32,
     transport,
+    onError: (err) => {
+      console.error('[useChat] Stream error:', err);
+      console.error('[useChat] Error details:', {
+        message: err?.message,
+        name: err?.name,
+        stack: err?.stack,
+      });
+    },
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
