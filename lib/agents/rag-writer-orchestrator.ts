@@ -189,7 +189,7 @@ export class RAGWriterOrchestrator {
 
         fraseOptimizationResult = await this.fraseAgent.optimizeContent({
           targetKeyword: params.keywords[0] || params.topic,
-          competitorUrls: params.competitorUrls || researchResult.competitorSnippets.map(c => c.url),
+          competitorUrls: params.competitorUrls || (researchResult.competitorSnippets?.length ? researchResult.competitorSnippets.map(c => c.url) : []),
           language: 'en',
           country: 'us',
           userId: params.userId,
@@ -363,7 +363,7 @@ export class RAGWriterOrchestrator {
           fraseContentAnalysis = await this.fraseAgent.optimizeContent({
             content: currentDraft.content, // Analyze the current draft
             targetKeyword: params.keywords[0] || params.topic,
-            competitorUrls: params.competitorUrls || researchResult.competitorSnippets.map(c => c.url),
+            competitorUrls: params.competitorUrls || (researchResult.competitorSnippets?.length ? researchResult.competitorSnippets.map(c => c.url) : []),
             language: 'en',
             country: 'us',
             userId: params.userId,

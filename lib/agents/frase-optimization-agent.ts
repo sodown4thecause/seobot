@@ -549,9 +549,16 @@ export class FraseOptimizationAgent {
 
       // Navigational indicators (brand/product names)
       const hasNavigational = results.some((r: any) => {
-        const domain = new URL(r.url || r.link || 'https://example.com').hostname
-        const title = (r.title || '').toLowerCase()
-        return title.includes(domain.replace('www.', '').split('.')[0])
+        try {
+          const urlString = r.url || r.link || ''
+          if (!urlString) return false
+          const domain = new URL(urlString).hostname
+          const title = (r.title || '').toLowerCase()
+          return title.includes(domain.replace('www.', '').split('.')[0])
+        } catch {
+          // Skip malformed URLs
+          return false
+        }
       })
       if (hasNavigational) return 'navigational'
 
