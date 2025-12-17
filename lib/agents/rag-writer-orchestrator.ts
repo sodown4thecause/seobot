@@ -17,6 +17,13 @@ import { createIdGenerator } from 'ai'
 import { startActiveObservation, updateActiveTrace } from '@langfuse/tracing'
 import { storeAndLearn } from '@/lib/ai/learning-storage'
 
+export interface ProgressUpdate {
+  phase: string
+  status: 'pending' | 'in_progress' | 'completed' | 'error'
+  message: string
+  details?: string
+}
+
 export interface RAGWriterParams {
   type: 'blog_post' | 'article' | 'social_media' | 'landing_page'
   topic: string
@@ -25,6 +32,7 @@ export interface RAGWriterParams {
   wordCount?: number
   userId?: string
   competitorUrls?: string[]
+  onProgress?: (update: ProgressUpdate) => void | Promise<void>
 }
 
 export interface RAGWriterResult {
@@ -74,6 +82,21 @@ export class RAGWriterOrchestrator {
     this.qaAgent = new EEATQAAgent()
     this.syntaxAgent = new SEOAEOSyntaxAgent()
     this.fraseAgent = new FraseOptimizationAgent()
+  }
+
+  /**
+   * Helper to emit progress updates
+   */
+  private async emitProgress(
+    params: RAGWriterParams,
+    phase: string,
+    status: ProgressUpdate['status'],
+    message: string,
+    details?: string
+  ) {
+    if (params.onProgress) {
+      await params.onProgress({ phase, status, message, details })
+    }
   }
 
   /**
@@ -143,6 +166,7 @@ export class RAGWriterOrchestrator {
       try {
       // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
       console.log('[Orchestrator] Phase 1: Research')
+      await this.emitProgress(params, 'research', 'in_progress', 'Researching topic and analyzing competitors...', 'Using Perplexity AI, RAG, and DataForSEO')
       const researchTraceId = this.traceIdGenerator()
       await this.langWatch.logTrace({
         traceId: researchTraceId,
@@ -167,9 +191,11 @@ export class RAGWriterOrchestrator {
         langfuseTraceId: traceId, // Link to parent trace
         sessionId, // Link to session
       })
+      await this.emitProgress(params, 'research', 'completed', 'Research complete', `Found ${researchResult.competitorSnippets?.length || 0} competitors`)
 
       // Step 1.5: Frase Content Brief Generation (SEO/AEO Optimization)
       console.log('[Orchestrator] Phase 1.5: Frase Content Brief')
+      await this.emitProgress(params, 'frase-brief', 'in_progress', 'Generating SEO content brief...', 'Analyzing SERP with Frase.io')
       let fraseOptimizationResult: any = null
       let fraseContentBrief = ''
 
@@ -200,13 +226,16 @@ export class RAGWriterOrchestrator {
         fraseContentBrief = this.formatFraseContentBrief(fraseOptimizationResult)
 
         console.log(`[Orchestrator] ✓ Frase brief generated - Search Intent: ${fraseOptimizationResult.searchIntent}, Topics: ${fraseOptimizationResult.contentBrief.topicClusters?.length || 0}`)
+        await this.emitProgress(params, 'frase-brief', 'completed', 'SEO brief ready', `${fraseOptimizationResult.contentBrief.topicClusters?.length || 0} topics identified`)
       } catch (fraseError) {
         console.error('[Orchestrator] Frase optimization failed, continuing without it:', fraseError)
+        await this.emitProgress(params, 'frase-brief', 'completed', 'Skipped Frase analysis', 'Continuing without SERP analysis')
         // Continue without Frase if it fails - don't break the pipeline
       }
 
       // Step 2: Initial Draft
       console.log('[Orchestrator] Phase 2: Initial Draft')
+      await this.emitProgress(params, 'writing', 'in_progress', 'Writing initial draft...', `Target: ${params.wordCount || 2000} words`)
       const writerTraceId = this.traceIdGenerator()
       await this.langWatch.logTrace({
         traceId: writerTraceId,
@@ -233,6 +262,7 @@ export class RAGWriterOrchestrator {
         langfuseTraceId: traceId, // Link to parent trace
         sessionId, // Link to session
       })
+      await this.emitProgress(params, 'writing', 'completed', 'Initial draft complete', `${currentDraft.content.split(/\s+/).length} words written`)
 
       // Create content record in Supabase
       const { data: contentData, error: contentError } = await supabase
@@ -277,6 +307,7 @@ export class RAGWriterOrchestrator {
 
       // Step 2.5: SEO/AEO Syntax Optimization
       console.log('[Orchestrator] Phase 2.5: SEO/AEO Syntax Optimization')
+      await this.emitProgress(params, 'syntax', 'in_progress', 'Optimizing SEO/AEO syntax...', 'Adding structured headings and meta tags')
       let syntaxMetadata: {
         metaTitle?: string
         metaDescription?: string
@@ -310,8 +341,10 @@ export class RAGWriterOrchestrator {
         }
 
         console.log(`[Orchestrator] ? Syntax optimization complete - H1: ${syntaxResult.syntaxReport.h1Present}, Question H2: ${syntaxResult.syntaxReport.h2QuestionHeading}`)
+        await this.emitProgress(params, 'syntax', 'completed', 'Syntax optimization complete', 'Meta tags and structure optimized')
       } catch (syntaxError) {
         console.error('[Orchestrator] Syntax optimization failed, continuing with original draft:', syntaxError)
+        await this.emitProgress(params, 'syntax', 'completed', 'Skipped syntax optimization', 'Continuing with original structure')
         // Continue with original draft if syntax optimization fails
       }
 
@@ -323,6 +356,7 @@ export class RAGWriterOrchestrator {
 
       while (revisionRound <= QUALITY_THRESHOLDS.MAX_REVISION_ROUNDS) {
         console.log(`[Orchestrator] Phase 3-5: Scoring + QA + Frase (Round ${revisionRound + 1})`)
+        await this.emitProgress(params, 'scoring', 'in_progress', `Analyzing content quality (Round ${revisionRound + 1})...`, 'Running DataForSEO scoring')
 
         // Step 3: DataForSEO Scoring
         const scoringResult = await this.scoringAgent.analyzeContent({
@@ -333,6 +367,7 @@ export class RAGWriterOrchestrator {
         })
 
         // Step 4: EEAT QA Review
+        await this.emitProgress(params, 'qa', 'in_progress', 'Running E-E-A-T quality review...', 'Analyzing expertise, experience, authority, trust')
         const qaResult = await this.qaAgent.reviewContent({
           draft: currentDraft.content,
           dataforseoSummary: scoringResult.dataforseoRaw,
@@ -356,6 +391,7 @@ export class RAGWriterOrchestrator {
         })
 
         // Step 4.5: Frase Content Analysis (evaluate against SERP)
+        await this.emitProgress(params, 'frase-analysis', 'in_progress', 'Analyzing SERP optimization...', 'Comparing against top-ranking content')
         let fraseContentAnalysis: any = null
         let fraseScore = 50 // Default score if Frase fails
 
@@ -379,8 +415,10 @@ export class RAGWriterOrchestrator {
           }
 
           console.log(`[Orchestrator] ✓ Frase content analysis - Score: ${fraseScore}, Missing Topics: ${fraseContentAnalysis.recommendations.missingTopics?.length || 0}`)
+          await this.emitProgress(params, 'frase-analysis', 'completed', 'SERP analysis complete', `Optimization score: ${fraseScore}`)
         } catch (fraseError) {
           console.error('[Orchestrator] Frase content analysis failed:', fraseError)
+          await this.emitProgress(params, 'frase-analysis', 'completed', 'Skipped SERP analysis', 'Continuing without Frase score')
           // Continue without Frase score
         }
 
@@ -511,6 +549,7 @@ export class RAGWriterOrchestrator {
 
         if (!needsRevision || revisionRound >= QUALITY_THRESHOLDS.MAX_REVISION_ROUNDS) {
           console.log('[Orchestrator] ? Quality thresholds met or max revisions reached')
+          await this.emitProgress(params, 'complete', 'completed', 'Quality standards achieved', `Overall score: ${overallScore}, Revisions: ${revisionRound}`)
 
           // Log final trace to LangWatch
           try {
@@ -550,6 +589,7 @@ export class RAGWriterOrchestrator {
 
         // Trigger revision
         console.log(`[Orchestrator] Triggering revision (Round ${revisionRound + 1})`)
+        await this.emitProgress(params, 'revision', 'in_progress', `Improving content (Revision ${revisionRound + 1})...`, `Current score: ${overallScore}, target: ${QUALITY_THRESHOLDS.MIN_OVERALL_SCORE}`)
         revisionRound++
 
         // Combine QA and Frase improvement instructions
@@ -614,6 +654,7 @@ export class RAGWriterOrchestrator {
 
         console.log('[Orchestrator] ? Content generation complete')
         console.log(`[Orchestrator] Final scores - Overall: ${finalScores.overall}, Revisions: ${revisionRound}`)
+        await this.emitProgress(params, 'finished', 'completed', 'Content generation complete!', `Final score: ${finalScores.overall}, Word count: ${bestDraft.split(/\s+/).length}`)
 
         // Store learning for cross-user feedback loop
         // This enables future content to benefit from this generation's quality scores
