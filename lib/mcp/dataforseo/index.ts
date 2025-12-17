@@ -41,26 +41,6 @@ import { dataforseo_labs_bulk_traffic_estimationToolWithClient } from "./datafor
 import { dataforseo_labs_available_filtersToolWithClient } from "./dataforseo_labs_available_filters";
 import { dataforseo_labs_google_historical_keyword_dataToolWithClient } from "./dataforseo_labs_google_historical_keyword_data";
 import { dataforseo_labs_google_relevant_pagesToolWithClient } from "./dataforseo_labs_google_relevant_pages";
-import { backlinks_backlinksToolWithClient } from "./backlinks_backlinks";
-import { backlinks_anchorsToolWithClient } from "./backlinks_anchors";
-import { backlinks_bulk_backlinksToolWithClient } from "./backlinks_bulk_backlinks";
-import { backlinks_bulk_new_lost_referring_domainsToolWithClient } from "./backlinks_bulk_new_lost_referring_domains";
-import { backlinks_bulk_new_lost_backlinksToolWithClient } from "./backlinks_bulk_new_lost_backlinks";
-import { backlinks_bulk_ranksToolWithClient } from "./backlinks_bulk_ranks";
-import { backlinks_bulk_referring_domainsToolWithClient } from "./backlinks_bulk_referring_domains";
-import { backlinks_bulk_spam_scoreToolWithClient } from "./backlinks_bulk_spam_score";
-import { backlinks_competitorsToolWithClient } from "./backlinks_competitors";
-import { backlinks_domain_intersectionToolWithClient } from "./backlinks_domain_intersection";
-import { backlinks_domain_pages_summaryToolWithClient } from "./backlinks_domain_pages_summary";
-import { backlinks_domain_pagesToolWithClient } from "./backlinks_domain_pages";
-import { backlinks_page_intersectionToolWithClient } from "./backlinks_page_intersection";
-import { backlinks_referring_domainsToolWithClient } from "./backlinks_referring_domains";
-import { backlinks_referring_networksToolWithClient } from "./backlinks_referring_networks";
-import { backlinks_summaryToolWithClient } from "./backlinks_summary";
-import { backlinks_timeseries_new_lost_summaryToolWithClient } from "./backlinks_timeseries_new_lost_summary";
-import { backlinks_timeseries_summaryToolWithClient } from "./backlinks_timeseries_summary";
-import { backlinks_bulk_pages_summaryToolWithClient } from "./backlinks_bulk_pages_summary";
-import { backlinks_available_filtersToolWithClient } from "./backlinks_available_filters";
 import { business_data_business_listings_searchToolWithClient } from "./business_data_business_listings_search";
 import { domain_analytics_whois_overviewToolWithClient } from "./domain_analytics_whois_overview";
 import { domain_analytics_whois_available_filtersToolWithClient } from "./domain_analytics_whois_available_filters";
@@ -149,40 +129,6 @@ export const mcpDataforseoTools = {
     dataforseo_labs_google_historical_keyword_dataToolWithClient(getMcpClient),
   dataforseo_labs_google_relevant_pages:
     dataforseo_labs_google_relevant_pagesToolWithClient(getMcpClient),
-  backlinks_backlinks: backlinks_backlinksToolWithClient(getMcpClient),
-  backlinks_anchors: backlinks_anchorsToolWithClient(getMcpClient),
-  backlinks_bulk_backlinks:
-    backlinks_bulk_backlinksToolWithClient(getMcpClient),
-  backlinks_bulk_new_lost_referring_domains:
-    backlinks_bulk_new_lost_referring_domainsToolWithClient(getMcpClient),
-  backlinks_bulk_new_lost_backlinks:
-    backlinks_bulk_new_lost_backlinksToolWithClient(getMcpClient),
-  backlinks_bulk_ranks: backlinks_bulk_ranksToolWithClient(getMcpClient),
-  backlinks_bulk_referring_domains:
-    backlinks_bulk_referring_domainsToolWithClient(getMcpClient),
-  backlinks_bulk_spam_score:
-    backlinks_bulk_spam_scoreToolWithClient(getMcpClient),
-  backlinks_competitors: backlinks_competitorsToolWithClient(getMcpClient),
-  backlinks_domain_intersection:
-    backlinks_domain_intersectionToolWithClient(getMcpClient),
-  backlinks_domain_pages_summary:
-    backlinks_domain_pages_summaryToolWithClient(getMcpClient),
-  backlinks_domain_pages: backlinks_domain_pagesToolWithClient(getMcpClient),
-  backlinks_page_intersection:
-    backlinks_page_intersectionToolWithClient(getMcpClient),
-  backlinks_referring_domains:
-    backlinks_referring_domainsToolWithClient(getMcpClient),
-  backlinks_referring_networks:
-    backlinks_referring_networksToolWithClient(getMcpClient),
-  backlinks_summary: backlinks_summaryToolWithClient(getMcpClient),
-  backlinks_timeseries_new_lost_summary:
-    backlinks_timeseries_new_lost_summaryToolWithClient(getMcpClient),
-  backlinks_timeseries_summary:
-    backlinks_timeseries_summaryToolWithClient(getMcpClient),
-  backlinks_bulk_pages_summary:
-    backlinks_bulk_pages_summaryToolWithClient(getMcpClient),
-  backlinks_available_filters:
-    backlinks_available_filtersToolWithClient(getMcpClient),
   business_data_business_listings_search:
     business_data_business_listings_searchToolWithClient(getMcpClient),
   domain_analytics_whois_overview:
@@ -291,49 +237,6 @@ export const mcpDataforseoToolsWithClient = (
       ),
     dataforseo_labs_google_relevant_pages:
       dataforseo_labs_google_relevant_pagesToolWithClient(() => client),
-    backlinks_backlinks: backlinks_backlinksToolWithClient(() => client),
-    backlinks_anchors: backlinks_anchorsToolWithClient(() => client),
-    backlinks_bulk_backlinks: backlinks_bulk_backlinksToolWithClient(
-      () => client,
-    ),
-    backlinks_bulk_new_lost_referring_domains:
-      backlinks_bulk_new_lost_referring_domainsToolWithClient(() => client),
-    backlinks_bulk_new_lost_backlinks:
-      backlinks_bulk_new_lost_backlinksToolWithClient(() => client),
-    backlinks_bulk_ranks: backlinks_bulk_ranksToolWithClient(() => client),
-    backlinks_bulk_referring_domains:
-      backlinks_bulk_referring_domainsToolWithClient(() => client),
-    backlinks_bulk_spam_score: backlinks_bulk_spam_scoreToolWithClient(
-      () => client,
-    ),
-    backlinks_competitors: backlinks_competitorsToolWithClient(() => client),
-    backlinks_domain_intersection: backlinks_domain_intersectionToolWithClient(
-      () => client,
-    ),
-    backlinks_domain_pages_summary:
-      backlinks_domain_pages_summaryToolWithClient(() => client),
-    backlinks_domain_pages: backlinks_domain_pagesToolWithClient(() => client),
-    backlinks_page_intersection: backlinks_page_intersectionToolWithClient(
-      () => client,
-    ),
-    backlinks_referring_domains: backlinks_referring_domainsToolWithClient(
-      () => client,
-    ),
-    backlinks_referring_networks: backlinks_referring_networksToolWithClient(
-      () => client,
-    ),
-    backlinks_summary: backlinks_summaryToolWithClient(() => client),
-    backlinks_timeseries_new_lost_summary:
-      backlinks_timeseries_new_lost_summaryToolWithClient(() => client),
-    backlinks_timeseries_summary: backlinks_timeseries_summaryToolWithClient(
-      () => client,
-    ),
-    backlinks_bulk_pages_summary: backlinks_bulk_pages_summaryToolWithClient(
-      () => client,
-    ),
-    backlinks_available_filters: backlinks_available_filtersToolWithClient(
-      () => client,
-    ),
     business_data_business_listings_search:
       business_data_business_listings_searchToolWithClient(() => client),
     domain_analytics_whois_overview:
@@ -440,46 +343,6 @@ export const dataforseo_labs_google_historical_keyword_dataTool =
   dataforseo_labs_google_historical_keyword_dataToolWithClient(getMcpClient);
 export const dataforseo_labs_google_relevant_pagesTool =
   dataforseo_labs_google_relevant_pagesToolWithClient(getMcpClient);
-export const backlinks_backlinksTool =
-  backlinks_backlinksToolWithClient(getMcpClient);
-export const backlinks_anchorsTool =
-  backlinks_anchorsToolWithClient(getMcpClient);
-export const backlinks_bulk_backlinksTool =
-  backlinks_bulk_backlinksToolWithClient(getMcpClient);
-export const backlinks_bulk_new_lost_referring_domainsTool =
-  backlinks_bulk_new_lost_referring_domainsToolWithClient(getMcpClient);
-export const backlinks_bulk_new_lost_backlinksTool =
-  backlinks_bulk_new_lost_backlinksToolWithClient(getMcpClient);
-export const backlinks_bulk_ranksTool =
-  backlinks_bulk_ranksToolWithClient(getMcpClient);
-export const backlinks_bulk_referring_domainsTool =
-  backlinks_bulk_referring_domainsToolWithClient(getMcpClient);
-export const backlinks_bulk_spam_scoreTool =
-  backlinks_bulk_spam_scoreToolWithClient(getMcpClient);
-export const backlinks_competitorsTool =
-  backlinks_competitorsToolWithClient(getMcpClient);
-export const backlinks_domain_intersectionTool =
-  backlinks_domain_intersectionToolWithClient(getMcpClient);
-export const backlinks_domain_pages_summaryTool =
-  backlinks_domain_pages_summaryToolWithClient(getMcpClient);
-export const backlinks_domain_pagesTool =
-  backlinks_domain_pagesToolWithClient(getMcpClient);
-export const backlinks_page_intersectionTool =
-  backlinks_page_intersectionToolWithClient(getMcpClient);
-export const backlinks_referring_domainsTool =
-  backlinks_referring_domainsToolWithClient(getMcpClient);
-export const backlinks_referring_networksTool =
-  backlinks_referring_networksToolWithClient(getMcpClient);
-export const backlinks_summaryTool =
-  backlinks_summaryToolWithClient(getMcpClient);
-export const backlinks_timeseries_new_lost_summaryTool =
-  backlinks_timeseries_new_lost_summaryToolWithClient(getMcpClient);
-export const backlinks_timeseries_summaryTool =
-  backlinks_timeseries_summaryToolWithClient(getMcpClient);
-export const backlinks_bulk_pages_summaryTool =
-  backlinks_bulk_pages_summaryToolWithClient(getMcpClient);
-export const backlinks_available_filtersTool =
-  backlinks_available_filtersToolWithClient(getMcpClient);
 export const business_data_business_listings_searchTool =
   business_data_business_listings_searchToolWithClient(getMcpClient);
 export const domain_analytics_whois_overviewTool =

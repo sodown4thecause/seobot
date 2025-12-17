@@ -65,7 +65,10 @@ export class FraseOptimizationAgent {
   constructor() {
     this.apiKey = process.env.FRASE_API_KEY || ''
     if (!this.apiKey) {
-      console.warn('[Frase Agent] Warning: FRASE_API_KEY not found in environment variables')
+      throw new Error(
+        'FRASE_API_KEY is required but not found in environment variables. ' +
+        'Please set FRASE_API_KEY in your .env file to use the Frase optimization agent.'
+      )
     }
   }
 
@@ -74,10 +77,6 @@ export class FraseOptimizationAgent {
    */
   async optimizeContent(params: FraseOptimizationParams): Promise<FraseOptimizationResult> {
     console.log('[Frase Agent] Starting content optimization for:', params.targetKeyword)
-
-    if (!this.apiKey) {
-      throw new Error('Frase API key is not configured')
-    }
 
     try {
       // Step 1: Process SERP or custom URLs to get competitive insights
@@ -138,20 +137,18 @@ export class FraseOptimizationAgent {
     console.log('[Frase Agent] Processing SERP for query:', params.query)
 
     try {
-      const endpoint = params.customUrls
-        ? `${this.baseUrl}/process-urls` // Custom URLs endpoint
-        : `${this.baseUrl}/process-serp` // SERP scraping endpoint
+      const endpoint = `${this.baseUrl}/process_serp`
 
       const requestBody = params.customUrls
         ? {
-            serp_urls: params.customUrls,
-            query: params.query,
-          }
+          serp_urls: params.customUrls,
+          query: params.query,
+        }
         : {
-            query: params.query,
-            language: params.language,
-            country: params.country,
-          }
+          query: params.query,
+          lang: params.language,
+          country: params.country,
+        }
 
       // Log MCP usage if available
       let serpResult: any
@@ -161,14 +158,20 @@ export class FraseOptimizationAgent {
           {
             userId: params.userId,
             provider: 'other' as any, // Frase is external API
-            endpoint: params.customUrls ? 'process_urls' : 'process_serp',
+            endpoint: 'process_serp',
             agentType: 'frase_optimization',
           },
           () => this.makeAPIRequest(endpoint, requestBody)
         )
-      } catch {
-        // Fallback without logging if MCP logger fails
-        serpResult = await this.makeAPIRequest(endpoint, requestBody)
+      } catch (importError) {
+        // Only catch MCP logger import failures, not API failures
+        if (importError instanceof Error && importError.message.includes('Cannot find module')) {
+          console.warn('[Frase Agent] MCP logger unavailable, proceeding without logging')
+          serpResult = await this.makeAPIRequest(endpoint, requestBody)
+        } else {
+          // Re-throw API errors
+          throw importError
+        }
       }
 
       console.log('[Frase Agent] SERP processing complete')
@@ -198,13 +201,13 @@ export class FraseOptimizationAgent {
     // Analyze current content coverage
     const contentLower = params.content.toLowerCase()
     const coveredTopics = serpTopics.filter(topic =>
-      contentLower.includes(topic.topic.toLowerCase())
+      topic.topic.trim() && contentLower.includes(topic.topic.toLowerCase())
     )
     const coveredQuestions = serpQuestions.filter(q =>
-      contentLower.includes(q.toLowerCase())
+      q.trim() && contentLower.includes(q.toLowerCase())
     )
     const coveredTerms = serpKeyTerms.filter(term =>
-      contentLower.includes(term.term.toLowerCase())
+      term.term.trim() && contentLower.includes(term.term.toLowerCase())
     )
 
     return {
@@ -342,11 +345,15 @@ export class FraseOptimizationAgent {
       if (serpData?.topics || serpData?.data?.topics) {
         const topicData = serpData.topics || serpData.data.topics
         for (const topic of topicData.slice(0, 20)) {
-          topics.push({
-            topic: topic.name || topic.topic || topic.text || '',
-            frequency: topic.frequency || topic.count || 1,
-            importance: topic.importance || topic.score || topic.relevance || 0.5,
-          })
+          const topicText = topic.name || topic.topic || topic.text || ''
+          // Skip empty strings to prevent false coverage matches
+          if (topicText.trim()) {
+            topics.push({
+              topic: topicText,
+              frequency: topic.frequency || topic.count || 1,
+              importance: topic.importance || topic.score || topic.relevance || 0.5,
+            })
+          }
         }
       }
 
@@ -396,7 +403,11 @@ export class FraseOptimizationAgent {
       if (serpData?.questions || serpData?.data?.questions) {
         const questionData = serpData.questions || serpData.data.questions
         for (const q of questionData.slice(0, 15)) {
-          questions.push(typeof q === 'string' ? q : q.question || q.text || '')
+          const questionText = typeof q === 'string' ? q : q.question || q.text || ''
+          // Skip empty strings to prevent false coverage matches
+          if (questionText.trim()) {
+            questions.push(questionText)
+          }
         }
       }
 
@@ -404,7 +415,11 @@ export class FraseOptimizationAgent {
       if (serpData?.people_also_ask || serpData?.data?.people_also_ask) {
         const paaData = serpData.people_also_ask || serpData.data.people_also_ask
         for (const paa of paaData.slice(0, 10)) {
-          questions.push(typeof paa === 'string' ? paa : paa.question || paa.text || '')
+          const paaText = typeof paa === 'string' ? paa : paa.question || paa.text || ''
+          // Skip empty strings to prevent false coverage matches
+          if (paaText.trim()) {
+            questions.push(paaText)
+          }
         }
       }
 
@@ -461,11 +476,15 @@ export class FraseOptimizationAgent {
       if (serpData?.terms || serpData?.keywords || serpData?.data?.terms || serpData?.data?.keywords) {
         const termData = serpData.terms || serpData.keywords || serpData.data.terms || serpData.data.keywords
         for (const t of termData.slice(0, 30)) {
-          keyTerms.push({
-            term: typeof t === 'string' ? t : t.term || t.keyword || t.text || '',
-            frequency: t.frequency || t.count || 1,
-            tfidf: t.tfidf || t.score || undefined,
-          })
+          const termText = typeof t === 'string' ? t : t.term || t.keyword || t.text || ''
+          // Skip empty strings to prevent false coverage matches
+          if (termText.trim()) {
+            keyTerms.push({
+              term: termText,
+              frequency: t.frequency || t.count || 1,
+              tfidf: t.tfidf || t.score || undefined,
+            })
+          }
         }
       }
     } catch (error) {
@@ -607,7 +626,7 @@ export class FraseOptimizationAgent {
 
       // Heading structure tip
       if (content && competitorInsights?.avgHeadingCount) {
-        const currentHeadingCount = (content.match(/^#{1,6}\s+/gm) || []).length
+        const currentHeadingCount = this.countHeadings(content)
         if (currentHeadingCount < competitorInsights.avgHeadingCount * 0.8) {
           tips.push(`Add more headings for better structure (target: ${competitorInsights.avgHeadingCount}+)`)
         }
@@ -623,6 +642,52 @@ export class FraseOptimizationAgent {
     }
 
     return tips
+  }
+
+  /**
+   * Count headings in content, detecting format (HTML, Markdown, or plain text)
+   */
+  private countHeadings(content: string): number {
+    if (!content) return 0
+
+    // Detect HTML content
+    if (/<h[1-6][^>]*>/i.test(content)) {
+      // Count HTML heading tags (h1-h6)
+      const htmlHeadingMatches = content.match(/<h[1-6][^>]*>/gi)
+      return htmlHeadingMatches ? htmlHeadingMatches.length : 0
+    }
+
+    // Detect Markdown content (has markdown heading syntax)
+    if (/^#{1,6}\s+/m.test(content)) {
+      // Count Markdown headings
+      const markdownHeadingMatches = content.match(/^#{1,6}\s+/gm)
+      return markdownHeadingMatches ? markdownHeadingMatches.length : 0
+    }
+
+    // Plain text heuristic: count lines that look like headings
+    // Characteristics: short lines (< 80 chars), title case, not ending with punctuation
+    const lines = content.split('\n')
+    let headingCount = 0
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+
+      // Skip empty lines or very long lines
+      if (!trimmed || trimmed.length > 80) continue
+
+      // Skip lines ending with sentence punctuation (likely not headings)
+      if (/[.!?,;:]$/.test(trimmed)) continue
+
+      // Check if line starts with capital letter and is relatively short
+      if (/^[A-Z]/.test(trimmed) && trimmed.length >= 10 && trimmed.length <= 80) {
+        // Additional check: has at least one space (multi-word) or is all caps
+        if (/\s/.test(trimmed) || trimmed === trimmed.toUpperCase()) {
+          headingCount++
+        }
+      }
+    }
+
+    return headingCount
   }
 
   /**
@@ -687,21 +752,27 @@ export class FraseOptimizationAgent {
             return await response.json()
           }
         )
-      } catch {
-        // Fallback without logging
-        const response = await fetch(endpoint, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        })
+      } catch (importError) {
+        // Only catch MCP logger import failures, not API failures
+        if (importError instanceof Error && importError.message.includes('Cannot find module')) {
+          console.warn('[Frase Agent] MCP logger unavailable, proceeding without logging')
+          const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+          })
 
-        if (!response.ok) {
-          throw new Error(`Frase API error (${response.status})`)
+          if (!response.ok) {
+            throw new Error(`Frase API error (${response.status})`)
+          }
+
+          result = await response.json()
+        } else {
+          // Re-throw API errors
+          throw importError
         }
-
-        result = await response.json()
       }
 
       console.log('[Frase Agent] Document retrieved successfully')

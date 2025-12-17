@@ -454,10 +454,10 @@ AVAILABLE TOOLS FOR RESEARCH:
 
 The generate_researched_content tool provides a complete workflow:
 1. Deep Research: Uses Perplexity, Firecrawl, and Jina to gather comprehensive, cited information
-2. RAG Integration: Leverages existing research frameworks and best practices
+2. RAG Integration: Leverages existing research frameworks and agent knowledge base
 3. Content Creation: Generates SEO-optimized content with proper structure
-4. Humanization: Uses Rytr to make content natural and engaging
-5. Quality Validation: Runs Winston AI detection and plagiarism checks
+4. Quality Scoring: DataForSEO-based content scoring and EEAT analysis
+5. Revision Loop: Iterative improvement based on quality scores
 6. Feedback Loop: Learns from each interaction to improve future content
 
 Your specializations:

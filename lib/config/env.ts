@@ -35,7 +35,7 @@ const serverEnvSchema = z.object({
   // Use transaction mode pooler URL (port 6543) for connection pooling
   // Format: https://<project-ref>.supabase.co (pooler automatically uses port 6543)
   SUPABASE_POOLER_URL: z.string().url().optional(),
-  
+
   // AI Provider Keys (Optional if using Gateway)
   OPENAI_API_KEY: z.string().min(1).optional(),
   GOOGLE_API_KEY: z.string().min(1).optional(),
@@ -44,7 +44,7 @@ const serverEnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   DEEPSEEK_API_KEY: z.string().min(1).optional(),
   XAI_API_KEY: z.string().min(1).optional(),
-  
+
   // Vercel AI Gateway
   AI_GATEWAY_API_KEY: z.string().min(1).optional(),
   AI_GATEWAY_BASE_URL: z.string().url().optional(),
@@ -60,6 +60,9 @@ const serverEnvSchema = z.object({
   JINA_API_KEY: z.string().min(1, 'JINA_API_KEY is required'),
   APIFY_API_KEY: z.string().min(1).optional(),
   FIRECRAWL_API_KEY: z.string().min(1).optional(),
+
+  // N8N Webhooks
+  N8N_BACKLINKS_WEBHOOK_URL: z.string().url().optional(),
 
   // Content Quality & Generation APIs (optional - only needed for enhanced content quality features)
   WINSTON_AI_API_KEY: z.string().min(1).optional(),
@@ -84,7 +87,7 @@ const serverEnvSchema = z.object({
   WINSTON_MCP_URL: z.string().url().optional(),
   FIRECRAWL_MCP_URL: z.string().url().optional(),
   JINA_MCP_URL: z.string().url().optional(),
-  
+
   // Redis (optional for caching)
   UPSTASH_REDIS_REST_URL: z.preprocess(
     (val) => (!val || val === 'your_redis_url') ? undefined : val,

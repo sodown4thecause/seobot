@@ -93,7 +93,7 @@ export function validateToolSchema(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown validation error'
     errors.push(`Validation error: ${errorMessage}`)
-    
+
     if (logErrors) {
       console.error(`[Tool Validation] Exception validating tool:`, error)
     }
@@ -120,14 +120,14 @@ function validateInputSchema(
   try {
     // Try to get the JSON schema representation
     const jsonSchema = getJsonSchema(schema)
-    
+
     // Validate root type is 'object'
     if (jsonSchema.type !== 'object') {
       if (strictMode) {
         errors.push(`Root schema type must be 'object', got '${jsonSchema.type}'`)
       } else {
         warnings.push(`Root schema type should be 'object', got '${jsonSchema.type}'. Will attempt to fix.`)
-        
+
         // Try to wrap in object if it's not already
         const sanitizedSchema = wrapInObjectSchema(schema)
         return {
@@ -166,7 +166,7 @@ function getJsonSchema(zodSchema: z.ZodSchema): any {
   try {
     // For AI SDK 6, we need to extract the schema structure
     const schemaType = (zodSchema as any)._def?.typeName
-    
+
     if (schemaType === 'ZodObject') {
       return {
         type: 'object',
@@ -175,7 +175,7 @@ function getJsonSchema(zodSchema: z.ZodSchema): any {
         additionalProperties: false
       }
     }
-    
+
     // For other types, assume they need to be wrapped
     return {
       type: schemaType?.toLowerCase().replace('zod', '') || 'unknown',
@@ -232,7 +232,7 @@ export function validateToolsCollection(
 
   const validCount = Object.keys(validTools).length
   const totalCount = Object.keys(tools).length
-  
+
   if (options.logErrors && invalidTools.length > 0) {
     console.warn(`[Tool Collection] ${validCount}/${totalCount} tools are valid. Invalid tools: ${invalidTools.join(', ')}`)
   }
@@ -252,7 +252,7 @@ export function createSafeTool(
   fallbackMessage: string = 'This tool is temporarily unavailable'
 ): Tool {
   const validation = validateToolSchema(tool, { fixInvalidSchemas: true, logErrors: false })
-  
+
   if (validation.isValid && validation.sanitizedTool) {
     return validation.sanitizedTool
   }
@@ -326,16 +326,6 @@ export const TOOL_CATEGORIES = {
     'dataforseo_labs_google_domain_rank_overview',
     'dataforseo_labs_google_subdomains',
     'dataforseo_labs_bulk_traffic_estimation'
-  ],
-
-  // SEO Backlink Analysis tools
-  SEO_BACKLINKS: [
-    'backlinks_summary',
-    'backlinks_referring_domains',
-    'backlinks_competitors',
-    'backlinks_domain_intersection',
-    'backlinks_backlinks',
-    'backlinks_anchors'
   ],
 
   // SEO Technical Analysis tools
@@ -415,7 +405,6 @@ export function loadToolsForAgent(
         ...TOOL_CATEGORIES.SEO_KEYWORD_RESEARCH,
         ...TOOL_CATEGORIES.SEO_SERP_ANALYSIS,
         ...TOOL_CATEGORIES.SEO_COMPETITOR_ANALYSIS,
-        ...TOOL_CATEGORIES.SEO_BACKLINKS,
         ...TOOL_CATEGORIES.SEO_TECHNICAL,
         ...TOOL_CATEGORIES.SEO_AEO,
         ...TOOL_CATEGORIES.SEO_CONTENT_ANALYSIS,
@@ -462,7 +451,7 @@ export function loadToolsForAgent(
   }
 
   console.log(`[Tool Loader] Loaded ${Object.keys(selectedTools).length}/${toolNames.length} tools for ${agentType} agent`)
-  
+
   if (missingTools.length > 0) {
     console.warn(`[Tool Loader] Missing tools for ${agentType}: ${missingTools.slice(0, 10).join(', ')}${missingTools.length > 10 ? '...' : ''}`)
   }
@@ -488,6 +477,6 @@ export function loadEssentialTools(
   }
 
   console.log(`[Essential Tools] Loaded ${Object.keys(essentialTools).length}/${essentialNames.length} essential tools`)
-  
+
   return essentialTools
 }
