@@ -188,7 +188,7 @@ const handler = async (req: Request) => {
 
     // Ensure we always have a conversation ID for authenticated users
     let activeConversationId = conversationRecord?.id ?? requestedConversationId;
-    
+
     // If user is authenticated but we still don't have a conversation ID, force create one
     if (!activeConversationId && user) {
       console.log('[Chat API] No conversation ID available, creating new conversation for message persistence');
@@ -526,6 +526,56 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       }
     });
 
+    // N8N Backlinks Tool - Fetch backlinks via n8n webhook (provides backlinks functionality not available in DataForSEO MCP)
+    const n8nBacklinksTool = tool({
+      description: "Fetch backlinks data for a domain using the n8n webhook integration. Use this when the user asks for backlinks, referring domains, link profile, or link building opportunities for a specific domain or website.",
+      inputSchema: z.object({
+        domain: z.string().describe("The domain to fetch backlinks for (e.g., 'example.com' or 'flowintent.com')"),
+      }),
+      execute: async ({ domain }) => {
+        try {
+          console.log('[Chat API] Fetching backlinks for domain via n8n:', domain);
+
+          const response = await fetch('https://n8n-production-43e3.up.railway.app/webhook/get-backlinks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ domain }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[Chat API] N8N backlinks webhook error:', response.status, errorText);
+            return {
+              status: 'error',
+              errorMessage: `Failed to fetch backlinks: ${response.status} ${response.statusText}`,
+            };
+          }
+
+          const data = await response.json();
+          console.log('[Chat API] N8N backlinks response received:', {
+            domain,
+            hasData: !!data,
+            dataKeys: data ? Object.keys(data) : []
+          });
+
+          return {
+            status: 'success',
+            domain,
+            ...data,
+          };
+        } catch (error: any) {
+          console.error('[Chat API] N8N backlinks tool failed:', error);
+          return {
+            status: 'error',
+            domain,
+            errorMessage: error?.message || 'Failed to fetch backlinks data',
+          };
+        }
+      }
+    });
+
     // Construct Final Tool Set
     const allTools = {
       // Core Tools (Always available)
@@ -554,6 +604,9 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
 
       // Agent Specific Tools
       ...(routingResult.agent === 'content' ? { ...contentQualityTools, ...enhancedContentTools } : {}),
+
+      // N8N Backlinks - Only for SEO/AEO agent (provides backlinks via n8n webhook)
+      ...(routingResult.agent === 'seo-aeo' ? { n8n_backlinks: n8nBacklinksTool } : {}),
 
       // MCP Tools (Loaded based on agent type)
       ...loadToolsForAgent(routingResult.agent, allMCPTools),
@@ -737,7 +790,7 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
             partsCount: normalizedMessage.parts?.length || 0,
             hasTextParts: normalizedMessage.parts?.some((p: any) => p.type === 'text') || false,
           });
-          
+
           await saveConversationMessage(
             supabase,
             activeConversationId,

@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 # BMAD (local only)
+
+# Claude Code templates (customize per developer)
+.claude/templates/*.txt
+.claude/templates/*.md
