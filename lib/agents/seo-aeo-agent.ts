@@ -17,7 +17,16 @@ export interface SEOAEOParams {
   userId?: string // For usage logging
   langfuseTraceId?: string // For grouping spans under a parent trace
   sessionId?: string // For Langfuse session tracking
+  // Business context for personalized strategies
+  businessContext?: {
+    websiteUrl?: string
+    industry?: string
+    location?: string
+    goals?: string[]
+    brandVoice?: string
+  }
 }
+
 
 export interface SEOAEOResult {
   contentStructure: any
@@ -52,12 +61,30 @@ export class SEOAEOAgent {
       // Continue without knowledge context
     }
 
+    // Build business context section
+    let businessContextSection = ''
+    if (params.businessContext) {
+      const parts: string[] = []
+      if (params.businessContext.websiteUrl) parts.push(`Website: ${params.businessContext.websiteUrl}`)
+      if (params.businessContext.industry) parts.push(`Industry: ${params.businessContext.industry}`)
+      if (params.businessContext.location) parts.push(`Target Location: ${params.businessContext.location}`)
+      if (params.businessContext.goals?.length) parts.push(`Business Goals: ${params.businessContext.goals.join(', ')}`)
+      if (params.businessContext.brandVoice) parts.push(`Brand Voice: ${params.businessContext.brandVoice}`)
+
+      if (parts.length > 0) {
+        businessContextSection = `## Business Context
+${parts.join('\n')}
+
+`
+      }
+    }
+
     const prompt = `Create an SEO and AEO optimization strategy for content about: "${params.topic}"
 
 Target Keywords: ${params.keywords.join(', ')}
 Target Platforms: ${params.targetPlatforms?.join(', ') || 'General search + AI engines'}
 
-${knowledgeContext ? `## Expert SEO/AEO Knowledge Base
+${businessContextSection}${knowledgeContext ? `## Expert SEO/AEO Knowledge Base
 Use the following research insights to inform your strategy:
 
 ${knowledgeContext}
@@ -72,8 +99,10 @@ ${knowledgeContext}
 5. Semantic keyword variations to include
 6. Schema markup recommendations (FAQPage, HowTo, etc.)
 7. Agent Experience (AX) considerations for agentic search
+${params.businessContext?.industry ? `8. Industry-specific recommendations for ${params.businessContext.industry}` : ''}
 
 Format as JSON.`
+
 
     try {
       console.log('[SEO/AEO Agent] Starting SEO strategy creation with timeout...')
