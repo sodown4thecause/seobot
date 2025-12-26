@@ -1,20 +1,19 @@
 /**
  * Admin Middleware Helper
- * Provides reusable admin access checks for API routes
+ * Provides reusable admin access checks for API routes with Clerk
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { isAdmin } from './admin-check'
 
 /**
  * Middleware to check admin access in API routes
  * Returns null if admin, or a NextResponse with error if not
  */
-export async function requireAdminMiddleware(req: NextRequest): Promise<NextResponse | null> {
+export async function requireAdminMiddleware(_req: NextRequest): Promise<NextResponse | null> {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await currentUser()
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -34,4 +33,3 @@ export async function requireAdminMiddleware(req: NextRequest): Promise<NextResp
     )
   }
 }
-

@@ -1,61 +1,49 @@
 /**
  * Admin Role Checker
- * Checks if a user has admin privileges
+ * Checks if a user has admin privileges via Clerk
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { currentUser } from '@clerk/nextjs/server'
 
 /**
  * Check if the current user is an admin
- * Checks is_super_admin flag in auth.users table
+ * Checks is_admin or is_super_admin flags in Clerk's publicMetadata
  */
-export async function isAdmin(userId: string | null | undefined): Promise<boolean> {
-  if (!userId) {
-    return false
-  }
-
+export async function isAdmin(userId?: string | null): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const user = await currentUser()
     
-    // Check is_super_admin flag in auth.users
-    const { data: user, error } = await supabase.auth.getUser()
-    
-    if (error || !user.user) {
+    if (!user) {
       return false
     }
 
-    // Check if user's ID matches the requested userId (security check)
-    if (user.user.id !== userId) {
+    // If userId is provided, verify it matches the current user (security check)
+    if (userId && user.id !== userId) {
       return false
     }
 
-    // Check is_super_admin flag
-    // Note: We need to query auth.users directly via RPC or check user metadata
-    // Since we can't directly query auth.users from client, we'll check user metadata
-    // or use a service role query
+    // Check admin flags in publicMetadata
+    // Clerk stores custom user data in publicMetadata, privateMetadata, or unsafeMetadata
+    // For admin roles, we use publicMetadata which is readable by the frontend
+    const publicMetadata = user.publicMetadata as { 
+      is_admin?: boolean
+      is_super_admin?: boolean 
+    }
     
-    // Try checking user metadata first (if admin flag is stored there)
-    const adminFromMetadata = user.user.user_metadata?.is_admin || user.user.user_metadata?.is_super_admin
-    
-    if (adminFromMetadata === true) {
+    if (publicMetadata?.is_admin === true || publicMetadata?.is_super_admin === true) {
       return true
     }
 
-    // Check via RPC function that queries auth.users.is_super_admin
-    const { data: adminCheck, error: checkError } = await supabase.rpc('check_is_admin', {
-      user_id: userId
-    })
-
-    if (checkError) {
-      console.error('[Admin Check] RPC error:', checkError)
-      return false
+    // Also check privateMetadata (server-side only, more secure)
+    const privateMetadata = user.privateMetadata as { 
+      is_admin?: boolean
+      is_super_admin?: boolean 
     }
-
-    if (adminCheck === true) {
+    
+    if (privateMetadata?.is_admin === true || privateMetadata?.is_super_admin === true) {
       return true
     }
 
-    // Return false if not admin
     return false
   } catch (error) {
     console.error('[Admin Check] Error checking admin status:', error)
