@@ -70,6 +70,7 @@ export interface EEATQAParams {
   userId?: string // For usage logging
   langfuseTraceId?: string // For grouping spans under a parent trace
   sessionId?: string // For Langfuse session tracking
+  abortSignal?: AbortSignal // Optional: signal to abort QA review
 }
 
 export interface EEATQAResult {

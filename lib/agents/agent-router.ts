@@ -117,15 +117,8 @@ export class AgentRouter {
           'domain_analytics_technologies_domain_technologies',
 
           // ===== BACKLINKS =====
-          'backlinks_summary',
-          'backlinks_backlinks',
-          'backlinks_referring_domains',
-          'backlinks_anchors',
-          'backlinks_competitors',
-          'backlinks_domain_intersection',
-          'backlinks_bulk_backlinks',
-          'backlinks_bulk_ranks',
-          'backlinks_bulk_spam_score',
+          // Using n8n webhook only - DataForSEO backlinks subscription is inactive
+          'n8n_backlinks',
 
           // ===== TRENDS =====
           'keywords_data_google_trends_explore',
@@ -392,7 +385,7 @@ TOOL SELECTION BY QUERY TYPE:
 - SERP rankings / "what ranks for X" → serp_organic_live_advanced
 - Site keyword opportunities → dataforseo_labs_google_keywords_for_site
 - Technical SEO analysis → on_page_lighthouse or domain_rank_overview
-- Backlink analysis → backlinks_summary or backlinks_referring_domains
+- Backlink analysis → n8n_backlinks ONLY (do NOT use backlinks_summary or other backlinks_* tools - they are inactive)
 - Web scraping → firecrawl_scrape, firecrawl_search, or firecrawl_crawl
 - YouTube SEO → serp_youtube_organic_live_advanced
 - Trends analysis → keywords_data_google_trends_explore
@@ -461,10 +454,10 @@ AVAILABLE TOOLS FOR RESEARCH:
 
 The generate_researched_content tool provides a complete workflow:
 1. Deep Research: Uses Perplexity, Firecrawl, and Jina to gather comprehensive, cited information
-2. RAG Integration: Leverages existing research frameworks and best practices
+2. RAG Integration: Leverages existing research frameworks and agent knowledge base
 3. Content Creation: Generates SEO-optimized content with proper structure
-4. Humanization: Uses Rytr to make content natural and engaging
-5. Quality Validation: Runs Winston AI detection and plagiarism checks
+4. Quality Scoring: DataForSEO-based content scoring and EEAT analysis
+5. Revision Loop: Iterative improvement based on quality scores
 6. Feedback Loop: Learns from each interaction to improve future content
 
 Your specializations:

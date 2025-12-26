@@ -1,9 +1,12 @@
 /**
  * API Analytics Tracker
- * Tracks API calls to external services and logs to Supabase
+ * 
+ * Tracks API calls to external services.
+ * NOTE: This requires api_usage_logs table in the database schema.
+ * Currently logs to console only until the table is added to lib/db/schema.ts
+ * 
+ * TODO: Add api_usage_logs table to lib/db/schema.ts and implement with Drizzle ORM
  */
-
-import { createClient } from '@/lib/supabase/server'
 
 export type APIService =
   | 'dataforseo'
@@ -93,14 +96,13 @@ export function calculateCost(
 
 /**
  * Track an API call
+ * Currently logs to console - will save to database when api_usage_logs table exists
  */
 export async function trackAPICall(
   userId: string,
   metadata: APICallMetadata
 ): Promise<void> {
   try {
-    const supabase = await createClient()
-
     // Calculate cost if not provided
     const cost = metadata.costUSD ?? calculateCost(
       metadata.service,
@@ -108,19 +110,29 @@ export async function trackAPICall(
       metadata.tokensUsed ?? 1000
     )
 
-    await supabase.from('api_usage_logs').insert({
-      user_id: userId,
-      service: metadata.service,
-      endpoint: metadata.endpoint,
+    // Log to console (database logging disabled until table is added)
+    console.log(`[API Tracker] ${metadata.service}:${metadata.endpoint}`, {
+      userId,
       method: metadata.method,
-      status_code: metadata.statusCode,
-      tokens_used: metadata.tokensUsed ?? 0,
-      cost_usd: cost,
-      duration_ms: metadata.durationMs,
-      metadata: metadata.metadata ?? {},
+      statusCode: metadata.statusCode,
+      tokensUsed: metadata.tokensUsed ?? 0,
+      costUSD: cost,
+      durationMs: metadata.durationMs,
     })
 
-    console.log(`[API Tracker] Logged ${metadata.service} call: ${metadata.endpoint}`)
+    // TODO: When api_usage_logs table is added to schema, insert here:
+    // await db.insert(apiUsageLogs).values({
+    //   userId,
+    //   service: metadata.service,
+    //   endpoint: metadata.endpoint,
+    //   method: metadata.method,
+    //   statusCode: metadata.statusCode,
+    //   tokensUsed: metadata.tokensUsed ?? 0,
+    //   costUsd: cost,
+    //   durationMs: metadata.durationMs,
+    //   metadata: metadata.metadata ?? {},
+    // })
+
   } catch (error) {
     console.error('[API Tracker] Failed to log API call:', error)
     // Don't throw - tracking failures shouldn't break the app
@@ -162,4 +174,3 @@ export async function trackAPICallWithTiming<T>(
     })
   }
 }
-

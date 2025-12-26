@@ -10,6 +10,8 @@ import {
   WorkflowStepStatus,
 } from './types'
 import { analytics } from './analytics'
+import { workflowPersistence } from './persistence'
+import { nanoid } from 'nanoid'
 
 export class WorkflowEngine {
   private execution: WorkflowExecution
@@ -20,10 +22,12 @@ export class WorkflowEngine {
     private workflow: Workflow,
     context: WorkflowContext,
     conversationId: string,
-    userId: string
+    userId: string,
+    executionId?: string
   ) {
     this.context = context
     this.execution = {
+      id: executionId || nanoid(),
       workflowId: workflow.id,
       conversationId,
       userId,
@@ -68,6 +72,13 @@ export class WorkflowEngine {
       this.execution.endTime = Date.now()
       this.execution.stepResults = Array.from(this.stepResults.values())
 
+      // Save final execution state
+      try {
+        await workflowPersistence.saveExecution(this.execution)
+      } catch (saveError) {
+        console.warn(`[Workflow] Failed to save final execution state:`, saveError)
+      }
+
       // Record workflow analytics
       const workflowDuration = this.execution.endTime - this.execution.startTime
       const allToolResults: Record<string, any> = {}
@@ -93,6 +104,15 @@ export class WorkflowEngine {
       this.execution.status = 'failed'
       this.execution.endTime = Date.now()
       this.execution.stepResults = Array.from(this.stepResults.values())
+      this.execution.errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+      // Save failed execution state for recovery
+      try {
+        await workflowPersistence.saveExecution(this.execution)
+      } catch (saveError) {
+        console.warn(`[Workflow] Failed to save failed execution state:`, saveError)
+      }
+
       throw error
     }
   }
@@ -106,6 +126,23 @@ export class WorkflowEngine {
 
     this.execution.currentStep = step.id
     this.recordStepResult(step.id, 'running', { startTime })
+
+    // Save checkpoint before step execution
+    try {
+      await workflowPersistence.saveCheckpoint(
+        this.execution.id,
+        step.id,
+        'step_start',
+        {
+          stepResults: Array.from(this.stepResults.values()),
+          previousStepResults: this.context.previousStepResults,
+          workflowState: this.execution.metadata || {},
+        }
+      )
+    } catch (checkpointError) {
+      console.warn(`[Workflow] Failed to save checkpoint before step ${step.id}:`, checkpointError)
+      // Continue execution even if checkpoint fails
+    }
 
     try {
       let toolResults: Record<string, any> = {}
@@ -134,6 +171,22 @@ export class WorkflowEngine {
         [step.id]: toolResults,
       }
 
+      // Save checkpoint after successful step completion
+      try {
+        await workflowPersistence.saveCheckpoint(
+          this.execution.id,
+          step.id,
+          'step_complete',
+          {
+            stepResults: Array.from(this.stepResults.values()),
+            previousStepResults: this.context.previousStepResults,
+            workflowState: this.execution.metadata || {},
+          }
+        )
+      } catch (checkpointError) {
+        console.warn(`[Workflow] Failed to save checkpoint after step ${step.id}:`, checkpointError)
+      }
+
       console.log(`[Workflow] Step ${step.name} completed in ${duration}ms`)
     } catch (error) {
       const endTime = Date.now()
@@ -146,6 +199,31 @@ export class WorkflowEngine {
         endTime,
         duration,
       })
+
+      // Save error recovery checkpoint
+      try {
+        await workflowPersistence.saveCheckpoint(
+          this.execution.id,
+          step.id,
+          'error_recovery',
+          {
+            stepResults: Array.from(this.stepResults.values()),
+            previousStepResults: this.context.previousStepResults,
+            workflowState: this.execution.metadata || {},
+            error: error instanceof Error ? error.message : 'Unknown error',
+            errorStack: error instanceof Error ? error.stack : undefined,
+          }
+        )
+      } catch (checkpointError) {
+        console.warn(`[Workflow] Failed to save error recovery checkpoint:`, checkpointError)
+      }
+
+      // Save execution state for recovery
+      try {
+        await workflowPersistence.saveExecution(this.execution)
+      } catch (saveError) {
+        console.warn(`[Workflow] Failed to save execution state:`, saveError)
+      }
     }
   }
 
@@ -279,6 +357,10 @@ export class WorkflowEngine {
       // Content Quality tools (Winston/Rytr)
       else if (['validate_content', 'check_plagiarism', 'check_ai_content', 'generate_seo_content', 'generate_blog_section', 'generate_meta_title', 'generate_meta_description', 'improve_content', 'expand_content', 'validate_content_quality', 'analyze_seo_content', 'fact_check_content'].includes(toolName)) {
         data = await this.executeContentQualityTool(toolName, effectiveParams)
+      }
+      // Composite SEO Tools
+      else if (['keyword_intelligence', 'competitor_content_gap', 'bulk_traffic_estimator'].includes(toolName)) {
+        data = await this.executeCompositeTool(toolName, effectiveParams)
       }
       // DataForSEO tools (via MCP or direct API)
       else {
@@ -480,13 +562,50 @@ export class WorkflowEngine {
     }
 
     // Execute the tool
-        if (tool.execute) {
-          return await tool.execute((params || {}) as any, {
-            toolCallId: 'workflow-exec',
-            messages: []
-          })    }
+    if (tool.execute) {
+      return await tool.execute((params || {}) as any, {
+        toolCallId: 'workflow-exec',
+        messages: []
+      })
+    }
 
     throw new Error(`Content quality tool ${toolName} is not executable`)
+  }
+
+  /**
+   * Execute Composite SEO Tool
+   */
+  private async executeCompositeTool(toolName: string, params?: Record<string, any>): Promise<any> {
+    const { compositeSEOTools } = await import('@/lib/tools/composite-seo-tools')
+
+    // Map workflow tool names to composite tool names
+    const toolMapping: Record<string, keyof typeof compositeSEOTools> = {
+      'keyword_intelligence': 'keyword_intelligence',
+      'competitor_content_gap': 'competitor_content_gap',
+      'bulk_traffic_estimator': 'bulk_traffic_estimator',
+    }
+
+    const compositeToolName = toolMapping[toolName]
+    if (!compositeToolName) {
+      throw new Error(`Composite tool ${toolName} not found`)
+    }
+
+    const tool = compositeSEOTools[compositeToolName]
+    if (!tool) {
+      throw new Error(`Composite tool ${compositeToolName} not available`)
+    }
+
+    // Execute the composite tool
+    if (tool.execute) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return await (tool.execute as any)(params || {}, { 
+        abortSignal: new AbortController().signal,
+        toolCallId: 'workflow-tool-call',
+        messages: []
+      })
+    }
+
+    throw new Error(`Composite tool ${compositeToolName} is not executable`)
   }
 
   /**
@@ -534,10 +653,10 @@ export class WorkflowEngine {
   ): void {
     const existing = this.stepResults.get(stepId)
     this.stepResults.set(stepId, {
-      stepId,
-      status,
       ...existing,
       ...data,
+      stepId,
+      status,
     })
   }
 

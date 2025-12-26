@@ -6,6 +6,10 @@ import { aeoComprehensiveAuditWorkflow } from './definitions/aeo-comprehensive-a
 import { aeoCitationOptimizationWorkflow } from './definitions/aeo-citation-optimization'
 import { aeoMultiPlatformOptimizationWorkflow } from './definitions/aeo-multi-platform-optimization'
 import { competitorAnalysisWorkflow } from './definitions/competitor-analysis'
+import { rankingCampaignWorkflow } from './definitions/ranking-campaign'
+import { linkBuildingCampaignWorkflow } from './definitions/link-building-campaign'
+import { technicalSEOAuditWorkflow } from './definitions/technical-seo-audit'
+import { localSEOCampaignWorkflow } from './definitions/local-seo-campaign'
 
 export const workflows: Record<string, Workflow> = {
   'rank-on-chatgpt': rankOnChatGPTWorkflow,
@@ -13,6 +17,10 @@ export const workflows: Record<string, Workflow> = {
   'aeo-citation-optimization': aeoCitationOptimizationWorkflow,
   'aeo-multi-platform-optimization': aeoMultiPlatformOptimizationWorkflow,
   'competitor-analysis': competitorAnalysisWorkflow,
+  'ranking-campaign': rankingCampaignWorkflow,
+  'link-building-campaign': linkBuildingCampaignWorkflow,
+  'technical-seo-audit': technicalSEOAuditWorkflow,
+  'local-seo-campaign': localSEOCampaignWorkflow,
 }
 
 export function getWorkflow(id: string): Workflow | undefined {

@@ -5,7 +5,7 @@
 import { generateText } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
-import { getContentGuidance } from '@/lib/ai/content-rag'
+import { getContentGuidance, retrieveAgentDocuments } from '@/lib/ai/content-rag'
 import { serverEnv } from '@/lib/config/env'
 import { withAgentRetry } from '@/lib/errors/retry'
 import { ProviderError } from '@/lib/errors/types'
@@ -20,6 +20,7 @@ export interface ContentWriteParams {
   wordCount?: number
   researchContext?: any
   seoStrategy?: any
+  fraseContentBrief?: string // Frase optimization guidance for SEO/AEO
   userId?: string
   langfuseTraceId?: string // For grouping spans under a parent trace
   sessionId?: string // For Langfuse session tracking
@@ -29,6 +30,14 @@ export interface ContentWriteParams {
   dataforseoMetrics?: any
   qaReport?: any
   revisionRound?: number
+  // Brand voice and business context
+  brandVoice?: {
+    tone?: string
+    style?: string
+    personality?: string[]
+  }
+  industry?: string
+  abortSignal?: AbortSignal // Optional: signal to abort content writing
 }
 
 export interface ContentWriteResult {
@@ -52,6 +61,24 @@ export class ContentWriterAgent {
       params.keywords
     )
 
+    // Retrieve content writing best practices from our Q4 2025 research RAG
+    let contentWriterKnowledge = ''
+    try {
+      const ragDocs = await retrieveAgentDocuments(
+        `${params.topic} content writing ${params.keywords[0] || ''}`,
+        'content_writer',
+        3
+      )
+      if (ragDocs && ragDocs.length > 0) {
+        contentWriterKnowledge = ragDocs
+          .map(doc => `### ${doc.title}\n${doc.content}`)
+          .join('\n\n')
+        console.log(`[Content Writer] ✓ Retrieved ${ragDocs.length} content writing knowledge docs`)
+      }
+    } catch (error) {
+      console.warn('[Content Writer] Failed to retrieve content writer RAG:', error)
+    }
+
     // Build the writing prompt
     const prompt = this.buildPrompt(params)
 
@@ -63,7 +90,7 @@ export class ContentWriterAgent {
           async () => {
             const { text, usage } = await generateText({
               model: vercelGateway.languageModel('anthropic/claude-haiku-4.5' as GatewayModelId),
-              system: this.buildSystemPrompt(guidance),
+              system: this.buildSystemPrompt(guidance, contentWriterKnowledge, params.brandVoice, params.industry),
               prompt: prompt,
               temperature: 0.7,
               experimental_telemetry: createTelemetryConfig(
@@ -152,9 +179,36 @@ export class ContentWriterAgent {
     })
   }
 
-  private buildSystemPrompt(guidance: string): string {
+  private buildSystemPrompt(
+    guidance: string,
+    contentWriterKnowledge: string = '',
+    brandVoice?: { tone?: string; style?: string; personality?: string[] },
+    industry?: string
+  ): string {
     const dateCtx = this.getDateContext();
-    return `You are an expert SEO/AEO content writer. Your goal is to create engaging, human-like content that ranks well in both traditional search engines and AI answer engines.
+
+    let brandVoiceSection = ''
+    if (brandVoice?.tone || brandVoice?.style) {
+      brandVoiceSection = `
+
+BRAND VOICE GUIDELINES (CRITICAL - Match this voice exactly):
+- Tone: ${brandVoice.tone || 'professional'}
+- Style: ${brandVoice.style || 'informative'}
+${brandVoice.personality?.length ? `- Personality: ${brandVoice.personality.join(', ')}` : ''}
+Write in this exact voice and style throughout the content.`
+    }
+
+    let industryContext = ''
+    if (industry) {
+      industryContext = `\n\nINDUSTRY CONTEXT: This content is for the ${industry} industry. Use industry-specific terminology and examples where appropriate.`
+    }
+
+    let knowledgeSection = ''
+    if (contentWriterKnowledge) {
+      knowledgeSection = `\n\n## Content Writing Best Practices (from Q4 2025 Research):\n${contentWriterKnowledge}`
+    }
+
+    return `You are an expert SEO/AEO content writer. Your goal is to create engaging, human-like content that ranks well in both traditional search engines and AI answer engines.${brandVoiceSection}${industryContext}
 
 CRITICAL DATE REQUIREMENTS:
 - Today's date is: ${dateCtx.currentDate}
@@ -180,7 +234,7 @@ Focus on creating content that:
 1. Passes AI detection as human-written (target < 30% AI probability)
 2. Ranks well in search engines
 3. Gets cited by AI answer engines (ChatGPT, Perplexity, etc.)
-4. Provides genuine value to readers`
+4. Provides genuine value to readers${knowledgeSection}`
   }
 
   private buildPrompt(params: ContentWriteParams): string {
@@ -206,7 +260,9 @@ ${params.researchContext ? `\nResearch Context:\n${JSON.stringify(params.researc
 
 ${params.seoStrategy ? `\nSEO Strategy:\n${JSON.stringify(params.seoStrategy, null, 2)}` : ''}
 
-Write the complete content now. Make it engaging, informative, and human-like.`
+${params.fraseContentBrief ? `\n🎯 FRASE SEO/AEO OPTIMIZATION BRIEF (CRITICAL - Follow closely for maximum SEO impact):\n${params.fraseContentBrief}\n` : ''}
+
+Write the complete content now. Make it engaging, informative, and human-like.${params.fraseContentBrief ? ' Pay special attention to the Frase optimization brief above for maximum SEO/AEO performance.' : ''}`
 
     return prompt
   }
