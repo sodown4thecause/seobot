@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans } from "next/font/google";
 import "./globals.css";
+import { ClerkProvider } from '@clerk/nextjs';
 
 const notoSans = Noto_Sans({
   subsets: ["latin"],
@@ -71,18 +72,43 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en" className="dark">
-      <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
-        />
-      </head>
-      <body
-        className={`${notoSans.variable} font-sans antialiased`}
-      >
-        {children}
-      </body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        baseTheme: undefined,
+        variables: {
+          colorPrimary: '#6366f1', // indigo-500
+          colorBackground: '#09090b', // zinc-950
+          colorInputBackground: '#18181b', // zinc-900
+          colorInputText: '#fafafa', // zinc-50
+          colorText: '#fafafa', // zinc-50
+          colorTextSecondary: '#a1a1aa', // zinc-400
+          borderRadius: '0.75rem',
+        },
+        elements: {
+          formButtonPrimary: 'bg-indigo-600 hover:bg-indigo-700 text-sm font-medium',
+          card: 'bg-zinc-900/50 backdrop-blur-xl border-zinc-800',
+          headerTitle: 'text-zinc-100',
+          headerSubtitle: 'text-zinc-400',
+          socialButtonsBlockButton: 'border-zinc-700 hover:bg-zinc-800',
+          formFieldLabel: 'text-zinc-300',
+          footerActionLink: 'text-indigo-400 hover:text-indigo-300',
+        },
+      }}
+    >
+      <html lang="en" className="dark" suppressHydrationWarning>
+        <head>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
+          />
+        </head>
+        <body
+          className={`${notoSans.variable} font-sans antialiased`}
+        >
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
+

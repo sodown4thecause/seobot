@@ -22,16 +22,21 @@ config({ path: resolve(process.cwd(), '.env') })
 // Import schemas directly to avoid server-only check in validation script
 // These match the schemas in lib/config/env.ts
 const serverEnvSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url({ message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL' }),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required'),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
-  DATAFORSEO_LOGIN: z.string().email({ message: 'DATAFORSEO_LOGIN must be a valid email' }),
+  // Database (Neon)
+  DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid URL' }),
+
+  // Authentication (Clerk)
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1, 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required'),
+  CLERK_SECRET_KEY: z.string().min(1, 'CLERK_SECRET_KEY is required'),
+
+  // DataForSEO
+  DATAFORSEO_USERNAME: z.string().email({ message: 'DATAFORSEO_USERNAME must be a valid email' }),
   DATAFORSEO_PASSWORD: z.string().min(1, 'DATAFORSEO_PASSWORD is required'),
 }).passthrough()
 
 const clientEnvSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url({ message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL' }),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required'),
+  // Authentication (Clerk)
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1, 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required'),
 }).passthrough()
 
 // Parse process.env directly (same as env.ts does)
@@ -44,14 +49,14 @@ function validateEnv() {
   // Validate server environment
   try {
     const serverResult = serverEnvSchema.safeParse(process.env)
-    
+
     if (!serverResult.success) {
       console.error('❌ Server environment validation failed:\n')
       serverResult.error.errors.forEach((error: z.ZodIssue) => {
         const path = error.path.join('.')
         const message = error.message
         const code = error.code
-        
+
         // Missing required fields show up as 'too_small' with min: 1
         if (code === 'too_small' && error.minimum === 1) {
           errors.push(`Missing required variable: ${path}`)
@@ -72,13 +77,13 @@ function validateEnv() {
   // Validate client environment
   try {
     const clientResult = clientEnvSchema.safeParse(process.env)
-    
+
     if (!clientResult.success) {
       console.error('\n❌ Client environment validation failed:\n')
       clientResult.error.errors.forEach((error: z.ZodIssue) => {
         const path = error.path.join('.')
         const message = error.message
-        
+
         // Missing required fields show up as 'too_small' with min: 1
         if (error.code === 'too_small' && error.minimum === 1) {
           errors.push(`Missing required public variable: ${path}`)
@@ -98,8 +103,8 @@ function validateEnv() {
 
   // Check for common issues
   const publicVars = Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_'))
-  const serverOnlyVars = Object.keys(process.env).filter(key => 
-    !key.startsWith('NEXT_PUBLIC_') && 
+  const serverOnlyVars = Object.keys(process.env).filter(key =>
+    !key.startsWith('NEXT_PUBLIC_') &&
     (key.includes('KEY') || key.includes('SECRET') || key.includes('PASSWORD'))
   )
 
@@ -116,27 +121,27 @@ function validateEnv() {
     errors.forEach((error, index) => {
       console.error(`  ${index + 1}. ${error}`)
     })
-    
+
     if (warnings.length > 0) {
       console.warn('\n⚠️  Warnings:')
       warnings.forEach((warning, index) => {
         console.warn(`  ${index + 1}. ${warning}`)
       })
     }
-    
+
     console.error('\n💡 Tip: Check your .env.local file and ensure all required variables are set.')
     console.error('   See .env.example for a list of required variables.\n')
     process.exit(1)
   } else {
     console.log(`\n✅ All environment variables validated successfully!`)
-    
+
     if (warnings.length > 0) {
       console.warn('\n⚠️  Warnings:')
       warnings.forEach((warning, index) => {
         console.warn(`  ${index + 1}. ${warning}`)
       })
     }
-    
+
     console.log(`\n📊 Summary:`)
     console.log(`   - Public variables: ${publicVars.length}`)
     console.log(`   - Server-only variables: ${serverOnlyVars.length}`)

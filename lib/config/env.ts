@@ -9,33 +9,9 @@ import { z } from 'zod'
 
 // Server-side environment schema
 const serverEnvSchema = z.object({
-  // Supabase
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url({
-    message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL',
-  }),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z
-    .string()
-    .min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
-    .refine(
-      (val) => val.startsWith('ey') || val.startsWith('sb-'),
-      {
-        message: 'NEXT_PUBLIC_SUPABASE_ANON_KEY should start with "ey" or "sb-"',
-      }
-    ),
-  SUPABASE_SERVICE_ROLE_KEY: z
-    .string()
-    .min(1, 'SUPABASE_SERVICE_ROLE_KEY is required')
-    .refine(
-      (val) => val.startsWith('ey') || val.startsWith('sb-'),
-      {
-        message: 'SUPABASE_SERVICE_ROLE_KEY should start with "ey" or "sb-"',
-      }
-    ),
-  // Supabase Connection Pooling (optional - defaults to direct connection)
-  // Use transaction mode pooler URL (port 6543) for connection pooling
-  // Format: https://<project-ref>.supabase.co (pooler automatically uses port 6543)
-  SUPABASE_POOLER_URL: z.string().url().optional(),
-  
+  // Database (Neon PostgreSQL)
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+
   // AI Provider Keys (Optional if using Gateway)
   OPENAI_API_KEY: z.string().min(1).optional(),
   GOOGLE_API_KEY: z.string().min(1).optional(),
@@ -44,14 +20,14 @@ const serverEnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   DEEPSEEK_API_KEY: z.string().min(1).optional(),
   XAI_API_KEY: z.string().min(1).optional(),
-  
+
   // Vercel AI Gateway
   AI_GATEWAY_API_KEY: z.string().min(1).optional(),
   AI_GATEWAY_BASE_URL: z.string().url().optional(),
 
   // External APIs
-  DATAFORSEO_LOGIN: z.string().email({
-    message: 'DATAFORSEO_LOGIN must be a valid email',
+  DATAFORSEO_USERNAME: z.string().email({
+    message: 'DATAFORSEO_USERNAME must be a valid email',
   }),
   DATAFORSEO_PASSWORD: z.string().min(1, 'DATAFORSEO_PASSWORD is required'),
   DATAFORSEO_MCP_URL: z.string().url().optional(),
@@ -60,6 +36,9 @@ const serverEnvSchema = z.object({
   JINA_API_KEY: z.string().min(1, 'JINA_API_KEY is required'),
   APIFY_API_KEY: z.string().min(1).optional(),
   FIRECRAWL_API_KEY: z.string().min(1).optional(),
+
+  // N8N Webhooks
+  N8N_BACKLINKS_WEBHOOK_URL: z.string().url().optional(),
 
   // Content Quality & Generation APIs (optional - only needed for enhanced content quality features)
   WINSTON_AI_API_KEY: z.string().min(1).optional(),
@@ -84,7 +63,7 @@ const serverEnvSchema = z.object({
   WINSTON_MCP_URL: z.string().url().optional(),
   FIRECRAWL_MCP_URL: z.string().url().optional(),
   JINA_MCP_URL: z.string().url().optional(),
-  
+
   // Redis (optional for caching)
   UPSTASH_REDIS_REST_URL: z.preprocess(
     (val) => (!val || val === 'your_redis_url') ? undefined : val,
@@ -130,18 +109,6 @@ const serverEnvSchema = z.object({
 
 // Client-side environment schema (only public variables)
 const clientEnvSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url({
-    message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL',
-  }),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z
-    .string()
-    .min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
-    .refine(
-      (val) => val.startsWith('ey') || val.startsWith('sb-'),
-      {
-        message: 'NEXT_PUBLIC_SUPABASE_ANON_KEY should start with "ey" or "sb-"',
-      }
-    ),
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
 })
 
