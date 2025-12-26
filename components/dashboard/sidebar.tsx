@@ -14,6 +14,8 @@ import {
   Pin,
   Archive,
   Edit3,
+  Target,
+  BarChart3,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -24,6 +26,7 @@ import { Logo } from '@/components/ui/logo'
 import { usePathname } from 'next/navigation'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useAgent } from '@/components/providers/agent-provider'
+import { ModeIndicator } from '@/components/user-mode/mode-indicator'
 
 export interface SidebarProps {
   collapsed: boolean
@@ -33,7 +36,11 @@ export interface SidebarProps {
 
 const MAIN_NAV = [
   { name: 'Home', href: '/dashboard', icon: Home },
+  { name: 'SEO Tools', href: '/dashboard/seo-tools', icon: Search },
   { name: 'Blog', href: '/dashboard/blog', icon: BookOpen },
+  { name: 'Tutorials', href: '/dashboard/tutorials', icon: BookOpen },
+  { name: 'Campaigns', href: '/dashboard/campaigns', icon: Target },
+  { name: 'Progress', href: '/dashboard/progress', icon: BarChart3 },
 ]
 
 const safeFormatDistanceToNow = (date: Date) => {
@@ -281,6 +288,13 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
           </div>
         </div>
       </ScrollArea>
+
+      {/* Mode Indicator */}
+      {!collapsed && (
+        <div className="px-4 pb-2">
+          <ModeIndicator variant="full" className="w-full" />
+        </div>
+      )}
 
       {/* User Profile / Footer */}
       <div className="p-4 border-t border-white/[0.05]">
