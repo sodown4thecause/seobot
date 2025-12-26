@@ -1,0 +1,4 @@
+# Copy this file to pr-title.txt and customize for your PR
+# This template is used with: gh pr create --title-file .claude/templates/pr-title.txt
+
+feat: [Brief description of the feature]

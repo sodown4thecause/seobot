@@ -136,7 +136,6 @@ export default function DashboardPage() {
     )
   }
 
-
   // Dashboard always shows all NextPhase features now
 
   return (

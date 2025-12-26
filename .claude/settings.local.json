@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx tsc --noEmit --pretty)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git checkout -b feature/*)",
+      "Bash(git checkout -b fix/*)",
+      "Bash(git checkout main)",
+      "Bash(git add .)",
+      "Bash(git add lib/*)",
+      "Bash(git commit -F .claude/templates/commit-message.txt)",
+      "Bash(git push -u origin feature/*)",
+      "Bash(git push -u origin fix/*)",
+      "Bash(gh pr create --title-file .claude/templates/pr-title.txt --body-file .claude/templates/pr-body.md)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr edit *)",
+      "Bash(cat .claude/templates/*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nsecurity: Refactor Claude Code permissions and templates\n\n- Move commit/PR templates to separate files instead of embedded in JSON\n- Restrict git/gh permissions to specific safe commands only\n- Add .gitignore entries for template files (per-developer customization)\n- Create example templates with security best practices\n- Document template system in README\n\nThis prevents overly permissive wildcards and keeps secrets out of config files.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)"
+    ]
+  }
+}

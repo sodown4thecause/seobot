@@ -65,12 +65,7 @@ export class FraseOptimizationAgent {
 
   constructor() {
     this.apiKey = process.env.FRASE_API_KEY || ''
-    if (!this.apiKey) {
-      throw new Error(
-        'FRASE_API_KEY is required but not found in environment variables. ' +
-        'Please set FRASE_API_KEY in your .env file to use the Frase optimization agent.'
-      )
-    }
+    // Don't throw - Frase is optional, will handle missing key gracefully in methods
   }
 
   /**
@@ -78,6 +73,19 @@ export class FraseOptimizationAgent {
    */
   async optimizeContent(params: FraseOptimizationParams): Promise<FraseOptimizationResult> {
     console.log('[Frase Agent] Starting content optimization for:', params.targetKeyword)
+
+    // Check if API key is available
+    if (!this.apiKey) {
+      console.warn('[Frase Agent] FRASE_API_KEY not configured, returning fallback result')
+      return {
+        fraseRaw: { error: 'FRASE_API_KEY not configured' },
+        optimizationScore: 50, // Neutral fallback score
+        contentBrief: {},
+        recommendations: {
+          optimizationTips: ['Frase API key not configured. Add FRASE_API_KEY to enable SERP analysis.'],
+        },
+      }
+    }
 
     try {
       // Step 1: Process SERP or custom URLs to get competitive insights
