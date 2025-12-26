@@ -1,17 +1,20 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+/**
+ * Chat Storage - Drizzle ORM Implementation
+ * 
+ * Replaces Supabase client with Drizzle for conversation and message storage
+ */
+
 import type { UIMessage, UIMessagePart } from 'ai'
 import { generateId } from 'ai'
-import type { Database } from '@/lib/supabase/types'
+import { db, conversations, messages, type Conversation, type Message, type Json } from '@/lib/db'
+import { eq, and, asc } from 'drizzle-orm'
 
 export type GenericUIMessage = UIMessage<Record<string, any>, any, any>
 
-export type ConversationRecord = Database['public']['Tables']['conversations']['Row']
-export type MessageRow = Database['public']['Tables']['messages']['Row']
-
-export type TypedSupabaseClient = SupabaseClient<Database>
+export type ConversationRecord = Conversation
+export type MessageRow = Message
 
 const TEXT_PART_TYPE = 'text' as const
-
 const defaultAgentType = 'general'
 
 // Helper to extract text content from parts
@@ -83,68 +86,54 @@ export const mapRowToUIMessage = (row: MessageRow): GenericUIMessage & { content
     role: row.role as GenericUIMessage['role'],
     parts: parts && parts.length > 0 ? parts : defaultParts,
     metadata: metadata.metadata ?? metadata,
-    // Include content and createdAt for components that expect these fields
     content: row.content,
-    createdAt: row.created_at ?? new Date().toISOString(),
-  }
-}
-
-export const serializeMessageForInsert = (
-  conversationId: string,
-  message: GenericUIMessage,
-  extra?: { metadata?: Record<string, any> },
-): Database['public']['Tables']['messages']['Insert'] => {
-  const textContent = mapTextContent(message)
-
-  return {
-    conversation_id: conversationId,
-    role: message.role,
-    content: textContent,
-    metadata: {
-      ui_message_id: message.id,
-      parts: message.parts as unknown,
-      metadata: message.metadata ?? {},
-      ...extra?.metadata,
-    } as Database['public']['Tables']['messages']['Insert']['metadata'],
+    createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
   }
 }
 
 export const loadConversationMessages = async (
-  client: TypedSupabaseClient,
   conversationId: string,
 ): Promise<GenericUIMessage[]> => {
-  const { data, error } = await client
-    .from('messages')
-    .select('*')
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true })
+  try {
+    const data = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(asc(messages.createdAt))
 
-  if (error) {
+    return data.map(mapRowToUIMessage)
+  } catch (error) {
     console.error('[Chat Storage] Failed to load messages', error)
     throw error
   }
-
-  return (data ?? []).map(mapRowToUIMessage)
 }
 
 export const saveConversationMessage = async (
-  client: TypedSupabaseClient,
   conversationId: string,
   message: GenericUIMessage,
   extra?: { metadata?: Record<string, any> },
 ) => {
-  const payload = serializeMessageForInsert(conversationId, message, extra)
-  // Use type assertion to work around Supabase type generation issues
-  const { error } = await (client.from('messages') as any).insert(payload)
-
-  if (error) {
+  const textContent = mapTextContent(message)
+  
+  try {
+    await db.insert(messages).values({
+      conversationId,
+      role: message.role,
+      content: textContent,
+      metadata: {
+        ui_message_id: message.id,
+        parts: message.parts as unknown,
+        metadata: message.metadata ?? {},
+        ...extra?.metadata,
+      } as Json,
+    })
+  } catch (error) {
     console.error('[Chat Storage] Failed to insert message', error)
     throw error
   }
 }
 
 export const getConversationForUser = async (
-  client: TypedSupabaseClient,
   userId: string,
   conversationId?: string,
 ): Promise<ConversationRecord | null> => {
@@ -152,53 +141,82 @@ export const getConversationForUser = async (
     return null
   }
 
-  const { data, error } = await client
-    .from('conversations')
-    .select('*')
-    .eq('id', conversationId)
-    .eq('user_id', userId)
-    .single()
+  try {
+    const data = await db
+      .select()
+      .from(conversations)
+      .where(and(
+        eq(conversations.id, conversationId),
+        eq(conversations.userId, userId)
+      ))
+      .limit(1)
 
-  if (error) {
-    if ((error as any)?.code === 'PGRST116') {
-      return null
-    }
-
+    return data[0] ?? null
+  } catch (error) {
     console.error('[Chat Storage] Failed to load conversation', error)
     throw error
   }
-
-  return data
 }
 
 export const ensureConversationForUser = async (
-  client: TypedSupabaseClient,
   userId: string,
   conversationId?: string,
   agentType: string = defaultAgentType,
 ): Promise<ConversationRecord> => {
   if (conversationId) {
-    const existing = await getConversationForUser(client, userId, conversationId)
+    const existing = await getConversationForUser(userId, conversationId)
     if (existing) {
       return existing
     }
   }
 
-  // Use type assertion to work around Supabase type generation issues
-  const { data, error } = await (client
-    .from('conversations') as any)
-    .insert({
-      user_id: userId,
-      agent_type: agentType,
-      status: 'active',
-    })
-    .select('*')
-    .single()
+  try {
+    const [data] = await db
+      .insert(conversations)
+      .values({
+        userId,
+        agentType,
+        status: 'active',
+      })
+      .returning()
 
-  if (error) {
+    return data
+  } catch (error) {
     console.error('[Chat Storage] Failed to create conversation', error)
     throw error
   }
+}
 
-  return data as ConversationRecord
+// Legacy compatibility - export with client parameter (now ignored)
+export const loadConversationMessagesCompat = async (
+  _client: any,
+  conversationId: string,
+): Promise<GenericUIMessage[]> => {
+  return loadConversationMessages(conversationId)
+}
+
+export const saveConversationMessageCompat = async (
+  _client: any,
+  conversationId: string,
+  message: GenericUIMessage,
+  extra?: { metadata?: Record<string, any> },
+) => {
+  return saveConversationMessage(conversationId, message, extra)
+}
+
+export const getConversationForUserCompat = async (
+  _client: any,
+  userId: string,
+  conversationId?: string,
+): Promise<ConversationRecord | null> => {
+  return getConversationForUser(userId, conversationId)
+}
+
+export const ensureConversationForUserCompat = async (
+  _client: any,
+  userId: string,
+  conversationId?: string,
+  agentType: string = defaultAgentType,
+): Promise<ConversationRecord> => {
+  return ensureConversationForUser(userId, conversationId, agentType)
 }

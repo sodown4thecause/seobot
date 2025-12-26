@@ -37,6 +37,7 @@ export interface EnhancedResearchParams {
   userId?: string // For usage logging
   langfuseTraceId?: string // Optional: link to Langfuse trace
   sessionId?: string // Optional: link to session
+  abortSignal?: AbortSignal // Optional: signal to abort the research
 }
 
 export interface EnhancedResearchResult {

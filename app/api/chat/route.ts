@@ -14,7 +14,7 @@ import {
   updateActiveObservation,
   updateActiveTrace,
 } from "@langfuse/tracing";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/clerk";
 import { serverEnv } from "@/lib/config/env";
 import { buildOnboardingSystemPrompt } from "@/lib/onboarding/prompts";
 import {
@@ -101,21 +101,16 @@ const handler = async (req: Request) => {
     const onboardingContext = context?.onboarding;
     const isOnboarding = context?.page === 'onboarding' || !!onboardingContext;
 
-    const supabase = await createClient();
-
-    // Get current user (needed for rate limiting)
-    let user = null;
-    let authError = null;
+    // Get current user using StackAuth (needed for rate limiting)
+    let user: { id: string } | null = null;
 
     try {
-      const authResult = await supabase.auth.getUser();
-      user = authResult.data.user;
-      authError = authResult.error;
+      const stackUser = await getCurrentUser();
+      user = stackUser ? { id: stackUser.id } : null;
     } catch (err) {
       console.warn('[Chat API] Auth check failed (safe to ignore for anon usage):', err);
       // Treat as anonymous user
       user = null;
-      // We don't set authError to avoid triggering downstream logic that expects a specific Supabase error shape
     }
 
     // Apply rate limiting
@@ -156,7 +151,6 @@ const handler = async (req: Request) => {
     if (user) {
       try {
         conversationRecord = await ensureConversationForUser(
-          supabase,
           user.id,
           requestedConversationId || undefined, // Create new if not provided
           resolvedAgentType,
@@ -181,19 +175,19 @@ const handler = async (req: Request) => {
 
     const lastUserMessage = normalizedMessages[normalizedMessages.length - 1];
     if (lastUserMessage?.role === 'user' && conversationRecord) {
-      await saveConversationMessage(supabase, conversationRecord.id, lastUserMessage, {
+      await saveConversationMessage(conversationRecord.id, lastUserMessage, {
         metadata: { source: 'user' },
       });
     }
 
     // Ensure we always have a conversation ID for authenticated users
     let activeConversationId = conversationRecord?.id ?? requestedConversationId;
-    
+
     // If user is authenticated but we still don't have a conversation ID, force create one
     if (!activeConversationId && user) {
       console.log('[Chat API] No conversation ID available, creating new conversation for message persistence');
       try {
-        const newConv = await ensureConversationForUser(supabase, user.id, undefined, resolvedAgentType);
+        const newConv = await ensureConversationForUser(user.id, undefined, resolvedAgentType);
         activeConversationId = newConv.id;
         conversationRecord = newConv;
         console.log('[Chat API] Created new conversation:', activeConversationId);
@@ -449,44 +443,20 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
 
           console.log('[Chat API] Image generated, uploading to storage...');
 
-          // Upload images to Supabase storage to avoid payload size limits
+          // Return images as data URLs (no external storage configured)
           const uploadedImages: { url: string; name: string; mediaType: string }[] = [];
 
           for (let idx = 0; idx < response.images.length; idx++) {
             const img = response.images[idx];
-            const fileName = `generated/${Date.now()}-${Math.random().toString(36).substring(7)}-${idx}.png`;
 
-            // Convert base64 to buffer
-            const imageBuffer = Buffer.from(img.base64, 'base64');
-
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('article-images')
-              .upload(fileName, imageBuffer, {
-                contentType: img.mediaType || 'image/png',
-                cacheControl: '31536000', // 1 year cache
-              });
-
-            if (uploadError) {
-              console.error('[Chat API] Failed to upload image to storage:', uploadError);
-              // Fall back to data URL (may still fail for large images)
-              uploadedImages.push({
-                url: img.dataUrl,
-                name: `image-${idx + 1}.png`,
-                mediaType: img.mediaType || 'image/png',
-              });
-              continue;
-            }
-
-            const { data: { publicUrl } } = supabase.storage
-              .from('article-images')
-              .getPublicUrl(fileName);
-
-            console.log('[Chat API] Image uploaded successfully:', publicUrl);
+            // Use data URL directly
             uploadedImages.push({
-              url: publicUrl,
+              url: img.dataUrl,
               name: `image-${idx + 1}.png`,
               mediaType: img.mediaType || 'image/png',
             });
+
+            console.log('[Chat API] Image added as data URL, index:', idx);
           }
 
           const primary = uploadedImages[0];
@@ -526,12 +496,81 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       }
     });
 
+    // N8N Backlinks Tool - Fetch backlinks via n8n webhook (provides backlinks functionality not available in DataForSEO MCP)
+    // Only create the tool if the webhook URL is configured
+    if (!serverEnv.N8N_BACKLINKS_WEBHOOK_URL) {
+      console.warn('[Chat API] N8N_BACKLINKS_WEBHOOK_URL not configured - backlinks tool will not be available');
+    }
+    const n8nBacklinksTool = serverEnv.N8N_BACKLINKS_WEBHOOK_URL ? tool({
+      description: "Fetch backlinks data for a domain using the n8n webhook integration. Use this when the user asks for backlinks, referring domains, link profile, or link building opportunities for a specific domain or website.",
+      inputSchema: z.object({
+        domain: z.string().describe("The domain to fetch backlinks for (e.g., 'example.com' or 'flowintent.com')"),
+      }),
+      execute: async ({ domain }) => {
+        try {
+          console.log('[Chat API] Fetching backlinks for domain via n8n:', domain);
+
+          // Validate webhook URL is configured
+          if (!serverEnv.N8N_BACKLINKS_WEBHOOK_URL) {
+            console.error('[Chat API] N8N backlinks webhook URL not configured');
+            return {
+              status: 'error',
+              errorMessage: 'N8N backlinks webhook is not configured. Please set N8N_BACKLINKS_WEBHOOK_URL environment variable.',
+            };
+          }
+
+          const response = await fetch(serverEnv.N8N_BACKLINKS_WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ domain }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[Chat API] N8N backlinks webhook error:', response.status, errorText);
+            return {
+              status: 'error',
+              errorMessage: `Failed to fetch backlinks: ${response.status} ${response.statusText}`,
+            };
+          }
+
+          const data = await response.json();
+          console.log('[Chat API] N8N backlinks response received:', {
+            domain,
+            hasData: !!data,
+            dataKeys: data ? Object.keys(data) : []
+          });
+
+          return {
+            status: 'success',
+            domain,
+            ...data,
+          };
+        } catch (error: any) {
+          console.error('[Chat API] N8N backlinks tool failed:', error);
+          return {
+            status: 'error',
+            domain,
+            errorMessage: error?.message || 'Failed to fetch backlinks data',
+          };
+        }
+      }
+    }) : undefined;
+
+    // Import business profile tools for onboarding
+    const { businessProfileTools } = await import('@/lib/tools/business-profile-tools');
+
     // Construct Final Tool Set
     const allTools = {
       // Core Tools (Always available)
       ...orchestratorTool,
       client_ui: clientUiTool,
       gateway_image: gatewayImageTool,
+
+      // Business Profile Tools (For onboarding and general agent)
+      ...((routingResult.agent === 'general' || routingResult.agent === 'onboarding') ? businessProfileTools : {}),
 
       // Best Practice: Specialized Agents as Tools
       research_agent: researchAgentTool,
@@ -555,9 +594,14 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       // Agent Specific Tools
       ...(routingResult.agent === 'content' ? { ...contentQualityTools, ...enhancedContentTools } : {}),
 
+      // N8N Backlinks - Only for SEO/AEO agent (provides backlinks via n8n webhook)
+      // Only register if the tool is defined (webhook URL is configured)
+      ...(routingResult.agent === 'seo-aeo' && n8nBacklinksTool ? { n8n_backlinks: n8nBacklinksTool } : {}),
+
       // MCP Tools (Loaded based on agent type)
       ...loadToolsForAgent(routingResult.agent, allMCPTools),
     };
+
 
     // Filter out any undefined tools and ensure valid schema
     const validatedTools = Object.fromEntries(
@@ -623,7 +667,7 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
         const { messages: finalMessages } = response;
 
         // Log AI usage
-        if (user && !authError) {
+        if (user) {
           try {
             const { logAIUsage } = await import('@/lib/analytics/usage-logger');
             await logAIUsage({
@@ -737,9 +781,8 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
             partsCount: normalizedMessage.parts?.length || 0,
             hasTextParts: normalizedMessage.parts?.some((p: any) => p.type === 'text') || false,
           });
-          
+
           await saveConversationMessage(
-            supabase,
             activeConversationId,
             normalizedMessage,
             { metadata: { source: 'assistant' } },

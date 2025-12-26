@@ -4,6 +4,7 @@
  */
 
 import { mcpDataforseoTools } from '@/lib/mcp/dataforseo/index'
+import { aiSearchOptimizer } from '@/lib/ai/ai-search-optimizer'
 
 // Helper to execute MCP tools (they only need args, not the full AI SDK context)
 // The execute function can return string | AsyncIterable<string> | PromiseLike<string>
@@ -30,6 +31,7 @@ export interface DataForSEOScoringParams {
   language?: string
   contentUrl?: string // Optional URL for on-page analysis
   userId?: string // For usage logging
+  abortSignal?: AbortSignal // Optional: signal to abort scoring
 }
 
 export interface DataForSEOScoringResult {
@@ -43,6 +45,12 @@ export interface DataForSEOScoringResult {
     semanticKeywords?: string[]
     citationQuality?: number
     technicalQuality?: number // Lighthouse score if URL provided
+    aiSearchMetrics?: {
+      chatgptVolume?: number
+      perplexityVolume?: number
+      aiOpportunityScore?: number
+      aiVsTraditionalRatio?: number
+    }
     contentStructure?: {
       headings?: number
       links?: number
@@ -245,16 +253,41 @@ export class DataForSEOScoringAgent {
         }
       }
 
-      // Step 6: Calculate content metrics from actual content
+      // Step 6: Get AI search volume metrics
+      let aiSearchMetrics: DataForSEOScoringResult['metrics']['aiSearchMetrics'] | undefined
+      try {
+        const aiAnalysis = await aiSearchOptimizer.analyzeAISearchVolume(
+          [params.targetKeyword],
+          'United States',
+          params.language || 'en',
+          {} // Traditional volumes would come from keyword research
+        )
+        
+        if (aiAnalysis.keywords.length > 0) {
+          const aiKeyword = aiAnalysis.keywords[0]
+          aiSearchMetrics = {
+            chatgptVolume: aiKeyword.chatgptVolume,
+            perplexityVolume: aiKeyword.perplexityVolume,
+            aiOpportunityScore: aiKeyword.aiOpportunityScore,
+            aiVsTraditionalRatio: aiKeyword.aiVsTraditionalRatio,
+          }
+          console.log('[DataForSEO Scoring] AI search metrics retrieved:', aiSearchMetrics)
+        }
+      } catch (error) {
+        console.warn('[DataForSEO Scoring] AI search volume analysis failed:', error)
+      }
+
+      // Step 7: Calculate content metrics from actual content
       const contentMetrics = this.analyzeContentDirectly(params.content, params.targetKeyword, relatedKeywords)
 
-      // Step 7: Normalize to a quality score (0-100) with accurate calculation
+      // Step 8: Normalize to a quality score (0-100) with accurate calculation
       const qualityScore = this.calculateAccurateScore(
         citationData,
         contentMetrics,
         contentStructure,
         technicalQuality,
-        phraseTrends
+        phraseTrends,
+        aiSearchMetrics
       )
 
       console.log('[DataForSEO Scoring] ✓ Analysis complete, score:', qualityScore)
@@ -269,6 +302,7 @@ export class DataForSEOScoringAgent {
           citationQuality: this.extractCitationQuality(citationData),
           readability: contentMetrics.readability,
           technicalQuality,
+          aiSearchMetrics,
           contentStructure: contentStructure || contentMetrics.structure,
           phraseTrends,
         },
@@ -368,7 +402,8 @@ export class DataForSEOScoringAgent {
     },
     contentStructure?: DataForSEOScoringResult['metrics']['contentStructure'],
     technicalQuality?: number,
-    phraseTrends?: Array<{ phrase: string; trend: number }>
+    phraseTrends?: Array<{ phrase: string; trend: number }>,
+    aiSearchMetrics?: DataForSEOScoringResult['metrics']['aiSearchMetrics']
   ): number {
     // Start with conservative base score
     let score = 30
@@ -441,6 +476,26 @@ export class DataForSEOScoringAgent {
     // === Technical Quality (0-10 points, if URL provided) ===
     if (technicalQuality !== undefined) {
       score += Math.round(technicalQuality * 0.1)
+    }
+
+    // === AI Search Optimization (0-10 points) ===
+    if (aiSearchMetrics) {
+      // High AI opportunity = bonus points for AEO optimization potential
+      if (aiSearchMetrics.aiOpportunityScore && aiSearchMetrics.aiOpportunityScore >= 70) {
+        score += 10 // High AI opportunity
+      } else if (aiSearchMetrics.aiOpportunityScore && aiSearchMetrics.aiOpportunityScore >= 50) {
+        score += 5 // Medium AI opportunity
+      } else if (aiSearchMetrics.aiOpportunityScore && aiSearchMetrics.aiOpportunityScore > 0) {
+        score += 2 // Low but present AI opportunity
+      }
+      
+      // AI volume bonus (if significant AI search volume exists)
+      const totalAIVolume = (aiSearchMetrics.chatgptVolume || 0) + (aiSearchMetrics.perplexityVolume || 0)
+      if (totalAIVolume > 1000) {
+        score += 3 // Significant AI search volume
+      } else if (totalAIVolume > 500) {
+        score += 1 // Moderate AI search volume
+      }
     }
 
     // Ensure score is within bounds

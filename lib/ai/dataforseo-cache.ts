@@ -120,3 +120,179 @@ export async function getDataForSEOCacheStats(): Promise<{
   }
 }
 
+/**
+ * Batch DataForSEO API calls with deduplication and parallel execution
+ * 
+ * @param calls - Array of call definitions
+ * @param options - Batching options
+ * @returns Map of results keyed by call identifier
+ */
+export interface BatchCall<T = any> {
+  id: string // Unique identifier for this call
+  toolName: string
+  args: Record<string, any>
+  executeFn: () => Promise<T>
+  priority?: number // Higher priority executes first
+}
+
+export interface BatchOptions {
+  maxConcurrency?: number // Max parallel calls (default: 5)
+  deduplicate?: boolean // Deduplicate identical calls (default: true)
+  progressCallback?: (completed: number, total: number) => void
+}
+
+export async function batchDataForSEOCalls<T>(
+  calls: BatchCall<T>[],
+  options: BatchOptions = {}
+): Promise<Map<string, T>> {
+  const {
+    maxConcurrency = 5,
+    deduplicate = true,
+    progressCallback,
+  } = options
+
+  const results = new Map<string, T>()
+  const errors = new Map<string, Error>()
+
+  // Deduplicate calls if enabled
+  const uniqueCalls = deduplicate ? deduplicateCalls(calls) : calls
+
+  // Sort by priority (higher first)
+  const sortedCalls = uniqueCalls.sort((a, b) => (b.priority || 0) - (a.priority || 0))
+
+  // Execute in batches
+  for (let i = 0; i < sortedCalls.length; i += maxConcurrency) {
+    const batch = sortedCalls.slice(i, i + maxConcurrency)
+    
+    // Check cache for all calls in batch first
+    const cachePromises = batch.map(async (call) => {
+      const cacheKey = getDataForSEOCacheKey(call.toolName, call.args)
+      const cached = await cacheGet<T>(cacheKey)
+      if (cached) {
+        return { call, result: cached, cached: true }
+      }
+      return { call, result: null, cached: false }
+    })
+
+    const cacheResults = await Promise.all(cachePromises)
+
+    // Execute uncached calls
+    const uncachedCalls = cacheResults.filter(r => !r.cached)
+    const executionPromises = uncachedCalls.map(async ({ call }) => {
+      try {
+        // Try cache first
+        const cacheKey = getDataForSEOCacheKey(call.toolName, call.args)
+        const cached = await cacheGet<T>(cacheKey)
+        if (cached) {
+          return { call, result: cached, cached: true }
+        }
+
+        // Execute API call
+        const result = await call.executeFn()
+        
+        // Cache the result
+        await cacheSet(cacheKey, result, CACHE_TTL.DATAFORSEO)
+        
+        return { call, result, cached: false }
+      } catch (error) {
+        errors.set(call.id, error instanceof Error ? error : new Error(String(error)))
+        return { call, result: null, cached: false, error }
+      }
+    })
+
+    const executionResults = await Promise.all(executionPromises)
+
+    // Combine cache hits and execution results
+    const allResults = [
+      ...cacheResults.filter(r => r.cached),
+      ...executionResults.filter(r => r.result !== null),
+    ]
+
+    // Store results
+    for (const { call, result } of allResults) {
+      if (result) {
+        results.set(call.id, result)
+      }
+    }
+
+    // Report progress
+    if (progressCallback) {
+      progressCallback(results.size, sortedCalls.length)
+    }
+  }
+
+  // Throw if any critical errors occurred
+  if (errors.size > 0) {
+    console.warn(`[DataForSEO Batch] ${errors.size} calls failed:`, Array.from(errors.keys()))
+  }
+
+  return results
+}
+
+/**
+ * Deduplicate batch calls based on tool name and args
+ */
+function deduplicateCalls<T>(calls: BatchCall<T>[]): BatchCall<T>[] {
+  const seen = new Map<string, BatchCall<T>>()
+
+  for (const call of calls) {
+    const key = `${call.toolName}:${JSON.stringify(call.args)}`
+    if (!seen.has(key)) {
+      seen.set(key, call)
+    } else {
+      // Keep the one with higher priority
+      const existing = seen.get(key)!
+      if ((call.priority || 0) > (existing.priority || 0)) {
+        seen.set(key, call)
+      }
+    }
+  }
+
+  return Array.from(seen.values())
+}
+
+/**
+ * Request coalescing: deduplicate identical concurrent calls
+ */
+class RequestCoalescer<T> {
+  private pending = new Map<string, Promise<T>>()
+
+  async coalesce(
+    key: string,
+    executeFn: () => Promise<T>
+  ): Promise<T> {
+    // If already pending, return existing promise
+    if (this.pending.has(key)) {
+      return this.pending.get(key)!
+    }
+
+    // Create new promise
+    const promise = executeFn().finally(() => {
+      // Remove from pending when done
+      this.pending.delete(key)
+    })
+
+    this.pending.set(key, promise)
+    return promise
+  }
+
+  getPendingCount(): number {
+    return this.pending.size
+  }
+}
+
+// Global coalescer instance
+const requestCoalescer = new RequestCoalescer()
+
+/**
+ * Coalesce identical concurrent requests
+ */
+export async function coalesceDataForSEOCall<T>(
+  toolName: string,
+  args: Record<string, any>,
+  executeFn: () => Promise<T>
+): Promise<T> {
+  const key = getDataForSEOCacheKey(toolName, args)
+  return requestCoalescer.coalesce(key, executeFn) as Promise<T>
+}
+

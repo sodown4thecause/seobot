@@ -7,6 +7,7 @@ import type { GatewayModelId } from '@ai-sdk/gateway'
 import { generateText } from 'ai'
 import { serverEnv } from '@/lib/config/env'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
+import { retrieveAgentDocuments } from '@/lib/ai/content-rag'
 
 export interface SEOAEOParams {
   topic: string
@@ -16,7 +17,16 @@ export interface SEOAEOParams {
   userId?: string // For usage logging
   langfuseTraceId?: string // For grouping spans under a parent trace
   sessionId?: string // For Langfuse session tracking
+  // Business context for personalized strategies
+  businessContext?: {
+    websiteUrl?: string
+    industry?: string
+    location?: string
+    goals?: string[]
+    brandVoice?: string
+  }
 }
+
 
 export interface SEOAEOResult {
   contentStructure: any
@@ -32,19 +42,67 @@ export class SEOAEOAgent {
   async optimizeForAEO(params: SEOAEOParams): Promise<SEOAEOResult> {
     console.log('[SEO/AEO Agent] Creating optimization strategy for:', params.topic)
 
+    // Retrieve relevant SEO/AEO knowledge from RAG
+    let knowledgeContext = ''
+    try {
+      const seoKnowledge = await retrieveAgentDocuments(
+        `${params.topic} ${params.keywords.join(' ')}`,
+        'seo_aeo',
+        5
+      )
+      if (seoKnowledge && seoKnowledge.length > 0) {
+        knowledgeContext = seoKnowledge
+          .map(doc => `### ${doc.title}\n${doc.content}`)
+          .join('\n\n')
+        console.log(`[SEO/AEO Agent] ✓ Retrieved ${seoKnowledge.length} knowledge documents`)
+      }
+    } catch (error) {
+      console.error('[SEO/AEO Agent] Error retrieving knowledge:', error)
+      // Continue without knowledge context
+    }
+
+    // Build business context section
+    let businessContextSection = ''
+    if (params.businessContext) {
+      const parts: string[] = []
+      if (params.businessContext.websiteUrl) parts.push(`Website: ${params.businessContext.websiteUrl}`)
+      if (params.businessContext.industry) parts.push(`Industry: ${params.businessContext.industry}`)
+      if (params.businessContext.location) parts.push(`Target Location: ${params.businessContext.location}`)
+      if (params.businessContext.goals?.length) parts.push(`Business Goals: ${params.businessContext.goals.join(', ')}`)
+      if (params.businessContext.brandVoice) parts.push(`Brand Voice: ${params.businessContext.brandVoice}`)
+
+      if (parts.length > 0) {
+        businessContextSection = `## Business Context
+${parts.join('\n')}
+
+`
+      }
+    }
+
     const prompt = `Create an SEO and AEO optimization strategy for content about: "${params.topic}"
 
 Target Keywords: ${params.keywords.join(', ')}
 Target Platforms: ${params.targetPlatforms?.join(', ') || 'General search + AI engines'}
 
-Provide:
-1. Optimal content structure for both traditional SEO and AI answer engines
+${businessContextSection}${knowledgeContext ? `## Expert SEO/AEO Knowledge Base
+Use the following research insights to inform your strategy:
+
+${knowledgeContext}
+
+---
+
+` : ''}Provide:
+1. Optimal content structure for both traditional SEO and AI answer engines (consider the CSQAF framework if relevant)
 2. Strategic keyword placement recommendations
 3. Citation and source linking strategy for AI engine visibility
 4. Platform-specific optimizations (ChatGPT, Perplexity, Claude, etc.)
 5. Semantic keyword variations to include
+6. Schema markup recommendations (FAQPage, HowTo, etc.)
+7. Agent Experience (AX) considerations for agentic search
+${params.businessContext?.industry ? `8. Industry-specific recommendations for ${params.businessContext.industry}` : ''}
 
 Format as JSON.`
+
 
     try {
       console.log('[SEO/AEO Agent] Starting SEO strategy creation with timeout...')
@@ -70,6 +128,7 @@ Format as JSON.`
           keywords: params.keywords,
           targetPlatforms: params.targetPlatforms,
           hasResearchData: !!params.researchData,
+          hasKnowledgeContext: !!knowledgeContext,
           provider: 'google',
           model: 'gemini-2.5-flash',
         }),
@@ -88,6 +147,7 @@ Format as JSON.`
             metadata: {
               topic: params.topic,
               keywords: params.keywords,
+              hasKnowledgeContext: !!knowledgeContext,
             },
           });
         } catch (error) {
@@ -148,15 +208,3 @@ Format as JSON.`
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-

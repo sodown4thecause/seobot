@@ -39,7 +39,7 @@ export interface Workflow {
   name: string
   description: string
   icon: string
-  category: 'seo' | 'content' | 'research' | 'analysis' | 'aeo'
+  category: 'seo' | 'content' | 'research' | 'analysis' | 'aeo' | 'local'
   estimatedTime: string
   steps: WorkflowStep[]
   tags: string[]
@@ -63,15 +63,19 @@ export interface Workflow {
 }
 
 export interface WorkflowExecution {
+  id: string
   workflowId: string
   conversationId: string
   userId: string
-  status: 'running' | 'completed' | 'failed' | 'cancelled'
+  status: 'running' | 'completed' | 'failed' | 'cancelled' | 'paused'
   currentStep?: string
   stepResults: WorkflowStepResult[]
   startTime: number
   endTime?: number
   metadata?: Record<string, any>
+  errorMessage?: string
+  workflowState?: Record<string, any>
+  checkpointData?: Record<string, any>
 }
 
 export interface WorkflowContext {

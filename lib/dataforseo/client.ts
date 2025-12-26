@@ -17,7 +17,7 @@ import { getRedisClient, cacheGet, cacheSet, CACHE_PREFIXES } from '@/lib/redis/
 
 function getAuthHeader(): string {
   const auth = Buffer.from(
-    `${serverEnv.DATAFORSEO_LOGIN}:${serverEnv.DATAFORSEO_PASSWORD}`
+    `${serverEnv.DATAFORSEO_USERNAME}:${serverEnv.DATAFORSEO_PASSWORD}`
   ).toString('base64')
   return `Basic ${auth}`
 }
