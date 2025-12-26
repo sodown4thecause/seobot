@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getCurrentUser } from '@/lib/auth/clerk'
 import {
   createTeam,
   getUserTeams,
@@ -7,32 +7,17 @@ import {
   addTeamMember,
   checkPermission
 } from '@/lib/collaboration/team-service'
-import { serverEnv, clientEnv } from '@/lib/config/env'
-
-const supabase = createClient(
-  clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-  serverEnv.SUPABASE_SERVICE_ROLE_KEY
-)
 
 export async function POST(request: NextRequest) {
   try {
     const { action, ...data } = await request.json()
 
-    // Verify user is authenticated
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Verify user is authenticated using StackAuth
+    const user = await getCurrentUser()
+
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Invalid authentication token' },
         { status: 401 }
       )
     }
@@ -58,7 +43,7 @@ export async function POST(request: NextRequest) {
             { status: 403 }
           )
         }
-        
+
         result = await addTeamMember(
           data.teamId,
           data.userId,
@@ -78,9 +63,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Team API error:', error)
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -93,23 +78,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId')
-    const includeMembers = searchParams.get('includeMembers') === 'true'
 
-    // Verify user is authenticated
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Verify user is authenticated using StackAuth
+    const user = await getCurrentUser()
+
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Invalid authentication token' },
         { status: 401 }
       )
     }
@@ -128,9 +103,9 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Team fetch API error:', error)
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       },

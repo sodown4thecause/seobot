@@ -34,6 +34,16 @@ export interface RAGWriterParams {
   competitorUrls?: string[]
   onProgress?: (update: ProgressUpdate) => void | Promise<void>
   abortSignal?: AbortSignal
+  // Image generation configuration
+  imageGeneration?: {
+    enabled: boolean
+    provider?: 'gemini' | 'openai-gpt-image-1' | 'openai-gpt-image-1-mini' | 'openai-dalle3'
+    count?: number // Number of images to generate (default: 1)
+    quality?: 'low' | 'medium' | 'high' // Only for gpt-image models
+    size?: '1024x1024' | '1536x1024' | '1024x1536'
+    background?: 'transparent' | 'opaque' | 'auto' // Only for gpt-image models
+    style?: 'realistic' | 'artistic' | 'illustrated' | 'photographic' // For Gemini
+  }
 }
 
 export interface RAGWriterResult {
@@ -63,6 +73,14 @@ export interface RAGWriterResult {
     metaDescription?: string
     slug?: string
     directAnswer?: string
+    generatedImages?: Array<{
+      id: string
+      url: string
+      altText: string
+      caption: string
+      provider: string
+      prompt: string
+    }>
   }
 }
 
@@ -105,6 +123,11 @@ export class RAGWriterOrchestrator {
    */
   async generateContent(params: RAGWriterParams): Promise<RAGWriterResult> {
     console.log('[RAG Writer Orchestrator] Starting content generation for:', params.topic)
+
+    // Check abort signal at the start
+    if (params.abortSignal?.aborted) {
+      throw new Error('Content generation aborted before start')
+    }
 
     const supabase = await createClient()
     const traceId = this.traceIdGenerator()
@@ -165,6 +188,11 @@ export class RAGWriterOrchestrator {
       });
 
       try {
+        // Check abort signal before initialization phase
+        if (params.abortSignal?.aborted) {
+          throw new Error('Content generation aborted during initialization')
+        }
+
         // Step 0.5: Fetch user's business context for personalized content
         let businessContext: { brandVoice?: any; profile?: any } = {}
         if (params.userId) {
@@ -181,6 +209,11 @@ export class RAGWriterOrchestrator {
           } catch (error) {
             console.warn('[Orchestrator] Failed to load business context:', error)
           }
+        }
+
+        // Check abort signal before research phase
+        if (params.abortSignal?.aborted) {
+          throw new Error('Content generation aborted before research phase')
         }
 
         // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
@@ -210,8 +243,14 @@ export class RAGWriterOrchestrator {
           userId: params.userId,
           langfuseTraceId: traceId, // Link to parent trace
           sessionId, // Link to session
+          abortSignal: params.abortSignal, // Propagate abort signal
         })
         await this.emitProgress(params, 'research', 'completed', 'Research complete', `Found ${researchResult.competitorSnippets?.length || 0} competitors`)
+
+        // Check abort signal before Frase content brief phase
+        if (params.abortSignal?.aborted) {
+          throw new Error('Content generation aborted before Frase brief phase')
+        }
 
         // Step 1.5: Frase Content Brief Generation (SEO/AEO Optimization)
         console.log('[Orchestrator] Phase 1.5: Frase Content Brief')
@@ -240,6 +279,7 @@ export class RAGWriterOrchestrator {
             country: 'us',
             userId: params.userId,
             contentType: params.type,
+            abortSignal: params.abortSignal, // Propagate abort signal
           })
 
           // Create a comprehensive content brief from Frase results
@@ -251,6 +291,11 @@ export class RAGWriterOrchestrator {
           console.error('[Orchestrator] Frase optimization failed, continuing without it:', fraseError)
           await this.emitProgress(params, 'frase-brief', 'completed', 'Skipped Frase analysis', 'Continuing without SERP analysis')
           // Continue without Frase if it fails - don't break the pipeline
+        }
+
+        // Check abort signal before composition phase (writing)
+        if (params.abortSignal?.aborted) {
+          throw new Error('Content generation aborted before composition phase')
         }
 
         // Step 2: Initial Draft
@@ -288,6 +333,7 @@ export class RAGWriterOrchestrator {
             personality: businessContext.brandVoice.personality,
           } : undefined,
           industry: businessContext.profile?.industry,
+          abortSignal: params.abortSignal, // Propagate abort signal
         })
         await this.emitProgress(params, 'writing', 'completed', 'Initial draft complete', `${currentDraft.content.split(/\s+/).length} words written`)
 
@@ -352,6 +398,7 @@ export class RAGWriterOrchestrator {
             userId: params.userId,
             langfuseTraceId: traceId, // Link to parent trace
             sessionId, // Link to session
+            abortSignal: params.abortSignal, // Propagate abort signal
           })
 
           // Use optimized content for subsequent phases
@@ -368,12 +415,17 @@ export class RAGWriterOrchestrator {
             directAnswer: syntaxResult.directAnswer,
           }
 
-          console.log(`[Orchestrator] ? Syntax optimization complete - H1: ${syntaxResult.syntaxReport.h1Present}, Question H2: ${syntaxResult.syntaxReport.h2QuestionHeading}`)
+          console.log(`[Orchestrator] ✓ Syntax optimization complete - H1: ${syntaxResult.syntaxReport.h1Present}, Question H2: ${syntaxResult.syntaxReport.h2QuestionHeading}`)
           await this.emitProgress(params, 'syntax', 'completed', 'Syntax optimization complete', 'Meta tags and structure optimized')
         } catch (syntaxError) {
           console.error('[Orchestrator] Syntax optimization failed, continuing with original draft:', syntaxError)
           await this.emitProgress(params, 'syntax', 'completed', 'Skipped syntax optimization', 'Continuing with original structure')
           // Continue with original draft if syntax optimization fails
+        }
+
+        // Check abort signal before finalization phase (scoring and QA loop)
+        if (params.abortSignal?.aborted) {
+          throw new Error('Content generation aborted before finalization phase')
         }
 
         // Step 3-5: Scoring, QA, and Revision Loop
@@ -383,6 +435,11 @@ export class RAGWriterOrchestrator {
         let bestDraft = currentDraft.content
 
         while (revisionRound <= QUALITY_THRESHOLDS.MAX_REVISION_ROUNDS) {
+          // Check abort signal at the start of each revision round
+          if (params.abortSignal?.aborted) {
+            throw new Error(`Content generation aborted during revision round ${revisionRound + 1}`)
+          }
+
           console.log(`[Orchestrator] Phase 3-5: Scoring + QA + Frase (Round ${revisionRound + 1})`)
           await this.emitProgress(params, 'scoring', 'in_progress', `Analyzing content quality (Round ${revisionRound + 1})...`, 'Running DataForSEO scoring')
 
@@ -392,6 +449,7 @@ export class RAGWriterOrchestrator {
             targetKeyword: params.keywords[0] || params.topic,
             contentUrl: params.competitorUrls?.[0], // Pass a URL if available for on-page analysis
             userId: params.userId,
+            abortSignal: params.abortSignal, // Propagate abort signal
           })
 
           // Step 4: EEAT QA Review
@@ -399,7 +457,7 @@ export class RAGWriterOrchestrator {
           const qaResult = await this.qaAgent.reviewContent({
             draft: currentDraft.content,
             dataforseoSummary: scoringResult.dataforseoRaw,
-            competitors: researchResult.competitorSnippets.map(c => ({
+            competitors: (researchResult.competitorSnippets || []).map(c => ({
               url: c.url,
               title: c.title,
               snippet: c.snippet,
@@ -416,6 +474,7 @@ export class RAGWriterOrchestrator {
             userId: params.userId,
             langfuseTraceId: traceId, // Link to parent trace
             sessionId, // Link to session
+            abortSignal: params.abortSignal, // Propagate abort signal
           })
 
           // Step 4.5: Frase Content Analysis (evaluate against SERP)
@@ -432,6 +491,7 @@ export class RAGWriterOrchestrator {
               country: 'us',
               userId: params.userId,
               contentType: params.type,
+              abortSignal: params.abortSignal, // Propagate abort signal
             })
 
             fraseScore = fraseContentAnalysis.optimizationScore
@@ -586,7 +646,7 @@ export class RAGWriterOrchestrator {
             !contentQualityEvaluation.passed
 
           if (!needsRevision || revisionRound >= QUALITY_THRESHOLDS.MAX_REVISION_ROUNDS) {
-            console.log('[Orchestrator] ? Quality thresholds met or max revisions reached')
+            console.log('[Orchestrator] ✓ Quality thresholds met or max revisions reached')
             await this.emitProgress(params, 'complete', 'completed', 'Quality standards achieved', `Overall score: ${overallScore}, Revisions: ${revisionRound}`)
 
             // Log final trace to LangWatch
@@ -666,6 +726,7 @@ export class RAGWriterOrchestrator {
             dataforseoMetrics: scoringResult.metrics,
             qaReport: qaResult.qaReport,
             revisionRound,
+            abortSignal: params.abortSignal, // Propagate abort signal
           })
 
           currentDraft = revisedDraft
@@ -692,7 +753,7 @@ export class RAGWriterOrchestrator {
           }
         }
 
-        console.log('[Orchestrator] ? Content generation complete')
+        console.log('[Orchestrator] ✓ Content generation complete')
         console.log(`[Orchestrator] Final scores - Overall: ${finalScores.overall}, Revisions: ${revisionRound}`)
         await this.emitProgress(params, 'finished', 'completed', 'Content generation complete!', `Final score: ${finalScores.overall}, Word count: ${bestDraft.split(/\s+/).length}`)
 

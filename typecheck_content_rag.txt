@@ -1,0 +1,55 @@
+
+> seo-platform@0.1.0 typecheck
+> tsc --noEmit
+
+.next/types/validator.ts(575,39): error TS2307: Cannot find module '../../app/api/auth/[...stack]/route.js' or its corresponding type declarations.
+lib/progress/tracker.ts(94,7): error TS2322: Type '{ id: string; name: string; description: string; category: string; icon: string | undefined; points: number; rarity: string; earnedAt: Date; metadata: Record<string, unknown>; }[]' is not assignable to type 'Achievement[]'.
+  Type '{ id: string; name: string; description: string; category: string; icon: string | undefined; points: number; rarity: string; earnedAt: Date; metadata: Record<string, unknown>; }' is not assignable to type 'Achievement'.
+    Types of property 'category' are incompatible.
+      Type 'string' is not assignable to type 'AchievementCategory'.
+lib/progress/tracker.ts(138,21): error TS2554: Expected 3 arguments, but got 2.
+lib/services/dataforseo/composite-tools.ts(102,32): error TS2339: Property 'keywordOverview' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ location_name: string; language_code: string; keywords: string[]; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(108,32): error TS2339: Property 'keywordSuggestions' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ location_name: string; language_code: string; keywords: string[]; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(119,36): error TS2339: Property 'historicalKeywordData' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ location_name: string; language_code: string; keywords: string[]; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(166,17): error TS2322: Type '{ priority: "high" | "medium" | "low"; contentType: string; estimatedDifficulty: string; timeToRank: string; actions: string[]; }' is not assignable to type '{ priority: "high" | "medium" | "low"; contentType: string; estimatedDifficulty: "medium" | "easy" | "hard"; timeToRank: string; actions: string[]; }'.
+  Types of property 'estimatedDifficulty' are incompatible.
+    Type 'string' is not assignable to type '"medium" | "easy" | "hard"'.
+lib/services/dataforseo/composite-tools.ts(186,13): error TS2322: Type 'string' is not assignable to type 'ApiError'.
+lib/services/dataforseo/composite-tools.ts(257,32): error TS2339: Property 'rankedKeywords' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ location_name: string; language_code: string; keywords: string[]; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(309,13): error TS2322: Type 'string' is not assignable to type 'ApiError'.
+lib/services/dataforseo/composite-tools.ts(358,49): error TS2339: Property 'keywordOverview' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ location_name: string; language_code: string; keywords: string[]; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(424,13): error TS2322: Type 'string' is not assignable to type 'ApiError'.
+lib/services/dataforseo/content-gap-analysis.ts(29,3): error TS2300: Duplicate identifier 'duplicate_content'.
+lib/services/dataforseo/content-gap-analysis.ts(32,3): error TS2300: Duplicate identifier 'custom_js_response_time'.
+lib/services/dataforseo/content-gap-analysis.ts(47,3): error TS2300: Duplicate identifier 'custom_js_response_time'.
+lib/services/dataforseo/content-gap-analysis.ts(52,3): error TS2300: Duplicate identifier 'duplicate_content'.
+lib/services/dataforseo/content-gap-analysis.ts(178,47): error TS2349: This expression is not callable.
+  No constituent of type 'Tool<{ limit: number; location_name: string; language_code: string; target: string; include_clickstream_data: boolean; ignore_synonyms: boolean; exclude_top_domains: boolean; offset?: number | undefined; item_types?: string[] | undefined; filters?: (string | ... 2 more ... | (string | ... 1 more ... | boolean)[])[] ...' is callable.
+lib/workflows/persistence.ts(23,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { userId: string | SQL<unknown> | Placeholder<string, any>; category: string | SQL<unknown> | Placeholder<string, any>; itemKey: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; completedAt?: SQL<...> | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Type '{ id: string; workflowId: string; conversationId: string; status: "running" | "completed" | "failed" | "cancelled" | "paused"; currentStep: string | undefined; stepResults: WorkflowStepResult[]; ... 5 more ...; metadata: Record<...>; }' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+      Types of property 'stepResults' are incompatible.
+        Type 'WorkflowStepResult[]' is not assignable to type 'Json | undefined'.
+          Type 'WorkflowStepResult[]' is not assignable to type 'Json[]'.
+            Type 'WorkflowStepResult' is not assignable to type 'Json'.
+              Type 'WorkflowStepResult' is not assignable to type '{ [key: string]: Json | undefined; }'.
+                Index signature for type 'string' is missing in type 'WorkflowStepResult'.
+  Overload 2 of 2, '(values: { userId: string | SQL<unknown> | Placeholder<string, any>; category: string | SQL<unknown> | Placeholder<string, any>; itemKey: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; completedAt?: SQL<...> | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ userId: string | SQL<unknown> | Placeholder<string, any>; category: string | SQL<unknown> | Placeholder<string, any>; itemKey: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; completedAt?: SQL<...> | ... 2 more ... | undefined; }[]'.
+lib/workflows/persistence.ts(101,9): error TS2322: Type 'number' is not assignable to type 'string'.
+lib/workflows/persistence.ts(160,7): error TS2322: Type '{ id: string; workflowId: string; conversationId: string; userId: string; status: "running" | "completed" | "failed" | "cancelled" | "paused"; currentStep: number; stepResults: any[]; workflowState: Record<...>; ... 4 more ...; metadata: Record<...>; }[]' is not assignable to type 'WorkflowExecution[]'.
+  Type '{ id: string; workflowId: string; conversationId: string; userId: string; status: WorkflowExecution["status"]; currentStep: number; stepResults: any[]; workflowState: Record<string, unknown>; ... 4 more ...; metadata: Record<...>; }' is not assignable to type 'WorkflowExecution'.
+    Types of property 'currentStep' are incompatible.
+      Type 'number' is not assignable to type 'string'.
+scripts/apply-migration.ts(6,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/apply-migration.ts(16,15): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+scripts/backfill-costs.ts(6,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/generate-embeddings-standalone.ts(7,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/seed-frameworks.ts(16,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/seed-from-files.ts(30,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/seed-rag-documents.ts(8,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/seed-rag-documents.ts(256,25): error TS7006: Parameter 'doc' implicitly has an 'any' type.
+scripts/seed-seo-research.ts(225,40): error TS2304: Cannot find name 'supabase'.
+scripts/seed-seo-research.ts(242,31): error TS2304: Cannot find name 'supabase'.
+scripts/seed-seo-research.ts(272,27): error TS2304: Cannot find name 'supabase'.
+scripts/upload-research-to-rag.ts(10,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.

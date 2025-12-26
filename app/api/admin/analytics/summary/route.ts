@@ -47,14 +47,14 @@ export async function GET(request: NextRequest) {
 
     // Calculate summary
     const totalCalls = logs?.length || 0
-    const totalCost = logs?.reduce((sum, log) => sum + (Number(log.cost_usd) || 0), 0) || 0
+    const totalCost = logs?.reduce((sum: number, log: { cost_usd: number | null }) => sum + (Number(log.cost_usd) || 0), 0) || 0
     const avgDuration = logs?.length 
-      ? logs.reduce((sum, log) => sum + (log.duration_ms || 0), 0) / logs.length
+      ? logs.reduce((sum: number, log: { duration_ms: number | null }) => sum + (log.duration_ms || 0), 0) / logs.length
       : 0
 
     // Find top service
     const serviceCounts: Record<string, number> = {}
-    logs?.forEach(log => {
+    logs?.forEach((log: { service: string }) => {
       serviceCounts[log.service] = (serviceCounts[log.service] || 0) + 1
     })
     const topService = Object.entries(serviceCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A'

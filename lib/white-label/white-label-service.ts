@@ -1,15 +1,20 @@
-import { generateObject, generateText } from 'ai'
+import { generateText } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { createAdminClient } from '@/lib/supabase/server'
+
+/**
+ * White Label Service
+ * 
+ * NOTE: Database operations are currently stubbed pending Neon migration.
+ * Required tables: white_label_settings, client_portals
+ * These tables need to be added to lib/db/schema.ts
+ */
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Use singleton admin client for Supabase operations
-const supabase = createAdminClient()
+const NOT_IMPLEMENTED_MSG = 'White label database operations not implemented. Required tables: white_label_settings, client_portals'
 
 export interface WhiteLabelSettings {
   id: string
@@ -100,128 +105,30 @@ export interface PortalSettings {
 
 /**
  * Create or update white-label settings
+ * NOTE: Stubbed - requires white_label_settings table
  */
 export async function upsertWhiteLabelSettings(
   userId: string,
   settings: Partial<WhiteLabelSettings>
 ): Promise<WhiteLabelSettings> {
-  try {
-    // Check if settings already exist
-    const { data: existing } = await supabase
-      .from('white_label_settings')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-
-    const settingsData = {
-      user_id: userId,
-      company_name: settings.companyName || 'Your Company',
-      logo_url: settings.logoUrl,
-      custom_domain: settings.customDomain,
-      brand_colors: settings.brandColors || getDefaultBrandColors(),
-      custom_css: settings.customCss,
-      email_settings: settings.emailSettings || getDefaultEmailSettings(),
-      feature_flags: settings.featureFlags || getDefaultFeatureFlags(),
-      subscription_plan: settings.subscriptionPlan || 'agency',
-      is_active: settings.isActive !== undefined ? settings.isActive : true,
-      updated_at: new Date().toISOString()
-    }
-
-    let result
-    if (existing) {
-      // Update existing settings
-      const { data, error } = await supabase
-        .from('white_label_settings')
-        .update(settingsData)
-        .eq('id', existing.id)
-        .select()
-        .single()
-
-      if (error) throw error
-      result = data
-    } else {
-      // Create new settings
-      const { data, error } = await supabase
-        .from('white_label_settings')
-        .insert({
-          ...settingsData,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-      result = data
-    }
-
-    return {
-      id: result.id,
-      userId: result.user_id,
-      teamId: result.team_id,
-      companyName: result.company_name,
-      logoUrl: result.logo_url,
-      customDomain: result.custom_domain,
-      brandColors: result.brand_colors,
-      customCss: result.custom_css,
-      emailSettings: result.email_settings,
-      featureFlags: result.feature_flags,
-      subscriptionPlan: result.subscription_plan,
-      isActive: result.is_active,
-      createdAt: result.created_at,
-      updatedAt: result.updated_at
-    }
-  } catch (error) {
-    console.error('Failed to upsert white-label settings:', error)
-    throw error
-  }
+  throw new Error(NOT_IMPLEMENTED_MSG)
 }
 
 /**
  * Get white-label settings for user
+ * NOTE: Stubbed - requires white_label_settings table
  */
 export async function getWhiteLabelSettings(
   userId: string,
   teamId?: string
 ): Promise<WhiteLabelSettings | null> {
-  try {
-    let query = supabase
-      .from('white_label_settings')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-
-    if (teamId) {
-      query = query.eq('team_id', teamId)
-    }
-
-    const { data, error } = await query.single()
-
-    if (error || !data) return null
-
-    return {
-      id: data.id,
-      userId: data.user_id,
-      teamId: data.team_id,
-      companyName: data.company_name,
-      logoUrl: data.logo_url,
-      customDomain: data.custom_domain,
-      brandColors: data.brand_colors,
-      customCss: data.custom_css,
-      emailSettings: data.email_settings,
-      featureFlags: data.feature_flags,
-      subscriptionPlan: data.subscription_plan,
-      isActive: data.is_active,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    }
-  } catch (error) {
-    console.error('Failed to get white-label settings:', error)
-    return null
-  }
+  console.warn('[White Label] getWhiteLabelSettings not implemented - returning null')
+  return null
 }
 
 /**
  * Create client portal
+ * NOTE: Stubbed - requires client_portals table
  */
 export async function createClientPortal(params: {
   whiteLabelId: string
@@ -230,85 +137,23 @@ export async function createClientPortal(params: {
   subdomain: string
   settings?: Partial<PortalSettings>
 }): Promise<ClientPortal> {
-  try {
-    // Check if subdomain is available
-    const { data: existing } = await supabase
-      .from('client_portals')
-      .select('id')
-      .eq('subdomain', params.subdomain)
-      .single()
-
-    if (existing) {
-      throw new Error('Subdomain already taken')
-    }
-
-    const { data, error } = await supabase
-      .from('client_portals')
-      .insert({
-        white_label_id: params.whiteLabelId,
-        client_name: params.clientName,
-        client_email: params.clientEmail,
-        subdomain: params.subdomain,
-        settings: params.settings || getDefaultPortalSettings(),
-        is_active: true,
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-
-    return {
-      id: data.id,
-      whiteLabelId: data.white_label_id,
-      clientName: data.client_name,
-      clientEmail: data.client_email,
-      subdomain: data.subdomain,
-      settings: data.settings,
-      isActive: data.is_active,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    }
-  } catch (error) {
-    console.error('Failed to create client portal:', error)
-    throw error
-  }
+  throw new Error(NOT_IMPLEMENTED_MSG)
 }
 
 /**
  * Get client portals for white-label setup
+ * NOTE: Stubbed - requires client_portals table
  */
 export async function getClientPortals(
   whiteLabelId: string
 ): Promise<ClientPortal[]> {
-  try {
-    const { data, error } = await supabase
-      .from('client_portals')
-      .select('*')
-      .eq('white_label_id', whiteLabelId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-
-    return data.map((portal: any) => ({
-      id: portal.id,
-      whiteLabelId: portal.white_label_id,
-      clientName: portal.client_name,
-      clientEmail: portal.client_email,
-      subdomain: portal.subdomain,
-      settings: portal.settings,
-      isActive: portal.is_active,
-      createdAt: portal.created_at,
-      updatedAt: portal.updated_at
-    }))
-  } catch (error) {
-    console.error('Failed to get client portals:', error)
-    throw error
-  }
+  console.warn('[White Label] getClientPortals not implemented - returning empty array')
+  return []
 }
 
 /**
  * Generate white-label CSS from settings
+ * NOTE: This function works without database
  */
 export function generateWhiteLabelCSS(settings: WhiteLabelSettings): string {
   const { brandColors, customCss } = settings
@@ -362,6 +207,7 @@ ${customCss || ''}
 
 /**
  * Generate white-label email template
+ * NOTE: This function works without database
  */
 export async function generateEmailTemplate(
   templateType: 'welcome' | 'content_ready' | 'report' | 'invoice',
@@ -384,7 +230,7 @@ Create an HTML email template that:
 Return only the HTML template, no explanations.`
 
     const result = await generateText({
-      model: google('gemini-3-pro-preview') as any,
+      model: google('gemini-2.0-flash') as any,
       prompt,
     })
 
@@ -397,6 +243,7 @@ Return only the HTML template, no explanations.`
 
 /**
  * Validate custom domain
+ * NOTE: Basic validation only - full DNS check not implemented
  */
 export async function validateCustomDomain(domain: string): Promise<{
   isValid: boolean
@@ -413,13 +260,7 @@ export async function validateCustomDomain(domain: string): Promise<{
       }
     }
 
-    // In a real implementation, you would:
-    // 1. Check DNS records
-    // 2. Verify CNAME or A record points to your servers
-    // 3. Check SSL certificate availability
-    // 4. Validate domain ownership
-
-    // For now, return basic validation
+    // In a real implementation, you would check DNS records
     return {
       isValid: true,
       dnsRecords: [
@@ -442,6 +283,7 @@ export async function validateCustomDomain(domain: string): Promise<{
 
 /**
  * Get white-label analytics data
+ * NOTE: Stubbed - requires database
  */
 export async function getWhiteLabelAnalytics(
   whiteLabelId: string,
@@ -455,34 +297,15 @@ export async function getWhiteLabelAnalytics(
   contentMetrics: Array<{ date: string; created: number; published: number }>
   revenueMetrics: Array<{ date: string; amount: number }>
 }> {
-  try {
-    // In a real implementation, you would query your analytics database
-    // For now, return mock data
-
-    return {
-      totalClients: 25,
-      activePortals: 18,
-      totalContent: 342,
-      totalRevenue: 12500,
-      clientGrowth: [
-        { date: '2024-01-01', count: 20 },
-        { date: '2024-02-01', count: 22 },
-        { date: '2024-03-01', count: 25 }
-      ],
-      contentMetrics: [
-        { date: '2024-01-01', created: 100, published: 85 },
-        { date: '2024-02-01', created: 120, published: 110 },
-        { date: '2024-03-01', created: 122, published: 115 }
-      ],
-      revenueMetrics: [
-        { date: '2024-01-01', amount: 4000 },
-        { date: '2024-02-01', amount: 4250 },
-        { date: '2024-03-01', amount: 4250 }
-      ]
-    }
-  } catch (error) {
-    console.error('Failed to get white-label analytics:', error)
-    throw error
+  console.warn('[White Label] getWhiteLabelAnalytics not implemented - returning empty data')
+  return {
+    totalClients: 0,
+    activePortals: 0,
+    totalContent: 0,
+    totalRevenue: 0,
+    clientGrowth: [],
+    contentMetrics: [],
+    revenueMetrics: []
   }
 }
 

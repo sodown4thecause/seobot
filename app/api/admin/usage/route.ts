@@ -1,28 +1,30 @@
 /**
  * Admin Usage Analytics API
  * Provides aggregated usage statistics per user and provider
+ * Protected with Clerk authentication
  */
 
+import { currentUser } from '@clerk/nextjs/server'
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-
-// Import admin check utility
 import { isAdmin as checkAdmin } from '@/lib/auth/admin-check'
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Check admin access with Clerk
+    const user = await currentUser()
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check admin access
     const admin = await checkAdmin(user.id)
     if (!admin) {
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
     }
+
+    // Get Supabase client for data access
+    const supabase = await createClient()
 
     const searchParams = req.nextUrl.searchParams
     const userId = searchParams.get('user_id')
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get paginated events
-    const { data: events, error: eventsError, count: totalCount } = await query
+    const { error: eventsError, count: totalCount } = await query
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -83,7 +85,7 @@ export async function GET(req: NextRequest) {
 
       // Note: Limited to 5000 records for performance. For complete aggregation,
       // consider creating a database function or materialized view for large datasets.
-      const { data: aggData, count: aggCount } = await aggQuery.limit(5000)
+      const { data: aggData } = await aggQuery.limit(5000)
 
       const totalCost = aggData?.reduce((sum: number, e: { metadata?: { cost_usd?: number }; prompt_tokens?: number; completion_tokens?: number }) => sum + (Number(e.metadata?.cost_usd) || 0), 0) || 0
       const totalTokens = aggData?.reduce((sum: number, e: { metadata?: { cost_usd?: number }; prompt_tokens?: number; completion_tokens?: number }) => sum + (e.prompt_tokens || 0) + (e.completion_tokens || 0), 0) || 0
@@ -149,4 +151,3 @@ export async function GET(req: NextRequest) {
     )
   }
 }
-

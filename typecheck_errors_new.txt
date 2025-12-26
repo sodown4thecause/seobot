@@ -1,0 +1,192 @@
+
+> seo-platform@0.1.0 typecheck
+> tsc --noEmit
+
+app/api/admin/analytics/cost-breakdown/route.ts(36,19): error TS7006: Parameter 'log' implicitly has an 'any' type.
+app/api/admin/analytics/service-metrics/route.ts(42,19): error TS7006: Parameter 'log' implicitly has an 'any' type.
+app/api/admin/analytics/summary/route.ts(50,37): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+app/api/admin/analytics/summary/route.ts(50,42): error TS7006: Parameter 'log' implicitly has an 'any' type.
+app/api/admin/analytics/summary/route.ts(52,22): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+app/api/admin/analytics/summary/route.ts(52,27): error TS7006: Parameter 'log' implicitly has an 'any' type.
+app/api/admin/analytics/summary/route.ts(57,19): error TS7006: Parameter 'log' implicitly has an 'any' type.
+app/api/admin/analytics/usage-chart/route.ts(36,19): error TS7006: Parameter 'log' implicitly has an 'any' type.
+app/api/admin/backfill-costs/route.ts(32,40): error TS7006: Parameter 'e' implicitly has an 'any' type.
+app/api/admin/backfill-costs/route.ts(96,44): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+app/api/admin/backfill-costs/route.ts(96,49): error TS7006: Parameter 'e' implicitly has an 'any' type.
+app/api/admin/usage/route.ts(65,37): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }'.
+app/api/admin/usage/route.ts(106,75): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }'.
+app/api/admin/usage/route.ts(116,83): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }'.
+app/api/admin/usage/route.ts(124,77): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }'.
+app/api/analytics/audit/route.ts(8,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/analytics/audit/route.ts(9,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/analytics/route.ts(116,41): error TS7006: Parameter 'd' implicitly has an 'any' type.
+app/api/analytics/route.ts(133,24): error TS7006: Parameter 'f' implicitly has an 'any' type.
+app/api/analytics/route.ts(147,28): error TS7006: Parameter 'msg' implicitly has an 'any' type.
+app/api/audit/[id]/route.ts(14,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/audit/[id]/route.ts(15,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/audit/leads/route.ts(15,31): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'BinaryLike | KeyObject'.
+app/api/audit/leads/route.ts(19,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/audit/leads/route.ts(20,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/audit/run/route.ts(27,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/audit/run/route.ts(28,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/collaboration/route.ts(14,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/collaboration/route.ts(15,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/competitor/alerts/route.ts(16,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/competitor/alerts/route.ts(17,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/competitor/monitor/route.ts(26,7): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/competitor/snapshots/route.ts(15,7): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/content/analyze-keyword/route.ts(17,7): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/content/research/route.ts(17,7): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/content/save/route.ts(25,7): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/conversations/[id]/messages/route.ts(32,74): error TS2554: Expected 1-2 arguments, but got 3.
+app/api/conversations/[id]/messages/route.ts(37,66): error TS2554: Expected 1 arguments, but got 2.
+app/api/dataforseo/ranked-keywords/route.ts(11,65): error TS2339: Property 'auth' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+app/api/images/generate/route.ts(16,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/images/generate/route.ts(17,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/local-seo/profile/route.ts(12,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/local-seo/profile/route.ts(13,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/podcast/transcribe/route.ts(11,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/podcast/transcribe/route.ts(12,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/schema/markup/route.ts(14,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/schema/markup/route.ts(15,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/video/seo/route.ts(12,13): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/api/video/seo/route.ts(13,3): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/auth/callback/route.ts(17,15): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+app/auth/callback/route.ts(18,15): error TS2339: Property 'NEXT_PUBLIC_SUPABASE_ANON_KEY' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'.
+app/dashboard/content/create/page.tsx(79,46): error TS2339: Property 'access_token' does not exist on type '{ user: CurrentServerUser; }'.
+app/dashboard/content/create/page.tsx(137,48): error TS2339: Property 'access_token' does not exist on type '{ user: CurrentServerUser; }'.
+app/dashboard/content/create/page.tsx(159,46): error TS2339: Property 'access_token' does not exist on type '{ user: CurrentServerUser; }'.
+app/dashboard/page.tsx(45,18): error TS2551: Property 'user_metadata' does not exist on type 'CurrentServerUser'. Did you mean 'serverMetadata'?
+app/dashboard/page.tsx(46,28): error TS2551: Property 'user_metadata' does not exist on type 'CurrentServerUser'. Did you mean 'serverMetadata'?
+app/dashboard/page.tsx(47,25): error TS2339: Property 'email' does not exist on type 'CurrentServerUser'.
+app/dashboard/page.tsx(48,28): error TS2339: Property 'email' does not exist on type 'CurrentServerUser'.
+components/jargon/jargon-tooltip.tsx(101,12): error TS2678: Type '"icon"' is not comparable to type '"inline" | "underline" | "badge"'.
+components/jargon/jargon-tooltip.tsx(113,12): error TS2678: Type '"card"' is not comparable to type '"inline" | "underline" | "badge"'.
+lib/agents/enhanced-image-agent.ts(465,74): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/agents/enhanced-image-agent.ts(476,51): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/agents/enhanced-image-agent.ts(536,74): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/agents/enhanced-image-agent.ts(547,51): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/agents/enhanced-image-agent.ts(608,74): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/agents/enhanced-image-agent.ts(619,51): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/agents/enhanced-image-agent.ts(712,76): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/agents/enhanced-image-agent.ts(723,53): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/ai/image-generation.ts(527,74): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/ai/image-generation.ts(539,51): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/ai/image-generation.ts(577,74): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/ai/image-generation.ts(589,51): error TS2339: Property 'storage' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/ai/learning-storage.ts(160,8): error TS2339: Property 'from' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/ai/learning-storage.ts(176,24): error TS7006: Parameter 'learning' implicitly has an 'any' type.
+lib/ai/learning-storage.ts(203,8): error TS2339: Property 'from' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/ai/learning-storage.ts(296,44): error TS7006: Parameter 'l' implicitly has an 'any' type.
+lib/ai/learning-storage.ts(297,50): error TS7006: Parameter 'l' implicitly has an 'any' type.
+lib/ai/learning-storage.ts(299,28): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+lib/ai/learning-storage.ts(299,33): error TS7006: Parameter 'l' implicitly has an 'any' type.
+lib/ai/learning-storage.ts(304,24): error TS7006: Parameter 'learning' implicitly has an 'any' type.
+lib/analytics/success-metrics.ts(54,43): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/analytics/success-metrics.ts(72,43): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/analytics/success-metrics.ts(90,43): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/analytics/success-metrics.ts(108,49): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/analytics/success-metrics.ts(125,49): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/analytics/success-metrics.ts(141,49): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/analytics/success-metrics.ts(162,49): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/analytics/success-metrics.ts(179,49): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/auth/admin-check.ts(38,41): error TS2551: Property 'user_metadata' does not exist on type 'CurrentServerUser'. Did you mean 'serverMetadata'?
+lib/auth/admin-check.ts(38,78): error TS2551: Property 'user_metadata' does not exist on type 'CurrentServerUser'. Did you mean 'serverMetadata'?
+lib/auth/admin-check.ts(45,68): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }'.
+lib/chat/context-preservation.ts(27,49): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/chat/context-preservation.ts(52,43): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/chat/storage.ts(119,31): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { content: string | SQL<unknown> | Placeholder<string, any>; role: string | SQL<unknown> | Placeholder<string, any>; conversationId: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; createdAt?: Date | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Type '{ ui_message_id: string; parts: unknown; metadata: Record<string, any>; }' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+      Types of property 'parts' are incompatible.
+        Type 'unknown' is not assignable to type 'Json | undefined'.
+  Overload 2 of 2, '(values: { content: string | SQL<unknown> | Placeholder<string, any>; role: string | SQL<unknown> | Placeholder<string, any>; conversationId: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; createdAt?: Date | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'conversationId' does not exist in type '{ content: string | SQL<unknown> | Placeholder<string, any>; role: string | SQL<unknown> | Placeholder<string, any>; conversationId: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; createdAt?: Date | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; }[]'.
+lib/db/queries.ts(175,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { content: string | SQL<unknown> | Placeholder<string, any>; role: string | SQL<unknown> | Placeholder<string, any>; conversationId: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; createdAt?: Date | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Type 'Record<string, unknown> | undefined' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+      Type 'Record<string, unknown>' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+        Type 'Record<string, unknown>' is missing the following properties from type 'Json[]': length, pop, push, concat, and 35 more.
+  Overload 2 of 2, '(values: { content: string | SQL<unknown> | Placeholder<string, any>; role: string | SQL<unknown> | Placeholder<string, any>; conversationId: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; createdAt?: Date | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'conversationId' does not exist in type '{ content: string | SQL<unknown> | Placeholder<string, any>; role: string | SQL<unknown> | Placeholder<string, any>; conversationId: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; createdAt?: Date | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; }[]'.
+lib/db/queries.ts(246,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { category: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; itemKey: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; completedAt?: Date | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Type 'Record<string, unknown>' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+      Type 'Record<string, unknown>' is missing the following properties from type 'Json[]': length, pop, push, concat, and 35 more.
+  Overload 2 of 2, '(values: { category: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; itemKey: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; completedAt?: Date | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ category: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; itemKey: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; completedAt?: Date | ... 2 more ... | undefined; }[]'.
+lib/db/queries.ts(272,13): error TS2769: No overload matches this call.
+  Overload 2 of 2, '(values: { title: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; itemType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; imageUrl?: string | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ title: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; itemType: string | SQL<unknown> | Placeholder<...>; ... 9 more ...; imageUrl?: string | ... 3 more ... | undefined; }[]'.
+lib/db/queries.ts(331,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { userId: string | SQL<unknown> | Placeholder<string, any>; keyword: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<...> | undefined; ... 8 more ...; intent?: string | ... 3 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Argument of type '{ searchVolume?: number; keywordDifficulty?: number; currentRanking?: number; intent?: string; priority?: string; metadata?: Record<string, unknown>; userId: string; keyword: string; }' is not assignable to parameter of type '{ userId: string | SQL<unknown> | Placeholder<string, any>; keyword: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<string, any> | undefined; ... 8 more ...; intent?: string | ... 3 more ... | undefined; }'.
+      Types of property 'metadata' are incompatible.
+        Type 'Record<string, unknown> | undefined' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+          Type 'Record<string, unknown>' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+            Type 'Record<string, unknown>' is missing the following properties from type 'Json[]': length, pop, push, concat, and 35 more.
+  Overload 2 of 2, '(values: { userId: string | SQL<unknown> | Placeholder<string, any>; keyword: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<...> | undefined; ... 8 more ...; intent?: string | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ userId: string | SQL<unknown> | Placeholder<string, any>; keyword: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<string, any> | undefined; ... 8 more ...; intent?: string | ... 3 more ... | undefined; }[]'.
+lib/db/queries.ts(360,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { domain: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<string, any> | undefined; ... 5 more ...; monthlyTraffic?: number | ... 3 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Argument of type '{ domainAuthority?: number; monthlyTraffic?: number; priority?: string; metadata?: Record<string, unknown>; userId: string; domain: string; }' is not assignable to parameter of type '{ domain: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<string, any> | undefined; ... 5 more ...; monthlyTraffic?: number | ... 3 more ... | undefined; }'.
+      Types of property 'metadata' are incompatible.
+        Type 'Record<string, unknown> | undefined' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+          Type 'Record<string, unknown>' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+            Type 'Record<string, unknown>' is missing the following properties from type 'Json[]': length, pop, push, concat, and 35 more.
+  Overload 2 of 2, '(values: { domain: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<string, any> | undefined; ... 5 more ...; monthlyTraffic?: number | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ domain: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<string, any> | undefined; ... 5 more ...; monthlyTraffic?: number | ... 3 more ... | undefined; }[]'.
+lib/progress/tracker.ts(94,7): error TS2322: Type '{ id: string; name: string; description: string; category: string; icon: string | undefined; points: number; rarity: string; earnedAt: Date; metadata: Record<string, unknown>; }[]' is not assignable to type 'Achievement[]'.
+  Type '{ id: string; name: string; description: string; category: string; icon: string | undefined; points: number; rarity: string; earnedAt: Date; metadata: Record<string, unknown>; }' is not assignable to type 'Achievement'.
+    Types of property 'category' are incompatible.
+      Type 'string' is not assignable to type 'AchievementCategory'.
+lib/progress/tracker.ts(138,21): error TS2554: Expected 3 arguments, but got 2.
+lib/services/dataforseo/composite-tools.ts(102,32): error TS2339: Property 'keywordOverview' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(108,32): error TS2339: Property 'keywordSuggestions' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(119,36): error TS2339: Property 'historicalKeywordData' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(166,17): error TS2322: Type '{ priority: "low" | "medium" | "high"; contentType: string; estimatedDifficulty: string; timeToRank: string; actions: string[]; }' is not assignable to type '{ priority: "low" | "medium" | "high"; contentType: string; estimatedDifficulty: "medium" | "easy" | "hard"; timeToRank: string; actions: string[]; }'.
+  Types of property 'estimatedDifficulty' are incompatible.
+    Type 'string' is not assignable to type '"medium" | "easy" | "hard"'.
+lib/services/dataforseo/composite-tools.ts(186,13): error TS2322: Type 'string' is not assignable to type 'ApiError'.
+lib/services/dataforseo/composite-tools.ts(257,32): error TS2339: Property 'rankedKeywords' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(284,41): error TS7006: Parameter 'r' implicitly has an 'any' type.
+lib/services/dataforseo/composite-tools.ts(309,13): error TS2322: Type 'string' is not assignable to type 'ApiError'.
+lib/services/dataforseo/composite-tools.ts(358,49): error TS2339: Property 'keywordOverview' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(424,13): error TS2322: Type 'string' is not assignable to type 'ApiError'.
+lib/services/dataforseo/content-gap-analysis.ts(29,3): error TS2300: Duplicate identifier 'duplicate_content'.
+lib/services/dataforseo/content-gap-analysis.ts(32,3): error TS2300: Duplicate identifier 'custom_js_response_time'.
+lib/services/dataforseo/content-gap-analysis.ts(47,3): error TS2300: Duplicate identifier 'custom_js_response_time'.
+lib/services/dataforseo/content-gap-analysis.ts(52,3): error TS2300: Duplicate identifier 'duplicate_content'.
+lib/services/dataforseo/content-gap-analysis.ts(178,47): error TS2349: This expression is not callable.
+  No constituent of type 'Tool<{ limit: number; location_name: string; language_code: string; target: string; include_clickstream_data: boolean; ignore_synonyms: boolean; exclude_top_domains: boolean; offset?: number | undefined; item_types?: string[] | undefined; filters?: (string | ... 2 more ... | (string | ... 1 more ... | boolean)[])[] ...' is callable.
+lib/tutorials/milestone-service.ts(410,29): error TS7006: Parameter 'item' implicitly has an 'any' type.
+lib/tutorials/milestone-service.ts(419,29): error TS7006: Parameter 'item' implicitly has an 'any' type.
+lib/tutorials/milestone-service.ts(429,29): error TS7006: Parameter 'item' implicitly has an 'any' type.
+lib/usage/limit-check.ts(141,36): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+lib/usage/limit-check.ts(141,41): error TS7006: Parameter 'event' implicitly has an 'any' type.
+lib/video/video-seo-service.ts(120,8): error TS2339: Property 'from' does not exist on type 'Promise<{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; }; from: (table: string) => any; }>'.
+lib/workflows/analytics.ts(64,43): error TS2339: Property 'rpc' does not exist on type '{ auth: { getUser: () => Promise<{ data: { user: CurrentServerUser | null; }; error: { message: string; } | null; }>; signOut: () => Promise<{ error: null; }>; getSession: () => Promise<...>; onAuthStateChange: (callback: Function) => { ...; }; }; from: (table: string) => any; }'.
+lib/workflows/analytics.ts(106,46): error TS7006: Parameter 'a' implicitly has an 'any' type.
+lib/workflows/analytics.ts(107,42): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+lib/workflows/analytics.ts(107,47): error TS7006: Parameter 'a' implicitly has an 'any' type.
+lib/workflows/analytics.ts(108,48): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+lib/workflows/analytics.ts(108,53): error TS7006: Parameter 'a' implicitly has an 'any' type.
+lib/workflows/persistence.ts(23,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { category: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; itemKey: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; completedAt?: Date | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Type '{ id: string; workflowId: string; conversationId: string; status: "paused" | "completed" | "failed" | "cancelled" | "running"; currentStep: string | undefined; stepResults: WorkflowStepResult[]; ... 5 more ...; metadata: Record<...>; }' is not assignable to type 'SQL<unknown> | Json | Placeholder<string, any> | undefined'.
+      Types of property 'stepResults' are incompatible.
+        Type 'WorkflowStepResult[]' is not assignable to type 'Json | undefined'.
+          Type 'WorkflowStepResult[]' is not assignable to type 'Json[]'.
+            Type 'WorkflowStepResult' is not assignable to type 'Json'.
+              Type 'WorkflowStepResult' is not assignable to type '{ [key: string]: Json | undefined; }'.
+                Index signature for type 'string' is missing in type 'WorkflowStepResult'.
+  Overload 2 of 2, '(values: { category: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; itemKey: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; completedAt?: Date | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ category: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; itemKey: string | SQL<unknown> | Placeholder<...>; id?: string | ... 2 more ... | undefined; metadata?: SQL<...> | ... 2 more ... | undefined; completedAt?: Date | ... 2 more ... | undefined; }[]'.
+lib/workflows/persistence.ts(101,9): error TS2322: Type 'number' is not assignable to type 'string'.
+lib/workflows/persistence.ts(160,7): error TS2322: Type '{ id: string; workflowId: string; conversationId: string; userId: string; status: "paused" | "completed" | "failed" | "cancelled" | "running"; currentStep: number; stepResults: any[]; workflowState: Record<...>; ... 4 more ...; metadata: Record<...>; }[]' is not assignable to type 'WorkflowExecution[]'.
+  Type '{ id: string; workflowId: string; conversationId: string; userId: string; status: WorkflowExecution["status"]; currentStep: number; stepResults: any[]; workflowState: Record<string, unknown>; ... 4 more ...; metadata: Record<...>; }' is not assignable to type 'WorkflowExecution'.
+    Types of property 'currentStep' are incompatible.
+      Type 'number' is not assignable to type 'string'.
+lib/workflows/scheduler.ts(75,21): error TS7006: Parameter 'item' implicitly has an 'any' type.
+scripts/apply-migration.ts(16,15): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+scripts/apply-migration.ts(17,5): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.

@@ -1,5 +1,5 @@
 /**
- * Business Profile Tools
+ * Business Profile Tools - Drizzle ORM Implementation
  * 
  * AI SDK tools for managing user business profiles during onboarding
  * and throughout the application lifecycle.
@@ -7,7 +7,13 @@
 
 import { tool } from 'ai'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import {
+    getBusinessProfile,
+    upsertBusinessProfile,
+    getBrandVoice,
+    upsertBrandVoice
+} from '@/lib/db/queries'
+import { getCurrentUser } from '@/lib/auth/clerk'
 
 /**
  * Business Profile Schema
@@ -44,78 +50,30 @@ const brandVoiceSchema = z.object({
  * Saves or updates the user's business profile during onboarding
  */
 export const upsertBusinessProfileTool = tool({
-    description: `Save or update the user's business profile information. Use this during onboarding to store collected data like website URL, industry, location, goals, and content preferences. Call this immediately after the user provides each piece of information - don't wait for confirmation.`,
+    description: `Save or update the user's business profile information. Use this during onboarding to store collected data like website URL, industry, location, goals, and content preferences.`,
     inputSchema: businessProfileSchema,
     execute: async (params) => {
         try {
-            const supabase = await createClient()
-
-            // Get current user
-            const { data: { user }, error: authError } = await supabase.auth.getUser()
-            if (authError || !user) {
+            const user = await getCurrentUser()
+            if (!user) {
                 return {
                     success: false,
                     error: 'User not authenticated. Please log in to save your profile.',
                 }
             }
 
-            // Prepare the data
-            const profileData: Record<string, any> = {
-                user_id: user.id,
-                updated_at: new Date().toISOString(),
-            }
-
-            if (params.website_url) profileData.website_url = params.website_url
-            if (params.industry) profileData.industry = params.industry
-            if (params.location) profileData.locations = params.location
-            if (params.goals) profileData.goals = params.goals
-            if (params.content_frequency) profileData.content_frequency = params.content_frequency
-
-            // Upsert the profile (insert or update)
-            const { data, error } = await supabase
-                .from('business_profiles')
-                .upsert(profileData, {
-                    onConflict: 'user_id',
-                    ignoreDuplicates: false,
-                })
-                .select()
-                .single()
-
-            if (error) {
-                console.error('[Business Profile Tool] Upsert error:', error)
-
-                // If upsert fails due to no existing row, try insert
-                if (error.code === 'PGRST116') {
-                    const { data: insertData, error: insertError } = await supabase
-                        .from('business_profiles')
-                        .insert(profileData)
-                        .select()
-                        .single()
-
-                    if (insertError) {
-                        return {
-                            success: false,
-                            error: `Failed to save profile: ${insertError.message}`,
-                        }
-                    }
-
-                    return {
-                        success: true,
-                        message: 'Business profile created successfully!',
-                        profile: insertData,
-                    }
-                }
-
-                return {
-                    success: false,
-                    error: `Failed to save profile: ${error.message}`,
-                }
-            }
+            const profile = await upsertBusinessProfile(user.id, {
+                websiteUrl: params.website_url,
+                industry: params.industry,
+                locations: params.location,
+                goals: params.goals,
+                contentFrequency: params.content_frequency,
+            })
 
             return {
                 success: true,
                 message: 'Business profile updated successfully!',
-                profile: data,
+                profile,
             }
         } catch (error: any) {
             console.error('[Business Profile Tool] Error:', error)
@@ -136,61 +94,26 @@ export const upsertBrandVoiceTool = tool({
     inputSchema: brandVoiceSchema,
     execute: async (params) => {
         try {
-            const supabase = await createClient()
-
-            const { data: { user }, error: authError } = await supabase.auth.getUser()
-            if (authError || !user) {
+            const user = await getCurrentUser()
+            if (!user) {
                 return {
                     success: false,
                     error: 'User not authenticated.',
                 }
             }
 
-            const voiceData = {
-                user_id: user.id,
+            const brandVoice = await upsertBrandVoice(user.id, {
                 tone: params.tone,
                 style: params.style,
-                personality: params.personality || [],
-                sample_phrases: params.sample_phrases || [],
+                personality: params.personality,
+                samplePhrases: params.sample_phrases,
                 source: params.source || 'manual',
-                updated_at: new Date().toISOString(),
-            }
-
-            const { data, error } = await supabase
-                .from('brand_voices')
-                .upsert(voiceData, {
-                    onConflict: 'user_id',
-                    ignoreDuplicates: false,
-                })
-                .select()
-                .single()
-
-            if (error) {
-                // Try insert if upsert fails
-                const { data: insertData, error: insertError } = await supabase
-                    .from('brand_voices')
-                    .insert(voiceData)
-                    .select()
-                    .single()
-
-                if (insertError) {
-                    return {
-                        success: false,
-                        error: `Failed to save brand voice: ${insertError.message}`,
-                    }
-                }
-
-                return {
-                    success: true,
-                    message: 'Brand voice created successfully!',
-                    brandVoice: insertData,
-                }
-            }
+            })
 
             return {
                 success: true,
                 message: 'Brand voice updated successfully!',
-                brandVoice: data,
+                brandVoice,
             }
         } catch (error: any) {
             console.error('[Brand Voice Tool] Error:', error)
@@ -207,14 +130,12 @@ export const upsertBrandVoiceTool = tool({
  * Retrieves the user's complete business profile
  */
 export const getBusinessProfileTool = tool({
-    description: `Retrieve the current user's business profile including website, industry, location, goals, and brand voice. Use this to understand the user's context before providing advice or generating content.`,
+    description: `Retrieve the current user's business profile including website, industry, location, goals, and brand voice.`,
     inputSchema: z.object({}),
     execute: async () => {
         try {
-            const supabase = await createClient()
-
-            const { data: { user }, error: authError } = await supabase.auth.getUser()
-            if (authError || !user) {
+            const user = await getCurrentUser()
+            if (!user) {
                 return {
                     success: false,
                     error: 'User not authenticated.',
@@ -222,25 +143,16 @@ export const getBusinessProfileTool = tool({
                 }
             }
 
-            // Fetch business profile
-            const { data: profile, error: profileError } = await supabase
-                .from('business_profiles')
-                .select('*')
-                .eq('user_id', user.id)
-                .single()
-
-            // Fetch brand voice
-            const { data: brandVoice, error: voiceError } = await supabase
-                .from('brand_voices')
-                .select('*')
-                .eq('user_id', user.id)
-                .single()
+            const [profile, brandVoice] = await Promise.all([
+                getBusinessProfile(user.id),
+                getBrandVoice(user.id),
+            ])
 
             const hasProfile = !!profile || !!brandVoice
             const isComplete = !!(
-                profile?.website_url &&
+                profile?.websiteUrl &&
                 profile?.industry &&
-                profile?.goals?.length > 0 &&
+                (profile?.goals as any)?.length > 0 &&
                 brandVoice?.tone
             )
 
@@ -269,11 +181,11 @@ export const getBusinessProfileTool = tool({
 function getMissingFields(profile: any, brandVoice: any): string[] {
     const missing: string[] = []
 
-    if (!profile?.website_url) missing.push('website_url')
+    if (!profile?.websiteUrl) missing.push('website_url')
     if (!profile?.industry) missing.push('industry')
-    if (!profile?.locations?.country) missing.push('location')
-    if (!profile?.goals?.length) missing.push('goals')
-    if (!profile?.content_frequency) missing.push('content_frequency')
+    if (!(profile?.locations as any)?.country) missing.push('location')
+    if (!(profile?.goals as any)?.length) missing.push('goals')
+    if (!profile?.contentFrequency) missing.push('content_frequency')
     if (!brandVoice?.tone) missing.push('brand_voice')
 
     return missing
@@ -290,7 +202,6 @@ export const businessProfileTools = {
 
 /**
  * Helper: Get user's business context for agent prompts
- * Use this to inject context into system prompts
  */
 export async function getUserBusinessContext(userId: string): Promise<{
     hasProfile: boolean
@@ -299,16 +210,12 @@ export async function getUserBusinessContext(userId: string): Promise<{
     brandVoice: any
 }> {
     try {
-        const supabase = await createClient()
-
-        const [profileResult, voiceResult] = await Promise.all([
-            supabase.from('business_profiles').select('*').eq('user_id', userId).single(),
-            supabase.from('brand_voices').select('*').eq('user_id', userId).single(),
+        const [profile, brandVoice] = await Promise.all([
+            getBusinessProfile(userId),
+            getBrandVoice(userId),
         ])
 
-        const profile = profileResult.data
-        const brandVoice = voiceResult.data
-        const hasProfile = !!profile?.website_url
+        const hasProfile = !!profile?.websiteUrl
 
         if (!hasProfile) {
             return {
@@ -322,25 +229,28 @@ export async function getUserBusinessContext(userId: string): Promise<{
         // Build context string for prompts
         const contextParts: string[] = []
 
-        if (profile?.website_url) {
-            contextParts.push(`Website: ${profile.website_url}`)
+        if (profile?.websiteUrl) {
+            contextParts.push(`Website: ${profile.websiteUrl}`)
         }
         if (profile?.industry) {
             contextParts.push(`Industry: ${profile.industry}`)
         }
-        if (profile?.locations?.country) {
-            const loc = [profile.locations.city, profile.locations.region, profile.locations.country]
+        const locations = profile?.locations as any
+        if (locations?.country) {
+            const loc = [locations.city, locations.region, locations.country]
                 .filter(Boolean).join(', ')
             contextParts.push(`Target Location: ${loc}`)
         }
-        if (profile?.goals?.length) {
-            contextParts.push(`Business Goals: ${profile.goals.join(', ')}`)
+        const goals = profile?.goals as any
+        if (goals?.length) {
+            contextParts.push(`Business Goals: ${goals.join(', ')}`)
         }
         if (brandVoice?.tone) {
             contextParts.push(`Brand Voice: ${brandVoice.tone}, ${brandVoice.style}`)
         }
-        if (brandVoice?.personality?.length) {
-            contextParts.push(`Brand Personality: ${brandVoice.personality.join(', ')}`)
+        const personality = brandVoice?.personality as any
+        if (personality?.length) {
+            contextParts.push(`Brand Personality: ${personality.join(', ')}`)
         }
 
         return {

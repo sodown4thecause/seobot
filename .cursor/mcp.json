@@ -14,6 +14,14 @@
 				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
 				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
 			}
+		},
+		"supabase": {
+			"command": "uvx",
+			"args": ["mcp-server-supabase"],
+			"env": {
+				"SUPABASE_URL": "https://your-project.supabase.co",
+				"SUPABASE_SERVICE_ROLE_KEY": "sbp_e38ed0be2dac554d9afddcebb962ab37609b658f"
+			}
 		}
 	}
 }

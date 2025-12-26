@@ -40,7 +40,7 @@ An intelligent SEO and content creation platform that combines competitive analy
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-key
    SUPABASE_SERVICE_ROLE_KEY=your-key
    GOOGLE_API_KEY=your-key
-   DATAFORSEO_LOGIN=your-email
+   DATAFORSEO_USERNAME=your-email
    DATAFORSEO_PASSWORD=your-password
    PERPLEXITY_API_KEY=your-key
    JINA_API_KEY=your-key

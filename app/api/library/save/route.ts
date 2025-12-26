@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { db, libraryItems } from '@/lib/db'
+import { getCurrentUser } from '@/lib/auth/clerk'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 interface SaveLibraryItemRequest {
   content?: string
@@ -17,15 +18,9 @@ interface SaveLibraryItemRequest {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient()
+    const user = await getCurrentUser()
 
-    // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -53,31 +48,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Insert library item
-    const { data: libraryItem, error: insertError } = await supabase
-      .from('library_items')
-      .insert({
-        user_id: user.id,
-        conversation_id: conversationId || null,
-        message_id: messageId || null,
-        item_type: itemType,
+    // Insert library item with Drizzle
+    const [libraryItem] = await db
+      .insert(libraryItems)
+      .values({
+        userId: user.id,
+        conversationId: conversationId || null,
+        messageId: messageId || null,
+        itemType,
         title,
         content: content || null,
         data: data || null,
-        image_url: imageUrl || null,
+        imageUrl: imageUrl || null,
         tags,
         metadata,
       })
-      .select()
-      .single()
-
-    if (insertError) {
-      console.error('Error saving library item:', insertError)
-      return NextResponse.json(
-        { error: 'Failed to save library item' },
-        { status: 500 }
-      )
-    }
+      .returning()
 
     return NextResponse.json({
       success: true,
@@ -91,4 +77,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-

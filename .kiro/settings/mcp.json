@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=praixxjujhbpqxuqyczn",
+      "headers": {
+        "Authorization": "Bearer sbp_e38ed0be2dac554d9afddcebb962ab37609b658f"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "supabase_query",
+        "supabase_insert",
+        "supabase_update",
+        "supabase_delete",
+        "supabase_rpc",
+        "supabase_storage_upload",
+        "supabase_storage_download",
+        "supabase_storage_list"
+      ]
+    },
+    "Ref": {
+      "url": "https://api.ref.tools/mcp",
+      "headers": {
+        "x-ref-api-key": "ref-57210845759dab8bb7f6"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "ref_search_documentation",
+        "ref_read_url"
+      ]
+    }
+  }
+}

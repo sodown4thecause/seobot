@@ -1,17 +1,85 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Circle, Loader2, XCircle, Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { CheckCircle2, Circle, Loader2, XCircle, Clock, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { WorkflowExecution, WorkflowStepResult } from '@/lib/workflows/types'
+import { analytics } from '@/lib/workflows/analytics'
 
 export interface WorkflowProgressProps {
   execution: WorkflowExecution
   className?: string
+  onCancel?: () => Promise<void>
+  showETA?: boolean
 }
 
-export function WorkflowProgress({ execution, className }: WorkflowProgressProps) {
+export function WorkflowProgress({
+  execution,
+  className,
+  onCancel,
+  showETA = true,
+}: WorkflowProgressProps) {
+  const [eta, setEta] = useState<number | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
+
+  // Calculate ETA based on historical analytics
+  useEffect(() => {
+    if (!showETA || execution.status !== 'running') {
+      setEta(null)
+      return
+    }
+
+    const calculateETA = async () => {
+      const workflowMetrics = await analytics.getWorkflowMetrics(execution.workflowId)
+      if (!workflowMetrics || workflowMetrics.averageDuration === 0) {
+        return null
+      }
+
+      const completedSteps = execution.stepResults.filter((s) => s.status === 'completed').length
+      const totalSteps = execution.stepResults.length
+      const remainingSteps = totalSteps - completedSteps
+
+      if (remainingSteps <= 0) return null
+
+      // Estimate based on average step duration
+      const avgStepDuration = workflowMetrics.averageDuration / totalSteps
+      const estimatedRemaining = avgStepDuration * remainingSteps
+
+      return estimatedRemaining
+    }
+
+    const updateETA = async () => {
+      const calculated = await calculateETA()
+      setEta(calculated)
+    }
+
+    updateETA()
+    const interval = setInterval(updateETA, 1000) // Update every second
+
+    return () => clearInterval(interval)
+  }, [execution, showETA])
+
+  const handleCancel = async () => {
+    if (!onCancel) return
+    setIsCancelling(true)
+    try {
+      await onCancel()
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
+  const formatETA = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${Math.round(seconds)}s`
+    }
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = Math.round(seconds % 60)
+    return `${minutes}m ${remainingSeconds}s`
+  }
   const getStepIcon = (status: string) => {
     switch (status) {
       case 'completed':
@@ -50,10 +118,31 @@ export function WorkflowProgress({ execution, className }: WorkflowProgressProps
     <Card className={cn('w-full bg-zinc-900 border-zinc-800', className)}>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg text-zinc-100">Workflow Progress</CardTitle>
-          <Badge className={cn('text-xs font-semibold border', getStatusColor(execution.status))}>
-            {execution.status.toUpperCase()}
-          </Badge>
+          <div className="flex-1">
+            <CardTitle className="text-lg text-zinc-100">Workflow Progress</CardTitle>
+            {showETA && eta !== null && execution.status === 'running' && (
+              <div className="mt-1 flex items-center gap-2 text-xs text-zinc-400">
+                <Clock className="h-3 w-3" />
+                <span>Estimated time remaining: {formatETA(eta)}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className={cn('text-xs font-semibold border', getStatusColor(execution.status))}>
+              {execution.status.toUpperCase()}
+            </Badge>
+            {onCancel && execution.status === 'running' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCancel}
+                disabled={isCancelling}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         {/* Progress Bar */}
         <div className="mt-3">
@@ -97,6 +186,12 @@ export function WorkflowProgress({ execution, className }: WorkflowProgressProps
                   )}>
                     Step {index + 1}: {step.stepId}
                   </span>
+                  {step.status === 'running' && (
+                    <div className="flex items-center gap-1 text-xs text-zinc-500">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Running...</span>
+                    </div>
+                  )}
                   {step.duration && (
                     <div className="flex items-center gap-1 text-xs text-zinc-500">
                       <Clock className="w-3 h-3" />

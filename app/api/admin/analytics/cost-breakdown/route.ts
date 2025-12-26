@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Group by service
     const serviceMap: Record<string, { cost: number; calls: number }> = {}
-    logs?.forEach(log => {
+    logs?.forEach((log: { service: string; cost_usd: number | null }) => {
       if (!serviceMap[log.service]) {
         serviceMap[log.service] = { cost: 0, calls: 0 }
       }

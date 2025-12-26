@@ -1,0 +1,29 @@
+lib/services/dataforseo/composite-tools.ts(102,32): error TS2339: Property 'keywordOverview' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(108,32): error TS2339: Property 'keywordSuggestions' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(119,36): error TS2339: Property 'historicalKeywordData' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(166,17): error TS2322: Type '{ priority: "medium" | "low" | "high"; contentType: string; estimatedDifficulty: string; timeToRank: string; actions: string[]; }' is not assignable to type '{ priority: "medium" | "low" | "high"; contentType: string; estimatedDifficulty: "medium" | "easy" | "hard"; timeToRank: string; actions: string[]; }'.
+  Types of property 'estimatedDifficulty' are incompatible.
+    Type 'string' is not assignable to type '"medium" | "easy" | "hard"'.
+lib/services/dataforseo/composite-tools.ts(186,13): error TS2322: Type 'string' is not assignable to type 'ApiError'.
+lib/services/dataforseo/composite-tools.ts(257,32): error TS2339: Property 'rankedKeywords' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(309,13): error TS2322: Type 'string' is not assignable to type 'ApiError'.
+lib/services/dataforseo/composite-tools.ts(358,49): error TS2339: Property 'keywordOverview' does not exist on type '{ readonly ai_optimization_keyword_data_locations_and_languages: Tool<{}, string>; readonly ai_optimization_keyword_data_search_volume: Tool<{ keywords: string[]; location_name: string; language_code: string; }, string>; ... 44 more ...; readonly content_analysis_phrase_trends: Tool<...>; }'.
+lib/services/dataforseo/composite-tools.ts(424,13): error TS2322: Type 'string' is not assignable to type 'ApiError'.
+lib/services/dataforseo/content-gap-analysis.ts(29,3): error TS2300: Duplicate identifier 'duplicate_content'.
+lib/services/dataforseo/content-gap-analysis.ts(32,3): error TS2300: Duplicate identifier 'custom_js_response_time'.
+lib/services/dataforseo/content-gap-analysis.ts(47,3): error TS2300: Duplicate identifier 'custom_js_response_time'.
+lib/services/dataforseo/content-gap-analysis.ts(52,3): error TS2300: Duplicate identifier 'duplicate_content'.
+lib/services/dataforseo/content-gap-analysis.ts(178,47): error TS2349: This expression is not callable.
+  No constituent of type 'Tool<{ limit: number; location_name: string; language_code: string; target: string; include_clickstream_data: boolean; ignore_synonyms: boolean; exclude_top_domains: boolean; item_types?: string[] | undefined; offset?: number | undefined; filters?: (string | ... 2 more ... | (string | ... 1 more ... | boolean)[])[] ...' is callable.
+scripts/apply-migration.ts(6,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/apply-migration.ts(16,15): error TS2551: Property 'NEXT_PUBLIC_SUPABASE_URL' does not exist on type '{ NEXT_PUBLIC_SITE_URL?: string | undefined; }'. Did you mean 'NEXT_PUBLIC_SITE_URL'?
+scripts/backfill-costs.ts(6,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/generate-embeddings-standalone.ts(7,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/seed-frameworks.ts(16,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/seed-from-files.ts(30,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/seed-rag-documents.ts(8,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+scripts/seed-rag-documents.ts(256,25): error TS7006: Parameter 'doc' implicitly has an 'any' type.
+scripts/seed-seo-research.ts(225,40): error TS2304: Cannot find name 'supabase'.
+scripts/seed-seo-research.ts(242,31): error TS2304: Cannot find name 'supabase'.
+scripts/seed-seo-research.ts(272,27): error TS2304: Cannot find name 'supabase'.
+scripts/upload-research-to-rag.ts(10,30): error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.

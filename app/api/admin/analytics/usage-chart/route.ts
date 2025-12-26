@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Group by date
     const dateMap: Record<string, number> = {}
-    logs?.forEach(log => {
+    logs?.forEach((log: { created_at: string }) => {
       const date = format(new Date(log.created_at), 'MMM dd')
       dateMap[date] = (dateMap[date] || 0) + 1
     })

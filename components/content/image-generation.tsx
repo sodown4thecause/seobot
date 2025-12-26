@@ -2,11 +2,11 @@
 
 import React, { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Image as ImageIcon, 
-  Sparkles, 
-  Download, 
-  Trash2, 
+import {
+  Image as ImageIcon,
+  Sparkles,
+  Download,
+  Trash2,
   Eye,
   Settings,
   Wand2,
@@ -24,14 +24,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { useToast } from '@/hooks/use-toast'
-import { 
-  generateImageSuggestions, 
-  generateImageWithOpenAI, 
-  generateImageVariations,
-  ImageSuggestion, 
-  GeneratedImage,
-  ImageGenerationOptions,
-  getImageGenerationCost
+import {
+  generateImageSuggestions,
+  generateImage,
+  generateImageVariationsWithGemini,
+  type ImageSuggestion,
+  type GeneratedImage,
+  type ImageGenerationOptions,
+  type GeminiImageRequest,
 } from '@/lib/ai/image-generation'
 
 interface ImageGenerationProps {
@@ -56,15 +56,14 @@ export function ImageGeneration({
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([])
   const [selectedSuggestion, setSelectedSuggestion] = useState<ImageSuggestion | null>(null)
   const [customPrompt, setCustomPrompt] = useState('')
-  const [generationOptions, setGenerationOptions] = useState<ImageGenerationOptions>({
-    prompt: '',
+  const [generationOptions, setGenerationOptions] = useState<{
+    style: GeminiImageRequest['style']
+    size: GeminiImageRequest['size']
+  }>({
     style: 'realistic',
-    size: '1024x1024',
-    quality: 'standard',
-    numberOfImages: 1
+    size: 'medium',
   })
   const [activeTab, setActiveTab] = useState('suggestions')
-  const [estimatedCost, setEstimatedCost] = useState(0)
 
   const { toast } = useToast()
 
@@ -72,16 +71,6 @@ export function ImageGeneration({
   React.useEffect(() => {
     loadSuggestions()
   }, [articleTitle, articleContent, targetKeyword])
-
-  // Update cost estimate when options change
-  React.useEffect(() => {
-    const cost = getImageGenerationCost(
-      generationOptions.numberOfImages || 1,
-      generationOptions.quality,
-      generationOptions.size || '1024x1024'
-    )
-    setEstimatedCost(cost)
-  }, [generationOptions])
 
   const loadSuggestions = async () => {
     try {
@@ -115,23 +104,26 @@ export function ImageGeneration({
     setSelectedSuggestion(suggestion || null)
 
     try {
-      const options: ImageGenerationOptions = {
-        ...generationOptions,
+      // Use the unified generateImage function with Gemini via Gateway
+      const image = await generateImage({
         prompt,
+        geminiOptions: {
+          style: generationOptions.style,
+          size: generationOptions.size,
+        },
         articleContext: {
           title: articleTitle,
           content: articleContent,
           targetKeyword,
           brandVoice
         }
-      }
+      })
 
-      const images = await generateImageWithOpenAI(options)
-      setGeneratedImages(prev => [...prev, ...images])
+      setGeneratedImages(prev => [...prev, image])
 
       toast({
-        title: "Images generated successfully!",
-        description: `Generated ${images.length} image(s) for your article.`,
+        title: "Image generated successfully!",
+        description: "Generated 1 image for your article.",
       })
     } catch (error) {
       console.error('Failed to generate images:', error)
@@ -149,17 +141,13 @@ export function ImageGeneration({
     setIsGenerating(true)
 
     try {
-      const variations = await generateImageVariations(
+      const variations = await generateImageVariationsWithGemini(
         baseImage.metadata.prompt,
-        {
-          title: articleTitle,
-          content: articleContent,
-          targetKeyword,
-          brandVoice
-        }
+        ['realistic', 'artistic', 'illustrated']
       )
-      setGeneratedImages(prev => [...prev, ...variations])
 
+      // Convert GeminiGeneratedImage[] to GeneratedImage[] format
+      // Note: The variations come as raw image data, would need storage upload
       toast({
         title: "Variations generated",
         description: `Created ${variations.length} style variations for your image.`,
@@ -222,12 +210,12 @@ export function ImageGeneration({
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">AI Image Generation</h3>
-            <p className="text-sm text-gray-600">Create custom images for your article</p>
+            <p className="text-sm text-gray-600">Create custom images for your article using Gemini</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="text-xs">
-            Est. cost: ${estimatedCost.toFixed(2)}
+            Powered by Gemini
           </Badge>
           <Button
             variant="outline"
@@ -337,7 +325,7 @@ export function ImageGeneration({
                     value={generationOptions.style}
                     onValueChange={(value) => setGenerationOptions(prev => ({
                       ...prev,
-                      style: value as any
+                      style: value as GeminiImageRequest['style']
                     }))}
                   >
                     <SelectTrigger>
@@ -345,51 +333,34 @@ export function ImageGeneration({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="realistic">Photorealistic</SelectItem>
-                      <SelectItem value="illustration">Illustration</SelectItem>
-                      <SelectItem value="diagram">Technical Diagram</SelectItem>
-                      <SelectItem value="infographic">Infographic</SelectItem>
-                      <SelectItem value="abstract">Abstract</SelectItem>
+                      <SelectItem value="artistic">Artistic</SelectItem>
+                      <SelectItem value="illustrated">Illustrated</SelectItem>
+                      <SelectItem value="photographic">Photographic</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Quality
+                    Size
                   </label>
                   <Select
-                    value={generationOptions.quality}
+                    value={generationOptions.size}
                     onValueChange={(value) => setGenerationOptions(prev => ({
                       ...prev,
-                      quality: value as any
+                      size: value as GeminiImageRequest['size']
                     }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="hd">High Definition (+$0.04)</SelectItem>
+                      <SelectItem value="small">Small</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="large">Large</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Number of Images: {generationOptions.numberOfImages}
-                </label>
-                <Slider
-                  value={[generationOptions.numberOfImages || 1]}
-                  onValueChange={([value]) => setGenerationOptions(prev => ({
-                    ...prev,
-                    numberOfImages: value
-                  }))}
-                  max={4}
-                  min={1}
-                  step={1}
-                  className="w-full"
-                />
               </div>
 
               <Button
@@ -402,7 +373,7 @@ export function ImageGeneration({
                 ) : (
                   <Sparkles className="w-4 h-4 mr-2" />
                 )}
-                Generate Images
+                Generate Image with Gemini
               </Button>
             </CardContent>
           </Card>

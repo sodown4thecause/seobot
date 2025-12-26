@@ -7,6 +7,7 @@ import { Navbar } from '@/components/navbar'
 import { ArrowLeft } from 'lucide-react'
 
 export const revalidate = 60
+export const dynamicParams = true // Allow on-demand generation for pages not statically generated
 
 export async function generateStaticParams() {
     const slugs = await getAllPostSlugs()

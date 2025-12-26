@@ -2,14 +2,20 @@ import { generateObject } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { createAdminClient } from '@/lib/supabase/server'
+
+/**
+ * Schema Markup Service
+ * 
+ * NOTE: Database operations are currently stubbed pending Neon migration.
+ * Required tables: schema_markup_templates, generated_schema_markup
+ * These tables need to be added to lib/db/schema.ts
+ */
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Use singleton admin client for Supabase operations
-const supabase = createAdminClient()
+const NOT_IMPLEMENTED_MSG = 'Schema markup database operations not implemented. Required tables: schema_markup_templates, generated_schema_markup'
 
 export interface SchemaMarkupTemplate {
   id: string
@@ -86,58 +92,36 @@ export interface SchemaGenerationRequest {
 
 /**
  * Generate schema markup using AI
+ * NOTE: Database storage is stubbed - schema generation works, but results are not persisted
  */
 export async function generateSchemaMarkup(params: SchemaGenerationRequest, userId: string): Promise<GeneratedSchemaMarkup> {
-  try {
-    // Generate schema using AI
-    const schemaData = await generateSchemaWithAI(params)
-    
-    // Validate the generated schema
-    const validation = await validateSchemaMarkup(schemaData)
-    
-    // Store the generated schema
-    const { data, error } = await supabase
-      .from('generated_schema_markup')
-      .insert({
-        user_id: userId,
-        content_id: params.contentId,
-        schema_type: params.schemaType,
-        schema_data: schemaData,
-        validation_status: validation.isValid ? 'valid' : 'invalid',
-        validation_errors: validation.errors,
-        implementation_status: 'draft',
-        search_console_impact: {
-          impressions: 0,
-          clicks: 0,
-          ctr: 0,
-          position: 0,
-          richResults: 0
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-
-    return {
-      id: data.id,
-      userId: data.user_id,
-      contentId: data.content_id,
-      schemaType: data.schema_type,
-      schemaData: data.schema_data,
-      templateId: data.template_id,
-      validationStatus: data.validation_status,
-      validationErrors: data.validation_errors,
-      implementationStatus: data.implementation_status,
-      searchConsoleImpact: data.search_console_impact,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    }
-  } catch (error) {
-    console.error('Failed to generate schema markup:', error)
-    throw error
+  // Generate schema using AI (this still works)
+  const schemaData = await generateSchemaWithAI(params)
+  
+  // Validate the generated schema (this still works)
+  const validation = await validateSchemaMarkup(schemaData)
+  
+  // Return in-memory result (not persisted to database)
+  console.warn('[Schema Markup] Database storage not implemented - returning in-memory result')
+  return {
+    id: `temp_${Date.now()}`,
+    userId: userId,
+    contentId: params.contentId,
+    schemaType: params.schemaType,
+    schemaData: schemaData,
+    templateId: undefined,
+    validationStatus: validation.isValid ? 'valid' : 'invalid',
+    validationErrors: validation.errors,
+    implementationStatus: 'draft',
+    searchConsoleImpact: {
+      impressions: 0,
+      clicks: 0,
+      ctr: 0,
+      position: 0,
+      richResults: 0
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 }
 
@@ -237,6 +221,7 @@ async function validateSchemaMarkup(schemaData: any): Promise<{
 
 /**
  * Create custom schema template
+ * NOTE: Stubbed - requires schema_markup_templates table
  */
 export async function createSchemaTemplate(params: {
   templateName: string
@@ -245,172 +230,32 @@ export async function createSchemaTemplate(params: {
   isPublic?: boolean
   userId: string
 }): Promise<SchemaMarkupTemplate> {
-  try {
-    // Validate the template
-    const validation = await validateSchemaMarkup(params.templateContent)
-    if (!validation.isValid) {
-      throw new Error(`Template validation failed: ${validation.errors.join(', ')}`)
-    }
-
-    const { data, error } = await supabase
-      .from('schema_markup_templates')
-      .insert({
-        user_id: params.userId,
-        template_name: params.templateName,
-        schema_type: params.schemaType,
-        template_content: params.templateContent,
-        is_default: false,
-        is_active: true,
-        is_public: params.isPublic || false,
-        usage_count: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-
-    return {
-      id: data.id,
-      userId: data.user_id,
-      templateName: data.template_name,
-      schemaType: data.schema_type,
-      templateContent: data.template_content,
-      isDefault: data.is_default,
-      isActive: data.is_active,
-      isPublic: data.is_public,
-      usageCount: data.usage_count,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    }
-  } catch (error) {
-    console.error('Failed to create schema template:', error)
-    throw error
-  }
+  throw new Error(NOT_IMPLEMENTED_MSG)
 }
 
 /**
  * Get schema templates
+ * NOTE: Stubbed - requires schema_markup_templates table
  */
 export async function getSchemaTemplates(
   userId: string,
   schemaType?: SchemaType,
   includePublic: boolean = true
 ): Promise<SchemaMarkupTemplate[]> {
-  try {
-    let query = supabase
-      .from('schema_markup_templates')
-      .select('*')
-      .eq('is_active', true)
-
-    if (schemaType) {
-      query = query.eq('schema_type', schemaType)
-    }
-
-    if (includePublic) {
-      query = query.or(`user_id.eq.${userId},and(is_public.eq.true)`)
-    } else {
-      query = query.eq('user_id', userId)
-    }
-
-    const { data, error } = await query.order('created_at', { ascending: false })
-
-    if (error) throw error
-
-    return data.map((template: any) => ({
-      id: template.id,
-      userId: template.user_id,
-      templateName: template.template_name,
-      schemaType: template.schema_type,
-      templateContent: template.template_content,
-      isDefault: template.is_default,
-      isActive: template.is_active,
-      isPublic: template.is_public,
-      usageCount: template.usage_count,
-      createdAt: template.created_at,
-      updatedAt: template.updated_at
-    }))
-  } catch (error) {
-    console.error('Failed to get schema templates:', error)
-    throw error
-  }
+  console.warn('[Schema Markup] getSchemaTemplates not implemented - returning empty array')
+  return []
 }
 
 /**
  * Generate schema from template
+ * NOTE: Stubbed - requires schema_markup_templates and generated_schema_markup tables
  */
 export async function generateSchemaFromTemplate(
   templateId: string,
   contentData: any,
   userId: string
 ): Promise<GeneratedSchemaMarkup> {
-  try {
-    // Get the template
-    const { data: template, error: templateError } = await supabase
-      .from('schema_markup_templates')
-      .select('*')
-      .eq('id', templateId)
-      .single()
-
-    if (templateError || !template) throw templateError || new Error('Template not found')
-
-    // Use AI to fill the template with content data
-    const filledSchema = await fillTemplateWithData(template.template_content, contentData)
-
-    // Validate the filled schema
-    const validation = await validateSchemaMarkup(filledSchema)
-
-    // Store the generated schema
-    const { data, error } = await supabase
-      .from('generated_schema_markup')
-      .insert({
-        user_id: userId,
-        schema_type: template.schema_type,
-        schema_data: filledSchema,
-        template_id: templateId,
-        validation_status: validation.isValid ? 'valid' : 'invalid',
-        validation_errors: validation.errors,
-        implementation_status: 'draft',
-        search_console_impact: {
-          impressions: 0,
-          clicks: 0,
-          ctr: 0,
-          position: 0,
-          richResults: 0
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-
-    // Increment template usage count
-    await supabase
-      .from('schema_markup_templates')
-      .update({ usage_count: template.usage_count + 1 })
-      .eq('id', templateId)
-
-    return {
-      id: data.id,
-      userId: data.user_id,
-      contentId: data.content_id,
-      schemaType: data.schema_type,
-      schemaData: data.schema_data,
-      templateId: data.template_id,
-      validationStatus: data.validation_status,
-      validationErrors: data.validation_errors,
-      implementationStatus: data.implementation_status,
-      searchConsoleImpact: data.search_console_impact,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    }
-  } catch (error) {
-    console.error('Failed to generate schema from template:', error)
-    throw error
-  }
+  throw new Error(NOT_IMPLEMENTED_MSG)
 }
 
 /**
@@ -449,79 +294,26 @@ Return only the completed JSON schema, no explanations.`
 
 /**
  * Get user's generated schema markups
+ * NOTE: Stubbed - requires generated_schema_markup table
  */
 export async function getGeneratedSchemas(
   userId: string,
   schemaType?: SchemaType,
   limit: number = 20
 ): Promise<GeneratedSchemaMarkup[]> {
-  try {
-    let query = supabase
-      .from('generated_schema_markup')
-      .select('*')
-      .eq('user_id', userId)
-
-    if (schemaType) {
-      query = query.eq('schema_type', schemaType)
-    }
-
-    const { data, error } = await query
-      .order('created_at', { ascending: false })
-      .limit(limit)
-
-    if (error) throw error
-
-    return data.map((schema: any) => ({
-      id: schema.id,
-      userId: schema.user_id,
-      contentId: schema.content_id,
-      schemaType: schema.schema_type,
-      schemaData: schema.schema_data,
-      templateId: schema.template_id,
-      validationStatus: schema.validation_status,
-      validationErrors: schema.validation_errors,
-      implementationStatus: schema.implementation_status,
-      searchConsoleImpact: schema.search_console_impact,
-      createdAt: schema.created_at,
-      updatedAt: schema.updated_at
-    }))
-  } catch (error) {
-    console.error('Failed to get generated schemas:', error)
-    throw error
-  }
+  console.warn('[Schema Markup] getGeneratedSchemas not implemented - returning empty array')
+  return []
 }
 
 /**
  * Generate implementation code for schema markup
+ * NOTE: Stubbed - requires generated_schema_markup table
  */
 export async function generateImplementationCode(
   schemaId: string,
   format: 'json-ld' | 'microdata' | 'rdfa'
 ): Promise<string> {
-  try {
-    // Get the schema
-    const { data: schema, error } = await supabase
-      .from('generated_schema_markup')
-      .select('schema_data, schema_type')
-      .eq('id', schemaId)
-      .single()
-
-    if (error || !schema) throw error || new Error('Schema not found')
-
-    switch (format) {
-      case 'json-ld':
-        return generateJSONLD(schema.schema_data)
-      case 'microdata':
-        return generateMicrodata(schema.schema_data, schema.schema_type)
-      case 'rdfa':
-        return generateRDFA(schema.schema_data, schema.schema_type)
-      default:
-        throw new Error('Unsupported format')
-    }
-  } catch (error) {
-    console.error('Failed to generate implementation code:', error)
-    throw error
-  }
+  throw new Error(NOT_IMPLEMENTED_MSG)
 }
 
 // Validation functions for different schema types

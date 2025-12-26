@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Metadata } from 'next'
 
 export const revalidate = 60
+export const dynamicParams = true // Allow on-demand generation for pages not statically generated
 
 export async function generateStaticParams() {
     try {

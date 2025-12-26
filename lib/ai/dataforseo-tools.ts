@@ -20,6 +20,7 @@ import {
   relevantPages,
 } from '@/lib/api/dataforseo-service'
 import { cachedDataForSEOCall } from './dataforseo-cache'
+import { compositeSEOTools } from '@/lib/tools/composite-seo-tools'
 
 // Function call handlers
 export async function handleDataForSEOFunctionCall(
@@ -337,6 +338,43 @@ export async function handleDataForSEOFunctionCall(
         }))
 
         return JSON.stringify(formatted, null, 2)
+      }
+
+      // COMPOSITE TOOLS
+      case 'keyword_intelligence': {
+        if (!compositeSEOTools.keyword_intelligence?.execute) return 'Tool not available'
+        const toolOptions = { abortSignal: new AbortController().signal, toolCallId: 'keyword-intelligence', messages: [] }
+        const result = await compositeSEOTools.keyword_intelligence.execute({
+          keyword: args.keyword,
+          location: args.location || 'United States',
+          language: args.language || 'en',
+          includeHistorical: args.includeHistorical !== false,
+          includeAISearch: args.includeAISearch !== false,
+        }, toolOptions)
+        return typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+      }
+
+      case 'competitor_content_gap': {
+        if (!compositeSEOTools.competitor_content_gap?.execute) return 'Tool not available'
+        const toolOptions = { abortSignal: new AbortController().signal, toolCallId: 'competitor-content-gap', messages: [] }
+        const result = await compositeSEOTools.competitor_content_gap.execute({
+          yourDomain: args.yourDomain,
+          competitorDomains: args.competitorDomains,
+          location: args.location || 'United States',
+          language: args.language || 'en',
+        }, toolOptions)
+        return typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+      }
+
+      case 'bulk_traffic_estimator': {
+        if (!compositeSEOTools.bulk_traffic_estimator?.execute) return 'Tool not available'
+        const toolOptions = { abortSignal: new AbortController().signal, toolCallId: 'bulk-traffic-estimator', messages: [] }
+        const result = await compositeSEOTools.bulk_traffic_estimator.execute({
+          targets: args.targets,
+          location: args.location || 'United States',
+          language: args.language || 'en',
+        }, toolOptions)
+        return typeof result === 'string' ? result : JSON.stringify(result, null, 2)
       }
 
       default:

@@ -1,0 +1,39 @@
+
+> seo-platform@0.1.0 prebuild
+> npm run validate:env || echo 'Env validation skipped'
+
+
+> seo-platform@0.1.0 validate:env
+> tsx scripts/validate-env.ts
+
+[dotenv@17.2.3] injecting env (46) from .env.local -- tip: ΓÜÖ∩╕Å  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.2.3] injecting env (1) from .env -- tip: ΓÜÖ∩╕Å  override existing env vars with { override: true }
+≡ƒöì Validating environment variables...
+
+Γ£à Server environment variables validated successfully
+Γ£à Client environment variables validated successfully
+
+============================================================
+
+Γ£à All environment variables validated successfully!
+
+≡ƒôè Summary:
+   - Public variables: 3
+   - Server-only variables: 18
+   - Total validated: 21
+
+
+> seo-platform@0.1.0 build
+> next build
+
+ ΓÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\User\bun.lock as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\User\Documents\seo ragbot\seo-platform\package-lock.json
+
+   Γû▓ Next.js 16.0.10 (Turbopack)
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...

@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllCacheStats, pruneAllCaches } from '@/lib/utils/cache';
 import { getRateLimitStats } from '@/lib/redis/rate-limit';
-import { createClient } from '@/lib/supabase/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { isAdmin } from '@/lib/auth/admin-check';
 
 /**
  * Admin endpoint to get system statistics
- * Protected with admin authentication
+ * Protected with admin authentication via Clerk
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    // Check admin authentication
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // Check admin authentication with Clerk
+    const user = await currentUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -44,13 +43,12 @@ export async function GET(request: NextRequest) {
 
 /**
  * Admin endpoint to trigger cache cleanup
- * Protected with admin authentication
+ * Protected with admin authentication via Clerk
  */
 export async function POST(request: NextRequest) {
   try {
-    // Check admin authentication
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // Check admin authentication with Clerk
+    const user = await currentUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

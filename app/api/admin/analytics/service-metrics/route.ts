@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       successCount: number
     }> = {}
 
-    logs?.forEach(log => {
+    logs?.forEach((log: { service: string; cost_usd: number | null; duration_ms: number | null; status_code: number | null }) => {
       if (!serviceMap[log.service]) {
         serviceMap[log.service] = {
           totalCalls: 0,

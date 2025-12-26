@@ -2,14 +2,20 @@ import { generateObject } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { createAdminClient } from '@/lib/supabase/server'
+
+/**
+ * Local SEO Service
+ * 
+ * NOTE: Database operations are currently stubbed pending Neon migration.
+ * Required tables: local_seo_profiles
+ * These tables need to be added to lib/db/schema.ts
+ */
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Use singleton admin client for Supabase operations
-const supabase = createAdminClient()
+const NOT_IMPLEMENTED_MSG = 'Local SEO database operations not implemented. Required tables: local_seo_profiles'
 
 export interface LocalSEOProfile {
   id: string
@@ -124,6 +130,7 @@ export interface LocalSEOMetadata {
 
 /**
  * Create or update local SEO profile
+ * NOTE: Stubbed - requires local_seo_profiles table
  */
 export async function upsertLocalSEOProfile(params: {
   userId: string
@@ -138,417 +145,21 @@ export async function upsertLocalSEOProfile(params: {
   localKeywords: string[]
   metadata: Partial<LocalSEOMetadata>
 }): Promise<LocalSEOProfile> {
-  try {
-    // Check if profile already exists
-    const { data: existing } = await supabase
-      .from('local_seo_profiles')
-      .select('*')
-      .eq('user_id', params.userId)
-      .single()
-
-    // Analyze competitors
-    const competitorBusinesses = await analyzeLocalCompetitors(
-      params.businessAddress,
-      params.businessCategory
-    )
-
-    // Find citation opportunities
-    const citationSources = await findCitationOpportunities(
-      params.businessName,
-      params.businessAddress,
-      params.businessCategory
-    )
-
-    // Generate optimization tasks
-    const optimizationTasks = await generateOptimizationTasks({
-      businessName: params.businessName,
-      businessCategory: params.businessCategory,
-      businessAddress: params.businessAddress,
-      servicesOffered: params.servicesOffered,
-      localKeywords: params.localKeywords,
-      competitorAnalysis: competitorBusinesses,
-      citationAnalysis: citationSources
-    })
-
-    // Calculate SEO score
-    const seoScore = calculateLocalSEOScore({
-      businessInfo: {
-        name: params.businessName,
-        category: params.businessCategory,
-        address: params.businessAddress,
-        phone: params.businessPhone,
-        website: params.businessWebsite,
-        hours: params.businessHours
-      },
-      competitorAnalysis: competitorBusinesses,
-      citationAnalysis: citationSources,
-      optimizationTasks
-    })
-
-    const profileData = {
-      user_id: params.userId,
-      business_name: params.businessName,
-      business_category: params.businessCategory,
-      business_address: params.businessAddress,
-      business_phone: params.businessPhone,
-      business_website: params.businessWebsite,
-      business_hours: params.businessHours,
-      services_offered: params.servicesOffered,
-      service_areas: params.serviceAreas,
-      photos: [],
-      reviews: {
-        rating: 0,
-        count: 0,
-        recent_reviews: [],
-        average_response_time: 0,
-        response_rate: 0
-      },
-      local_keywords: params.localKeywords,
-      competitor_businesses: competitorBusinesses,
-      citation_sources: citationSources,
-      seo_score: seoScore,
-      optimization_tasks: optimizationTasks,
-      metadata: {
-        business_type: params.businessCategory,
-        employees_count: params.metadata.employeesCount || 0,
-        year_established: params.metadata.yearEstablished || new Date().getFullYear(),
-        service_radius: params.metadata.serviceRadius || 25,
-        primary_market: params.businessAddress.city,
-        competition_level: determineCompetitionLevel(competitorBusinesses),
-        local_search_volume: estimateLocalSearchVolume(params.businessCategory, params.businessAddress.city)
-      },
-      updated_at: new Date().toISOString()
-    }
-
-    let result
-    if (existing) {
-      // Update existing profile
-      const { data, error } = await supabase
-        .from('local_seo_profiles')
-        .update(profileData)
-        .eq('id', existing.id)
-        .select()
-        .single()
-
-      if (error) throw error
-      result = data
-    } else {
-      // Create new profile
-      const { data, error } = await supabase
-        .from('local_seo_profiles')
-        .insert({
-          ...profileData,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-      result = data
-    }
-
-    return {
-      id: result.id,
-      userId: result.user_id,
-      businessName: result.business_name,
-      businessCategory: result.business_category,
-      businessAddress: result.business_address,
-      businessPhone: result.business_phone,
-      businessWebsite: result.business_website,
-      googleBusinessProfileId: result.google_business_profile_id,
-      businessHours: result.business_hours,
-      servicesOffered: result.services_offered,
-      serviceAreas: result.service_areas,
-      photos: result.photos,
-      reviews: result.reviews,
-      localKeywords: result.local_keywords,
-      competitorBusinesses: result.competitor_businesses,
-      citationSources: result.citation_sources,
-      seoScore: result.seo_score,
-      optimizationTasks: result.optimization_tasks,
-      metadata: result.metadata,
-      createdAt: result.created_at,
-      updatedAt: result.updated_at
-    }
-  } catch (error) {
-    console.error('Failed to upsert local SEO profile:', error)
-    throw error
-  }
-}
-
-/**
- * Analyze local competitors
- */
-async function analyzeLocalCompetitors(
-  businessAddress: BusinessAddress,
-  businessCategory: string
-): Promise<CompetitorBusiness[]> {
-  try {
-    // In a real implementation, you would:
-    // 1. Use Google Places API to find nearby businesses
-    // 2. Scrape competitor websites and GBP profiles
-    // 3. Analyze their online presence and citations
-    // 4. Extract their strengths and weaknesses
-
-    // For now, return mock competitor data
-    return [
-      {
-        name: 'Competitor A Marketing',
-        address: '123 Main St, Same City, ST 12345',
-        phone: '(555) 123-4567',
-        website: 'https://competitor-a.com',
-        rating: 4.5,
-        reviewsCount: 127,
-        distance: 2.3,
-        strengths: ['Strong online presence', 'Many positive reviews', 'Active social media'],
-        weaknesses: ['Limited service areas', 'Higher prices', 'Slow response time'],
-        keywords: ['marketing', 'seo', 'local business'],
-        citations: 45
-      },
-      {
-        name: 'Competitor B Solutions',
-        address: '456 Oak Ave, Nearby City, ST 67890',
-        phone: '(555) 987-6543',
-        website: 'https://competitor-b.com',
-        rating: 4.2,
-        reviewsCount: 89,
-        distance: 5.7,
-        strengths: ['Competitive pricing', 'Wide service range', 'Fast response'],
-        weaknesses: ['Outdated website', 'Few reviews', 'Poor social media presence'],
-        keywords: ['solutions', 'business services', 'consulting'],
-        citations: 32
-      }
-    ]
-  } catch (error) {
-    console.error('Failed to analyze local competitors:', error)
-    return []
-  }
-}
-
-/**
- * Find citation opportunities
- */
-async function findCitationOpportunities(
-  businessName: string,
-  businessAddress: BusinessAddress,
-  businessCategory: string
-): Promise<CitationSource[]> {
-  try {
-    // In a real implementation, you would:
-    // 1. Search major directories (Yelp, Yellow Pages, etc.)
-    // 2. Check industry-specific directories
-    // 3. Look for local chamber of commerce listings
-    // 4. Analyze competitor citations for gaps
-
-    // For now, return mock citation opportunities
-    return [
-      {
-        name: 'Google Business Profile',
-        url: 'https://business.google.com',
-        status: 'claimed',
-        completeness: 85,
-        lastUpdated: new Date().toISOString(),
-        priority: 'high'
-      },
-      {
-        name: 'Yelp',
-        url: 'https://yelp.com',
-        status: 'unclaimed',
-        completeness: 0,
-        lastUpdated: new Date().toISOString(),
-        priority: 'high'
-      },
-      {
-        name: 'Yellow Pages',
-        url: 'https://yellowpages.com',
-        status: 'inconsistent',
-        completeness: 60,
-        lastUpdated: '2024-01-15T10:00:00Z',
-        priority: 'medium'
-      },
-      {
-        name: 'Local Chamber of Commerce',
-        url: 'https://localchamber.org',
-        status: 'unclaimed',
-        completeness: 0,
-        lastUpdated: new Date().toISOString(),
-        priority: 'medium'
-      }
-    ]
-  } catch (error) {
-    console.error('Failed to find citation opportunities:', error)
-    return []
-  }
-}
-
-/**
- * Generate optimization tasks using AI
- */
-async function generateOptimizationTasks(params: {
-  businessName: string
-  businessCategory: string
-  businessAddress: BusinessAddress
-  servicesOffered: string[]
-  localKeywords: string[]
-  competitorAnalysis: CompetitorBusiness[]
-  citationAnalysis: CitationSource[]
-}): Promise<OptimizationTask[]> {
-  try {
-    const prompt = `Generate a comprehensive list of local SEO optimization tasks for this business.
-
-Business Name: ${params.businessName}
-Category: ${params.businessCategory}
-Location: ${params.businessAddress.city}, ${params.businessAddress.state}
-Services: [${params.servicesOffered.join(', ')}]
-Target Keywords: [${params.localKeywords.join(', ')}]
-
-Competitor Analysis: ${JSON.stringify(params.competitorAnalysis.slice(0, 2), null, 2)}
-Citation Opportunities: ${JSON.stringify(params.citationAnalysis.slice(0, 3), null, 2)}
-
-Generate 8-10 specific, actionable optimization tasks that include:
-1. Profile optimization (GBP, directories)
-2. Citation building and cleanup
-3. Review management and response
-4. Local content creation
-5. Technical SEO improvements
-
-For each task, include:
-- Clear title and description
-- Priority level (high/medium/low)
-- Estimated impact (1-10)
-- Estimated time to complete (hours)
-- Specific steps to follow
-
-Return as JSON array of tasks.`
-
-    const optimizationTaskSchema = z.array(
-      z.object({
-        type: z.string(),
-        title: z.string(),
-        description: z.string(),
-        priority: z.string(),
-        estimatedImpact: z.number(),
-        estimatedTime: z.number(),
-        steps: z.array(z.string()),
-      })
-    )
-
-    const { object } = await generateObject({
-      model: google('gemini-3-pro-preview') as any,
-      prompt,
-      schema: optimizationTaskSchema,
-    })
-
-    const tasks = object as any[]
-    
-    // Add required fields and IDs
-    return tasks.map((task, index) => ({
-      id: `task_${Date.now()}_${index}`,
-      type: task.type,
-      title: task.title,
-      description: task.description,
-      priority: task.priority,
-      estimatedImpact: task.estimatedImpact,
-      estimatedTime: task.estimatedTime,
-      status: 'pending' as const,
-      steps: task.steps
-    }))
-  } catch (error) {
-    console.error('Failed to generate optimization tasks:', error)
-    return []
-  }
-}
-
-/**
- * Calculate local SEO score
- */
-function calculateLocalSEOScore(params: {
-  businessInfo: any
-  competitorAnalysis: CompetitorBusiness[]
-  citationAnalysis: CitationSource[]
-  optimizationTasks: OptimizationTask[]
-}): number {
-  let score = 0
-
-  // Business profile completeness (30 points)
-  let profileScore = 0
-  if (params.businessInfo.name) profileScore += 5
-  if (params.businessInfo.address.street) profileScore += 5
-  if (params.businessInfo.phone) profileScore += 5
-  if (params.businessInfo.website) profileScore += 5
-  if (params.businessInfo.hours) profileScore += 5
-  if (Object.keys(params.businessInfo.hours).length === 7) profileScore += 5
-  score += (profileScore / 30) * 30
-
-  // Citation consistency and coverage (25 points)
-  const totalCitations = params.citationAnalysis.length
-  const claimedCitations = params.citationAnalysis.filter(c => c.status === 'claimed').length
-  const averageCompleteness = params.citationAnalysis.reduce((sum, c) => sum + c.completeness, 0) / totalCitations
-  const citationScore = ((claimedCitations / totalCitations) * 0.6 + (averageCompleteness / 100) * 0.4) * 25
-  score += citationScore
-
-  // Competitive positioning (20 points)
-  const avgCompetitorRating = params.competitorAnalysis.reduce((sum, c) => sum + c.rating, 0) / params.competitorAnalysis.length
-  const avgCompetitorCitations = params.competitorAnalysis.reduce((sum, c) => sum + c.citations, 0) / params.competitorAnalysis.length
-  const competitiveScore = Math.max(0, 20 - (avgCompetitorRating - 4) * 5 - (avgCompetitorCitations - totalCitations) * 0.1)
-  score += competitiveScore
-
-  // Optimization potential (15 points)
-  const highPriorityTasks = params.optimizationTasks.filter(t => t.priority === 'high').length
-  const optimizationScore = Math.max(0, 15 - highPriorityTasks * 2)
-  score += optimizationScore
-
-  // Review potential (10 points)
-  const reviewScore = params.businessInfo.phone ? 10 : 5 // Has contact info for review generation
-  score += reviewScore
-
-  return Math.round(Math.min(100, Math.max(0, score)))
+  throw new Error(NOT_IMPLEMENTED_MSG)
 }
 
 /**
  * Get local SEO profile
+ * NOTE: Stubbed - requires local_seo_profiles table
  */
 export async function getLocalSEOProfile(userId: string): Promise<LocalSEOProfile | null> {
-  try {
-    const { data, error } = await supabase
-      .from('local_seo_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-
-    if (error || !data) return null
-
-    return {
-      id: data.id,
-      userId: data.user_id,
-      businessName: data.business_name,
-      businessCategory: data.business_category,
-      businessAddress: data.business_address,
-      businessPhone: data.business_phone,
-      businessWebsite: data.business_website,
-      googleBusinessProfileId: data.google_business_profile_id,
-      businessHours: data.business_hours,
-      servicesOffered: data.services_offered,
-      serviceAreas: data.service_areas,
-      photos: data.photos,
-      reviews: data.reviews,
-      localKeywords: data.local_keywords,
-      competitorBusinesses: data.competitor_businesses,
-      citationSources: data.citation_sources,
-      seoScore: data.seo_score,
-      optimizationTasks: data.optimization_tasks,
-      metadata: data.metadata,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    }
-  } catch (error) {
-    console.error('Failed to get local SEO profile:', error)
-    return null
-  }
+  console.warn('[Local SEO] getLocalSEOProfile not implemented - returning null')
+  return null
 }
 
 /**
  * Generate local content ideas
+ * NOTE: This function works without database
  */
 export async function generateLocalContentIdeas(params: {
   businessName: string
@@ -615,7 +226,7 @@ Return as JSON with three arrays: blogPosts, socialMediaPosts, landingPages.`
     })
 
     const { object } = await generateObject({
-      model: google('gemini-3-pro-preview') as any,
+      model: google('gemini-2.0-flash') as any,
       prompt,
       schema: contentIdeasSchema,
     })
@@ -633,6 +244,7 @@ Return as JSON with three arrays: blogPosts, socialMediaPosts, landingPages.`
 
 /**
  * Track local SEO performance
+ * NOTE: Stubbed - requires database and external API integrations
  */
 export async function trackLocalSEOPerformance(params: {
   businessId: string
@@ -643,87 +255,26 @@ export async function trackLocalSEOPerformance(params: {
   gbpInsights: GBPInsights
   reviewMetrics: ReviewMetrics
 }> {
-  try {
-    // In a real implementation, you would:
-    // 1. Connect to Google Search Console API
-    // 2. Fetch Google Business Profile insights
-    // 3. Track local keyword rankings
-    // 4. Monitor review metrics and response rates
-    // 5. Analyze website traffic from local searches
-
-    // For now, return mock performance data
-    return {
-      localSearchRankings: [
-        {
-          keyword: 'plumber near me',
-          location: params.businessId,
-          position: 3,
-          previousPosition: 5,
-          searchVolume: 2400,
-          competition: 'high'
-        },
-        {
-          keyword: 'emergency plumbing services',
-          location: params.businessId,
-          position: 7,
-          previousPosition: 9,
-          searchVolume: 800,
-          competition: 'medium'
-        }
-      ],
-      websiteTrafficFromLocal: [
-        {
-          date: '2024-01-01',
-          sessions: 145,
-          users: 120,
-          pageViews: 320,
-          bounceRate: 45,
-          conversionRate: 3.2
-        }
-      ],
-      gbpInsights: {
-        views: 1250,
-        searches: 890,
-        calls: 45,
-        directionRequests: 78,
-        websiteClicks: 156,
-        bookingClicks: 23
-      },
-      reviewMetrics: {
-        averageRating: 4.6,
-        totalReviews: 127,
-        newReviews: 8,
-        responseRate: 95,
-        averageResponseTime: 2.5
-      }
+  console.warn('[Local SEO] trackLocalSEOPerformance not implemented - returning mock data')
+  return {
+    localSearchRankings: [],
+    websiteTrafficFromLocal: [],
+    gbpInsights: {
+      views: 0,
+      searches: 0,
+      calls: 0,
+      directionRequests: 0,
+      websiteClicks: 0,
+      bookingClicks: 0
+    },
+    reviewMetrics: {
+      averageRating: 0,
+      totalReviews: 0,
+      newReviews: 0,
+      responseRate: 0,
+      averageResponseTime: 0
     }
-  } catch (error) {
-    console.error('Failed to track local SEO performance:', error)
-    throw error
   }
-}
-
-// Helper functions
-function determineCompetitionLevel(competitors: CompetitorBusiness[]): 'low' | 'medium' | 'high' {
-  const avgRating = competitors.reduce((sum, c) => sum + c.rating, 0) / competitors.length
-  const avgCitations = competitors.reduce((sum, c) => sum + c.citations, 0) / competitors.length
-  
-  if (avgRating < 4.0 && avgCitations < 30) return 'low'
-  if (avgRating < 4.5 && avgCitations < 50) return 'medium'
-  return 'high'
-}
-
-function estimateLocalSearchVolume(category: string, city: string): number {
-  // Mock estimation - in reality, you'd use keyword research tools
-  const baseVolume = {
-    'restaurant': 5000,
-    'plumber': 2000,
-    'dentist': 3000,
-    'lawyer': 1500,
-    'marketing': 800
-  }
-  
-  return baseVolume[category.toLowerCase() as keyof typeof baseVolume] || 500
 }
 
 export interface LocalContentIdea {

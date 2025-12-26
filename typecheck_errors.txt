@@ -1,0 +1,120 @@
+
+> seo-platform@0.1.0 typecheck
+> tsc --noEmit
+
+components/content/image-generation.tsx(29,3): error TS2724: '"@/lib/ai/image-generation"' has no exported member named 'generateImageWithOpenAI'. Did you mean 'generateImageWithGemini'?
+components/content/image-generation.tsx(30,3): error TS2305: Module '"@/lib/ai/image-generation"' has no exported member 'generateImageVariations'.
+components/content/image-generation.tsx(34,3): error TS2305: Module '"@/lib/ai/image-generation"' has no exported member 'getImageGenerationCost'.
+components/progress/progress-overview.tsx(175,24): error TS2304: Cannot find name 'Badge'.
+components/progress/progress-overview.tsx(177,25): error TS2304: Cannot find name 'Badge'.
+components/progress/progress-overview.tsx(187,26): error TS2304: Cannot find name 'Badge'.
+components/progress/progress-overview.tsx(189,27): error TS2304: Cannot find name 'Badge'.
+components/user-mode/adaptive-dashboard.tsx(136,43): error TS2339: Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; learningPath: { ...; }; } | { ...; } | { ...; }'.
+  Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; }'.
+components/user-mode/adaptive-dashboard.tsx(136,78): error TS2339: Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; learningPath: { ...; }; } | { ...; } | { ...; }'.
+  Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; }'.
+components/user-mode/adaptive-dashboard.tsx(138,29): error TS2339: Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; learningPath: { ...; }; } | { ...; } | { ...; }'.
+  Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; }'.
+components/user-mode/adaptive-dashboard.tsx(138,64): error TS2339: Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; learningPath: { ...; }; } | { ...; } | { ...; }'.
+  Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; }'.
+components/user-mode/adaptive-dashboard.tsx(181,45): error TS2339: Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; learningPath: { ...; }; } | { ...; } | { ...; }'.
+  Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; }'.
+components/user-mode/adaptive-dashboard.tsx(191,37): error TS2339: Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; learningPath: { ...; }; } | { ...; } | { ...; }'.
+  Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; }'.
+components/user-mode/adaptive-dashboard.tsx(191,72): error TS2339: Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; learningPath: { ...; }; } | { ...; } | { ...; }'.
+  Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; }'.
+components/user-mode/adaptive-dashboard.tsx(196,40): error TS2339: Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; learningPath: { ...; }; } | { ...; } | { ...; }'.
+  Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; }'.
+components/user-mode/adaptive-dashboard.tsx(196,75): error TS2339: Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; learningPath: { ...; }; } | { ...; } | { ...; }'.
+  Property 'learningPath' does not exist on type '{ metrics: { label: string; value: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; }[]; quickActions: { ...; }[]; }'.
+components/workflows/workflow-progress.tsx(37,47): error TS2339: Property 'averageDuration' does not exist on type 'Promise<{ averageDuration: number; successRate: number; totalExecutions: number; averageStepsCompleted: number; }>'.
+components/workflows/workflow-progress.tsx(48,47): error TS2339: Property 'averageDuration' does not exist on type 'Promise<{ averageDuration: number; successRate: number; totalExecutions: number; averageStepsCompleted: number; }>'.
+lib/actions/action-generator.ts(305,56): error TS18048: 'step.tools.length' is possibly 'undefined'.
+lib/actions/action-generator.ts(306,59): error TS18048: 'step.tools.length' is possibly 'undefined'.
+lib/actions/action-generator.ts(576,12): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ critical: ActionPriority; high: ActionPriority; medium: ActionPriority; low: ActionPriority; }'.
+  No index signature with a parameter of type 'string' was found on type '{ critical: ActionPriority; high: ActionPriority; medium: ActionPriority; low: ActionPriority; }'.
+lib/actions/action-generator.ts(589,12): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ easy: ActionDifficulty; medium: ActionDifficulty; hard: ActionDifficulty; }'.
+  No index signature with a parameter of type 'string' was found on type '{ easy: ActionDifficulty; medium: ActionDifficulty; hard: ActionDifficulty; }'.
+lib/actions/action-generator.ts(625,12): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ easy: string; medium: string; hard: string; }'.
+  No index signature with a parameter of type 'string' was found on type '{ easy: string; medium: string; hard: string; }'.
+lib/actions/action-generator.ts(635,12): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ beginner: { beginner: number; intermediate: number; advanced: number; }; practitioner: { beginner: number; intermediate: number; advanced: number; }; agency: { beginner: number; intermediate: number; advanced: number; }; }'.
+  No index signature with a parameter of type 'string' was found on type '{ beginner: { beginner: number; intermediate: number; advanced: number; }; practitioner: { beginner: number; intermediate: number; advanced: number; }; agency: { beginner: number; intermediate: number; advanced: number; }; }'.
+lib/agents/enhanced-image-agent.ts(566,7): error TS2322: Type 'ImageType' is not assignable to type '"infographic" | "diagram" | "illustration" | "chart" | "photo" | "comparison" | "process"'.
+  Type '"hero"' is not assignable to type '"infographic" | "diagram" | "illustration" | "chart" | "photo" | "comparison" | "process"'.
+lib/ai/ai-search-optimizer.ts(126,28): error TS2532: Object is possibly 'undefined'.
+lib/ai/ai-search-optimizer.ts(126,28): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/ai/ai-search-optimizer.ts(126,52): error TS2554: Expected 2 arguments, but got 1.
+lib/ai/content-gap-analyzer.ts(122,28): error TS2532: Object is possibly 'undefined'.
+lib/ai/content-gap-analyzer.ts(122,28): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/ai/content-gap-analyzer.ts(122,51): error TS2554: Expected 2 arguments, but got 1.
+lib/ai/content-gap-analyzer.ts(168,28): error TS2532: Object is possibly 'undefined'.
+lib/ai/content-gap-analyzer.ts(168,28): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/ai/content-gap-analyzer.ts(168,54): error TS2554: Expected 2 arguments, but got 1.
+lib/ai/dataforseo-cache.ts(296,3): error TS2322: Type 'unknown' is not assignable to type 'T'.
+  'T' could be instantiated with an arbitrary type which could be unrelated to 'unknown'.
+lib/ai/dataforseo-tools.ts(345,30): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/ai/dataforseo-tools.ts(345,30): error TS18048: 'compositeSEOTools.keyword_intelligence.execute' is possibly 'undefined'.
+lib/ai/dataforseo-tools.ts(345,69): error TS2554: Expected 2 arguments, but got 1.
+lib/ai/dataforseo-tools.ts(356,30): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/ai/dataforseo-tools.ts(356,30): error TS18048: 'compositeSEOTools.competitor_content_gap.execute' is possibly 'undefined'.
+lib/ai/dataforseo-tools.ts(356,71): error TS2554: Expected 2 arguments, but got 1.
+lib/ai/dataforseo-tools.ts(366,30): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/ai/dataforseo-tools.ts(366,30): error TS18048: 'compositeSEOTools.bulk_traffic_estimator.execute' is possibly 'undefined'.
+lib/ai/dataforseo-tools.ts(366,71): error TS2554: Expected 2 arguments, but got 1.
+lib/ai/domain-keyword-profiler.ts(169,28): error TS2532: Object is possibly 'undefined'.
+lib/ai/domain-keyword-profiler.ts(169,28): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/ai/domain-keyword-profiler.ts(169,52): error TS2554: Expected 2 arguments, but got 1.
+lib/ai/image-generation.ts(498,68): error TS2345: Argument of type '"realistic" | "artistic" | "illustrated" | "photographic"' is not assignable to parameter of type '"infographic" | "diagram" | "illustration" | "realistic" | "abstract" | undefined'.
+  Type '"artistic"' is not assignable to type '"infographic" | "diagram" | "illustration" | "realistic" | "abstract" | undefined'.
+lib/ai/keyword-trend-analyzer.ts(111,28): error TS2532: Object is possibly 'undefined'.
+lib/ai/keyword-trend-analyzer.ts(111,28): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/ai/keyword-trend-analyzer.ts(111,52): error TS2554: Expected 2 arguments, but got 1.
+lib/content/image-placer.ts(65,49): error TS1501: This regular expression flag is only available when targeting 'es2018' or later.
+lib/content/image-placer.ts(66,55): error TS1501: This regular expression flag is only available when targeting 'es2018' or later.
+lib/content/image-placer.ts(277,61): error TS1501: This regular expression flag is only available when targeting 'es2018' or later.
+lib/tools/composite-seo-tools.ts(38,9): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/tools/composite-seo-tools.ts(38,67): error TS2554: Expected 2 arguments, but got 1.
+lib/tools/composite-seo-tools.ts(42,12): error TS2339: Property 'catch' does not exist on type 'string | PromiseLike<string> | AsyncIterable<string>'.
+  Property 'catch' does not exist on type 'string'.
+lib/tools/composite-seo-tools.ts(45,9): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/tools/composite-seo-tools.ts(45,68): error TS2554: Expected 2 arguments, but got 1.
+lib/tools/composite-seo-tools.ts(49,12): error TS2339: Property 'catch' does not exist on type 'string | PromiseLike<string> | AsyncIterable<string>'.
+  Property 'catch' does not exist on type 'string'.
+lib/tools/composite-seo-tools.ts(52,9): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/tools/composite-seo-tools.ts(52,55): error TS2554: Expected 2 arguments, but got 1.
+lib/tools/composite-seo-tools.ts(57,12): error TS2339: Property 'catch' does not exist on type 'string | PromiseLike<string> | AsyncIterable<string>'.
+  Property 'catch' does not exist on type 'string'.
+lib/tools/composite-seo-tools.ts(60,9): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/tools/composite-seo-tools.ts(60,58): error TS2554: Expected 2 arguments, but got 1.
+lib/tools/composite-seo-tools.ts(62,12): error TS2339: Property 'catch' does not exist on type 'string | PromiseLike<string> | AsyncIterable<string>'.
+  Property 'catch' does not exist on type 'string'.
+lib/tools/composite-seo-tools.ts(66,13): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/tools/composite-seo-tools.ts(66,79): error TS2554: Expected 2 arguments, but got 1.
+lib/tools/composite-seo-tools.ts(70,16): error TS2339: Property 'catch' does not exist on type 'string | PromiseLike<string> | AsyncIterable<string>'.
+  Property 'catch' does not exist on type 'string'.
+lib/tools/composite-seo-tools.ts(75,13): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/tools/composite-seo-tools.ts(75,75): error TS2554: Expected 2 arguments, but got 1.
+lib/tools/composite-seo-tools.ts(79,16): error TS2339: Property 'catch' does not exist on type 'string | PromiseLike<string> | AsyncIterable<string>'.
+  Property 'catch' does not exist on type 'string'.
+lib/tools/composite-seo-tools.ts(255,28): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+lib/tools/composite-seo-tools.ts(255,28): error TS18048: 'mcpDataforseoTools.dataforseo_labs_bulk_traffic_estimation.execute' is possibly 'undefined'.
+lib/tools/composite-seo-tools.ts(255,87): error TS2554: Expected 2 arguments, but got 1.
+lib/tools/composite-seo-tools.ts(294,48): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+lib/tools/composite-seo-tools.ts(294,53): error TS7006: Parameter 'item' implicitly has an 'any' type.
+lib/tools/composite-seo-tools.ts(295,55): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+lib/tools/composite-seo-tools.ts(295,60): error TS7006: Parameter 'item' implicitly has an 'any' type.
+lib/tools/composite-seo-tools.ts(298,16): error TS7006: Parameter 'a' implicitly has an 'any' type.
+lib/tools/composite-seo-tools.ts(298,19): error TS7006: Parameter 'b' implicitly has an 'any' type.
+lib/workflows/definitions/local-seo-campaign.ts(11,3): error TS2322: Type '"local"' is not assignable to type '"content" | "aeo" | "seo" | "research" | "analysis"'.
+lib/workflows/engine.ts(93,17): error TS2339: Property 'recordWorkflowExecution' does not exist on type 'WorkflowAnalyticsService'.
+lib/workflows/engine.ts(133,9): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+lib/workflows/engine.ts(177,11): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+lib/workflows/engine.ts(206,11): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+lib/workflows/engine.ts(328,19): error TS2551: Property 'recordToolExecution' does not exist on type 'WorkflowAnalyticsService'. Did you mean 'recordExecution'?
+lib/workflows/engine.ts(386,17): error TS2551: Property 'recordToolExecution' does not exist on type 'WorkflowAnalyticsService'. Did you mean 'recordExecution'?
+lib/workflows/engine.ts(394,17): error TS2551: Property 'recordToolExecution' does not exist on type 'WorkflowAnalyticsService'. Did you mean 'recordExecution'?
+lib/workflows/engine.ts(600,25): error TS2554: Expected 2 arguments, but got 1.
+lib/workflows/recovery.ts(24,42): error TS2367: This comparison appears to be unintentional because the types '"completed" | "cancelled" | "running"' and '"paused"' have no overlap.

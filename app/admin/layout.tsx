@@ -1,21 +1,20 @@
-import { createClient } from '@/lib/supabase/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
+import { isAdmin } from '@/lib/auth/admin-check'
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await currentUser()
 
   if (!user) {
-    redirect('/login')
+    redirect('/sign-in')
   }
 
-  // Check admin access
-  const { isAdmin } = await import('@/lib/auth/admin-check')
+  // Check admin access using Clerk user
   const admin = await isAdmin(user.id)
   
   if (!admin) {

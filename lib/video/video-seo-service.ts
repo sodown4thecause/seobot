@@ -8,8 +8,10 @@ const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Use singleton admin client for Supabase operations
-const supabase = createAdminClient()
+// Helper to get Supabase admin client
+function getSupabase() {
+  return createAdminClient()
+}
 
 export interface VideoSEOData {
   id: string
@@ -116,8 +118,8 @@ export async function analyzeVideoSEO(params: {
     )
 
     // Store analysis results
-    const { data, error } = await supabase
-      .from('video_seo_analysis')
+    const supabase = await getSupabase()
+    const { data, error } = await supabase.from('video_seo_analysis')
       .insert({
         user_id: params.userId,
         video_url: params.videoUrl,

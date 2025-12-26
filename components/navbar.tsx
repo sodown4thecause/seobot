@@ -42,8 +42,32 @@ export function Navbar() {
 
                             <NavigationMenuItem>
                                 <NavigationMenuLink asChild>
-                                    <Link href="/blog" className={navigationMenuTriggerStyle()}>
-                                        Knowledge Hub
+                                    <Link href="https://flow-intent-126ee12.ingress-erytho.ewp.live/?post_type=resources" className={navigationMenuTriggerStyle()}>
+                                        Resources
+                                    </Link>
+                                </NavigationMenuLink>
+                            </NavigationMenuItem>
+
+                            <NavigationMenuItem>
+                                <NavigationMenuLink asChild>
+                                    <Link href="https://flow-intent-126ee12.ingress-erytho.ewp.live/?post_type=guides" className={navigationMenuTriggerStyle()}>
+                                        Guides
+                                    </Link>
+                                </NavigationMenuLink>
+                            </NavigationMenuItem>
+
+                            <NavigationMenuItem>
+                                <NavigationMenuLink asChild>
+                                    <Link href="https://flow-intent-126ee12.ingress-erytho.ewp.live/?casestudies=all" className={navigationMenuTriggerStyle()}>
+                                        Case Studies
+                                    </Link>
+                                </NavigationMenuLink>
+                            </NavigationMenuItem>
+
+                            <NavigationMenuItem>
+                                <NavigationMenuLink asChild>
+                                    <Link href="https://flow-intent-126ee12.ingress-erytho.ewp.live/blog" className={navigationMenuTriggerStyle()}>
+                                        Blog
                                     </Link>
                                 </NavigationMenuLink>
                             </NavigationMenuItem>

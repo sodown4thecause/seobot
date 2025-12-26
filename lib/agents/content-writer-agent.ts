@@ -37,6 +37,7 @@ export interface ContentWriteParams {
     personality?: string[]
   }
   industry?: string
+  abortSignal?: AbortSignal // Optional: signal to abort content writing
 }
 
 export interface ContentWriteResult {

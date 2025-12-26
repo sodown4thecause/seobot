@@ -138,7 +138,7 @@ export async function checkCreditLimit(
 
     let currentSpend = 0
     if (!usageError && usage) {
-      currentSpend = usage.reduce((sum, event) => {
+      currentSpend = usage.reduce((sum: number, event: { metadata: Record<string, any> | null }) => {
         const cost = event.metadata?.cost_usd || 0
         return sum + Number(cost)
       }, 0)

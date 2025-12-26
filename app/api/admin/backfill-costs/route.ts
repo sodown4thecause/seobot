@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Filter events that don't have cost_usd
-      const events = allEvents?.filter(e => {
+      const events = allEvents?.filter((e: { metadata: Record<string, any> | null }) => {
         const costUsd = e.metadata?.cost_usd
         return costUsd === null || costUsd === undefined || costUsd === ''
       }) || []
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
         processed: events.length,
         updated,
         errors,
-        estimatedTotalCost: events.reduce((sum, e) => {
+        estimatedTotalCost: events.reduce((sum: number, e: { metadata: Record<string, any> | null; model: string | null; prompt_tokens: number | null; completion_tokens: number | null; tool_calls: number | null }) => {
           const provider: AIProvider = 
             (e.metadata?.provider as AIProvider) || 
             extractProviderFromModel(e.model || '')

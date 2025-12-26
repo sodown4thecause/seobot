@@ -1,9 +1,22 @@
 /**
  * WordPress GraphQL Client
  * Connects to headless WordPress instance for blog content
+ * Includes rate limiting protection and retry logic for build stability
  */
 
 const WORDPRESS_GRAPHQL_ENDPOINT = 'https://flow-intent-126ee12.ingress-erytho.ewp.live/graphql'
+
+// Rate limiting configuration
+const RATE_LIMIT_DELAY_MS = 500 // Delay between requests
+const MAX_RETRIES = 3
+const INITIAL_RETRY_DELAY_MS = 1000
+
+// Simple in-memory cache for build-time data
+const buildCache = new Map<string, { data: unknown; timestamp: number }>()
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+// Request queue for rate limiting
+let lastRequestTime = 0
 
 export interface WordPressPost {
     id: string
@@ -43,40 +56,106 @@ export interface SinglePostResponse {
 }
 
 /**
- * Execute a GraphQL query against WordPress
+ * Sleep utility for rate limiting and retries
+ */
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/**
+ * Rate limit requests to avoid 429 errors
+ */
+async function rateLimitedRequest(): Promise<void> {
+    const now = Date.now()
+    const timeSinceLastRequest = now - lastRequestTime
+    
+    if (timeSinceLastRequest < RATE_LIMIT_DELAY_MS) {
+        await sleep(RATE_LIMIT_DELAY_MS - timeSinceLastRequest)
+    }
+    
+    lastRequestTime = Date.now()
+}
+
+/**
+ * Execute a GraphQL query against WordPress with retry logic and rate limiting
  */
 async function fetchGraphQL<T>(query: string, variables?: Record<string, any>): Promise<T> {
-    try {
-        const response = await fetch(WORDPRESS_GRAPHQL_ENDPOINT, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                query,
-                variables,
-            }),
-            next: {
-                revalidate: 60, // Cache for 60 seconds
-            },
-        })
-
-        if (!response.ok) {
-            throw new Error(`GraphQL request failed: ${response.status} ${response.statusText}`)
-        }
-
-        const json = await response.json()
-
-        if (json.errors) {
-            console.error('GraphQL errors:', json.errors)
-            throw new Error(`GraphQL errors: ${JSON.stringify(json.errors)}`)
-        }
-
-        return json.data as T
-    } catch (error) {
-        console.error('WordPress GraphQL fetch error:', error)
-        throw error
+    // Generate cache key
+    const cacheKey = JSON.stringify({ query, variables })
+    
+    // Check cache first
+    const cached = buildCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        return cached.data as T
     }
+
+    let lastError: Error | null = null
+    
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+            // Apply rate limiting
+            await rateLimitedRequest()
+            
+            const response = await fetch(WORDPRESS_GRAPHQL_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query,
+                    variables,
+                }),
+                next: {
+                    revalidate: 60, // Cache for 60 seconds
+                },
+            })
+
+            // Handle rate limiting (429)
+            if (response.status === 429) {
+                const retryAfter = response.headers.get('Retry-After')
+                const delayMs = retryAfter 
+                    ? parseInt(retryAfter, 10) * 1000 
+                    : INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt)
+                
+                console.warn(`WordPress API rate limited (429). Retrying in ${delayMs}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`)
+                await sleep(delayMs)
+                continue
+            }
+
+            if (!response.ok) {
+                throw new Error(`GraphQL request failed: ${response.status} ${response.statusText}`)
+            }
+
+            const json = await response.json()
+
+            if (json.errors) {
+                console.error('GraphQL errors:', json.errors)
+                throw new Error(`GraphQL errors: ${JSON.stringify(json.errors)}`)
+            }
+
+            // Cache successful response
+            buildCache.set(cacheKey, { data: json.data, timestamp: Date.now() })
+            
+            return json.data as T
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error))
+            
+            // Don't retry on non-retryable errors
+            if (lastError.message.includes('GraphQL errors')) {
+                throw lastError
+            }
+            
+            // Exponential backoff for other errors
+            if (attempt < MAX_RETRIES - 1) {
+                const delayMs = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt)
+                console.warn(`WordPress API error. Retrying in ${delayMs}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`)
+                await sleep(delayMs)
+            }
+        }
+    }
+    
+    console.error('WordPress GraphQL fetch error after all retries:', lastError)
+    throw lastError
 }
 
 /**
@@ -218,20 +297,26 @@ export async function getPostBySlug(slug: string): Promise<WordPressPost | null>
 
 /**
  * Get all post slugs for static generation
+ * Returns empty array on failure to allow build to continue (pages will be generated on-demand)
  */
 export async function getAllPostSlugs(): Promise<string[]> {
-    const query = `
-    query GetAllPostSlugs {
-      posts(first: 1000, where: { status: PUBLISH }) {
-        nodes {
-          slug
+    try {
+        const query = `
+        query GetAllPostSlugs {
+          posts(first: 1000, where: { status: PUBLISH }) {
+            nodes {
+              slug
+            }
+          }
         }
-      }
-    }
-  `
+      `
 
-    const data = await fetchGraphQL<any>(query)
-    return data.posts.nodes.map((post: any) => post.slug)
+        const data = await fetchGraphQL<any>(query)
+        return data.posts.nodes.map((post: any) => post.slug)
+    } catch (error) {
+        console.warn('Failed to fetch post slugs for static generation, pages will be generated on-demand:', error)
+        return []
+    }
 }
 
 /**
@@ -373,20 +458,26 @@ export async function getCaseStudyBySlug(slug: string): Promise<WordPressPost | 
 
 /**
  * Get all case study slugs for static generation
+ * Returns empty array on failure to allow build to continue (pages will be generated on-demand)
  */
 export async function getAllCaseStudySlugs(): Promise<string[]> {
-    const query = `
-    query GetAllCaseStudySlugs {
-      caseStudies(first: 1000, where: { status: PUBLISH }) {
-        nodes {
-          slug
+    try {
+        const query = `
+        query GetAllCaseStudySlugs {
+          caseStudies(first: 1000, where: { status: PUBLISH }) {
+            nodes {
+              slug
+            }
+          }
         }
-      }
-    }
-  `
+      `
 
-    const data = await fetchGraphQL<any>(query)
-    return data.caseStudies.nodes.map((post: any) => post.slug)
+        const data = await fetchGraphQL<any>(query)
+        return data.caseStudies.nodes.map((post: any) => post.slug)
+    } catch (error) {
+        console.warn('Failed to fetch case study slugs for static generation, pages will be generated on-demand:', error)
+        return []
+    }
 }
 
 /**
@@ -528,18 +619,24 @@ export async function getResourceBySlug(slug: string): Promise<WordPressPost | n
 
 /**
  * Get all resource slugs for static generation
+ * Returns empty array on failure to allow build to continue (pages will be generated on-demand)
  */
 export async function getAllResourceSlugs(): Promise<string[]> {
-    const query = `
-    query GetAllResourceSlugs {
-      resources(first: 1000, where: { status: PUBLISH }) {
-        nodes {
-          slug
+    try {
+        const query = `
+        query GetAllResourceSlugs {
+          resources(first: 1000, where: { status: PUBLISH }) {
+            nodes {
+              slug
+            }
+          }
         }
-      }
-    }
-  `
+      `
 
-    const data = await fetchGraphQL<any>(query)
-    return data.resources.nodes.map((post: any) => post.slug)
+        const data = await fetchGraphQL<any>(query)
+        return data.resources.nodes.map((post: any) => post.slug)
+    } catch (error) {
+        console.warn('Failed to fetch resource slugs for static generation, pages will be generated on-demand:', error)
+        return []
+    }
 }

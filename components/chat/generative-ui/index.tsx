@@ -5,6 +5,9 @@ export { SaveToLibraryButton, type SaveToLibraryButtonProps } from './save-to-li
 export { AIPlatformMetrics, type AIPlatformData, type AIPlatformMetricsProps } from './ai-platform-metrics'
 export { ContentStrategy, type ContentStrategyData, type ContentStrategyProps } from './content-strategy'
 export { CitationRecommendations, type Citation, type CitationRecommendationsData, type CitationRecommendationsProps } from './citation-recommendations'
+export { DomainKeywordProfile, type DomainKeywordProfileProps } from './domain-keyword-profile'
+export { ContentGapMatrix, type ContentGapMatrixProps } from './content-gap-matrix'
+export { AISearchMetrics, type AISearchMetricsProps } from './ai-search-metrics'
 
 
 

@@ -34,7 +34,7 @@ async function connectToMcp(): Promise<Client> {
     {
       requestInit: {
         headers: {
-          Authorization: createBasicAuth(serverEnv.DATAFORSEO_LOGIN, serverEnv.DATAFORSEO_PASSWORD),
+          Authorization: createBasicAuth(serverEnv.DATAFORSEO_USERNAME, serverEnv.DATAFORSEO_PASSWORD),
         },
       },
     },

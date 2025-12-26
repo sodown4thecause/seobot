@@ -153,11 +153,10 @@ export async function getBestPractices(contentType: string): Promise<any[]> {
 export async function aggregateBestPractices(contentType: string): Promise<void> {
   try {
     // Use admin client to bypass RLS for global best practices update
-    const supabase = createAdminClient()
+    const supabase = await createAdminClient()
 
     // Get successful learnings
-    const { data: learnings, error: fetchError } = await supabase
-      .from('content_learnings')
+    const { data: learnings, error: fetchError } = await supabase.from('content_learnings')
       .select('*')
       .eq('content_type', contentType)
       .eq('successful', true)
@@ -173,7 +172,7 @@ export async function aggregateBestPractices(contentType: string): Promise<void>
     const techniqueCount: Record<string, number> = {}
     const techniqueScores: Record<string, number[]> = {}
 
-    learnings.forEach((learning) => {
+    learnings.forEach((learning: { techniques_used: string[] | null; ai_detection_score: number }) => {
       learning.techniques_used?.forEach((technique: string) => {
         techniqueCount[technique] = (techniqueCount[technique] || 0) + 1
         if (!techniqueScores[technique]) {
@@ -293,15 +292,15 @@ export async function getCrossUserInsights(contentType: string): Promise<{
       }
     }
     
-    const successful = allLearnings.filter(l => l.successful)
-    const uniqueUsers = new Set(allLearnings.map(l => l.user_id)).size
+    const successful = allLearnings.filter((l: { successful: boolean }) => l.successful)
+    const uniqueUsers = new Set(allLearnings.map((l: { user_id: string }) => l.user_id)).size
     const avgAiScore = successful.length > 0 
-      ? successful.reduce((sum, l) => sum + l.ai_detection_score, 0) / successful.length 
+      ? successful.reduce((sum: number, l: { ai_detection_score: number }) => sum + l.ai_detection_score, 0) / successful.length 
       : 0
     
     // Analyze technique usage across all users
     const techniqueStats: Record<string, { count: number; scores: number[] }> = {}
-    successful.forEach(learning => {
+    successful.forEach((learning: { techniques_used: string[] | null; ai_detection_score: number }) => {
       learning.techniques_used?.forEach((technique: string) => {
         if (!techniqueStats[technique]) {
           techniqueStats[technique] = { count: 0, scores: [] }

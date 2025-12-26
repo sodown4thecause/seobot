@@ -1,0 +1,502 @@
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/User/Documents/seo ragbot/seo-platform[39m
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute steps in correct dependency order
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Step 1
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute steps in correct dependency order
+[Workflow] Failed to save checkpoint before step step1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:132:7)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute steps in correct dependency order
+[22m[39m[Workflow] Executing 1 tools sequentially
+[DEBUG] Mock executeTool called for test_tool
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute steps in correct dependency order
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute steps in correct dependency order
+[22m[39m[Workflow] Step Step 1 completed in 405ms
+[Workflow] Failed to save checkpoint after step step1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+[Workflow] Skipping step step2 - dependencies not met
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 437ms
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:176:9)
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:108:7
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould skip steps when dependencies are not met
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Step 1
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould skip steps when dependencies are not met
+[22m[39m[Workflow] Executing 1 tools sequentially
+[DEBUG] Mock executeTool called for test_tool
+
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should skip steps when dependencies are not met
+[Workflow] Failed to save checkpoint before step step1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:132:7)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould skip steps when dependencies are not met
+[22m[39m[Workflow] Step Step 1 completed in 22ms
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 35ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should skip steps when dependencies are not met
+[Workflow] Failed to save checkpoint after step step1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:176:9)
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:137:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Parallel 1
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute parallel steps concurrently
+[Workflow] Failed to save checkpoint before step parallel1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:132:7)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Executing 1 tools in parallel
+[DEBUG] Mock executeTool called for test_tool
+[Workflow] Parallel execution completed in 0ms
+[Workflow] Success: 1/1 tools
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Step Parallel 1 completed in 10ms
+[Workflow] Executing step: Parallel 2
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute parallel steps concurrently
+[Workflow] Failed to save checkpoint after step parallel1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:176:9)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Executing 1 tools in parallel
+[DEBUG] Mock executeTool called for test_tool
+[Workflow] Parallel execution completed in 0ms
+[Workflow] Success: 1/1 tools
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute parallel steps concurrently
+[Workflow] Failed to save checkpoint before step parallel2: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:132:7)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Step Parallel 2 completed in 7ms
+[Workflow] Completed workflow: Test Workflow in 32ms
+[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Parallel 1
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute parallel steps concurrently
+[Workflow] Failed to save checkpoint after step parallel2: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:176:9)
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:177:7
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Executing 1 tools in parallel
+[DEBUG] Mock executeTool called for test_tool
+[Workflow] Parallel execution completed in 0ms
+[Workflow] Success: 1/1 tools
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute parallel steps concurrently
+[Workflow] Failed to save checkpoint before step parallel1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:132:7)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Step Parallel 1 completed in 8ms
+[Workflow] Executing step: Parallel 2
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute parallel steps concurrently
+[Workflow] Failed to save checkpoint after step parallel1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:176:9)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Executing 1 tools in parallel
+[DEBUG] Mock executeTool called for test_tool
+[Workflow] Parallel execution completed in 1ms
+[Workflow] Success: 1/1 tools
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute parallel steps concurrently
+[Workflow] Failed to save checkpoint before step parallel2: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:132:7)
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute parallel steps concurrently
+[Workflow] Failed to save checkpoint after step parallel2: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:176:9)
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:183:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Step Parallel 2 completed in 6ms
+[Workflow] Completed workflow: Test Workflow in 67ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Failed Steps Prevent Dependent Steps[2m > [22m[2mshould stop workflow when a step fails
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Step 1
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Failed Steps Prevent Dependent Steps > should stop workflow when a step fails
+[Workflow] Failed to save checkpoint before step step1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:132:7)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Failed Steps Prevent Dependent Steps[2m > [22m[2mshould stop workflow when a step fails
+[22m[39m[Workflow] Executing 1 tools sequentially
+[DEBUG] Mock executeTool called for test_tool
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Failed Steps Prevent Dependent Steps[2m > [22m[2mshould stop workflow when a step fails
+[22m[39m[Workflow] Step Step 1 completed in 8ms
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 16ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Failed Steps Prevent Dependent Steps > should stop workflow when a step fails
+[Workflow] Failed to save checkpoint after step step1: Error: Failed to save checkpoint: TypeError: fetch failed
+    at WorkflowPersistence.saveCheckpoint (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:61:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.executeStep (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:176:9)
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:208:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Failed Steps Prevent Dependent Steps[2m > [22m[2mshould mark workflow as failed when critical step fails
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Completed workflow: Test Workflow in 1ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Failed Steps Prevent Dependent Steps > should mark workflow as failed when critical step fails
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:251:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Step Results Persist Correctly[2m > [22m[2mshould persist step results in execution object
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 2ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Step Results Persist Correctly > should persist step results in execution object
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:283:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Step Results Persist Correctly[2m > [22m[2mshould include timing information in step results
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 1ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Step Results Persist Correctly > should include timing information in step results
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:311:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Step Results Persist Correctly[2m > [22m[2mshould preserve step data across workflow execution
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Completed workflow: Test Workflow in 1ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Step Results Persist Correctly > should preserve step data across workflow execution
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:339:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Step Results Persist Correctly[2m > [22m[2mshould include tool results in step results
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 1ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Step Results Persist Correctly > should include tool results in step results
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:368:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mEdge Cases[2m > [22m[2mshould handle workflow with no steps
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Completed workflow: Test Workflow in 0ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Edge Cases > should handle workflow with no steps
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:394:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mEdge Cases[2m > [22m[2mshould handle circular dependencies gracefully
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Skipping step step1 - dependencies not met
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 0ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Edge Cases > should handle circular dependencies gracefully
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:437:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mEdge Cases[2m > [22m[2mshould handle workflow execution timeout
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Completed workflow: Test Workflow in 0ms
+
+stderr | tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Edge Cases > should handle workflow execution timeout
+[Workflow] Failed to save final execution state: Error: User not authenticated
+    at WorkflowPersistence.saveExecution (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\persistence.ts:17:22)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at WorkflowEngine.execute (C:\Users\User\Documents\seo ragbot\seo-platform\lib\workflows\engine.ts:77:9)
+    at C:\Users\User\Documents\seo ragbot\seo-platform\tests\unit\workflow-state.test.ts:451:22
+    at file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///C:/Users/User/Documents/seo%20ragbot/seo-platform/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+ [31mΓ¥»[39m tests/unit/workflow-state.test.ts [2m([22m[2m12 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[33m 695[2mms[22m[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Steps Execute in Dependency Order[2m > [22mshould execute steps in correct dependency order[33m 492[2mms[22m[31m[39m
+[31m     ΓåÆ expected [ 'step1' ] to deeply equal [ 'step1', 'step2', 'step3' ][39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Steps Execute in Dependency Order[2m > [22mshould execute parallel steps concurrently[90m 74[2mms[22m[31m[39m
+[31m     ΓåÆ expected false to be true // Object.is equality[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Failed Steps Prevent Dependent Steps[2m > [22mshould stop workflow when a step fails[90m 24[2mms[22m[31m[39m
+[31m     ΓåÆ expected 'completed' to be 'failed' // Object.is equality[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Failed Steps Prevent Dependent Steps[2m > [22mshould mark workflow as failed when critical step fails[90m 9[2mms[22m[31m[39m
+[31m     ΓåÆ expected 'running' to be 'failed' // Object.is equality[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Step Results Persist Correctly[2m > [22mshould persist step results in execution object[90m 24[2mms[22m[31m[39m
+[31m     ΓåÆ expected [ 'completed', 'failed', 'skipped' ] to include 'running'[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Step Results Persist Correctly[2m > [22mshould preserve step data across workflow execution[90m 8[2mms[22m[31m[39m
+[31m     ΓåÆ expected undefined to deeply equal { stepData: 'data-from-step1' }[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 6 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute steps in correct dependency order
+AssertionError: expected [ 'step1' ] to deeply equal [ 'step1', 'step2', 'step3' ]
+
+- Expected
++ Received
+
+  Array [
+    "step1",
+-   "step2",
+-   "step3",
+  ]
+
+ Γ¥» tests/unit/workflow-state.test.ts:111:30
+    109| 
+    110|       // Property: Steps must execute in dependency order
+    111|       expect(executionOrder).toEqual(['step1', 'step2', 'step3'])
+       |                              ^
+    112| 
+    113|       // Restore original
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/6]ΓÄ»
+
+ FAIL  tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Steps Execute in Dependency Order > should execute parallel steps concurrently
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ Γ¥» tests/unit/workflow-state.test.ts:185:71
+    183|       const result = await engine.execute()
+    184|       expect(result.stepResults.length).toBe(2)
+    185|       expect(result.stepResults.every(r => r.status === 'completed')).ΓÇª
+       |                                                                       ^
+    186|     })
+    187|   })
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/6]ΓÄ»
+
+ FAIL  tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Failed Steps Prevent Dependent Steps > should stop workflow when a step fails
+AssertionError: expected 'completed' to be 'failed' // Object.is equality
+
+Expected: "failed"
+Received: "completed"
+
+ Γ¥» tests/unit/workflow-state.test.ts:211:29
+    209| 
+    210|       // Property: Workflow should fail when step fails
+    211|       expect(result.status).toBe('failed')
+       |                             ^
+    212| 
+    213|       // Property: Dependent steps should not execute
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[3/6]ΓÄ»
+
+ FAIL  tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Failed Steps Prevent Dependent Steps > should mark workflow as failed when critical step fails
+AssertionError: expected 'running' to be 'failed' // Object.is equality
+
+Expected: "failed"
+Received: "running"
+
+ Γ¥» tests/unit/workflow-state.test.ts:255:35
+    253|       // Property: Required tool failure should fail the step
+    254|       const step1Result = result.stepResults.find(r => r.stepId === 'sΓÇª
+    255|       expect(step1Result?.status).toBe('failed')
+       |                                   ^
+    256| 
+    257|       // Restore original
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[4/6]ΓÄ»
+
+ FAIL  tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Step Results Persist Correctly > should persist step results in execution object
+AssertionError: expected [ 'completed', 'failed', 'skipped' ] to include 'running'
+ Γ¥» tests/unit/workflow-state.test.ts:292:52
+    290|         expect(stepResult).toHaveProperty('stepId')
+    291|         expect(stepResult).toHaveProperty('status')
+    292|         expect(['completed', 'failed', 'skipped']).toContain(stepResulΓÇª
+       |                                                    ^
+    293| 
+    294|         if (stepResult.status === 'completed') {
+ Γ¥» tests/unit/workflow-state.test.ts:289:26
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[5/6]ΓÄ»
+
+ FAIL  tests/unit/workflow-state.test.ts > Property 2: Workflow State Integrity > Property: Step Results Persist Correctly > should preserve step data across workflow execution
+AssertionError: expected undefined to deeply equal { stepData: 'data-from-step1' }
+
+- Expected: 
+Object {
+  "stepData": "data-from-step1",
+}
+
++ Received: 
+undefined
+
+ Γ¥» tests/unit/workflow-state.test.ts:343:33
+    341|       // Property: Step data should be preserved
+    342|       const step1Result = result.stepResults.find(r => r.stepId === 'sΓÇª
+    343|       expect(step1Result?.data).toEqual({ stepData: 'data-from-step1' ΓÇª
+       |                                 ^
+    344| 
+    345|       // Restore original
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[6/6]ΓÄ»
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m6 passed[39m[22m[90m (12)[39m
+[2m   Start at [22m 05:34:27
+[2m   Duration [22m 8.36s[2m (transform 1.05s, setup 150ms, collect 2.32s, tests 695ms, environment 1ms, prepare 635ms)[22m
+

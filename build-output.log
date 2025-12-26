@@ -1,0 +1,43 @@
+
+> seo-platform@0.1.0 prebuild
+> npm run validate:env || echo 'Env validation skipped'
+
+
+> seo-platform@0.1.0 validate:env
+> tsx scripts/validate-env.ts
+
+[dotenv@17.2.3] injecting env (46) from .env.local -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (1) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+🔍 Validating environment variables...
+
+✅ Server environment variables validated successfully
+✅ Client environment variables validated successfully
+
+============================================================
+
+✅ All environment variables validated successfully!
+
+📊 Summary:
+   - Public variables: 3
+   - Server-only variables: 18
+   - Total validated: 21
+
+
+> seo-platform@0.1.0 build
+> next build
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\User\bun.lock as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\User\Documents\seo ragbot\seo-platform\package-lock.json
+
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+
+> Build error occurred
+Error: ENOENT: no such file or directory, open 'C:\Users\User\Documents\seo ragbot\seo-platform\.next\static\hBkQ05-sGUGa1P_hLZzKh\_buildManifest.js.tmp.92dcrmqzcde'
+    at ignore-listed frames

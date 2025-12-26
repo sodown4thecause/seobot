@@ -322,7 +322,7 @@ async function verifySeeding() {
 
     if (!sampleError && sampleData) {
       console.log('\n📝 Sample frameworks:')
-      sampleData.forEach((fw, index) => {
+      sampleData.forEach((fw: { name: string; category: string; tags: string[] }, index: number) => {
         console.log(`   ${index + 1}. ${fw.name} (${fw.category})`)
         console.log(`      Tags: ${fw.tags.join(', ')}`)
       })

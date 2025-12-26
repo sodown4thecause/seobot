@@ -1,0 +1,165 @@
+
+> seo-platform@0.1.0 test:unit
+> vitest run tests/unit
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/User/Documents/seo ragbot/seo-platform[39m
+
+ [32mΓ£ô[39m tests/unit/technical-audit.test.ts [2m([22m[2m14 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+ [32mΓ£ô[39m tests/unit/link-building.test.ts [2m([22m[2m14 tests[22m[2m)[22m[90m 48[2mms[22m[39m
+ [31mΓ¥»[39m tests/unit/progress-tracking.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31mΓ¥»[39m tests/unit/tutorial-progress.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32mΓ£ô[39m tests/unit/dashboard-actions.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 40[2mms[22m[39m
+ [31mΓ¥»[39m tests/unit/enhanced-image-agent.test.ts [2m([22m[2m0 test[22m[2m)[22m
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute steps in correct dependency order
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Step 1
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute steps in correct dependency order
+[22m[39m[Workflow] Executing 1 tools sequentially
+[Workflow] Executing tool: test_tool {}
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute steps in correct dependency order
+[22m[39m[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 842ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould skip steps when dependencies are not met
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Step 1
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould skip steps when dependencies are not met
+[22m[39m[Workflow] Executing 1 tools sequentially
+[Workflow] Executing tool: test_tool {}
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould skip steps when dependencies are not met
+[22m[39m[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 86ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Parallel 1
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Executing 1 tools in parallel
+[Workflow] Executing tool: test_tool {}
+[Workflow] Parallel execution completed in 6ms
+[Workflow] Success: 0/1 tools
+[Workflow] Failed tools: test_tool
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Step Parallel 1 completed in 55ms
+[Workflow] Executing step: Parallel 2
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Executing 1 tools in parallel
+[Workflow] Executing tool: test_tool {}
+[Workflow] Parallel execution completed in 3ms
+[Workflow] Success: 0/1 tools
+[Workflow] Failed tools: test_tool
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Step Parallel 2 completed in 12ms
+[Workflow] Completed workflow: Test Workflow in 131ms
+[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Parallel 1
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Executing 1 tools in parallel
+[Workflow] Executing tool: test_tool {}
+[Workflow] Parallel execution completed in 4ms
+[Workflow] Success: 0/1 tools
+[Workflow] Failed tools: test_tool
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Step Parallel 1 completed in 18ms
+[Workflow] Executing step: Parallel 2
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Executing 1 tools in parallel
+[Workflow] Executing tool: test_tool {}
+[Workflow] Parallel execution completed in 2ms
+[Workflow] Success: 0/1 tools
+[Workflow] Failed tools: test_tool
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Steps Execute in Dependency Order[2m > [22m[2mshould execute parallel steps concurrently
+[22m[39m[Workflow] Step Parallel 2 completed in 10ms
+[Workflow] Completed workflow: Test Workflow in 209ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Failed Steps Prevent Dependent Steps[2m > [22m[2mshould stop workflow when a step fails
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Executing step: Step 1
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Failed Steps Prevent Dependent Steps[2m > [22m[2mshould stop workflow when a step fails
+[22m[39m[Workflow] Executing 1 tools sequentially
+[Workflow] Executing tool: test_tool {}
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Failed Steps Prevent Dependent Steps[2m > [22m[2mshould stop workflow when a step fails
+[22m[39m[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 22ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Failed Steps Prevent Dependent Steps[2m > [22m[2mshould mark workflow as failed when critical step fails
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Completed workflow: Test Workflow in 1ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Step Results Persist Correctly[2m > [22m[2mshould persist step results in execution object
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 0ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Step Results Persist Correctly[2m > [22m[2mshould include timing information in step results
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 16ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Step Results Persist Correctly[2m > [22m[2mshould preserve step data across workflow execution
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Completed workflow: Test Workflow in 1ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mProperty: Step Results Persist Correctly[2m > [22m[2mshould include tool results in step results
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Skipping step step3 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 1ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mEdge Cases[2m > [22m[2mshould handle workflow with no steps
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Completed workflow: Test Workflow in 0ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mEdge Cases[2m > [22m[2mshould handle circular dependencies gracefully
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Skipping step step1 - dependencies not met
+[Workflow] Skipping step step2 - dependencies not met
+[Workflow] Completed workflow: Test Workflow in 1ms
+
+[90mstdout[2m | tests/unit/workflow-state.test.ts[2m > [22m[2mProperty 2: Workflow State Integrity[2m > [22m[2mEdge Cases[2m > [22m[2mshould handle workflow execution timeout
+[22m[39m[Workflow] Starting workflow: Test Workflow
+[Workflow] Completed workflow: Test Workflow in 0ms
+
+ [31mΓ¥»[39m tests/unit/workflow-state.test.ts [2m([22m[2m12 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[33m 1356[2mms[22m[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Steps Execute in Dependency Order[2m > [22mshould execute steps in correct dependency order[33m 929[2mms[22m[31m[39m
+[31m     ΓåÆ expected [ 'step1' ] to deeply equal [ 'step1', 'step2', 'step3' ][39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Steps Execute in Dependency Order[2m > [22mshould execute parallel steps concurrently[90m 221[2mms[22m[31m[39m
+[31m     ΓåÆ expected false to be true // Object.is equality[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Failed Steps Prevent Dependent Steps[2m > [22mshould stop workflow when a step fails[90m 33[2mms[22m[31m[39m
+[31m     ΓåÆ expected 'completed' to be 'failed' // Object.is equality[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Failed Steps Prevent Dependent Steps[2m > [22mshould mark workflow as failed when critical step fails[90m 5[2mms[22m[31m[39m
+[31m     ΓåÆ expected 'running' to be 'failed' // Object.is equality[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Step Results Persist Correctly[2m > [22mshould persist step results in execution object[90m 20[2mms[22m[31m[39m
+[31m     ΓåÆ expected [ 'completed', 'failed', 'skipped' ] to include 'running'[39m
+[31m   [31m├ù[31m Property 2: Workflow State Integrity[2m > [22mProperty: Step Results Persist Correctly[2m > [22mshould preserve step data across workflow execution[90m 7[2mms[22m[31m[39m
+[31m     ΓåÆ expected undefined to deeply equal { stepData: 'data-from-step1' }[39m
+ [32mΓ£ô[39m tests/unit/action-prioritization.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 28[2mms[22m[39m
+ [31mΓ¥»[39m tests/unit/chat-context.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31mΓ¥»[39m tests/unit/dataforseo-integration.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32mΓ£ô[39m tests/unit/user-mode-consistency.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 17[2mms[22m[39m
+ [32mΓ£ô[39m tests/unit/rate-limit.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 175[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m6 passed[39m[22m[90m (12)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m66 passed[39m[22m[90m (72)[39m
+[2m   Start at [22m 05:29:03
+[2m   Duration [22m 10.86s[2m (transform 7.47s, setup 3.91s, collect 9.66s, tests 1.69s, environment 9ms, prepare 14.13s)[22m
+
