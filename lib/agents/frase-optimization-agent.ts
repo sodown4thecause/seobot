@@ -12,6 +12,7 @@ export interface FraseOptimizationParams {
   country?: string
   userId?: string // For usage logging
   contentType?: 'blog_post' | 'article' | 'landing_page' | 'social_media'
+  abortSignal?: AbortSignal // Optional: signal to abort Frase optimization
 }
 
 export interface FraseOptimizationResult {
