@@ -155,12 +155,3 @@ export function extractProviderFromModel(modelId: string): AIProvider {
   if (modelId.includes('gpt')) return 'openai'
   return 'vercel_gateway' // Default to gateway if unknown
 }
-
-
-
-
-
-
-
-
-

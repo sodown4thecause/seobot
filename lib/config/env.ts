@@ -48,10 +48,9 @@ const serverEnvSchema = z.object({
   // Vercel AI Gateway
   AI_GATEWAY_API_KEY: z.string().min(1).optional(),
   AI_GATEWAY_BASE_URL: z.string().url().optional(),
-
   // External APIs
-  DATAFORSEO_LOGIN: z.string().email({
-    message: 'DATAFORSEO_LOGIN must be a valid email',
+  DATAFORSEO_USERNAME: z.string().email({
+    message: 'DATAFORSEO_USERNAME must be a valid email',
   }),
   DATAFORSEO_PASSWORD: z.string().min(1, 'DATAFORSEO_PASSWORD is required'),
   DATAFORSEO_MCP_URL: z.string().url().optional(),
@@ -133,18 +132,6 @@ const serverEnvSchema = z.object({
 
 // Client-side environment schema (only public variables)
 const clientEnvSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url({
-    message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL',
-  }),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z
-    .string()
-    .min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
-    .refine(
-      (val) => val.startsWith('ey') || val.startsWith('sb-'),
-      {
-        message: 'NEXT_PUBLIC_SUPABASE_ANON_KEY should start with "ey" or "sb-"',
-      }
-    ),
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
 })
 

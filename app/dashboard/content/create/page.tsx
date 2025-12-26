@@ -71,12 +71,11 @@ function CreateContentForm() {
         return
       }
 
-      // Call keyword analysis API
+      // Call keyword analysis API (session handled via cookies)
       const response = await fetch('/api/content/analyze-keyword', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           keyword,
@@ -134,7 +133,6 @@ function CreateContentForm() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             keyword,
@@ -156,7 +154,6 @@ function CreateContentForm() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           keyword,

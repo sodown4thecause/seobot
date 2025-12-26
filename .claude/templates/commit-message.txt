@@ -1,0 +1,19 @@
+feat: [Brief description of the feature]
+
+[Detailed description of what this commit does]
+
+**New Features:**
+- [Feature 1]
+- [Feature 2]
+
+**Integration Points:**
+- [Integration 1]
+- [Integration 2]
+
+**Technical Details:**
+- [Detail 1]
+- [Detail 2]
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>

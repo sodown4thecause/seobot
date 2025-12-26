@@ -19,7 +19,8 @@ import {
   CACHE_PREFIXES,
   CACHE_TTL,
 } from '../redis/client'
-import { createAdminClient } from '@/lib/supabase/server'
+import { db, writingFrameworks } from '@/lib/db'
+import { sql, eq, inArray } from 'drizzle-orm'
 
 // ============================================================================
 // TYPES
@@ -103,15 +104,33 @@ function getCacheKey(query: string, options: RetrievalOptions = {}): string {
 }
 
 // ============================================================================
-// SUPABASE CLIENT (SERVER-SIDE WITH POOLING)
+// DRIZZLE VECTOR SEARCH
 // ============================================================================
 
 /**
- * Get Supabase client for RAG operations
- * Uses admin client singleton for connection pooling
+ * Perform vector similarity search using Drizzle SQL
  */
-function getSupabaseClient() {
-  return createAdminClient()
+async function matchFrameworks(
+  queryEmbedding: number[],
+  matchThreshold: number,
+  matchCount: number
+): Promise<MatchFrameworkResult[]> {
+  const embeddingString = `[${queryEmbedding.join(',')}]`
+
+  const results = await db.execute(sql`
+    SELECT 
+      id,
+      name,
+      structure,
+      1 - (embedding <=> ${embeddingString}::vector) as similarity
+    FROM writing_frameworks
+    WHERE embedding IS NOT NULL
+      AND 1 - (embedding <=> ${embeddingString}::vector) > ${matchThreshold}
+    ORDER BY embedding <=> ${embeddingString}::vector
+    LIMIT ${matchCount}
+  `)
+
+  return results.rows as unknown as MatchFrameworkResult[]
 }
 
 // ============================================================================
@@ -262,18 +281,13 @@ export async function findRelevantFrameworks(
     // Calculate retrieval count (fetch more for re-ranking)
     const retrievalCount = Math.ceil(maxResults * CONFIG.retrievalMultiplier)
 
-    // Call Supabase RPC function for vector similarity search
-    const supabase = getSupabaseClient()
-    const rpcResult = await (supabase.rpc as any)('match_frameworks', {
-      query_embedding: queryEmbedding,
-      match_threshold: threshold,
-      match_count: retrievalCount,
-    })
-    const { data, error } = rpcResult as { data: MatchFrameworkResult[] | null; error: any }
+    // Call Drizzle vector search function
+    let data: MatchFrameworkResult[] = []
+    try {
+      data = await matchFrameworks(queryEmbedding, threshold, retrievalCount)
+    } catch (error) {
+      console.error('[RAG] Vector search error:', error)
 
-    if (error) {
-      console.error('[RAG] Supabase RPC error:', error)
-      
       // Try with lower threshold as fallback
       if (threshold > CONFIG.fallbackThreshold) {
         console.log('[RAG] Retrying with lower threshold...')
@@ -282,14 +296,14 @@ export async function findRelevantFrameworks(
           threshold: CONFIG.fallbackThreshold,
         })
       }
-      
+
       return []
     }
 
     if (!data || data.length === 0) {
       const duration = Date.now() - startTime
       console.log(`[RAG] No results found (${duration}ms)`)
-      
+
       // Try with lower threshold
       if (threshold > CONFIG.fallbackThreshold) {
         console.log('[RAG] Retrying with lower threshold...')
@@ -298,18 +312,27 @@ export async function findRelevantFrameworks(
           threshold: CONFIG.fallbackThreshold,
         })
       }
-      
+
       return []
     }
 
-    // Fetch full framework details (optimized: select only needed columns)
+    // Fetch full framework details using Drizzle
     const frameworkIds = data.map((r) => r.id)
-    const { data: fullFrameworks, error: fetchError } = await supabase
-      .from('writing_frameworks')
-      .select('id, name, description, structure, examples, category, metadata')
-      .in('id', frameworkIds)
-
-    if (fetchError || !fullFrameworks) {
+    let fullFrameworks: any[] = []
+    try {
+      fullFrameworks = await db
+        .select({
+          id: writingFrameworks.id,
+          name: writingFrameworks.name,
+          description: writingFrameworks.description,
+          structure: writingFrameworks.structure,
+          examples: writingFrameworks.examples,
+          category: writingFrameworks.category,
+          metadata: writingFrameworks.metadata,
+        })
+        .from(writingFrameworks)
+        .where(inArray(writingFrameworks.id, frameworkIds))
+    } catch (fetchError) {
       console.error('[RAG] Error fetching full frameworks:', fetchError)
       return []
     }
@@ -385,7 +408,7 @@ export function formatFrameworksForPrompt(frameworks: Framework[]): string {
     const num = index + 1
 
     sections.push(`${num}. **${framework.name}** (${framework.category.toUpperCase()})`)
-    
+
     // When to use
     if (framework.structure.use_cases?.length > 0) {
       sections.push(`   When to use: ${framework.structure.use_cases.slice(0, 2).join('; ')}`)
@@ -440,30 +463,14 @@ export async function incrementFrameworkUsage(
   frameworkId: string
 ): Promise<void> {
   try {
-    const supabase = getSupabaseClient()
-    
-    // Fire-and-forget: don't await
-    // Note: Supabase doesn't support raw SQL in update, so we fetch and update
-    supabase
-      .from('writing_frameworks')
-      .select('usage_count')
-      .eq('id', frameworkId)
-      .single()
-      .then(({ data: current }) => {
-        if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
-          const usageCount = (current as Record<string, unknown>).usage_count as number + 1
-          return supabase
-            .from('writing_frameworks')
-            .update({ usage_count: usageCount })
-            .eq('id', frameworkId)
-        }
-        return null
-      })
-      .then((result) => {
-        if (result?.error) {
-          console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, result.error)
-        }
-      })
+    // Fire-and-forget: use raw SQL for atomic increment
+    db.execute(sql`
+      UPDATE writing_frameworks 
+      SET usage_count = COALESCE(usage_count, 0) + 1
+      WHERE id = ${frameworkId}
+    `).catch((error) => {
+      console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, error)
+    })
   } catch (error) {
     // Silently fail - usage tracking is non-critical
     console.warn('[RAG] Usage tracking error:', error)
@@ -481,31 +488,15 @@ export async function batchIncrementUsage(
   if (frameworkIds.length === 0) return
 
   try {
-    const supabase = getSupabaseClient()
-    
-    // Update all frameworks in one query
-    // Note: Supabase doesn't support raw SQL, so we need to fetch and update individually
+    // Increment all frameworks using Drizzle
     for (const frameworkId of frameworkIds) {
-      supabase
-        .from('writing_frameworks')
-        .select('usage_count')
-        .eq('id', frameworkId)
-        .single()
-        .then(({ data: current }) => {
-          if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
-            const usageCount = (current as Record<string, unknown>).usage_count as number + 1
-            return supabase
-              .from('writing_frameworks')
-              .update({ usage_count: usageCount })
-              .eq('id', frameworkId)
-          }
-          return null
-        })
-        .then((result) => {
-          if (result?.error) {
-            console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, result.error)
-          }
-        })
+      db.execute(sql`
+        UPDATE writing_frameworks 
+        SET usage_count = COALESCE(usage_count, 0) + 1
+        WHERE id = ${frameworkId}
+      `).catch((error) => {
+        console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, error)
+      })
     }
   } catch (error) {
     console.warn('[RAG] Batch usage tracking error:', error)

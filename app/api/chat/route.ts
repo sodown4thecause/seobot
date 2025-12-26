@@ -576,18 +576,12 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       }
     });
 
-    // Import business profile tools for onboarding
-    const { businessProfileTools } = await import('@/lib/tools/business-profile-tools');
-
     // Construct Final Tool Set
     const allTools = {
       // Core Tools (Always available)
       ...orchestratorTool,
       client_ui: clientUiTool,
       gateway_image: gatewayImageTool,
-
-      // Business Profile Tools (For onboarding and general agent)
-      ...((routingResult.agent === 'general' || routingResult.agent === 'onboarding') ? businessProfileTools : {}),
 
       // Best Practice: Specialized Agents as Tools
       research_agent: researchAgentTool,
@@ -617,7 +611,6 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       // MCP Tools (Loaded based on agent type)
       ...loadToolsForAgent(routingResult.agent, allMCPTools),
     };
-
 
     // Filter out any undefined tools and ensure valid schema
     const validatedTools = Object.fromEntries(

@@ -12,6 +12,8 @@ interface BlogPostPageProps {
     }>
 }
 
+export const dynamicParams = true // Allow on-demand generation for pages not statically generated
+
 export async function generateStaticParams() {
     try {
         const slugs = await getAllPostSlugs()

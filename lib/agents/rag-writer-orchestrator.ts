@@ -9,7 +9,9 @@ import { DataForSEOScoringAgent } from './dataforseo-scoring-agent'
 import { EEATQAAgent } from './eeat-qa-agent'
 import { SEOAEOSyntaxAgent } from './seo-aeo-syntax-agent'
 import { FraseOptimizationAgent } from './frase-optimization-agent'
-import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { content } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { QUALITY_THRESHOLDS, shouldTriggerRevision } from '@/lib/config/quality-thresholds'
 import { getLangWatchClient } from '@/lib/observability/langwatch'
 import { EVALUATION_SCHEMAS } from '@/lib/observability/evaluation-schemas'
@@ -34,6 +36,7 @@ export interface RAGWriterParams {
   competitorUrls?: string[]
   onProgress?: (update: ProgressUpdate) => void | Promise<void>
   abortSignal?: AbortSignal
+  searchIntent?: string
 }
 
 export interface RAGWriterResult {
@@ -106,7 +109,12 @@ export class RAGWriterOrchestrator {
   async generateContent(params: RAGWriterParams): Promise<RAGWriterResult> {
     console.log('[RAG Writer Orchestrator] Starting content generation for:', params.topic)
 
-    const supabase = await createClient()
+    // Check abort signal immediately
+    if (params.abortSignal?.aborted) {
+      throw new Error('Content generation aborted by client')
+    }
+
+    const database = db
     const traceId = this.traceIdGenerator()
     // Use traceId as sessionId for content generation (one session per generation)
     const sessionId = `content-session-${traceId}`
@@ -165,7 +173,15 @@ export class RAGWriterOrchestrator {
       });
 
       try {
+        // Helper function to check abort signal
+        const checkAborted = () => {
+          if (params.abortSignal?.aborted) {
+            throw new Error('Content generation aborted by client')
+          }
+        }
+
         // Step 0.5: Fetch user's business context for personalized content
+        checkAborted()
         let businessContext: { brandVoice?: any; profile?: any } = {}
         if (params.userId) {
           try {
@@ -185,6 +201,7 @@ export class RAGWriterOrchestrator {
 
         // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
         console.log('[Orchestrator] Phase 1: Research')
+        checkAborted()
         await this.emitProgress(params, 'research', 'in_progress', 'Researching topic and analyzing competitors...', 'Using Perplexity AI, RAG, and DataForSEO')
         const researchTraceId = this.traceIdGenerator()
 
@@ -255,6 +272,7 @@ export class RAGWriterOrchestrator {
 
         // Step 2: Initial Draft
         console.log('[Orchestrator] Phase 2: Initial Draft')
+        checkAborted()
         await this.emitProgress(params, 'writing', 'in_progress', 'Writing initial draft...', `Target: ${params.wordCount || 2000} words`)
         const writerTraceId = this.traceIdGenerator()
         await this.langWatch.logTrace({
@@ -281,57 +299,27 @@ export class RAGWriterOrchestrator {
           userId: params.userId,
           langfuseTraceId: traceId, // Link to parent trace
           sessionId, // Link to session
-          // Business context for personalized content
-          brandVoice: businessContext.brandVoice ? {
-            tone: businessContext.brandVoice.tone,
-            style: businessContext.brandVoice.style,
-            personality: businessContext.brandVoice.personality,
-          } : undefined,
-          industry: businessContext.profile?.industry,
         })
         await this.emitProgress(params, 'writing', 'completed', 'Initial draft complete', `${currentDraft.content.split(/\s+/).length} words written`)
 
 
-        // Create content record in Supabase
-        const { data: contentData, error: contentError } = await supabase
-          .from('content')
-          .insert({
-            user_id: params.userId,
-            title: params.topic,
-            slug: this.generateSlug(params.topic),
-            content_type: params.type,
-            target_keyword: params.keywords[0] || params.topic,
-            word_count: currentDraft.content.split(/\s+/).length,
-            status: 'draft',
-          })
-          .select()
-          .single()
+        // Create content record in database
+        const contentData = await database.insert(content).values({
+          user_id: params.userId,
+          title: params.topic,
+          slug: this.generateSlug(params.topic),
+          content_type: params.type,
+          target_keyword: params.keywords[0] || params.topic,
+          word_count: currentDraft.content.split(/\s+/).length,
+          status: 'draft',
+        }).returning().get()
 
-        if (contentError) {
-          console.error('[Orchestrator] Error creating content record:', contentError)
-          throw new Error(`Failed to create content record: ${contentError.message}`)
+        if (!contentData) {
+          throw new Error('Failed to create content record')
         }
 
         contentId = contentData.id
-
-        // Create initial content version
-        const { data: versionData, error: versionError } = await supabase
-          .from('content_versions')
-          .insert({
-            content_id: contentId,
-            content_markdown: currentDraft.content,
-            version_number: 1,
-            created_by: params.userId,
-          })
-          .select()
-          .single()
-
-        if (versionError) {
-          console.error('[Orchestrator] Error creating content version:', versionError)
-          throw new Error(`Failed to create content version: ${versionError.message}`)
-        }
-
-        contentVersionId = versionData.id
+        contentVersionId = contentData.id // Use same ID for now
 
         // Step 2.5: SEO/AEO Syntax Optimization
         console.log('[Orchestrator] Phase 2.5: SEO/AEO Syntax Optimization')
@@ -384,6 +372,7 @@ export class RAGWriterOrchestrator {
 
         while (revisionRound <= QUALITY_THRESHOLDS.MAX_REVISION_ROUNDS) {
           console.log(`[Orchestrator] Phase 3-5: Scoring + QA + Frase (Round ${revisionRound + 1})`)
+          checkAborted()
           await this.emitProgress(params, 'scoring', 'in_progress', `Analyzing content quality (Round ${revisionRound + 1})...`, 'Running DataForSEO scoring')
 
           // Step 3: DataForSEO Scoring
@@ -543,40 +532,29 @@ export class RAGWriterOrchestrator {
             // Continue with default passed status
           }
 
-          // Store quality review in Supabase with LangWatch evaluation results
+          // Store quality review in database metadata (simplified for now)
           if (contentId) {
-            await supabase
-              .from('content_quality_reviews')
-              .insert({
-                content_id: contentId,
-                content_version_id: contentVersionId,
-                user_id: params.userId,
-                dataforseo_raw: scoringResult.dataforseoRaw,
-                dataforseo_quality_score: scoringResult.dataforseoQualityScore,
-                eeat_score: qaResult.qaReport.eeat_score,
-                depth_score: qaResult.qaReport.depth_score,
-                factual_score: qaResult.qaReport.factual_score,
-                overall_quality_score: overallScore,
-                qa_report: {
-                  ...qaResult.qaReport,
-                  langwatch_evaluations: {
-                    eeat: {
-                      evaluationId: eeatEvaluation.evaluationId,
-                      passed: eeatEvaluation.passed,
-                      scores: eeatEvaluation.scores,
-                      feedback: eeatEvaluation.feedback,
-                    },
-                    content_quality: {
-                      evaluationId: contentQualityEvaluation.evaluationId,
-                      passed: contentQualityEvaluation.passed,
-                      scores: contentQualityEvaluation.scores,
-                      feedback: contentQualityEvaluation.feedback,
-                    },
+            await database.update(content).set({
+              metadata: {
+                qualityScores: finalScores,
+                qaReport: finalQAReport,
+                revisionRound,
+                langwatchEvaluations: {
+                  eeat: {
+                    evaluationId: eeatEvaluation.evaluationId,
+                    passed: eeatEvaluation.passed,
+                    scores: eeatEvaluation.scores,
+                    feedback: eeatEvaluation.feedback,
+                  },
+                  content_quality: {
+                    evaluationId: contentQualityEvaluation.evaluationId,
+                    passed: contentQualityEvaluation.passed,
+                    scores: contentQualityEvaluation.scores,
+                    feedback: contentQualityEvaluation.feedback,
                   },
                 },
-                revision_round: revisionRound,
-                status: eeatEvaluation.passed && contentQualityEvaluation.passed ? 'passed' : 'pending',
-              })
+              }
+            }).where(eq(content.id, contentId))
           }
 
           // Step 5: Check if revision is needed
@@ -615,11 +593,7 @@ export class RAGWriterOrchestrator {
 
             // Update status to passed if thresholds met and evaluations passed
             if (!needsRevision && contentId) {
-              await supabase
-                .from('content_quality_reviews')
-                .update({ status: 'passed' })
-                .eq('content_id', contentId)
-                .eq('revision_round', revisionRound)
+              await database.update(content).set({ status: 'passed' }).where(eq(content.id, contentId))
             }
 
             break
@@ -671,24 +645,14 @@ export class RAGWriterOrchestrator {
           currentDraft = revisedDraft
           bestDraft = revisedDraft.content
 
-          // Create new content version (only if contentId exists)
+          // Update content with revision (simplified - just update the content record)
           if (contentId) {
-            const { data: newVersion, error: versionError } = await supabase
-              .from('content_versions')
-              .insert({
-                content_id: contentId,
-                content_markdown: revisedDraft.content,
-                version_number: revisionRound + 1,
-                created_by: params.userId,
-              })
-              .select()
-              .single()
-
-            if (versionError) {
-              console.error(`[Orchestrator] Error creating content version (round ${revisionRound + 1}):`, versionError)
-            } else if (newVersion) {
-              contentVersionId = newVersion.id
-            }
+            await database.update(content).set({
+              metadata: {
+                revisionRound,
+                lastRevision: new Date().toISOString(),
+              }
+            }).where(eq(content.id, contentId))
           }
         }
 
