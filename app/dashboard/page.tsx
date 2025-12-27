@@ -34,13 +34,24 @@ export default function DashboardPage() {
           .eq('user_id', user.id)
           .single()
 
-        if (error || !profile?.website_url) {
-          // First-time user - trigger onboarding
+        // Only treat as new user if profile doesn't exist (PGRST116 error code)
+        // or if profile exists but has no website_url
+        if (error) {
+          // PGRST116 = "not found" - this is expected for new users
+          if (error.code === 'PGRST116') {
+            setIsNewUser(true)
+            setInitialMessage('__START_ONBOARDING__')
+          } else {
+            // Real error - log it but don't trigger onboarding
+            console.error('[Dashboard] Database error loading profile:', error)
+          }
+        } else if (!profile?.website_url) {
+          // Profile exists but incomplete - trigger onboarding
           setIsNewUser(true)
           setInitialMessage('__START_ONBOARDING__')
         }
       } catch (error) {
-        console.error('[Dashboard] Error checking user profile:', error)
+        console.error('[Dashboard] Unexpected error checking user profile:', error)
       } finally {
         setIsLoading(false)
       }

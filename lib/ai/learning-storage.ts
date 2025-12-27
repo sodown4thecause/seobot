@@ -30,14 +30,12 @@ export async function storeContentLearning(learning: ContentLearning): Promise<v
       userId: learning.userId,
       contentType: learning.contentType,
       topic: learning.topic,
+      keywords: learning.keywords,
       aiDetectionScore: learning.aiDetectionScore,
+      humanProbability: learning.humanProbability,
+      successful: learning.successful,
       techniquesUsed: learning.techniques,
-      metadata: {
-        keywords: learning.keywords,
-        humanProbability: learning.humanProbability,
-        successful: learning.successful,
-        feedback: learning.feedback,
-      },
+      feedback: learning.feedback,
     })
 
     console.log('[Learning Storage] Learning stored')
@@ -64,13 +62,16 @@ export async function retrieveSimilarLearnings(
       SELECT 
         user_id,
         topic,
+        keywords,
         ai_detection_score,
+        human_probability,
         techniques_used,
+        feedback,
         metadata,
         created_at
       FROM content_learnings
       WHERE content_type = ${contentType}
-        AND (metadata->>'successful')::boolean = true
+        AND successful = true
         AND topic ILIKE ${topicPattern}
       ORDER BY ai_detection_score ASC
       LIMIT ${limit}
@@ -124,7 +125,7 @@ export async function getBestPractices(contentType: string): Promise<any[]> {
           AVG(ai_detection_score) as avg_score
         FROM content_learnings
         WHERE content_type = ${contentType}
-          AND (metadata->>'successful')::boolean = true
+          AND successful = true
           AND techniques_used IS NOT NULL
         GROUP BY unnest(techniques_used)
       )
@@ -184,9 +185,9 @@ export async function getCrossUserInsights(contentType: string): Promise<{
       WITH stats AS (
         SELECT 
           COUNT(*)::int as total,
-          COUNT(*) FILTER (WHERE (metadata->>'successful')::boolean = true)::int as successful,
+          COUNT(*) FILTER (WHERE successful = true)::int as successful,
           COUNT(DISTINCT user_id)::int as unique_users,
-          ROUND(AVG(ai_detection_score) FILTER (WHERE (metadata->>'successful')::boolean = true)::numeric, 1) as avg_score
+          ROUND(AVG(ai_detection_score) FILTER (WHERE successful = true)::numeric, 1) as avg_score
         FROM content_learnings
         WHERE content_type = ${contentType}
       ),
@@ -197,7 +198,7 @@ export async function getCrossUserInsights(contentType: string): Promise<{
           ROUND(AVG(ai_detection_score)::numeric, 1) as avg_score
         FROM content_learnings
         WHERE content_type = ${contentType}
-          AND (metadata->>'successful')::boolean = true
+          AND successful = true
           AND techniques_used IS NOT NULL
         GROUP BY unnest(techniques_used)
         ORDER BY COUNT(*) DESC
