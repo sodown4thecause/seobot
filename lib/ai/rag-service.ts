@@ -2,7 +2,7 @@
  * RAG Retrieval Service for Writing Frameworks
  * 
  * Provides semantic search over the writing_frameworks knowledge base using:
- * - Vector similarity search with pgvector
+ * - Vector similarity search with pgvector via Neon/Drizzle
  * - Hybrid re-ranking (semantic + keyword matching)
  * - LRU caching for performance
  * - Edge-compatible implementation (no Node.js APIs)
@@ -14,12 +14,14 @@ import { LRUCache } from 'lru-cache'
 import {
   cacheGet,
   cacheSet,
-  cacheGetBatch,
-  cacheSetBatch,
   CACHE_PREFIXES,
   CACHE_TTL,
 } from '../redis/client'
-import { createAdminClient } from '@/lib/supabase/server'
+import { 
+  searchFrameworks, 
+  incrementFrameworkUsage,
+  type FrameworkSearchResult 
+} from '@/lib/db/vector-search'
 
 // ============================================================================
 // TYPES
@@ -55,21 +57,14 @@ export interface Framework {
   created_at?: string
 }
 
-interface MatchFrameworkResult {
-  id: string
-  name: string
-  structure: unknown
-  similarity: number
-}
-
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
 const CONFIG = {
   defaultMaxResults: 3,
-  defaultThreshold: 0.7,
-  fallbackThreshold: 0.6, // If no results, try lower threshold
+  defaultThreshold: 0.5,
+  fallbackThreshold: 0.3, // If no results, try lower threshold
   cacheSize: 200,
   cacheTTL: 10 * 60 * 1000, // 10 minutes in milliseconds
   retrievalMultiplier: 2.5, // Fetch 2.5x more for re-ranking
@@ -103,18 +98,6 @@ function getCacheKey(query: string, options: RetrievalOptions = {}): string {
 }
 
 // ============================================================================
-// SUPABASE CLIENT (SERVER-SIDE WITH POOLING)
-// ============================================================================
-
-/**
- * Get Supabase client for RAG operations
- * Uses admin client singleton for connection pooling
- */
-function getSupabaseClient() {
-  return createAdminClient()
-}
-
-// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -138,13 +121,13 @@ function calculateKeywordBoost(
   }
 
   // Tag matches: +0.05 per matching tag (max +0.15)
-  const matchingTags = framework.tags.filter((tag) =>
+  const matchingTags = framework.tags?.filter((tag) =>
     queryLower.includes(tag.toLowerCase())
-  )
+  ) || []
   boost += Math.min(matchingTags.length * 0.05, 0.15)
 
   // Category match in query: +0.03
-  if (queryLower.includes(framework.category.toLowerCase())) {
+  if (framework.category && queryLower.includes(framework.category.toLowerCase())) {
     boost += 0.03
   }
 
@@ -199,12 +182,39 @@ function reRankFrameworks(
   }))
 }
 
+/**
+ * Convert search result to Framework type
+ */
+function toFramework(result: FrameworkSearchResult): Framework {
+  const structure = result.structure as Framework['structure'] || {
+    sections: [],
+    best_practices: [],
+    use_cases: [],
+  }
+  
+  const metadata = result.metadata as { tags?: string[] } || {}
+  
+  return {
+    id: result.id,
+    name: result.name,
+    description: result.description || '',
+    structure,
+    example: result.examples || '',
+    category: result.category as FrameworkCategory,
+    tags: metadata.tags || [],
+    similarity: result.similarity,
+    usage_count: result.usageCount || 0,
+  }
+}
+
 // ============================================================================
 // MAIN RETRIEVAL FUNCTION
 // ============================================================================
 
 /**
  * Find relevant frameworks using semantic search and hybrid re-ranking
+ * 
+ * Uses Neon PostgreSQL with pgvector for vector similarity search
  * 
  * @param query - User's natural language query
  * @param options - Retrieval options (maxResults, threshold, category, etc.)
@@ -222,7 +232,6 @@ export async function findRelevantFrameworks(
       maxResults = CONFIG.defaultMaxResults,
       threshold = CONFIG.defaultThreshold,
       category,
-      userId,
     } = options
 
     // Check cache first - try LRU cache (fastest)
@@ -262,31 +271,13 @@ export async function findRelevantFrameworks(
     // Calculate retrieval count (fetch more for re-ranking)
     const retrievalCount = Math.ceil(maxResults * CONFIG.retrievalMultiplier)
 
-    // Call Supabase RPC function for vector similarity search
-    const supabase = getSupabaseClient()
-    const rpcResult = await (supabase.rpc as any)('match_frameworks', {
-      query_embedding: queryEmbedding,
-      match_threshold: threshold,
-      match_count: retrievalCount,
+    // Use Drizzle/Neon for vector similarity search
+    const searchResults = await searchFrameworks(queryEmbedding, {
+      threshold,
+      limit: retrievalCount,
     })
-    const { data, error } = rpcResult as { data: MatchFrameworkResult[] | null; error: any }
 
-    if (error) {
-      console.error('[RAG] Supabase RPC error:', error)
-      
-      // Try with lower threshold as fallback
-      if (threshold > CONFIG.fallbackThreshold) {
-        console.log('[RAG] Retrying with lower threshold...')
-        return findRelevantFrameworks(query, {
-          ...options,
-          threshold: CONFIG.fallbackThreshold,
-        })
-      }
-      
-      return []
-    }
-
-    if (!data || data.length === 0) {
+    if (searchResults.length === 0) {
       const duration = Date.now() - startTime
       console.log(`[RAG] No results found (${duration}ms)`)
       
@@ -302,37 +293,16 @@ export async function findRelevantFrameworks(
       return []
     }
 
-    // Fetch full framework details (optimized: select only needed columns)
-    const frameworkIds = data.map((r) => r.id)
-    const { data: fullFrameworks, error: fetchError } = await supabase
-      .from('writing_frameworks')
-      .select('id, name, description, structure, examples, category, metadata')
-      .in('id', frameworkIds)
-
-    if (fetchError || !fullFrameworks) {
-      console.error('[RAG] Error fetching full frameworks:', fetchError)
-      return []
-    }
-
-    // Merge similarity scores with full data
-    const frameworksWithScores: Framework[] = fullFrameworks.map((fw: any) => {
-      const match = data.find((m) => m.id === fw.id)
-      return {
-        ...fw,
-        similarity: match?.similarity || 0,
-      } as Framework
-    })
+    // Convert to Framework type
+    let frameworks = searchResults.map(toFramework)
 
     // Apply category filter if specified
-    let filteredFrameworks = frameworksWithScores
     if (category) {
-      filteredFrameworks = frameworksWithScores.filter(
-        (fw) => fw.category === category
-      )
+      frameworks = frameworks.filter((fw) => fw.category === category)
     }
 
     // Apply hybrid re-ranking
-    const reRanked = reRankFrameworks(filteredFrameworks, query, category)
+    const reRanked = reRankFrameworks(frameworks, query, category)
 
     // Take top N results
     const results = reRanked.slice(0, maxResults)
@@ -433,37 +403,16 @@ export function formatFrameworksForPrompt(frameworks: Framework[]): string {
 
 /**
  * Increment usage count for a framework (fire-and-forget)
+ * Uses Drizzle/Neon instead of Supabase
  * 
  * @param frameworkId - ID of the framework to track
  */
-export async function incrementFrameworkUsage(
+export async function trackFrameworkUsage(
   frameworkId: string
 ): Promise<void> {
   try {
-    const supabase = getSupabaseClient()
-    
-    // Fire-and-forget: don't await
-    // Note: Supabase doesn't support raw SQL in update, so we fetch and update
-    supabase
-      .from('writing_frameworks')
-      .select('usage_count')
-      .eq('id', frameworkId)
-      .single()
-      .then(({ data: current }) => {
-        if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
-          const usageCount = (current as Record<string, unknown>).usage_count as number + 1
-          return supabase
-            .from('writing_frameworks')
-            .update({ usage_count: usageCount })
-            .eq('id', frameworkId)
-        }
-        return null
-      })
-      .then((result) => {
-        if (result?.error) {
-          console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, result.error)
-        }
-      })
+    // Fire-and-forget: don't await in caller
+    await incrementFrameworkUsage(frameworkId)
   } catch (error) {
     // Silently fail - usage tracking is non-critical
     console.warn('[RAG] Usage tracking error:', error)
@@ -481,32 +430,10 @@ export async function batchIncrementUsage(
   if (frameworkIds.length === 0) return
 
   try {
-    const supabase = getSupabaseClient()
-    
-    // Update all frameworks in one query
-    // Note: Supabase doesn't support raw SQL, so we need to fetch and update individually
-    for (const frameworkId of frameworkIds) {
-      supabase
-        .from('writing_frameworks')
-        .select('usage_count')
-        .eq('id', frameworkId)
-        .single()
-        .then(({ data: current }) => {
-          if (current && typeof (current as Record<string, unknown>).usage_count === 'number') {
-            const usageCount = (current as Record<string, unknown>).usage_count as number + 1
-            return supabase
-              .from('writing_frameworks')
-              .update({ usage_count: usageCount })
-              .eq('id', frameworkId)
-          }
-          return null
-        })
-        .then((result) => {
-          if (result?.error) {
-            console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, result.error)
-          }
-        })
-    }
+    // Process all increments in parallel
+    await Promise.all(
+      frameworkIds.map(id => incrementFrameworkUsage(id))
+    )
   } catch (error) {
     console.warn('[RAG] Batch usage tracking error:', error)
   }

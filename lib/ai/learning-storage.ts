@@ -1,9 +1,13 @@
 /**
  * Learning Storage - Stores and retrieves content generation learnings
  * Implements global learning loop across all users
+ * 
+ * Uses Neon PostgreSQL with Drizzle ORM
  */
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { contentLearnings } from '@/lib/db/schema'
+import { sql } from 'drizzle-orm'
 
 export interface ContentLearning {
   userId: string
@@ -22,33 +26,21 @@ export interface ContentLearning {
  */
 export async function storeContentLearning(learning: ContentLearning): Promise<void> {
   try {
-    const supabase = await createClient()
-
-    const { error } = await supabase.from('content_learnings').insert({
-      user_id: learning.userId,
-      content_type: learning.contentType,
+    await db.insert(contentLearnings).values({
+      userId: learning.userId,
+      contentType: learning.contentType,
       topic: learning.topic,
-      keywords: learning.keywords,
-      ai_detection_score: learning.aiDetectionScore,
-      human_probability: learning.humanProbability,
-      successful: learning.successful,
-      techniques_used: learning.techniques,
-      feedback: learning.feedback,
-      content_sample: learning.feedback || learning.topic,
-      created_at: new Date().toISOString(),
+      aiDetectionScore: learning.aiDetectionScore,
+      techniquesUsed: learning.techniques,
+      metadata: {
+        keywords: learning.keywords,
+        humanProbability: learning.humanProbability,
+        successful: learning.successful,
+        feedback: learning.feedback,
+      },
     })
 
-    if (error) {
-      console.error('[Learning Storage] Error storing learning:', {
-        error,
-        userId: learning.userId,
-        contentType: learning.contentType,
-        topic: learning.topic
-      })
-      throw error
-    }
-
-    console.log('[Learning Storage] ✓ Learning stored')
+    console.log('[Learning Storage] Learning stored')
   } catch (error) {
     console.error('[Learning Storage] Failed to store learning:', error)
     throw error
@@ -65,27 +57,27 @@ export async function retrieveSimilarLearnings(
   limit: number = 10
 ): Promise<any[]> {
   try {
-    const supabase = await createClient()
-
-    // Match by topic using ILIKE; keyword matching can be added later with safer filters
+    // Match by topic using ILIKE
     const topicPattern = `%${topic.replace('%', '\\%').replace('_', '\\_')}%`
 
-    const { data, error } = await supabase
-      .from('content_learnings')
-      .select('user_id, topic, keywords, ai_detection_score, human_probability, techniques_used, feedback, created_at')
-      .eq('content_type', contentType)
-      .eq('successful', true)
-      .ilike('topic', topicPattern)
-      .order('ai_detection_score', { ascending: true }) // Best scores first
-      .limit(limit)
+    const results = await db.execute(sql`
+      SELECT 
+        user_id,
+        topic,
+        ai_detection_score,
+        techniques_used,
+        metadata,
+        created_at
+      FROM content_learnings
+      WHERE content_type = ${contentType}
+        AND (metadata->>'successful')::boolean = true
+        AND topic ILIKE ${topicPattern}
+      ORDER BY ai_detection_score ASC
+      LIMIT ${limit}
+    `)
 
-    if (error) {
-      console.error('[Learning Storage] Error retrieving learnings:', error)
-      return []
-    }
-
-    console.log(`[Learning Storage] Retrieved ${data?.length || 0} cross-user learnings for: ${topic}`)
-    return data || []
+    console.log(`[Learning Storage] Retrieved ${results.rows?.length || 0} cross-user learnings for: ${topic}`)
+    return (results.rows as any[]) || []
   } catch (error) {
     console.error('[Learning Storage] Failed to retrieve learnings:', error)
     return []
@@ -95,25 +87,23 @@ export async function retrieveSimilarLearnings(
 export async function getRecentHighScores(
   contentType: string,
   threshold: number = 90,
-  limit: number = 5,
+  limit: number = 5
 ): Promise<any[]> {
   try {
-    const supabase = await createClient()
+    const results = await db.execute(sql`
+      SELECT 
+        topic,
+        techniques_used,
+        ai_detection_score,
+        created_at
+      FROM content_learnings
+      WHERE content_type = ${contentType}
+        AND ai_detection_score >= ${threshold}
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `)
 
-    const { data, error } = await supabase
-      .from('content_learnings')
-      .select('topic, techniques_used, ai_detection_score, created_at')
-      .eq('content_type', contentType)
-      .gte('ai_detection_score', threshold)
-      .order('created_at', { ascending: false })
-      .limit(limit)
-
-    if (error) {
-      console.error('[Learning Storage] Error retrieving high-score learnings:', error)
-      return []
-    }
-
-    return data || []
+    return (results.rows as any[]) || []
   } catch (error) {
     console.error('[Learning Storage] Failed to fetch high scores:', error)
     return []
@@ -125,21 +115,30 @@ export async function getRecentHighScores(
  */
 export async function getBestPractices(contentType: string): Promise<any[]> {
   try {
-    const supabase = await createClient()
+    // Aggregate successful learnings to derive best practices
+    const results = await db.execute(sql`
+      WITH technique_stats AS (
+        SELECT 
+          unnest(techniques_used) as technique,
+          COUNT(*) as usage_count,
+          AVG(ai_detection_score) as avg_score
+        FROM content_learnings
+        WHERE content_type = ${contentType}
+          AND (metadata->>'successful')::boolean = true
+          AND techniques_used IS NOT NULL
+        GROUP BY unnest(techniques_used)
+      )
+      SELECT 
+        technique as techniques,
+        usage_count,
+        ROUND(avg_score::numeric, 1) as avg_ai_score,
+        ROUND((usage_count::float / (SELECT COUNT(*) FROM content_learnings WHERE content_type = ${contentType}))::numeric, 2) as success_rate
+      FROM technique_stats
+      ORDER BY avg_score ASC, usage_count DESC
+      LIMIT 5
+    `)
 
-    const { data, error } = await supabase
-      .from('content_best_practices')
-      .select('*')
-      .eq('content_type', contentType)
-      .order('success_rate', { ascending: false })
-      .limit(5)
-
-    if (error) {
-      console.error('[Learning Storage] Error retrieving best practices:', error)
-      return []
-    }
-
-    return data || []
+    return (results.rows as any[]) || []
   } catch (error) {
     console.error('[Learning Storage] Failed to retrieve best practices:', error)
     return []
@@ -147,106 +146,13 @@ export async function getBestPractices(contentType: string): Promise<any[]> {
 }
 
 /**
- * Aggregate individual learnings into best practices
- * Should be run periodically (e.g., daily cron job)
- */
-export async function aggregateBestPractices(contentType: string): Promise<void> {
-  try {
-    // Use admin client to bypass RLS for global best practices update
-    const supabase = createAdminClient()
-
-    // Get successful learnings
-    const { data: learnings, error: fetchError } = await supabase
-      .from('content_learnings')
-      .select('*')
-      .eq('content_type', contentType)
-      .eq('successful', true)
-      .order('created_at', { ascending: false })
-      .limit(100)
-
-    if (fetchError || !learnings || learnings.length === 0) {
-      console.log('[Learning Storage] No learnings to aggregate for:', contentType)
-      return
-    }
-
-    // Aggregate techniques
-    const techniqueCount: Record<string, number> = {}
-    const techniqueScores: Record<string, number[]> = {}
-
-    learnings.forEach((learning) => {
-      learning.techniques_used?.forEach((technique: string) => {
-        techniqueCount[technique] = (techniqueCount[technique] || 0) + 1
-        if (!techniqueScores[technique]) {
-          techniqueScores[technique] = []
-        }
-        techniqueScores[technique].push(learning.ai_detection_score)
-      })
-    })
-
-    // Calculate best practices
-    const bestPractices = Object.entries(techniqueCount)
-      .map(([technique, count]) => {
-        const scores = techniqueScores[technique]
-        const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length
-        return {
-          technique,
-          usage_count: count,
-          avg_ai_score: avgScore,
-          success_rate: count / learnings.length,
-        }
-      })
-      .sort((a, b) => a.avg_ai_score - b.avg_ai_score)
-      .slice(0, 10)
-
-    // Upsert best practices
-    const { error: upsertError } = await supabase
-      .from('content_best_practices')
-      .upsert({
-        content_type: contentType,
-        techniques: bestPractices.map(bp => bp.technique),
-        success_rate: bestPractices[0]?.success_rate || 0,
-        avg_ai_score: bestPractices[0]?.avg_ai_score || 0,
-        sample_size: learnings.length,
-        last_updated: new Date().toISOString(),
-      }, {
-        onConflict: 'content_type',
-      })
-
-    if (upsertError) {
-      console.error('[Learning Storage] Error upserting best practice:', {
-        error: upsertError,
-        contentType
-      })
-      return
-    }
-
-    console.log('[Learning Storage] ✓ Best practices aggregated for:', contentType)
-  } catch (error) {
-    console.error('[Learning Storage] Failed to aggregate best practices:', error)
-  }
-}
-
-/**
- * REAL-TIME GLOBAL LEARNING: Update best practices immediately after each learning
- * This ensures all users benefit from the latest successful techniques instantly
+ * REAL-TIME GLOBAL LEARNING: Aggregation is done on-the-fly with SQL
+ * No separate aggregation needed since we use dynamic queries
  */
 export async function triggerRealTimeLearning(contentType: string): Promise<void> {
-  try {
-    console.log('[Learning Storage] 🔄 Triggering real-time learning aggregation for:', contentType)
-    await aggregateBestPractices(contentType)
-    
-    // Also aggregate related content types to improve cross-pollination
-    if (contentType === 'blog_post') {
-      await aggregateBestPractices('article') // Similar writing techniques
-    } else if (contentType === 'article') {
-      await aggregateBestPractices('blog_post')
-    }
-    
-    console.log('[Learning Storage] ✓ Real-time learning complete')
-  } catch (error) {
-    console.error('[Learning Storage] Real-time learning failed:', error)
-    // Don't throw - this shouldn't block content generation
-  }
+  console.log('[Learning Storage] Real-time learning aggregation for:', contentType)
+  // Best practices are now calculated dynamically via getBestPractices
+  // No separate aggregation step needed
 }
 
 /**
@@ -257,10 +163,9 @@ export async function storeAndLearn(learning: ContentLearning): Promise<void> {
   // Store the individual learning
   await storeContentLearning(learning)
   
-  // If this was successful, immediately update best practices for all users
+  // If this was successful, log it
   if (learning.successful) {
-    console.log('[Learning Storage] 🎯 Successful learning detected - updating global knowledge base')
-    await triggerRealTimeLearning(learning.contentType)
+    console.log('[Learning Storage] Successful learning detected - available for global knowledge base')
   }
 }
 
@@ -275,15 +180,47 @@ export async function getCrossUserInsights(contentType: string): Promise<{
   topTechniques: Array<{ technique: string; usage: number; avgScore: number }>
 }> {
   try {
-    const supabase = await createClient()
+    const results = await db.execute(sql`
+      WITH stats AS (
+        SELECT 
+          COUNT(*)::int as total,
+          COUNT(*) FILTER (WHERE (metadata->>'successful')::boolean = true)::int as successful,
+          COUNT(DISTINCT user_id)::int as unique_users,
+          ROUND(AVG(ai_detection_score) FILTER (WHERE (metadata->>'successful')::boolean = true)::numeric, 1) as avg_score
+        FROM content_learnings
+        WHERE content_type = ${contentType}
+      ),
+      technique_stats AS (
+        SELECT 
+          unnest(techniques_used) as technique,
+          COUNT(*) as usage,
+          ROUND(AVG(ai_detection_score)::numeric, 1) as avg_score
+        FROM content_learnings
+        WHERE content_type = ${contentType}
+          AND (metadata->>'successful')::boolean = true
+          AND techniques_used IS NOT NULL
+        GROUP BY unnest(techniques_used)
+        ORDER BY COUNT(*) DESC
+        LIMIT 10
+      )
+      SELECT 
+        (SELECT total FROM stats) as total_learnings,
+        (SELECT successful FROM stats) as successful_learnings,
+        (SELECT unique_users FROM stats) as unique_users,
+        (SELECT avg_score FROM stats) as avg_ai_score,
+        COALESCE(
+          (SELECT jsonb_agg(jsonb_build_object(
+            'technique', technique,
+            'usage', usage,
+            'avgScore', avg_score
+          )) FROM technique_stats),
+          '[]'::jsonb
+        ) as top_techniques
+    `)
+
+    const row = (results.rows as any[])?.[0]
     
-    // Get all learnings for this content type across ALL users
-    const { data: allLearnings, error } = await supabase
-      .from('content_learnings')
-      .select('user_id, ai_detection_score, successful, techniques_used')
-      .eq('content_type', contentType)
-    
-    if (error || !allLearnings) {
+    if (!row) {
       return {
         totalLearnings: 0,
         successfulLearnings: 0,
@@ -292,42 +229,15 @@ export async function getCrossUserInsights(contentType: string): Promise<{
         topTechniques: []
       }
     }
-    
-    const successful = allLearnings.filter(l => l.successful)
-    const uniqueUsers = new Set(allLearnings.map(l => l.user_id)).size
-    const avgAiScore = successful.length > 0 
-      ? successful.reduce((sum, l) => sum + l.ai_detection_score, 0) / successful.length 
-      : 0
-    
-    // Analyze technique usage across all users
-    const techniqueStats: Record<string, { count: number; scores: number[] }> = {}
-    successful.forEach(learning => {
-      learning.techniques_used?.forEach((technique: string) => {
-        if (!techniqueStats[technique]) {
-          techniqueStats[technique] = { count: 0, scores: [] }
-        }
-        techniqueStats[technique].count++
-        techniqueStats[technique].scores.push(learning.ai_detection_score)
-      })
-    })
-    
-    const topTechniques = Object.entries(techniqueStats)
-      .map(([technique, stats]) => ({
-        technique,
-        usage: stats.count,
-        avgScore: stats.scores.reduce((a, b) => a + b, 0) / stats.scores.length
-      }))
-      .sort((a, b) => b.usage - a.usage)
-      .slice(0, 10)
-    
-    console.log(`[Learning Storage] Cross-user insights: ${uniqueUsers} users, ${successful.length}/${allLearnings.length} successful`)
-    
+
+    console.log(`[Learning Storage] Cross-user insights: ${row.unique_users} users, ${row.successful_learnings}/${row.total_learnings} successful`)
+
     return {
-      totalLearnings: allLearnings.length,
-      successfulLearnings: successful.length,
-      uniqueUsers,
-      avgAiScore,
-      topTechniques
+      totalLearnings: row.total_learnings || 0,
+      successfulLearnings: row.successful_learnings || 0,
+      uniqueUsers: row.unique_users || 0,
+      avgAiScore: parseFloat(row.avg_ai_score) || 0,
+      topTechniques: row.top_techniques || []
     }
   } catch (error) {
     console.error('[Learning Storage] Failed to get insights:', error)
@@ -340,7 +250,3 @@ export async function getCrossUserInsights(contentType: string): Promise<{
     }
   }
 }
-
-
-
-

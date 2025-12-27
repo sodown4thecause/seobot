@@ -37,6 +37,7 @@ export default function DashboardPage() {
         if (error || !profile?.website_url) {
           // First-time user - trigger onboarding
           setIsNewUser(true)
+          setInitialMessage('__START_ONBOARDING__')
         }
       } catch (error) {
         console.error('[Dashboard] Error checking user profile:', error)

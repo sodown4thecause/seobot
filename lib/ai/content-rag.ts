@@ -1,6 +1,8 @@
 /**
  * Content RAG - Retrieval Augmented Generation for content writing
  * Combines cross-user learnings with uploaded expert documents
+ * 
+ * Uses Neon PostgreSQL with pgvector via Drizzle ORM
  */
 
 import {
@@ -9,11 +11,11 @@ import {
   getCrossUserInsights,
   getRecentHighScores,
 } from './learning-storage'
-import { createClient } from '@/lib/supabase/server'
 import { generateEmbedding } from './embeddings'
+import { searchAgentDocuments } from '@/lib/db/vector-search'
 
 /**
- * Retrieve relevant agent documents from Supabase
+ * Retrieve relevant agent documents using Neon/Drizzle vector search
  * Uses OpenAI text-embedding-3-small (1536 dimensions)
  */
 export async function retrieveAgentDocuments(
@@ -22,25 +24,17 @@ export async function retrieveAgentDocuments(
   limit: number = 3
 ): Promise<any[]> {
   try {
-    const supabase = await createClient()
-    
     // Generate embedding for the topic using OpenAI
     const embedding = await generateEmbedding(topic)
     
-    // Call the vector search function
-    const { data, error } = await supabase.rpc('match_agent_documents_v2', {
-      query_embedding: embedding,
-      agent_type_param: agentType,
-      match_threshold: 0.3, // Lowered from 0.5 - semantic similarity typically ranges 0.3-0.7
-      max_results: limit,
+    // Use Drizzle/Neon vector search instead of Supabase RPC
+    const results = await searchAgentDocuments(embedding, agentType, {
+      threshold: 0.3, // Lowered from 0.5 - semantic similarity typically ranges 0.3-0.7
+      limit,
     })
 
-    if (error) {
-      console.error('[Content RAG] Failed to retrieve agent documents (RPC error):', error)
-      return []
-    }
-
-    return data || []
+    console.log(`[Content RAG] Retrieved ${results.length} agent documents for "${topic.slice(0, 50)}..."`)
+    return results
   } catch (error) {
     console.error('[Content RAG] Error retrieving agent documents:', error)
     return []
@@ -68,7 +62,7 @@ export async function getContentGuidance(
     ])
 
     console.log(
-      `[Content RAG] 🌐 Cross-user insights: ${crossUserInsights.uniqueUsers} users, ${crossUserInsights.successfulLearnings} successful patterns`
+      `[Content RAG] Cross-user insights: ${crossUserInsights.uniqueUsers} users, ${crossUserInsights.successfulLearnings} successful patterns`
     )
     console.log('[Content RAG] Agent docs retrieved:', agentDocs?.length ?? 0)
 
@@ -82,7 +76,7 @@ export async function getContentGuidance(
       highScores,
     )
 
-    console.log('[Content RAG] ✓ Guidance retrieved')
+    console.log('[Content RAG] Guidance retrieved')
     return guidance
   } catch (error) {
     console.error('[Content RAG] Error getting guidance:', error)
@@ -204,7 +198,7 @@ function summarizeDocContent(content: string, maxChars: number): string {
     .slice(0, 4)
     .join(' ')
   if (sentences.length <= maxChars) return sentences
-  return sentences.slice(0, maxChars).trimEnd() + '…'
+  return sentences.slice(0, maxChars).trimEnd() + '...'
 }
 
 function summarizeBestPractices(practices: any[], limit: number): string[] {
@@ -222,12 +216,3 @@ function summarizeBestPractices(practices: any[], limit: number): string[] {
     return [techniques, successRate, aiScore].filter(Boolean).join(' • ')
   })
 }
-
-
-
-
-
-
-
-
-

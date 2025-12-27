@@ -30,6 +30,14 @@ export interface ContentWriteParams {
   dataforseoMetrics?: any
   qaReport?: any
   revisionRound?: number
+  // Brand voice and business context
+  brandVoice?: {
+    tone?: string
+    style?: string
+    personality?: string[]
+  }
+  industry?: string
+  abortSignal?: AbortSignal // Optional: signal to abort content writing
 }
 
 export interface ContentWriteResult {
