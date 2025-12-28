@@ -137,7 +137,8 @@ BEGIN
     xp = xp + COALESCE((SELECT points FROM achievement_definitions WHERE achievement_id = p_achievement_id), 0),
     total_xp = total_xp + COALESCE((SELECT points FROM achievement_definitions WHERE achievement_id = p_achievement_id), 0),
     last_updated_at = now()
-  WHERE user_id = p_user_id;
+  WHERE user_id = p_user_id
+    AND skill_category = (SELECT skill_category FROM achievement_definitions WHERE achievement_id = p_achievement_id);
   
   RETURN true;
 END;

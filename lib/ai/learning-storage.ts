@@ -56,7 +56,7 @@ export async function retrieveSimilarLearnings(
 ): Promise<any[]> {
   try {
     // Match by topic using ILIKE
-    const topicPattern = `%${topic.replace('%', '\\%').replace('_', '\\_')}%`
+    const topicPattern = `%${topic.replaceAll('%', '\\%').replaceAll('_', '\\_')}%`
 
     const results = await db.execute(sql`
       SELECT 
@@ -128,12 +128,18 @@ export async function getBestPractices(contentType: string): Promise<any[]> {
           AND successful = true
           AND techniques_used IS NOT NULL
         GROUP BY unnest(techniques_used)
+      ),
+      total_successful AS (
+        SELECT COUNT(*) as total_count
+        FROM content_learnings
+        WHERE content_type = ${contentType}
+          AND successful = true
       )
       SELECT 
         technique as techniques,
         usage_count,
         ROUND(avg_score::numeric, 1) as avg_ai_score,
-        ROUND((usage_count::float / (SELECT COUNT(*) FROM content_learnings WHERE content_type = ${contentType}))::numeric, 2) as success_rate
+        ROUND((usage_count::float / NULLIF((SELECT total_count FROM total_successful), 0))::numeric, 2) as success_rate
       FROM technique_stats
       ORDER BY avg_score ASC, usage_count DESC
       LIMIT 5

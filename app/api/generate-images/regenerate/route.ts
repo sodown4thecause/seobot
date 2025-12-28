@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { EnhancedImageAgent } from '@/lib/agents/enhanced-image-agent'
 
 export async function POST(request: NextRequest) {
   try {
-    const { imageId, imageType, content, topic, keywords } = await request.json()
+    // Authenticate the request
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized - authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const { imageId, imageType, content, topic, keywords, data } = await request.json()
 
     if (!imageId || !imageType) {
       return NextResponse.json(
@@ -35,7 +46,7 @@ export async function POST(request: NextRequest) {
         break
       case 'infographic':
         regeneratedImage = await imageAgent.generateInfographic({
-          data: { value: 100, label: topic || 'Data' },
+          data: data || { value: 100, label: topic || 'Data' },
           type: 'bar',
           keywords: keywords || [],
           label: topic || 'Statistic'
@@ -48,6 +59,8 @@ export async function POST(request: NextRequest) {
         )
     }
 
+    console.log(`[Image Regenerate] User ${userId} regenerated ${imageType} image ${imageId}`)
+    
     return NextResponse.json({
       success: true,
       image: regeneratedImage,

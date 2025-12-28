@@ -151,7 +151,7 @@ export const chatMessages = pgTable('chat_messages', {
 export const libraryItems = pgTable('library_items', {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: text('user_id').notNull(),
-    conversationId: uuid('conversation_id').references(() => conversations.id),
+    conversationId: uuid('conversation_id').references(() => conversations.id, { onDelete: 'cascade' }),
     messageId: uuid('message_id'),
     itemType: text('item_type').notNull(),
     title: text('title').notNull(),

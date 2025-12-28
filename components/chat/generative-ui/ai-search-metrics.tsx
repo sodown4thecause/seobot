@@ -97,13 +97,19 @@ export function AISearchMetrics({ analysis, className }: AISearchMetricsProps) {
               <div 
                 className="bg-purple-500"
                 style={{ 
-                  width: `${Math.min((analysis.summary.totalAIVolume / (analysis.summary.totalAIVolume + analysis.summary.totalTraditionalVolume)) * 100, 100)}%` 
+                  width: (() => {
+                    const sum = analysis.summary.totalAIVolume + analysis.summary.totalTraditionalVolume
+                    return sum === 0 ? '50%' : `${Math.min((analysis.summary.totalAIVolume / sum) * 100, 100)}%`
+                  })()
                 }}
               />
               <div 
                 className="bg-blue-500"
                 style={{ 
-                  width: `${Math.min((analysis.summary.totalTraditionalVolume / (analysis.summary.totalAIVolume + analysis.summary.totalTraditionalVolume)) * 100, 100)}%` 
+                  width: (() => {
+                    const sum = analysis.summary.totalAIVolume + analysis.summary.totalTraditionalVolume
+                    return sum === 0 ? '50%' : `${Math.min((analysis.summary.totalTraditionalVolume / sum) * 100, 100)}%`
+                  })()
                 }}
               />
             </div>

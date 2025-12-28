@@ -6,7 +6,7 @@ import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { useAgent } from '@/components/providers/agent-provider'
 import { useUserMode } from '@/components/providers/user-mode-provider'
 import { ModeSelectionDialog } from '@/components/user-mode/mode-selection-dialog'
-import { createClient } from '@/lib/supabase/client'
+import { useUser } from '@clerk/nextjs'
 import { WelcomeSection } from '@/components/dashboard/welcome-section'
 import { QuickStartGrid } from '@/components/dashboard/quick-start-grid'
 import { ProgressWidgets } from '@/components/dashboard/progress-widgets'
@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const { state: userModeState } = useUserMode()
   const activeConversationId = state.activeConversation?.id
   const activeAgentId = state.activeAgent?.id
+  const { user, isLoaded } = useUser()
 
   const [isNewUser, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -33,66 +34,58 @@ export default function DashboardPage() {
   useEffect(() => {
     async function checkUserProfile() {
       try {
-        const supabase = createClient()
-
-        // Get user from Supabase auth
-        const { data: { user } } = await supabase.auth.getUser()
+        // Wait for Clerk to load user data
+        if (!isLoaded) {
+          return
+        }
 
         if (!user) {
           setIsLoading(false)
           return
         }
 
-        // Get user name from metadata
-        const fullName = (user as any).fullName || user.user_metadata?.full_name
+        // Get user name from Clerk
+        const fullName = user.fullName || user.firstName || ''
         if (fullName) {
           setUserName(fullName)
-        } else if (user.email) {
-          setUserName(user.email.split('@')[0])
+        } else if (user.emailAddresses?.[0]?.emailAddress) {
+          setUserName(user.emailAddresses[0].emailAddress.split('@')[0])
         }
 
-        // Check if user has a business profile
-        const { data: profile, error } = await supabase
-          .from('business_profiles')
-          .select('id, website_url, industry')
-          .eq('user_id', user.id)
-          .single()
-
-        // Only treat as new user if profile doesn't exist (PGRST116 error code)
-        // or if profile exists but has no website_url
-        if (error) {
-          // PGRST116 = "not found" - this is expected for new users
-          if (error.code === 'PGRST116') {
-            setIsNewUser(true)
-            setInitialMessage('__START_ONBOARDING__')
-            // Show mode selection for new users after a brief delay
-            setTimeout(() => {
-              setShowModeSelection(true)
-            }, 1000)
-          } else {
-            // Real error - log it but don't trigger onboarding
-            console.error('[Dashboard] Database error loading profile:', error)
-          }
-        } else if (!profile?.website_url) {
-          // Profile exists but incomplete - trigger onboarding
+        // Check if user has a business profile using API route (Drizzle runs server-side)
+        const response = await fetch('/api/user/profile')
+        
+        if (!response.ok) {
+          // New user - no profile exists
           setIsNewUser(true)
           setInitialMessage('__START_ONBOARDING__')
           setTimeout(() => {
             setShowModeSelection(true)
           }, 1000)
         } else {
-          // Load actions for existing users
-          await loadActions()
+          const data = await response.json()
+          if (!data.profile?.websiteUrl) {
+            // Profile exists but incomplete - trigger onboarding
+            setIsNewUser(true)
+            setInitialMessage('__START_ONBOARDING__')
+            setTimeout(() => {
+              setShowModeSelection(true)
+            }, 1000)
+          } else {
+            // Load actions for existing users
+            await loadActions()
+          }
         }
       } catch (error) {
-        console.error('[Dashboard] Unexpected error checking user profile:', error)
+        console.error('[Dashboard] Error checking user profile:', error)
+        // Don't trigger onboarding on errors
       } finally {
         setIsLoading(false)
       }
     }
 
     checkUserProfile()
-  }, [])
+  }, [user, isLoaded])
 
   const loadActions = async () => {
     try {
@@ -136,7 +129,7 @@ export default function DashboardPage() {
     [activeConversationId, isNewUser, userModeState.currentMode?.level]
   )
 
-  if (isLoading || userModeState.isLoading) {
+  if (!isLoaded || isLoading || userModeState.isLoading) {
     return (
       <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center bg-[#1a1a1a]">
         <div className="animate-pulse text-gray-400">Loading...</div>

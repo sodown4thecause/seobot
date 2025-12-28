@@ -229,20 +229,17 @@ async function aggregateUsageSummary(params?: Record<string, unknown>) {
     try {
         const { p_user_id, p_from, p_to } = (params || {}) as { p_user_id?: string; p_from?: string; p_to?: string }
         
-        const conditions: string[] = ['TRUE']
-        if (p_user_id) conditions.push(`user_id = '${p_user_id}'`)
-        if (p_from) conditions.push(`created_at >= '${p_from}'::timestamp`)
-        if (p_to) conditions.push(`created_at <= '${p_to}'::timestamp`)
-
-        const result = await db.execute(sql.raw(`
+        const result = await db.execute(sql`
             SELECT 
                 COUNT(*)::int as total_calls,
                 COUNT(DISTINCT user_id)::int as active_users,
                 COALESCE(SUM((metadata->>'cost_usd')::float), 0) as total_cost,
                 COALESCE(SUM(COALESCE(prompt_tokens, 0)) + SUM(COALESCE(completion_tokens, 0)), 0)::int as total_tokens
             FROM ai_usage_events
-            WHERE ${conditions.join(' AND ')}
-        `))
+            WHERE (${p_user_id}::text IS NULL OR user_id = ${p_user_id})
+              AND (${p_from}::timestamp IS NULL OR created_at >= ${p_from}::timestamp)
+              AND (${p_to}::timestamp IS NULL OR created_at <= ${p_to}::timestamp)
+        `)
         return (result.rows as Record<string, unknown>[])[0] || null
     } catch (error) {
         console.error('[RPC] aggregateUsageSummary error:', error)
@@ -256,12 +253,7 @@ async function aggregateUserStats(params?: Record<string, unknown>) {
             p_user_id?: string; p_from?: string; p_to?: string; p_limit?: number; p_offset?: number 
         }
 
-        const conditions: string[] = ['TRUE']
-        if (p_user_id) conditions.push(`user_id = '${p_user_id}'`)
-        if (p_from) conditions.push(`created_at >= '${p_from}'::timestamp`)
-        if (p_to) conditions.push(`created_at <= '${p_to}'::timestamp`)
-
-        const result = await db.execute(sql.raw(`
+        const result = await db.execute(sql`
             SELECT 
                 user_id,
                 COUNT(*)::int as usage_count,
@@ -269,11 +261,13 @@ async function aggregateUserStats(params?: Record<string, unknown>) {
                 COALESCE(SUM(COALESCE(prompt_tokens, 0)) + SUM(COALESCE(completion_tokens, 0)), 0)::int as total_tokens,
                 MAX(created_at) as last_used
             FROM ai_usage_events
-            WHERE ${conditions.join(' AND ')}
+            WHERE (${p_user_id}::text IS NULL OR user_id = ${p_user_id})
+              AND (${p_from}::timestamp IS NULL OR created_at >= ${p_from}::timestamp)
+              AND (${p_to}::timestamp IS NULL OR created_at <= ${p_to}::timestamp)
             GROUP BY user_id
             ORDER BY usage_count DESC
             LIMIT ${p_limit} OFFSET ${p_offset}
-        `))
+        `)
         return (result.rows as Record<string, unknown>[]) || []
     } catch (error) {
         console.error('[RPC] aggregateUserStats error:', error)
@@ -285,22 +279,19 @@ async function aggregateProviderStats(params?: Record<string, unknown>) {
     try {
         const { p_user_id, p_from, p_to } = (params || {}) as { p_user_id?: string; p_from?: string; p_to?: string }
 
-        const conditions: string[] = ['TRUE']
-        if (p_user_id) conditions.push(`user_id = '${p_user_id}'`)
-        if (p_from) conditions.push(`created_at >= '${p_from}'::timestamp`)
-        if (p_to) conditions.push(`created_at <= '${p_to}'::timestamp`)
-
-        const result = await db.execute(sql.raw(`
+        const result = await db.execute(sql`
             SELECT 
                 COALESCE(metadata->>'provider', 'unknown') as provider,
                 COUNT(*)::int as usage_count,
                 COALESCE(SUM((metadata->>'cost_usd')::float), 0) as total_cost,
                 COALESCE(SUM(COALESCE(prompt_tokens, 0)) + SUM(COALESCE(completion_tokens, 0)), 0)::int as total_tokens
             FROM ai_usage_events
-            WHERE ${conditions.join(' AND ')}
+            WHERE (${p_user_id}::text IS NULL OR user_id = ${p_user_id})
+              AND (${p_from}::timestamp IS NULL OR created_at >= ${p_from}::timestamp)
+              AND (${p_to}::timestamp IS NULL OR created_at <= ${p_to}::timestamp)
             GROUP BY COALESCE(metadata->>'provider', 'unknown')
             ORDER BY total_cost DESC
-        `))
+        `)
         return (result.rows as Record<string, unknown>[]) || []
     } catch (error) {
         console.error('[RPC] aggregateProviderStats error:', error)
@@ -314,23 +305,20 @@ async function aggregateModelStats(params?: Record<string, unknown>) {
             p_user_id?: string; p_from?: string; p_to?: string; p_limit?: number 
         }
 
-        const conditions: string[] = ['TRUE']
-        if (p_user_id) conditions.push(`user_id = '${p_user_id}'`)
-        if (p_from) conditions.push(`created_at >= '${p_from}'::timestamp`)
-        if (p_to) conditions.push(`created_at <= '${p_to}'::timestamp`)
-
-        const result = await db.execute(sql.raw(`
+        const result = await db.execute(sql`
             SELECT 
                 COALESCE(metadata->>'model', 'unknown') as model,
                 COUNT(*)::int as usage_count,
                 COALESCE(SUM((metadata->>'cost_usd')::float), 0) as total_cost,
                 COALESCE(SUM(COALESCE(prompt_tokens, 0)) + SUM(COALESCE(completion_tokens, 0)), 0)::int as total_tokens
             FROM ai_usage_events
-            WHERE ${conditions.join(' AND ')}
+            WHERE (${p_user_id}::text IS NULL OR user_id = ${p_user_id})
+              AND (${p_from}::timestamp IS NULL OR created_at >= ${p_from}::timestamp)
+              AND (${p_to}::timestamp IS NULL OR created_at <= ${p_to}::timestamp)
             GROUP BY COALESCE(metadata->>'model', 'unknown')
             ORDER BY total_cost DESC
             LIMIT ${p_limit}
-        `))
+        `)
         return (result.rows as Record<string, unknown>[]) || []
     } catch (error) {
         console.error('[RPC] aggregateModelStats error:', error)
