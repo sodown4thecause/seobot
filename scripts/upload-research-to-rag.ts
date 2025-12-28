@@ -600,6 +600,7 @@ async function uploadChunks() {
     console.log(`   - Content writer: ${researchChunks.filter(c => c.agent_type === 'content_writer').length}`)
 
     let successCount = 0
+    let skippedCount = 0
     let errorCount = 0
 
     for (let i = 0; i < researchChunks.length; i++) {
@@ -608,27 +609,52 @@ async function uploadChunks() {
         console.log(`   Agent type: ${chunk.agent_type}`)
 
         try {
+            // Check if chunk already exists using the unique key (title, agent_type, metadata->source)
+            const { data: existingChunk } = await supabase
+                .from('agent_documents')
+                .select('id')
+                .eq('title', chunk.title)
+                .eq('agent_type', chunk.agent_type)
+                .eq('metadata->>source', chunk.metadata.source)
+                .maybeSingle()
+
+            if (existingChunk) {
+                console.log(`   ⏭️  Skipped (already exists)`)
+                skippedCount++
+                // Still respect rate limiting even for skipped items
+                await new Promise(resolve => setTimeout(resolve, 200))
+                continue
+            }
+
             // Generate embedding for title + content combined
             const textToEmbed = `${chunk.title}\n\n${chunk.content}`
             console.log(`   Generating embedding (${textToEmbed.length} chars)...`)
             const embedding = await generateEmbedding(textToEmbed)
             console.log(`   ✓ Embedding generated (${embedding.length} dimensions)`)
 
-            // Insert into agent_documents
+            // Insert into agent_documents with upsert behavior
+            // Note: This uses ignoreDuplicates to handle race conditions
             const { data, error } = await supabase
                 .from('agent_documents')
-                .insert({
+                .upsert({
                     title: chunk.title,
                     content: chunk.content,
                     agent_type: chunk.agent_type,
                     embedding: embedding,
                     metadata: chunk.metadata,
+                }, {
+                    onConflict: 'title,agent_type',
+                    ignoreDuplicates: true,
                 })
                 .select()
 
             if (error) {
                 console.error(`   ❌ Insert error:`, error.message)
                 errorCount++
+            } else if (!data || data.length === 0) {
+                // Upsert returned no data = duplicate was ignored
+                console.log(`   ⏭️  Skipped (duplicate detected during insert)`)
+                skippedCount++
             } else {
                 console.log(`   ✓ Inserted successfully`)
                 successCount++
@@ -645,6 +671,7 @@ async function uploadChunks() {
     console.log('\n' + '='.repeat(50))
     console.log('📊 Upload Complete!')
     console.log(`   ✓ Success: ${successCount}`)
+    console.log(`   ⏭️  Skipped: ${skippedCount}`)
     console.log(`   ❌ Errors: ${errorCount}`)
     console.log('='.repeat(50))
 

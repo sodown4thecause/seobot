@@ -280,7 +280,7 @@ export async function findRelevantFrameworks(
     if (searchResults.length === 0) {
       const duration = Date.now() - startTime
       console.log(`[RAG] No results found (${duration}ms)`)
-      
+
       // Try with lower threshold
       if (threshold > CONFIG.fallbackThreshold) {
         console.log('[RAG] Retrying with lower threshold...')
@@ -289,7 +289,7 @@ export async function findRelevantFrameworks(
           threshold: CONFIG.fallbackThreshold,
         })
       }
-      
+
       return []
     }
 
@@ -355,7 +355,7 @@ export function formatFrameworksForPrompt(frameworks: Framework[]): string {
     const num = index + 1
 
     sections.push(`${num}. **${framework.name}** (${framework.category.toUpperCase()})`)
-    
+
     // When to use
     if (framework.structure.use_cases?.length > 0) {
       sections.push(`   When to use: ${framework.structure.use_cases.slice(0, 2).join('; ')}`)

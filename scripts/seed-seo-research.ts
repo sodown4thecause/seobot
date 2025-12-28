@@ -2,28 +2,16 @@
  * Seed additional SEO/AEO research documents from the comprehensive research file
  * This adds more detailed chunks for better RAG retrieval
  * Run: npx tsx scripts/seed-seo-research.ts
+ * 
+ * NOTE: This script requires Neon database and Drizzle ORM migration.
+ * Currently stubbed to indicate not implemented.
  */
 
-import { createClient } from '@supabase/supabase-js'
-import { embed } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
-import * as dotenv from 'dotenv'
-
-dotenv.config({ path: '.env.local' })
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const openaiApiKey = process.env.OPENAI_API_KEY || process.env.AI_GATEWAY_API_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-const openai = createOpenAI({ apiKey: openaiApiKey })
+const NOT_IMPLEMENTED = '[SEO Research Seeder] Script not implemented - requires Neon + Drizzle migration'
 
 async function generateEmbedding(text: string): Promise<number[]> {
-  const { embedding } = await embed({
-    model: openai.textEmbeddingModel('text-embedding-3-small'),
-    value: text,
-  })
-  return embedding
+  console.warn(NOT_IMPLEMENTED)
+  return []
 }
 
 // Additional research chunks from SEO_AEO Chatbot RAG Content Research.md

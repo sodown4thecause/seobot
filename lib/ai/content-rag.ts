@@ -18,6 +18,9 @@ import { searchAgentDocuments } from '@/lib/db/vector-search'
  * Retrieve relevant agent documents using Neon/Drizzle vector search
  * Uses OpenAI text-embedding-3-small (1536 dimensions)
  */
+import { db, writingFrameworks } from '@/lib/db'
+import { sql, gt, desc } from 'drizzle-orm'
+
 export async function retrieveAgentDocuments(
   topic: string,
   agentType: string = 'content_writer',

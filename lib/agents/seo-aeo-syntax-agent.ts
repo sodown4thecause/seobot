@@ -40,6 +40,7 @@ export interface SEOAEOSyntaxParams {
   userId?: string
   langfuseTraceId?: string // For grouping spans under a parent trace
   sessionId?: string // For Langfuse session tracking
+  abortSignal?: AbortSignal // Optional: signal to abort syntax optimization
 }
 
 export interface SEOAEOSyntaxResult {

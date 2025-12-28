@@ -1,6 +1,6 @@
 import 'server-only'
 import { Buffer } from 'node:buffer'
-import { generateObject, generateText, experimental_generateImage as generateImage } from 'ai'
+import { generateObject, generateText } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
@@ -159,90 +159,6 @@ Return only the enhanced prompt, no explanations.`
 }
 
 /**
- * Generate images using OpenAI DALL-E 3
- */
-export async function generateImageWithOpenAI(
-  options: ImageGenerationOptions
-): Promise<GeneratedImage[]> {
-  try {
-    // Enhance prompt if article context is provided
-    let finalPrompt = options.prompt
-    if (options.articleContext) {
-      finalPrompt = await enhanceImagePrompt(options.prompt, options.articleContext, options.style)
-    }
-
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${serverEnv.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: finalPrompt,
-        n: Math.min(options.numberOfImages || 1, 1), // DALL-E 3 only supports n=1
-        size: options.size || '1024x1024',
-        quality: options.quality || 'standard',
-        style: options.style === 'realistic' ? 'natural' : 'vivid',
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`)
-    }
-
-    const data = await response.json()
-    
-    const generatedImages: GeneratedImage[] = []
-    
-    for (const image of data.data) {
-      // Download image and store in Supabase
-      const imageResponse = await fetch(image.url)
-      const imageBuffer = await imageResponse.arrayBuffer()
-      const fileName = `generated/${Date.now()}-${Math.random().toString(36).substring(7)}.png`
-      
-      const { data: uploadData, error: uploadError } = await getSupabase().storage
-        .from('article-images')
-        .upload(fileName, imageBuffer, {
-          contentType: 'image/png',
-          cacheControl: '31536000', // 1 year cache
-        })
-
-      if (uploadError) {
-        console.error('Failed to upload image to Supabase:', uploadError)
-        continue
-      }
-
-      const { data: { publicUrl } } = getSupabase().storage
-        .from('article-images')
-        .getPublicUrl(fileName)
-
-      // Generate alt text using AI
-      const altText = await generateAltText(finalPrompt, options.articleContext)
-
-      generatedImages.push({
-        id: uploadData.path,
-        url: publicUrl,
-        altText,
-        caption: generateImageCaption(finalPrompt, options.style),
-        metadata: {
-          prompt: finalPrompt,
-          style: options.style || 'realistic',
-          size: options.size || '1024x1024',
-          provider: 'openai-dalle3',
-          generatedAt: new Date().toISOString(),
-        }
-      })
-    }
-
-    return generatedImages
-  } catch (error) {
-    console.error('Failed to generate image with OpenAI:', error)
-    throw error
-  }
-}
-
-/**
  * Generate alt text for accessibility and SEO
  */
 async function generateAltText(
@@ -299,34 +215,6 @@ function generateImageCaption(prompt: string, style?: string): string {
 }
 
 /**
- * Generate multiple images with different styles for A/B testing
- */
-export async function generateImageVariations(
-  basePrompt: string,
-  articleContext: ImageGenerationOptions['articleContext']
-): Promise<GeneratedImage[]> {
-  const styles: Array<ImageGenerationOptions['style']> = ['realistic', 'illustration', 'infographic']
-  const allImages: GeneratedImage[] = []
-
-  for (const style of styles) {
-    try {
-      const images = await generateImageWithOpenAI({
-        prompt: basePrompt,
-        style,
-        size: '1024x1024',
-        numberOfImages: 1,
-        articleContext
-      })
-      allImages.push(...images)
-    } catch (error) {
-      console.error(`Failed to generate ${style} image:`, error)
-    }
-  }
-
-  return allImages
-}
-
-/**
  * Search for similar existing images before generating new ones
  */
 export async function searchSimilarImages(
@@ -338,29 +226,14 @@ export async function searchSimilarImages(
   return []
 }
 
+// ============================================================================
+// GEMINI IMAGE GENERATION VIA VERCEL AI GATEWAY
+// ============================================================================
+
 /**
- * Get image generation cost estimate
+ * Generate image using Gemini via Vercel AI Gateway
+ * Primary method for image generation in the platform
  */
-export function getImageGenerationCost(
-  numberOfImages: number,
-  quality: 'standard' | 'hd' = 'standard',
-  size: string = '1024x1024'
-): number {
-  // OpenAI DALL-E 3 pricing (as of 2024)
-  const baseCost = quality === 'hd' ? 0.08 : 0.04
-
-  // Adjust for size
-  const sizeMultiplier = {
-    '1024x1024': 1,
-    '1792x1024': 1.5,
-    '1024x1792': 1.5,
-    '512x512': 0.5,
-    '256x256': 0.25
-  }
-
-  return numberOfImages * baseCost * (sizeMultiplier[size as keyof typeof sizeMultiplier] || 1)
-}
-
 export async function generateImageWithGatewayGemini(
   options: GatewayGeminiImageOptions
 ): Promise<GatewayGeminiImageResponse> {
@@ -434,19 +307,19 @@ export async function generateImageWithGatewayGemini(
 }
 
 // ============================================================================
-// GEMINI 2.5 FLASH IMAGE GENERATION
+// GEMINI 2.5 FLASH IMAGE GENERATION (Direct API)
 // ============================================================================
 
 /**
- * Generate image using Google Gemini 2.5 Flash Image
- * Optimized for article writers who need custom images
+ * Generate image using Google Gemini 2.5 Flash Image (Direct API)
+ * Alternative method for image generation
  */
 export async function generateImageWithGemini(
   request: GeminiImageRequest
 ): Promise<GeminiGeneratedImage> {
   // Dynamic import for optional dependency
   const { GoogleGenAI } = await import('@google/genai')
-  
+
   try {
     const { prompt, size = 'medium', style = 'realistic', type = 'blog' } = request
 
@@ -489,7 +362,7 @@ export async function generateImageWithGemini(
     }
 
     const response = await ai.models.generateContent(req)
-    
+
     if (!response.candidates || response.candidates.length === 0) {
       throw new Error('No images were generated by Gemini')
     }
@@ -599,6 +472,140 @@ export async function generateImageVariationsWithGemini(
   )
 
   return successful
+}
+
+// ============================================================================
+// UNIFIED IMAGE GENERATION
+// ============================================================================
+
+/**
+ * Unified image generation function using Gemini via Vercel AI Gateway
+ * Recommended entry point for generating images in the RAG Writer Orchestrator
+ */
+export async function generateImage(options: {
+  prompt: string
+  geminiOptions?: Partial<GeminiImageRequest>
+  gatewayOptions?: Partial<GatewayGeminiImageOptions>
+  articleContext?: ImageGenerationOptions['articleContext']
+  useDirectApi?: boolean // If true, use direct Gemini API; otherwise use Gateway
+  userId?: string
+}): Promise<GeneratedImage> {
+  const { prompt, geminiOptions, gatewayOptions, articleContext, useDirectApi = false, userId } = options
+
+  // Enhance prompt if article context is provided
+  let finalPrompt = prompt
+  if (articleContext) {
+    // Map gemini styles to enhanceImagePrompt styles
+    const styleMap: Record<string, 'realistic' | 'infographic' | 'diagram' | 'illustration' | 'abstract'> = {
+      realistic: 'realistic',
+      artistic: 'abstract',
+      illustrated: 'illustration',
+      photographic: 'realistic',
+      infographic: 'infographic',
+      diagram: 'diagram',
+      illustration: 'illustration',
+      abstract: 'abstract'
+    }
+    const mappedStyle = styleMap[geminiOptions?.style || 'realistic'] || 'realistic'
+    finalPrompt = await enhanceImagePrompt(prompt, articleContext, mappedStyle)
+  }
+
+  if (useDirectApi) {
+    // Use direct Gemini API
+    const geminiImage = await generateImageWithGemini({
+      prompt: finalPrompt,
+      size: geminiOptions?.size || 'medium',
+      style: geminiOptions?.style || 'realistic',
+      type: geminiOptions?.type || 'blog',
+    })
+
+    // Convert Uint8Array to base64 for storage
+    const base64 = Buffer.from(geminiImage.data).toString('base64')
+    const fileName = `generated/gemini-${Date.now()}-${Math.random().toString(36).substring(7)}.png`
+
+    // Upload to Supabase storage
+    const supabase = await getSupabase()
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('article-images')
+      .upload(fileName, geminiImage.data, {
+        contentType: geminiImage.mediaType,
+        cacheControl: '31536000', // 1 year cache
+      })
+
+    if (uploadError) {
+      console.error('Failed to upload image to Supabase:', uploadError)
+      throw new Error(`Failed to upload image: ${uploadError.message}`)
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('article-images')
+      .getPublicUrl(fileName)
+
+    return {
+      id: geminiImage.id,
+      url: publicUrl,
+      altText: await generateAltText(finalPrompt, articleContext),
+      caption: generateImageCaption(prompt, geminiOptions?.style || 'realistic'),
+      metadata: {
+        prompt: geminiImage.prompt,
+        style: geminiOptions?.style || 'realistic',
+        size: 'medium',
+        provider: 'gemini-2.5-flash-image',
+        generatedAt: new Date(geminiImage.timestamp).toISOString(),
+      }
+    }
+  } else {
+    // Use Vercel AI Gateway (default)
+    const gatewayResult = await generateImageWithGatewayGemini({
+      prompt: finalPrompt,
+      size: gatewayOptions?.size || '1024x1024',
+      aspectRatio: gatewayOptions?.aspectRatio,
+      n: gatewayOptions?.n || 1,
+      seed: gatewayOptions?.seed,
+      abortTimeoutMs: gatewayOptions?.abortTimeoutMs,
+    })
+
+    if (!gatewayResult.images.length) {
+      throw new Error('No images generated')
+    }
+
+    const image = gatewayResult.images[0]!
+
+    // Upload to Supabase storage
+    const imageBuffer = Buffer.from(image.base64, 'base64')
+    const fileName = `generated/gemini-gateway-${Date.now()}-${Math.random().toString(36).substring(7)}.png`
+
+    const supabase = await getSupabase()
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('article-images')
+      .upload(fileName, imageBuffer, {
+        contentType: image.mediaType,
+        cacheControl: '31536000', // 1 year cache
+      })
+
+    if (uploadError) {
+      console.error('Failed to upload image to Supabase:', uploadError)
+      throw new Error(`Failed to upload image: ${uploadError.message}`)
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('article-images')
+      .getPublicUrl(fileName)
+
+    return {
+      id: image.id,
+      url: publicUrl,
+      altText: await generateAltText(finalPrompt, articleContext),
+      caption: generateImageCaption(prompt, geminiOptions?.style || 'realistic'),
+      metadata: {
+        prompt: finalPrompt,
+        style: geminiOptions?.style || 'realistic',
+        size: gatewayOptions?.size || '1024x1024',
+        provider: 'gemini-gateway',
+        generatedAt: new Date().toISOString(),
+      }
+    }
+  }
 }
 
 // SEOPrompts is now exported from image-generation-types.ts
