@@ -1,8 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenAI } from 'openai'
 import { PDFParse } from 'pdf-parse'
 import { serverEnv } from '@/lib/config/env'
+import { requireUserId } from '@/lib/auth/clerk'
+// import { db } from '@/lib/db'
+// import knowledge tables when implemented
 
 export const runtime = 'nodejs' // Need Node.js runtime for file processing
 
@@ -42,12 +44,7 @@ function getFileType(file: File): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await requireUserId()
 
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -72,56 +69,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid table name' }, { status: 400 })
     }
 
-    // Extract text from file
-    console.log('[Admin] Extracting text from file:', file.name)
-    const content = await extractText(file)
-
-    if (!content || content.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Could not extract text from file' },
-        { status: 400 }
-      )
-    }
-
-    // Generate embedding using OpenAI
-    console.log('[Admin] Generating embedding...')
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-ada-002',
-      input: content.substring(0, 8000), // Limit to 8000 chars for embedding
-    })
-
-    const embedding = embeddingResponse.data[0].embedding
-
-    // Store in Supabase
-    console.log('[Admin] Storing in database:', tableName)
-    const { data, error } = await supabase
-      .from(tableName)
-      .insert({
-        user_id: user.id,
-        title,
-        content,
-        file_type: getFileType(file),
-        embedding,
-        metadata: {
-          original_filename: file.name,
-          file_size: file.size,
-          uploaded_at: new Date().toISOString(),
-        },
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('[Admin] Database error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    console.log('[Admin] Document uploaded successfully:', data.id)
-
+    // TODO: Implement knowledge tables in schema
     return NextResponse.json({
-      success: true,
-      document: data,
+      success: false,
+      message: 'Knowledge upload not yet implemented - tables missing from schema'
     })
+    
+    // Extract text from file
+    // console.log('[Admin] Extracting text from file:', file.name)
+    // const content = await extractText(file)
+    
+    // if (!content || content.trim().length === 0) {
+    //   return NextResponse.json(
+    //     { error: 'Could not extract text from file' },
+    //     { status: 400 }
+    //   )
+    // }
+    
+    // // Generate embedding using OpenAI
+    // console.log('[Admin] Generating embedding...')
+    // const embeddingResponse = await openai.embeddings.create({
+    //   model: 'text-embedding-ada-002',
+    //   input: content.substring(0, 8000), // Limit to 8000 chars for embedding
+    // })
+    
+    // const embedding = embeddingResponse.data[0].embedding
+    
+    // // Store in database
+    // console.log('[Admin] Storing in database:', tableName)
+    // const [data] = await db
+    //   .insert(knowledgeTable)
+    //   .values({
+    //     userId,
+    //     title,
+    //     content,
+    //     fileType: getFileType(file),
+    //     embedding,
+    //     metadata: {
+    //       originalFilename: file.name,
+    //       fileSize: file.size,
+    //       uploadedAt: new Date().toISOString(),
+    //     },
+    //   })
+    //   .returning()
+    
+    // console.log('[Admin] Document uploaded successfully:', data.id)
+    
+    // return NextResponse.json({
+    //   success: true,
+    //   document: data,
+    // })
   } catch (error) {
     console.error('[Admin] Upload error:', error)
     return NextResponse.json(

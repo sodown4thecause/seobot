@@ -159,29 +159,8 @@ export class FraseOptimizationAgent {
           country: params.country,
         }
 
-      // Log MCP usage if available
-      let serpResult: any
-      try {
-        const { withMCPLogging } = await import('@/lib/analytics/mcp-logger')
-        serpResult = await withMCPLogging(
-          {
-            userId: params.userId,
-            provider: 'other' as any, // Frase is external API
-            endpoint: 'process_serp',
-            agentType: 'frase_optimization',
-          },
-          () => this.makeAPIRequest(endpoint, requestBody)
-        )
-      } catch (importError) {
-        // Only catch MCP logger import failures, not API failures
-        if (importError instanceof Error && importError.message.includes('Cannot find module')) {
-          console.warn('[Frase Agent] MCP logger unavailable, proceeding without logging')
-          serpResult = await this.makeAPIRequest(endpoint, requestBody)
-        } else {
-          // Re-throw API errors
-          throw importError
-        }
-      }
+      // Make API request directly without MCP logging
+      const serpResult = await this.makeAPIRequest(endpoint, requestBody)
 
       console.log('[Frase Agent] SERP processing complete')
       return serpResult
@@ -735,55 +714,20 @@ export class FraseOptimizationAgent {
     try {
       const endpoint = `${this.baseUrl}/documents/${documentId}`
 
-      let result: any
-      try {
-        const { withMCPLogging } = await import('@/lib/analytics/mcp-logger')
-        result = await withMCPLogging(
-          {
-            userId,
-            provider: 'other' as any, // Frase is external API
-            endpoint: 'get_document',
-            agentType: 'frase_optimization',
-          },
-          async () => {
-            const response = await fetch(endpoint, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json',
-              },
-            })
+      // Make API request directly without MCP logging
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      })
 
-            if (!response.ok) {
-              throw new Error(`Frase API error (${response.status})`)
-            }
-
-            return await response.json()
-          }
-        )
-      } catch (importError) {
-        // Only catch MCP logger import failures, not API failures
-        if (importError instanceof Error && importError.message.includes('Cannot find module')) {
-          console.warn('[Frase Agent] MCP logger unavailable, proceeding without logging')
-          const response = await fetch(endpoint, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${this.apiKey}`,
-              'Content-Type': 'application/json',
-            },
-          })
-
-          if (!response.ok) {
-            throw new Error(`Frase API error (${response.status})`)
-          }
-
-          result = await response.json()
-        } else {
-          // Re-throw API errors
-          throw importError
-        }
+      if (!response.ok) {
+        throw new Error(`Frase API error (${response.status})`)
       }
 
+      const result = await response.json()
       console.log('[Frase Agent] Document retrieved successfully')
       return result
     } catch (error) {

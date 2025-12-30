@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { serverEnv, clientEnv } from '@/lib/config/env'
-import { createClient as createServerClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
 import { isAdmin } from '@/lib/auth/admin-check'
-
-const supabase = createClient(
-  clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-  serverEnv.SUPABASE_SERVICE_ROLE_KEY
-)
+import { db, auditEvents } from '@/lib/db'
+import { gte } from 'drizzle-orm'
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,23 +24,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const { error } = await supabase.from('audit_events').insert({
-      event_type: eventType,
-      session_id: sessionId,
-      brand_name: brandName || null,
+    await db.insert(auditEvents).values({
+      eventType,
+      sessionId,
+      brandName: brandName || null,
       url: url || null,
       email: email?.toLowerCase().trim() || null,
       score: score || null,
       grade: grade || null,
       properties: properties || {},
       referrer: referrer || null,
-      user_agent: userAgent || null,
+      userAgent: userAgent || null,
     })
-
-    if (error) {
-      console.error('[Audit Analytics] Database error:', error)
-      return NextResponse.json({ error: 'Failed to track event' }, { status: 500 })
-    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -58,15 +48,10 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Check admin authentication
-    const supabaseAuth = await createServerClient()
-    const { data: { user } } = await supabaseAuth.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await requireUserId()
 
     // Check admin access
-    const admin = await isAdmin(user.id)
+    const admin = await isAdmin(userId)
     if (!admin) {
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
     }
@@ -78,19 +63,15 @@ export async function GET(request: NextRequest) {
     since.setDate(since.getDate() - days)
 
     // Get event counts by type
-    const { data: events, error } = await supabase
-      .from('audit_events')
-      .select('event_type')
-      .gte('created_at', since.toISOString())
-
-    if (error) {
-      return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 })
-    }
+    const events = await db
+      .select()
+      .from(auditEvents)
+      .where(gte(auditEvents.createdAt, since))
 
     // Count events by type
-    const counts = events?.reduce(
+    const counts = events.reduce(
       (acc, event) => {
-        acc[event.event_type] = (acc[event.event_type] || 0) + 1
+        acc[event.eventType] = (acc[event.eventType] || 0) + 1
         return acc
       },
       {} as Record<string, number>

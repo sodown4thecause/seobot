@@ -120,24 +120,15 @@ export class EnhancedResearchAgent {
       // Step 2: Get SERP data for competitor analysis
       let serpData: EnhancedResearchResult['serpData'] | undefined
       try {
-        const { withMCPLogging } = await import('@/lib/analytics/mcp-logger');
-        const serpResult = await withMCPLogging(
-          {
-            userId: params.userId,
-            provider: 'dataforseo',
-            endpoint: 'serp_organic_live_advanced',
-            agentType: 'enhanced_research',
-          },
-          () => executeTool(mcpDataforseoTools.serp_organic_live_advanced, {
-            keyword: params.targetKeyword,
-            language_code: params.languageCode || 'en',
-            location_name: params.location || 'United States',
-            search_engine: 'google',
-            depth: 10,
-            max_crawl_pages: 1,
-            device: 'desktop',
-          })
-        )
+        const serpResult = await executeTool(mcpDataforseoTools.serp_organic_live_advanced, {
+          keyword: params.targetKeyword,
+          language_code: params.languageCode || 'en',
+          location_name: params.location || 'United States',
+          search_engine: 'google',
+          depth: 10,
+          max_crawl_pages: 1,
+          device: 'desktop',
+        })
 
         const serpParsed = typeof serpResult === 'string' ? JSON.parse(serpResult) : serpResult
         if (serpParsed && serpParsed.tasks && serpParsed.tasks[0]?.result) {
@@ -166,19 +157,10 @@ export class EnhancedResearchAgent {
 
         const scrapePromises = topUrls.map(async (url) => {
           try {
-            const { withMCPLogging } = await import('@/lib/analytics/mcp-logger');
-            const scrapeResult = await withMCPLogging(
-              {
-                userId: params.userId,
-                provider: 'firecrawl',
-                endpoint: 'firecrawl_scrape',
-                agentType: 'enhanced_research',
-              },
-              () => executeTool(mcpFirecrawlTools.firecrawl_scrape, {
-                url,
-                formats: ['markdown'] as const,
-              })
-            )
+            const scrapeResult = await executeTool(mcpFirecrawlTools.firecrawl_scrape, {
+              url,
+              formats: ['markdown'] as const,
+            })
 
             const scrapeParsed = typeof scrapeResult === 'string' ? JSON.parse(scrapeResult) : scrapeResult
             if (scrapeParsed && scrapeParsed.data?.markdown) {

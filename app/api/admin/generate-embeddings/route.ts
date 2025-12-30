@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { generateEmbedding } from '@/lib/ai/embeddings'
 import { requireAdminMiddleware } from '@/lib/auth/admin-middleware'
-import { NextRequest } from 'next/server'
+import { db } from '@/lib/db'
+import { agentDocuments } from '@/lib/db/schema'
+import { isNull, eq, sql } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
   // Check admin access
@@ -14,18 +15,16 @@ export async function POST(req: NextRequest) {
   try {
     console.log('[Embedding Generator] Starting...')
     
-    const supabase = await createClient()
-    
     // Get all documents without embeddings
-    const { data: documents, error } = await supabase
-      .from('agent_documents')
-      .select('id, title, content, agent_type')
-      .is('embedding', null)
-    
-    if (error) {
-      console.error('[Embedding Generator] Error fetching documents:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    const documents = await db
+      .select({
+        id: agentDocuments.id,
+        title: agentDocuments.title,
+        content: agentDocuments.content,
+        agentType: agentDocuments.agentType,
+      })
+      .from(agentDocuments)
+      .where(isNull(agentDocuments.embedding))
     
     if (!documents || documents.length === 0) {
       return NextResponse.json({ 
@@ -48,27 +47,20 @@ export async function POST(req: NextRequest) {
         const embedding = await generateEmbedding(doc.content)
         
         // Update the document with the embedding
-        const { error: updateError } = await supabase
-          .from('agent_documents')
-          .update({ embedding, updated_at: new Date().toISOString() })
-          .eq('id', doc.id)
+        await db
+          .update(agentDocuments)
+          .set({ 
+            embedding, 
+            updatedAt: new Date() 
+          })
+          .where(eq(agentDocuments.id, doc.id))
         
-        if (updateError) {
-          console.error(`[Embedding Generator] Failed to update ${doc.title}:`, updateError)
-          failCount++
-          results.push({
-            title: doc.title,
-            status: 'failed',
-            error: updateError.message
-          })
-        } else {
-          console.log(`[Embedding Generator] ✓ Generated embedding for: ${doc.title}`)
-          successCount++
-          results.push({
-            title: doc.title,
-            status: 'success'
-          })
-        }
+        console.log(`[Embedding Generator] ✓ Generated embedding for: ${doc.title}`)
+        successCount++
+        results.push({
+          title: doc.title,
+          status: 'success'
+        })
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 200))
@@ -111,24 +103,25 @@ export async function GET(req: NextRequest) {
     return adminCheck
   }
   try {
-    const supabase = await createClient()
-    
     // Get count of documents without embeddings
-    const { count: withoutEmbeddings } = await supabase
-      .from('agent_documents')
-      .select('*', { count: 'exact', head: true })
-      .is('embedding', null)
+    const withoutEmbeddings = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(agentDocuments)
+      .where(isNull(agentDocuments.embedding))
     
     // Get total count
-    const { count: total } = await supabase
-      .from('agent_documents')
-      .select('*', { count: 'exact', head: true })
+    const total = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(agentDocuments)
+    
+    const withoutCount = withoutEmbeddings[0]?.count || 0
+    const totalCount = total[0]?.count || 0
     
     return NextResponse.json({
-      total: total || 0,
-      withoutEmbeddings: withoutEmbeddings || 0,
-      withEmbeddings: (total || 0) - (withoutEmbeddings || 0),
-      needsGeneration: (withoutEmbeddings || 0) > 0
+      total: totalCount,
+      withoutEmbeddings: withoutCount,
+      withEmbeddings: totalCount - withoutCount,
+      needsGeneration: withoutCount > 0
     })
     
   } catch (error: any) {

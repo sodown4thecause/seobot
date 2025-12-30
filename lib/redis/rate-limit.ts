@@ -8,7 +8,7 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { NextRequest } from 'next/server'
 import { getRedisClient } from './client'
-import { createClient } from '@/lib/supabase/server'
+import { getUserId } from '@/lib/auth/clerk'
 import { trackAPICall } from '@/lib/analytics/api-tracker'
 
 // Configure rate limits for different endpoints
@@ -183,12 +183,11 @@ async function getClientIdentifier(req: NextRequest, userId?: string | null): Pr
     return `user:${userId}`
   }
 
-  // Try to get user from Supabase auth if not provided
+  // Try to get user from Clerk auth if not provided
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user?.id) {
-      return `user:${user.id}`
+    const clerkUserId = await getUserId()
+    if (clerkUserId) {
+      return `user:${clerkUserId}`
     }
   } catch (error) {
     // Auth check failed, fall back to IP

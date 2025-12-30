@@ -2,7 +2,7 @@ import { streamText } from 'ai';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
 import { z } from 'zod';
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit';
-import { createClient } from '@/lib/supabase/server';
+import { getUserId } from '@/lib/auth/clerk';
 import { handleApiError } from '@/lib/errors/handlers';
 import { createTelemetryConfig } from '@/lib/observability/langfuse';
 
@@ -11,11 +11,10 @@ export const runtime = 'edge';
 export async function POST(req: Request) {
   try {
     // Get user for rate limiting
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const userId = await getUserId();
 
     // Check rate limit for content generation
-    const rateLimitResponse = await rateLimitMiddleware(req as any, 'CONTENT_GENERATION', user?.id);
+    const rateLimitResponse = await rateLimitMiddleware(req as any, 'CONTENT_GENERATION', userId || undefined);
     if (rateLimitResponse) {
       return rateLimitResponse;
     }
@@ -42,7 +41,7 @@ export async function POST(req: Request) {
       prompt: systemPrompt,
       system: 'You are a professional content writer.',
       experimental_telemetry: createTelemetryConfig('content-generate-api', {
-        userId: user?.id,
+        userId,
         sessionId, // Langfuse session tracking for content generation
         topic,
         contentType: type,
