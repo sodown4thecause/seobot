@@ -94,25 +94,26 @@ export class ContentWriterAgent {
               ),
             })
 
+            // TODO: Re-implement usage logging with Drizzle ORM
             // Log usage
-            if (params.userId) {
-              try {
-                const { logAIUsage } = await import('@/lib/analytics/usage-logger');
-                await logAIUsage({
-                  userId: params.userId,
-                  agentType: 'content_writer',
-                  model: 'anthropic/claude-haiku-4.5',
-                  promptTokens: usage?.inputTokens || 0,
-                  completionTokens: usage?.outputTokens || 0,
-                  metadata: {
-                    content_type: params.type,
-                    topic: params.topic,
-                  },
-                });
-              } catch (error) {
-                console.error('[Content Writer] Error logging usage:', error);
-              }
-            }
+            // if (params.userId) {
+            //   try {
+            //     const { logAIUsage } = await import('@/lib/analytics/usage-logger');
+            //     await logAIUsage({
+            //       userId: params.userId,
+            //       agentType: 'content_writer',
+            //       model: 'anthropic/claude-haiku-4.5',
+            //       promptTokens: usage?.inputTokens || 0,
+            //       completionTokens: usage?.outputTokens || 0,
+            //       metadata: {
+            //         content_type: params.type,
+            //         topic: params.topic,
+            //       },
+            //     });
+            //   } catch (error) {
+            //     console.error('[Content Writer] Error logging usage:', error);
+            //   }
+            // }
 
             console.log('[Content Writer] ✓ Content generated')
 

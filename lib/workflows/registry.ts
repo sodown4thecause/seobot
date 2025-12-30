@@ -1,41 +1,39 @@
-// Workflow Registry - All available workflows
+/**
+ * Workflow Registry
+ * TODO: Re-implement with Drizzle ORM
+ */
 
-import { Workflow } from './types'
-import { rankOnChatGPTWorkflow } from './definitions/rank-on-chatgpt'
-import { aeoComprehensiveAuditWorkflow } from './definitions/aeo-comprehensive-audit'
-import { aeoCitationOptimizationWorkflow } from './definitions/aeo-citation-optimization'
-import { aeoMultiPlatformOptimizationWorkflow } from './definitions/aeo-multi-platform-optimization'
-import { competitorAnalysisWorkflow } from './definitions/competitor-analysis'
-import { rankingCampaignWorkflow } from './definitions/ranking-campaign'
-import { linkBuildingCampaignWorkflow } from './definitions/link-building-campaign'
-import { technicalSEOAuditWorkflow } from './definitions/technical-seo-audit'
-import { localSEOCampaignWorkflow } from './definitions/local-seo-campaign'
+import type { Workflow } from './types'
 
-export const workflows: Record<string, Workflow> = {
-  'rank-on-chatgpt': rankOnChatGPTWorkflow,
-  'aeo-comprehensive-audit': aeoComprehensiveAuditWorkflow,
-  'aeo-citation-optimization': aeoCitationOptimizationWorkflow,
-  'aeo-multi-platform-optimization': aeoMultiPlatformOptimizationWorkflow,
-  'competitor-analysis': competitorAnalysisWorkflow,
-  'ranking-campaign': rankingCampaignWorkflow,
-  'link-building-campaign': linkBuildingCampaignWorkflow,
-  'technical-seo-audit': technicalSEOAuditWorkflow,
-  'local-seo-campaign': localSEOCampaignWorkflow,
+/**
+ * Register a new workflow
+ * @deprecated Workflows are temporarily disabled during NextPhase migration
+ */
+export function registerWorkflow(workflow: Workflow): void {
+  console.log('[Workflows] Workflow registration disabled during NextPhase migration:', workflow.name)
 }
 
-export function getWorkflow(id: string): Workflow | undefined {
-  return workflows[id]
+/**
+ * Get a registered workflow
+ * @deprecated Workflows are temporarily disabled during NextPhase migration
+ */
+export function getWorkflow(workflowId: string): Workflow | null {
+  console.warn('[Workflows] Workflow retrieval disabled during NextPhase migration')
+  return null
 }
 
+/**
+ * List all registered workflows
+ * @deprecated Workflows are temporarily disabled during NextPhase migration
+ */
+export function listWorkflows(): Workflow[] {
+  return []
+}
+
+/**
+ * Alias for listWorkflows for compatibility
+ * @deprecated Workflows are temporarily disabled during NextPhase migration
+ */
 export function getAllWorkflows(): Workflow[] {
-  return Object.values(workflows)
+  return listWorkflows()
 }
-
-export function getWorkflowsByCategory(category: string): Workflow[] {
-  return Object.values(workflows).filter((w) => w.category === category)
-}
-
-export function getWorkflowsByTag(tag: string): Workflow[] {
-  return Object.values(workflows).filter((w) => w.tags.includes(tag))
-}
-

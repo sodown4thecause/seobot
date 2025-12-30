@@ -133,25 +133,26 @@ export class EEATQAAgent {
         }),
       })
 
+      // TODO: Re-implement usage logging with Drizzle ORM
       // Log usage
-      if (params.userId) {
-        try {
-          const { logAIUsage } = await import('@/lib/analytics/usage-logger');
-          await logAIUsage({
-            userId: params.userId,
-            agentType: 'eeat_qa',
-            model: 'google/gemini-2.5-pro-preview-06-05',
-            promptTokens: (usage as any)?.promptTokens || (usage as any)?.inputTokens || 0,
-            completionTokens: (usage as any)?.completionTokens || (usage as any)?.outputTokens || 0,
-            metadata: {
-              topic: params.topic,
-              objectiveMetrics,
-            },
-          });
-        } catch (error) {
-          console.error('[EEAT QA Agent] Error logging usage:', error);
-        }
-      }
+      // if (params.userId) {
+      //   try {
+      //     const { logAIUsage } = await import('@/lib/analytics/usage-logger');
+      //     await logAIUsage({
+      //       userId: params.userId,
+      //       agentType: 'eeat_qa',
+      //       model: 'google/gemini-2.5-pro-preview-06-05',
+      //       promptTokens: (usage as any)?.promptTokens || (usage as any)?.inputTokens || 0,
+      //       completionTokens: (usage as any)?.completionTokens || (usage as any)?.outputTokens || 0,
+      //       metadata: {
+      //         topic: params.topic,
+      //         objectiveMetrics,
+      //       },
+      //     });
+      //   } catch (error) {
+      //     console.error('[EEAT QA Agent] Error logging usage:', error);
+      //   }
+      // }
 
       // Step 3: Validate and adjust LLM scores against objective metrics
       const adjustedReport = this.validateAndAdjustScores(qaReport, objectiveMetrics)

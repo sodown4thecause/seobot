@@ -181,23 +181,24 @@ export class RAGWriterOrchestrator {
         }
 
         // Step 0.5: Fetch user's business context for personalized content
+        // TODO: Re-implement business profile context with Drizzle ORM
         checkAborted()
         let businessContext: { brandVoice?: any; profile?: any } = {}
-        if (params.userId) {
-          try {
-            const { getUserBusinessContext } = await import('@/lib/tools/business-profile-tools')
-            const context = await getUserBusinessContext(params.userId)
-            if (context.hasProfile) {
-              businessContext = {
-                brandVoice: context.brandVoice,
-                profile: context.profile,
-              }
-              console.log(`[Orchestrator] ✓ Loaded business context - Industry: ${context.profile?.industry || 'N/A'}`)
-            }
-          } catch (error) {
-            console.warn('[Orchestrator] Failed to load business context:', error)
-          }
-        }
+        // if (params.userId) {
+        //   try {
+        //     const { getUserBusinessContext } = await import('@/lib/tools/business-profile-tools')
+        //     const context = await getUserBusinessContext(params.userId)
+        //     if (context.hasProfile) {
+        //       businessContext = {
+        //         brandVoice: context.brandVoice,
+        //         profile: context.profile,
+        //       }
+        //       console.log(`[Orchestrator] ✓ Loaded business context - Industry: ${context.profile?.industry || 'N/A'}`)
+        //     }
+        //   } catch (error) {
+        //     console.warn('[Orchestrator] Failed to load business context:', error)
+        //   }
+        // }
 
         // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
         console.log('[Orchestrator] Phase 1: Research')

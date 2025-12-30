@@ -266,6 +266,57 @@ export const contentLearnings = pgTable('content_learnings', {
 })
 
 // ============================================================================
+// AUDIT & ANALYTICS TABLES
+// ============================================================================
+
+/**
+ * Audit Leads - Captured leads from audit tool
+ */
+export const auditLeads = pgTable('audit_leads', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: text('email').notNull(),
+    brandName: text('brand_name').notNull(),
+    url: text('url').notNull(),
+    score: integer('score'),
+    grade: text('grade'),
+    report: jsonb('report').$type<Json>(),
+    source: text('source').default('landing_page'),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+/**
+ * Audit Events - Analytics events from audit tool
+ */
+export const auditEvents = pgTable('audit_events', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventType: text('event_type').notNull(),
+    sessionId: text('session_id').notNull(),
+    brandName: text('brand_name'),
+    url: text('url'),
+    email: text('email'),
+    score: integer('score'),
+    grade: text('grade'),
+    properties: jsonb('properties').$type<Json>().default({}),
+    referrer: text('referrer'),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+/**
+ * Blocked IPs - Track blocked IP addresses
+ */
+export const blockedIps = pgTable('blocked_ips', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ipAddress: text('ip_address').notNull().unique(),
+    reason: text('reason').notNull(),
+    userId: text('user_id'),
+    blockedAt: timestamp('blocked_at').defaultNow().notNull(),
+})
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 

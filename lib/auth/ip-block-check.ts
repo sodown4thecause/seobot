@@ -3,7 +3,8 @@
  * Checks if an IP address is blocked from creating new accounts
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { db, blockedIps } from '@/lib/db'
+import { eq } from 'drizzle-orm'
 import { NextRequest } from 'next/server'
 
 /**
@@ -38,34 +39,22 @@ export async function isIpBlocked(ipAddress: string): Promise<{
   blockedAt?: Date
 }> {
   try {
-    const supabase = await createClient()
+    const [record] = await db
+      .select()
+      .from(blockedIps)
+      .where(eq(blockedIps.ipAddress, ipAddress))
+      .limit(1)
 
-    const { data, error } = await supabase
-      .from('blocked_ips')
-      .select('reason, blocked_at')
-      .eq('ip_address', ipAddress)
-      .single()
-
-    if (error && error.code === 'PGRST116') {
+    if (!record) {
       // No record found - IP is not blocked
       return { blocked: false }
     }
 
-    if (error) {
-      console.error('[IP Block Check] Error checking IP:', error)
-      // On error, allow the request (fail open)
-      return { blocked: false }
+    return {
+      blocked: true,
+      reason: record.reason,
+      blockedAt: record.blockedAt,
     }
-
-    if (data) {
-      return {
-        blocked: true,
-        reason: data.reason,
-        blockedAt: data.blocked_at ? new Date(data.blocked_at) : undefined,
-      }
-    }
-
-    return { blocked: false }
   } catch (error) {
     console.error('[IP Block Check] Error checking IP block:', error)
     // On error, allow the request (fail open)
@@ -82,24 +71,23 @@ export async function blockIp(
   userId?: string | null
 ): Promise<boolean> {
   try {
-    const supabase = await createClient()
-
     // Use upsert to handle duplicate IPs gracefully
-    const { error } = await supabase
-      .from('blocked_ips')
-      .upsert({
-        ip_address: ipAddress,
+    await db
+      .insert(blockedIps)
+      .values({
+        ipAddress,
         reason,
-        user_id: userId || null,
-        blocked_at: new Date().toISOString(),
-      }, {
-        onConflict: 'ip_address',
+        userId: userId || null,
+        blockedAt: new Date(),
       })
-
-    if (error) {
-      console.error('[IP Block Check] Error blocking IP:', error)
-      return false
-    }
+      .onConflictDoUpdate({
+        target: [blockedIps.ipAddress],
+        set: {
+          reason,
+          userId: userId || null,
+          blockedAt: new Date(),
+        }
+      })
 
     console.log(`[IP Block Check] ✓ Blocked IP: ${ipAddress} (reason: ${reason})`)
     return true

@@ -82,25 +82,26 @@ export class SEOAEOSyntaxAgent {
         }),
       })
 
+      // TODO: Re-implement usage logging with Drizzle ORM
       // Log usage
-      if (params.userId) {
-        try {
-          const { logAIUsage } = await import('@/lib/analytics/usage-logger')
-          await logAIUsage({
-            userId: params.userId,
-            agentType: 'seo_aeo_syntax',
-            model: 'google/gemini-2.5-flash',
-            promptTokens: (usage as any)?.promptTokens || (usage as any)?.inputTokens || 0,
-            completionTokens: (usage as any)?.completionTokens || (usage as any)?.outputTokens || 0,
-            metadata: {
-              primaryKeyword: params.primaryKeyword,
-              contentType: params.contentType,
-            },
-          })
-        } catch (error) {
-          console.error('[SEO/AEO Syntax Agent] Error logging usage:', error)
-        }
-      }
+      // if (params.userId) {
+      //   try {
+      //     const { logAIUsage } = await import('@/lib/analytics/usage-logger')
+      //     await logAIUsage({
+      //       userId: params.userId,
+      //       agentType: 'seo_aeo_syntax',
+      //       model: 'google/gemini-2.5-flash',
+      //       promptTokens: (usage as any)?.promptTokens || (usage as any)?.inputTokens || 0,
+      //       completionTokens: (usage as any)?.completionTokens || (usage as any)?.outputTokens || 0,
+      //       metadata: {
+      //         primaryKeyword: params.primaryKeyword,
+      //         contentType: params.contentType,
+      //       },
+      //     })
+      //   } catch (error) {
+      //     console.error('[SEO/AEO Syntax Agent] Error logging usage:', error)
+      //   }
+      // }
 
       console.log('[SEO/AEO Syntax Agent] ✓ Content optimized successfully')
       console.log(`[SEO/AEO Syntax Agent] Syntax report: H1=${result.syntaxReport.h1Present}, Question H2=${result.syntaxReport.h2QuestionHeading}, Valid Hierarchy=${result.syntaxReport.headingHierarchyValid}`)
