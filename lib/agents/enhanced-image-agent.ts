@@ -9,7 +9,6 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
-import { createAdminClient } from '@/lib/supabase/server'
 import { generateImageWithGatewayGemini } from '@/lib/ai/image-generation'
 import type {
   ArticleImageSet,
@@ -31,10 +30,6 @@ import type {
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
-
-function getSupabase() {
-  return createAdminClient()
-}
 
 /**
  * Enhanced Image Agent for generating complete article image sets
@@ -458,29 +453,9 @@ High quality, suitable for blog header.`
       throw new Error('Failed to generate hero image')
     }
 
-    // Upload to Supabase storage
-    const fileName = `hero/${Date.now()}-${this.slugify(params.topic)}.png`
-    const imageBuffer = Buffer.from(image.base64, 'base64')
-
-    const supabase = await getSupabase()
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('article-images')
-      .upload(fileName, imageBuffer, {
-        contentType: image.mediaType || 'image/png',
-        cacheControl: '31536000',
-      })
-
-    if (uploadError) {
-      throw new Error(`Failed to upload hero image: ${uploadError.message}`)
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('article-images')
-      .getPublicUrl(fileName)
-
     return {
-      id: uploadData.path,
-      url: publicUrl,
+      id: `hero-${Date.now()}`,
+      url: `data:image/png;base64,${image.base64}`,
       altText: `Hero image for ${params.topic}`,
       caption: `Featured image for ${params.topic}`,
       metadata: {
@@ -490,7 +465,7 @@ High quality, suitable for blog header.`
         provider: 'gemini-gateway',
         generatedAt: new Date().toISOString(),
       },
-      fileName,
+      fileName: `hero-${Date.now()}.png`,
       width: 1792,
       height: 1024,
       imageType: 'hero',
@@ -532,27 +507,10 @@ High quality, suitable for blog header.`
     }
 
     const fileName = `sections/${Date.now()}-${this.slugify(params.heading)}.png`
-    const imageBuffer = Buffer.from(image.base64, 'base64')
-
-    const supabase = await getSupabase()
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('article-images')
-      .upload(fileName, imageBuffer, {
-        contentType: image.mediaType || 'image/png',
-        cacheControl: '31536000',
-      })
-
-    if (uploadError) {
-      throw new Error(`Failed to upload section image: ${uploadError.message}`)
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('article-images')
-      .getPublicUrl(fileName)
 
     return {
-      id: uploadData.path,
-      url: publicUrl,
+      id: `section-${Date.now()}`,
+      url: `data:image/png;base64,${image.base64}`,
       altText: `Image illustrating ${params.heading}`,
       caption: params.heading,
       metadata: {
@@ -605,27 +563,10 @@ Clean, modern design with clear labels.`
     }
 
     const fileName = `infographics/${Date.now()}-${this.slugify(params.label)}.png`
-    const imageBuffer = Buffer.from(image.base64, 'base64')
-
-    const supabase = await getSupabase()
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('article-images')
-      .upload(fileName, imageBuffer, {
-        contentType: image.mediaType || 'image/png',
-        cacheControl: '31536000',
-      })
-
-    if (uploadError) {
-      throw new Error(`Failed to upload infographic: ${uploadError.message}`)
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('article-images')
-      .getPublicUrl(fileName)
 
     return {
-      id: uploadData.path,
-      url: publicUrl,
+      id: `infographic-${Date.now()}`,
+      url: `data:image/png;base64,${image.base64}`,
       altText: `Infographic showing ${params.label}`,
       caption: params.label,
       metadata: {
@@ -710,27 +651,10 @@ Eye-catching, shareable design optimized for social platforms.`
       }
 
       const fileName = `social/${platform}/${Date.now()}-${this.slugify(params.title)}.png`
-      const imageBuffer = Buffer.from(image.base64, 'base64')
-
-      const supabase = await getSupabase()
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('article-images')
-        .upload(fileName, imageBuffer, {
-          contentType: image.mediaType || 'image/png',
-          cacheControl: '31536000',
-        })
-
-      if (uploadError) {
-        throw new Error(`Failed to upload ${platform} image: ${uploadError.message}`)
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('article-images')
-        .getPublicUrl(fileName)
 
       return {
-        id: uploadData.path,
-        url: publicUrl,
+        id: `${platform}-${Date.now()}`,
+        url: `data:image/png;base64,${image.base64}`,
         altText: `${platform} image for ${params.title}`,
         caption: params.title,
         metadata: {

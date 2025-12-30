@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     
     return NextResponse.json({
       success: true,
-      message: 'Learning aggregation check complete (dynamic aggregation via Drizzle)',
+      message: 'Validated getBestPractices queries; aggregation performed in SQL',
       results: summary,
     });
   } catch (error) {

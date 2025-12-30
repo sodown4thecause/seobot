@@ -63,8 +63,8 @@ export interface Framework {
 
 const CONFIG = {
   defaultMaxResults: 3,
-  defaultThreshold: 0.5,
-  fallbackThreshold: 0.3, // If no results, try lower threshold
+  defaultThreshold: 0.7,
+  fallbackThreshold: 0.6, // If no results, try lower threshold
   cacheSize: 200,
   cacheTTL: 10 * 60 * 1000, // 10 minutes in milliseconds
   retrievalMultiplier: 2.5, // Fetch 2.5x more for re-ranking

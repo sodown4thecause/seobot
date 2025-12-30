@@ -354,8 +354,11 @@ const handler = async (req: Request) => {
             console.log('[RAG Writer Orchestrator Tool] 🚀 Starting execution with args:', args);
 
             // Check credit limit before expensive operation
-            const { checkCreditLimit } = await import('@/lib/usage/limit-check');
-            const limitCheck = await checkCreditLimit(user?.id);
+            if (!user?.id) {
+              return '❌ Authentication required. Please sign in to use this feature.';
+            }
+
+            const limitCheck = await checkCreditLimit(user.id, req as unknown as NextRequest);
 
             if (!limitCheck.allowed) {
               return `❌ Credit limit exceeded. ${limitCheck.reason || `You've used $${limitCheck.currentSpendUsd.toFixed(2)} of your $${limitCheck.limitUsd.toFixed(2)} monthly limit.`} Please contact support or wait until ${limitCheck.resetDate?.toLocaleDateString() || 'next month'} for your credits to reset.`;
@@ -447,47 +450,14 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
             abortTimeoutMs: args.abortTimeoutMs || 60000,
           });
 
-          console.log('[Chat API] Image generated, uploading to storage...');
+          console.log('[Chat API] Image generated, returning base64 URLs...');
 
-          // Upload images to Supabase storage to avoid payload size limits
-          const uploadedImages: { url: string; name: string; mediaType: string }[] = [];
-
-          for (let idx = 0; idx < response.images.length; idx++) {
-            const img = response.images[idx];
-            const fileName = `generated/${Date.now()}-${Math.random().toString(36).substring(7)}-${idx}.png`;
-
-            // Convert base64 to buffer
-            const imageBuffer = Buffer.from(img.base64, 'base64');
-
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('article-images')
-              .upload(fileName, imageBuffer, {
-                contentType: img.mediaType || 'image/png',
-                cacheControl: '31536000', // 1 year cache
-              });
-
-            if (uploadError) {
-              console.error('[Chat API] Failed to upload image to storage:', uploadError);
-              // Fall back to data URL (may still fail for large images)
-              uploadedImages.push({
-                url: img.dataUrl,
-                name: `image-${idx + 1}.png`,
-                mediaType: img.mediaType || 'image/png',
-              });
-              continue;
-            }
-
-            const { data: { publicUrl } } = supabase.storage
-              .from('article-images')
-              .getPublicUrl(fileName);
-
-            console.log('[Chat API] Image uploaded successfully:', publicUrl);
-            uploadedImages.push({
-              url: publicUrl,
-              name: `image-${idx + 1}.png`,
-              mediaType: img.mediaType || 'image/png',
-            });
-          }
+          // Return images as base64 data URLs (no external storage required)
+          const uploadedImages: { url: string; name: string; mediaType: string }[] = response.images.map((img, idx) => ({
+            url: img.dataUrl,
+            name: `image-${idx + 1}.png`,
+            mediaType: img.mediaType || 'image/png',
+          }));
 
           const primary = uploadedImages[0];
 

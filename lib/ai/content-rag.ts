@@ -11,6 +11,7 @@ import {
   getCrossUserInsights,
   getRecentHighScores,
 } from './learning-storage'
+// embeddings.ts (LRU cache implementation) not embedding.ts
 import { generateEmbedding } from './embeddings'
 import { searchAgentDocuments } from '@/lib/db/vector-search'
 

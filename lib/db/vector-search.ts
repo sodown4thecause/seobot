@@ -55,6 +55,41 @@ export interface ContentLearningSearchResult {
     similarity: number
 }
 
+export interface BrandVoiceSearchResult {
+    id: string
+    userId: string | null
+    tone: string | null
+    style: string | null
+    personality: string | null
+    samplePhrases: string | null
+    source: string | null
+    similarity: number
+}
+
+// Raw row types from database queries
+interface FrameworkRawRow {
+    id: string
+    name: string
+    description: string | null
+    structure: unknown
+    examples: string | null
+    category: string
+    metadata: unknown
+    usage_count: number | null
+    similarity: string | number
+}
+
+interface BrandVoiceRawRow {
+    id: string
+    user_id: string | null
+    tone: string | null
+    style: string | null
+    personality: string | null
+    sample_phrases: string | null
+    source: string | null
+    similarity: string | number
+}
+
 // ============================================================================
 // VECTOR SEARCH FUNCTIONS
 // ============================================================================
@@ -72,6 +107,16 @@ export async function searchFrameworks(
     options: VectorSearchOptions = {}
 ): Promise<FrameworkSearchResult[]> {
     const { threshold = 0.3, limit = 5 } = options
+
+    // Validate embedding input
+    if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
+        console.error('[Vector Search] Invalid embedding: must be non-empty array')
+        return []
+    }
+    if (queryEmbedding.some(v => typeof v !== 'number' || !isFinite(v))) {
+        console.error('[Vector Search] Invalid embedding: must contain only finite numbers')
+        return []
+    }
 
     try {
         // Convert embedding array to pgvector format
@@ -97,7 +142,7 @@ export async function searchFrameworks(
             LIMIT ${limit}
         `)
 
-        return (results.rows as any[]).map(row => ({
+        return (results.rows as FrameworkRawRow[]).map(row => ({
             id: row.id,
             name: row.name,
             description: row.description,
@@ -106,7 +151,7 @@ export async function searchFrameworks(
             category: row.category,
             metadata: row.metadata,
             usageCount: row.usage_count,
-            similarity: parseFloat(row.similarity),
+            similarity: parseFloat(String(row.similarity)),
         }))
     } catch (error) {
         console.error('[Vector Search] Framework search failed:', error)
@@ -222,16 +267,32 @@ export async function searchContentLearnings(
 /**
  * Search brand voices by semantic similarity
  * 
+ * Uses stricter defaults (threshold: 0.5, limit: 3) compared to other search
+ * functions because brand voice matching requires higher similarity scores
+ * and typically needs fewer, more precise results.
+ * 
  * @param queryEmbedding - 1536-dimensional embedding vector
  * @param userId - Optional user ID filter
  * @param options - Search options (threshold, limit)
+ * @throws Error if embedding is invalid (non-array, empty, or contains non-finite numbers)
+ * @returns Array of matching brand voices with similarity scores
  */
 export async function searchBrandVoices(
     queryEmbedding: number[],
     userId?: string,
     options: VectorSearchOptions = {}
-): Promise<any[]> {
+): Promise<BrandVoiceSearchResult[]> {
     const { threshold = 0.5, limit = 3 } = options
+
+    // Validate embedding input
+    if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
+        console.error('[Vector Search] Invalid embedding: must be non-empty array')
+        return []
+    }
+    if (queryEmbedding.some(v => typeof v !== 'number' || !isFinite(v))) {
+        console.error('[Vector Search] Invalid embedding: must contain only finite numbers')
+        return []
+    }
 
     try {
         const embeddingStr = `[${queryEmbedding.join(',')}]`
@@ -255,7 +316,7 @@ export async function searchBrandVoices(
             LIMIT ${limit}
         `)
 
-        return (results.rows as any[]).map(row => ({
+        return (results.rows as BrandVoiceRawRow[]).map(row => ({
             id: row.id,
             userId: row.user_id,
             tone: row.tone,
@@ -263,7 +324,7 @@ export async function searchBrandVoices(
             personality: row.personality,
             samplePhrases: row.sample_phrases,
             source: row.source,
-            similarity: parseFloat(row.similarity),
+            similarity: parseFloat(String(row.similarity)),
         }))
     } catch (error) {
         console.error('[Vector Search] Brand voices search failed:', error)
@@ -275,8 +336,48 @@ export async function searchBrandVoices(
 // CRUD OPERATIONS WITH EMBEDDINGS
 // ============================================================================
 
+// Default source type for agent documents when not specified
+const DEFAULT_SOURCE_TYPE = 'pdf'
+
+/**
+ * Validate embedding vector before use
+ * @throws Error if embedding is invalid
+ */
+function validateEmbedding(embedding: unknown): number[] {
+    if (!Array.isArray(embedding)) {
+        throw new Error('[Vector Search] Embedding must be an array')
+    }
+    if (embedding.length === 0) {
+        throw new Error('[Vector Search] Embedding cannot be empty')
+    }
+    if (embedding.some(v => typeof v !== 'number' || !isFinite(v))) {
+        throw new Error('[Vector Search] Embedding must contain only finite numbers')
+    }
+    return embedding
+}
+
+/**
+ * Validate UUID format
+ * @throws Error if UUID is invalid
+ */
+function validateUUID(id: unknown): string {
+    if (typeof id !== 'string') {
+        throw new Error('[Vector Search] ID must be a string')
+    }
+    // UUID v4 pattern: 8-4-4-4-12 hex digits
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4?[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    if (!uuidPattern.test(id)) {
+        throw new Error(`[Vector Search] Invalid UUID format: ${id}`)
+    }
+    return id
+}
+
 /**
  * Insert a writing framework with embedding
+ * 
+ * @param data - Framework data with validated embedding array
+ * @throws Error if embedding is invalid (non-array, empty, or contains non-finite numbers)
+ * @returns Inserted framework row
  */
 export async function insertFrameworkWithEmbedding(
     data: {
@@ -289,7 +390,9 @@ export async function insertFrameworkWithEmbedding(
         embedding: number[]
     }
 ) {
-    const embeddingStr = `[${data.embedding.join(',')}]`
+    // Validate embedding before processing
+    const validatedEmbedding = validateEmbedding(data.embedding)
+    const embeddingStr = `[${validatedEmbedding.join(',')}]`
 
     const result = await db.execute(sql`
         INSERT INTO writing_frameworks (name, description, structure, examples, category, metadata, embedding)
@@ -310,6 +413,10 @@ export async function insertFrameworkWithEmbedding(
 
 /**
  * Insert an agent document with embedding
+ * 
+ * @param data - Document data with validated embedding array; sourceType defaults to 'pdf'
+ * @throws Error if embedding is invalid (non-array, empty, or contains non-finite numbers)
+ * @returns Inserted agent document row
  */
 export async function insertAgentDocumentWithEmbedding(
     data: {
@@ -321,7 +428,9 @@ export async function insertAgentDocumentWithEmbedding(
         embedding: number[]
     }
 ) {
-    const embeddingStr = `[${data.embedding.join(',')}]`
+    // Validate embedding before processing
+    const validatedEmbedding = validateEmbedding(data.embedding)
+    const embeddingStr = `[${validatedEmbedding.join(',')}]`
 
     const result = await db.execute(sql`
         INSERT INTO agent_documents (agent_type, title, content, source_type, metadata, embedding)
@@ -329,7 +438,7 @@ export async function insertAgentDocumentWithEmbedding(
             ${data.agentType},
             ${data.title},
             ${data.content},
-            ${data.sourceType || 'pdf'},
+            ${data.sourceType || DEFAULT_SOURCE_TYPE},
             ${JSON.stringify(data.metadata) || '{}'}::jsonb,
             ${embeddingStr}::vector
         )
@@ -349,22 +458,44 @@ export async function updateDocumentEmbedding(
 ) {
     const embeddingStr = `[${embedding.join(',')}]`
 
+    // Use a whitelist mapping to prevent SQL injection
+    const tableMap = {
+        'writing_frameworks': 'writing_frameworks',
+        'agent_documents': 'agent_documents',
+        'content_learnings': 'content_learnings',
+        'brand_voices': 'brand_voices'
+    } as const
+
+    if (!(table in tableMap)) {
+        throw new Error('Invalid table name')
+    }
+
+    // Build the SET clause conditionally - only agent_documents has updated_at column
+    const setClause = table === 'agent_documents' 
+        ? `embedding = ${embeddingStr}::vector, updated_at = NOW()`
+        : `embedding = ${embeddingStr}::vector`
+
     await db.execute(sql`
-        UPDATE ${sql.raw(table)}
-        SET embedding = ${embeddingStr}::vector,
-            updated_at = NOW()
+        UPDATE ${sql.raw(tableMap[table])}
+        SET ${sql.raw(setClause)}
         WHERE id = ${id}::uuid
     `)
 }
 
 /**
  * Increment framework usage count
+ * 
+ * @param frameworkId - UUID of the framework to increment
+ * @throws Error if frameworkId is not a valid UUID
  */
 export async function incrementFrameworkUsage(frameworkId: string) {
+    // Validate UUID before executing query
+    const validId = validateUUID(frameworkId)
+    
     await db.execute(sql`
         UPDATE writing_frameworks
         SET usage_count = COALESCE(usage_count, 0) + 1
-        WHERE id = ${frameworkId}::uuid
+        WHERE id = ${validId}::uuid
     `)
 }
 

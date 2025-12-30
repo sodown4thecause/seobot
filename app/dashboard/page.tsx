@@ -55,14 +55,7 @@ export default function DashboardPage() {
         // Check if user has a business profile using API route (Drizzle runs server-side)
         const response = await fetch('/api/user/profile')
         
-        if (!response.ok) {
-          // New user - no profile exists
-          setIsNewUser(true)
-          setInitialMessage('__START_ONBOARDING__')
-          setTimeout(() => {
-            setShowModeSelection(true)
-          }, 1000)
-        } else {
+        if (response.ok) {
           const data = await response.json()
           if (!data.profile?.websiteUrl) {
             // Profile exists but incomplete - trigger onboarding
@@ -75,6 +68,21 @@ export default function DashboardPage() {
             // Load actions for existing users
             await loadActions()
           }
+        } else if (response.status === 404) {
+          // New user - no profile exists
+          setIsNewUser(true)
+          setInitialMessage('__START_ONBOARDING__')
+          setTimeout(() => {
+            setShowModeSelection(true)
+          }, 1000)
+        } else if (response.status === 401) {
+          // Unauthorized - redirect to sign-in
+          window.location.href = '/auth/sign-in'
+        } else {
+          // Server error or other issues - show error state
+          console.error(`[Dashboard] Profile fetch failed with status ${response.status}`)
+          // Show error notification or state instead of onboarding
+          setInitialMessage('Failed to load profile. Please refresh or contact support.')
         }
       } catch (error) {
         console.error('[Dashboard] Error checking user profile:', error)

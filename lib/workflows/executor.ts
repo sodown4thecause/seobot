@@ -345,3 +345,12 @@ function generateSummary(execution: WorkflowExecution, components: any[]): strin
   return `Workflow completed successfully with ${components.length} insights: ${componentTypes}`
 }
 
+/**
+ * Get workflow execution status
+ * @throws Error - Workflows are temporarily disabled during NextPhase migration
+ * @deprecated Execution status retrieval is disabled during NextPhase migration
+ */
+export async function getWorkflowExecution(executionId: string): Promise<WorkflowExecution> {
+  throw new Error('[Workflows] Execution status retrieval disabled during NextPhase migration')
+}
+
