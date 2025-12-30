@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
+import { db, libraryItems } from '@/lib/db'
 
 export const runtime = 'edge'
 
@@ -17,20 +18,8 @@ interface SaveLibraryItemRequest {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient()
-
     // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const userId = await requireUserId()
 
     const body: SaveLibraryItemRequest = await req.json()
     const {
@@ -54,30 +43,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Insert library item
-    const { data: libraryItem, error: insertError } = await supabase
-      .from('library_items')
-      .insert({
-        user_id: user.id,
-        conversation_id: conversationId || null,
-        message_id: messageId || null,
-        item_type: itemType,
+    const [libraryItem] = await db
+      .insert(libraryItems)
+      .values({
+        userId,
+        conversationId: conversationId || null,
+        messageId: messageId || null,
+        itemType,
         title,
         content: content || null,
         data: data || null,
-        image_url: imageUrl || null,
+        imageUrl: imageUrl || null,
         tags,
         metadata,
       })
-      .select()
-      .single()
-
-    if (insertError) {
-      console.error('Error saving library item:', insertError)
-      return NextResponse.json(
-        { error: 'Failed to save library item' },
-        { status: 500 }
-      )
-    }
+      .returning()
 
     return NextResponse.json({
       success: true,

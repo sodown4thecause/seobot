@@ -14,9 +14,10 @@ import {
   updateActiveObservation,
   updateActiveTrace,
 } from "@langfuse/tracing";
-import { createClient } from "@/lib/supabase/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { serverEnv } from "@/lib/config/env";
 import { buildOnboardingSystemPrompt } from "@/lib/onboarding/prompts";
+import { EXPLAIN_MODE_PROMPT } from "@/lib/chat/explain-mode-prompt";
 import {
   type OnboardingData,
   type OnboardingStep,
@@ -34,13 +35,16 @@ import { OrchestratorAgent } from "@/lib/agents/orchestrator";
 import { RAGWriterOrchestrator } from "@/lib/agents/rag-writer-orchestrator";
 import { AgentRouter } from "@/lib/agents/agent-router";
 import { vercelGateway } from "@/lib/ai/gateway-provider";
-import { generateImageWithGatewayGemini } from "@/lib/ai/image-generation";
+// TODO: Re-implement image generation
+// import { generateImageWithGatewayGemini } from "@/lib/ai/image-generation";
+import { uploadToR2, generateImageKey } from "@/lib/storage/r2-client";
 import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
 import { z } from "zod";
 import { researchAgentTool, competitorAgentTool, frameworkRagTool } from "@/lib/agents/tools";
 import { handleApiError } from "@/lib/errors/handlers";
 import { createTelemetryConfig } from "@/lib/observability/langfuse";
-import { checkCreditLimit } from "@/lib/usage/limit-check";
+// TODO: Re-implement credit limit checking with Drizzle ORM
+// import { checkCreditLimit } from "@/lib/usage/limit-check";
 import { BETA_LIMITS } from "@/lib/config/beta-limits";
 import { NextRequest } from "next/server";
 import {
@@ -101,21 +105,15 @@ const handler = async (req: Request) => {
     const onboardingContext = context?.onboarding;
     const isOnboarding = context?.page === 'onboarding' || !!onboardingContext;
 
-    const supabase = await createClient();
-
-    // Get current user (needed for rate limiting)
+    // Get current user via Clerk (needed for rate limiting)
     let user = null;
-    let authError = null;
 
     try {
-      const authResult = await supabase.auth.getUser();
-      user = authResult.data.user;
-      authError = authResult.error;
+      user = await currentUser();
     } catch (err) {
       console.warn('[Chat API] Auth check failed (safe to ignore for anon usage):', err);
       // Treat as anonymous user
       user = null;
-      // We don't set authError to avoid triggering downstream logic that expects a specific Supabase error shape
     }
 
     // Apply rate limiting
@@ -156,7 +154,6 @@ const handler = async (req: Request) => {
     if (user) {
       try {
         conversationRecord = await ensureConversationForUser(
-          supabase,
           user.id,
           requestedConversationId || undefined, // Create new if not provided
           resolvedAgentType,
@@ -181,7 +178,7 @@ const handler = async (req: Request) => {
 
     const lastUserMessage = normalizedMessages[normalizedMessages.length - 1];
     if (lastUserMessage?.role === 'user' && conversationRecord) {
-      await saveConversationMessage(supabase, conversationRecord.id, lastUserMessage, {
+      await saveConversationMessage(conversationRecord.id, lastUserMessage, {
         metadata: { source: 'user' },
       });
     }
@@ -193,7 +190,7 @@ const handler = async (req: Request) => {
     if (!activeConversationId && user) {
       console.log('[Chat API] No conversation ID available, creating new conversation for message persistence');
       try {
-        const newConv = await ensureConversationForUser(supabase, user.id, undefined, resolvedAgentType);
+        const newConv = await ensureConversationForUser(user.id, undefined, resolvedAgentType);
         activeConversationId = newConv.id;
         conversationRecord = newConv;
         console.log('[Chat API] Created new conversation:', activeConversationId);
@@ -276,6 +273,13 @@ const handler = async (req: Request) => {
       systemPrompt = AgentRouter.getAgentSystemPrompt(routingResult.agent, context);
     }
 
+    // Add EXPLAIN MODE for beginner-level users
+    const userMode = (context as any)?.userMode || 'practitioner';
+    if (userMode === 'beginner' && !isOnboarding) {
+      console.log('[Chat API] EXPLAIN MODE activated for beginner user');
+      systemPrompt = systemPrompt + '\n\n' + EXPLAIN_MODE_PROMPT;
+    }
+
     // LOAD MCP TOOLS based on selected agent
     console.log(`[Chat API] Loading MCP tools for ${routingResult.agent} agent`);
 
@@ -354,12 +358,13 @@ const handler = async (req: Request) => {
             console.log('[RAG Writer Orchestrator Tool] 🚀 Starting execution with args:', args);
 
             // Check credit limit before expensive operation
-            const { checkCreditLimit } = await import('@/lib/usage/limit-check');
-            const limitCheck = await checkCreditLimit(user?.id);
+            // TODO: Re-implement credit limit checking with Drizzle ORM
+            // const { checkCreditLimit } = await import('@/lib/usage/limit-check');
+            // const limitCheck = await checkCreditLimit(user?.id);
 
-            if (!limitCheck.allowed) {
-              return `❌ Credit limit exceeded. ${limitCheck.reason || `You've used $${limitCheck.currentSpendUsd.toFixed(2)} of your $${limitCheck.limitUsd.toFixed(2)} monthly limit.`} Please contact support or wait until ${limitCheck.resetDate?.toLocaleDateString() || 'next month'} for your credits to reset.`;
-            }
+            // if (!limitCheck.allowed) {
+            //   return `❌ Credit limit exceeded. ${limitCheck.reason || `You've used $${limitCheck.currentSpendUsd.toFixed(2)} of your $${limitCheck.limitUsd.toFixed(2)} monthly limit.`} Please contact support or wait until ${limitCheck.resetDate?.toLocaleDateString() || 'next month'} for your credits to reset.`;
+            // }
 
             // Use new RAG + EEAT feedback loop orchestrator
             const orchestrator = new RAGWriterOrchestrator();
@@ -436,84 +441,83 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
         try {
           console.log('[Chat API] Generating image with prompt:', args.prompt);
 
-          const response = await generateImageWithGatewayGemini({
-            prompt: args.prompt,
-            previousPrompt: args.previousPrompt,
-            editInstructions: args.editInstructions,
-            size: args.size,
-            aspectRatio: args.aspectRatio,
-            seed: args.seed,
-            n: args.n,
-            abortTimeoutMs: args.abortTimeoutMs || 60000,
-          });
+          // TODO: Re-implement image generation with Drizzle ORM
+          // Temporarily disabled: image generation service needs migration
+          throw new Error('Image generation is temporarily disabled during NextPhase migration. Please use text-based tools instead.');
 
-          console.log('[Chat API] Image generated, uploading to storage...');
+          // const response = await generateImageWithGatewayGemini({
+          //   prompt: args.prompt,
+          //   previousPrompt: args.previousPrompt,
+          //   editInstructions: args.editInstructions,
+          //   size: args.size,
+          //   aspectRatio: args.aspectRatio,
+          //   seed: args.seed,
+          //   n: args.n,
+          //   abortTimeoutMs: args.abortTimeoutMs || 60000,
+          // });
 
-          // Upload images to Supabase storage to avoid payload size limits
-          const uploadedImages: { url: string; name: string; mediaType: string }[] = [];
-
-          for (let idx = 0; idx < response.images.length; idx++) {
-            const img = response.images[idx];
-            const fileName = `generated/${Date.now()}-${Math.random().toString(36).substring(7)}-${idx}.png`;
-
-            // Convert base64 to buffer
-            const imageBuffer = Buffer.from(img.base64, 'base64');
-
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('article-images')
-              .upload(fileName, imageBuffer, {
-                contentType: img.mediaType || 'image/png',
-                cacheControl: '31536000', // 1 year cache
-              });
-
-            if (uploadError) {
-              console.error('[Chat API] Failed to upload image to storage:', uploadError);
-              // Fall back to data URL (may still fail for large images)
-              uploadedImages.push({
-                url: img.dataUrl,
-                name: `image-${idx + 1}.png`,
-                mediaType: img.mediaType || 'image/png',
-              });
-              continue;
-            }
-
-            const { data: { publicUrl } } = supabase.storage
-              .from('article-images')
-              .getPublicUrl(fileName);
-
-            console.log('[Chat API] Image uploaded successfully:', publicUrl);
-            uploadedImages.push({
-              url: publicUrl,
-              name: `image-${idx + 1}.png`,
-              mediaType: img.mediaType || 'image/png',
-            });
-          }
-
-          const primary = uploadedImages[0];
-
-          return {
-            type: 'image',
-            model: 'google/gemini-2.5-flash-image',
-            prompt: response.prompt,
-            size: args.size || '1024x1024',
-            url: primary?.url,
-            imageUrl: primary?.url,
-            mediaType: primary?.mediaType,
-            warnings: response.warnings,
-            count: uploadedImages.length,
-            files: uploadedImages.map(img => ({
-              name: img.name,
-              mediaType: img.mediaType,
-              url: img.url,
-            })),
-            parts: uploadedImages.map(img => ({
-              type: 'file',
-              mimeType: img.mediaType,
-              name: img.name,
-              url: img.url,
-            })),
-            content: `Image generated successfully! [View Image](${primary?.url})`,
-          };
+          // TODO: Re-implement image upload to R2
+          // console.log('[Chat API] Image generated, uploading to storage...');
+          //
+          // // Upload images to R2 storage to avoid payload size limits
+          // const uploadedImages: { url: string; name: string; mediaType: string }[] = [];
+          //
+          // for (let idx = 0; idx < response.images.length; idx++) {
+          //   const img = response.images[idx];
+          //   const imageKey = generateImageKey('generated');
+          //
+          //   // Convert base64 to buffer
+          //   const imageBuffer = Buffer.from(img.base64, 'base64');
+          //
+          //   const uploadResult = await uploadToR2(imageKey, imageBuffer, {
+          //     contentType: img.mediaType || 'image/png',
+          //     cacheControl: '31536000', // 1 year cache
+          //   });
+          //
+          //   if (!uploadResult.success) {
+          //     console.error('[Chat API] Failed to upload image to R2:', uploadResult.error);
+          //     // Fall back to data URL (may still fail for large images)
+          //     uploadedImages.push({
+          //       url: img.dataUrl,
+          //       name: `image-${idx + 1}.png`,
+          //       mediaType: img.mediaType || 'image/png',
+          //     });
+          //     continue;
+          //   }
+          //
+          //   console.log('[Chat API] Image uploaded successfully:', uploadResult.url);
+          //   uploadedImages.push({
+          //     url: uploadResult.url,
+          //     name: `image-${idx + 1}.png`,
+          //     mediaType: img.mediaType || 'image/png',
+          //   });
+          // }
+          //
+          // const primary = uploadedImages[0];
+          //
+          // return {
+          //   type: 'image',
+          //   model: 'google/gemini-2.5-flash-image',
+          //   prompt: response.prompt,
+          //   size: args.size || '1024x1024',
+          //   url: primary?.url,
+          //   imageUrl: primary?.url,
+          //   mediaType: primary?.mediaType,
+          //   warnings: response.warnings,
+          //   count: uploadedImages.length,
+          //   files: uploadedImages.map(img => ({
+          //     name: img.name,
+          //     mediaType: img.mediaType,
+          //     url: img.url,
+          //   })),
+          //   parts: uploadedImages.map(img => ({
+          //     type: 'file',
+          //     mimeType: img.mediaType,
+          //     name: img.name,
+          //     url: img.url,
+          //   })),
+          //   content: `Image generated successfully! [View Image](${primary?.url})`,
+          // };
         } catch (error: any) {
           console.error('[Chat API] Gateway image tool failed:', error);
           return {
@@ -676,28 +680,29 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
         const { messages: finalMessages } = response;
 
         // Log AI usage
-        if (user && !authError) {
-          try {
-            const { logAIUsage } = await import('@/lib/analytics/usage-logger');
-            await logAIUsage({
-              userId: user.id,
-              conversationId: activeConversationId || context?.conversationId,
-              agentType: 'general',
-              model: CHAT_MODEL_ID,
-              promptTokens: usage?.inputTokens || 0,
-              completionTokens: usage?.outputTokens || 0,
-              toolCalls: (response as any).steps?.reduce(
-                (sum: number, step: any) => sum + (step.toolCalls?.length || 0),
-                0,
-              ) || 0,
-              metadata: {
-                onboarding: !!onboardingContext,
-              },
-            });
-          } catch (error) {
-            console.error('[Chat API] Error logging usage:', error);
-          }
-        }
+        // TODO: Re-implement usage logging with Drizzle ORM
+        // if (user) {
+        //   try {
+        //     const { logAIUsage } = await import('@/lib/analytics/usage-logger');
+        //     await logAIUsage({
+        //       userId: user.id,
+        //       conversationId: activeConversationId || context?.conversationId,
+        //       agentType: 'general',
+        //       model: CHAT_MODEL_ID,
+        //       promptTokens: usage?.inputTokens || 0,
+        //       completionTokens: usage?.outputTokens || 0,
+        //       toolCalls: (response as any).steps?.reduce(
+        //         (sum: number, step: any) => sum + (step.toolCalls?.length || 0),
+        //         0,
+        //       ) || 0,
+        //       metadata: {
+        //         onboarding: !!onboardingContext,
+        //       },
+        //     });
+        //   } catch (error) {
+        //     console.error('[Chat API] Error logging usage:', error);
+        //   }
+        // }
 
         // Note: Assistant messages are saved in toUIMessageStreamResponse onFinish callback
         // to the correct 'messages' table with proper conversation_id
@@ -792,7 +797,6 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
           });
 
           await saveConversationMessage(
-            supabase,
             activeConversationId,
             normalizedMessage,
             { metadata: { source: 'assistant' } },

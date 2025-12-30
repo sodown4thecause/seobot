@@ -6,10 +6,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { analytics } from '@/lib/workflows/analytics'
-import { createClient } from '@/lib/supabase/server'
+// TODO: Implement workflow analytics module
+// import { analytics } from '@/lib/workflows/analytics'
+import { requireUserId } from '@/lib/auth/clerk'
 
 export const runtime = 'edge'
+
+// TODO: Replace with real analytics module
+const analytics = {
+  getSummaryStats: () => ({ totalRequests: 0, avgResponseTime: 0, cacheHitRate: 0 }),
+  getAllToolMetrics: () => ({ tools: [], totalMetrics: {} }),
+  getTopPerformingTools: (limit: number) => [],
+  getSlowestTools: (limit: number) => [],
+  getBestCachedTools: (limit: number) => [],
+  getToolMetrics: (name: string) => null,
+  getWorkflowMetrics: (id: string) => ({ workflowId: id, toolMetrics: new Map() }),
+}
 
 /**
  * GET /api/analytics/workflows
@@ -21,20 +33,12 @@ export const runtime = 'edge'
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    await requireUserId()
 
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') || 'summary'
     const limit = parseInt(searchParams.get('limit') || '10', 10)
-
+    
     let data: any
 
     switch (type) {

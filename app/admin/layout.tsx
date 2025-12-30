@@ -1,22 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
+import { requireUserId } from '@/lib/auth/clerk'
+import { isAdmin } from '@/lib/auth/admin-check'
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
+  const userId = await requireUserId()
 
   // Check admin access
-  const { isAdmin } = await import('@/lib/auth/admin-check')
-  const admin = await isAdmin(user.id)
+  const admin = await isAdmin(userId)
   
   if (!admin) {
     redirect('/dashboard')

@@ -1,17 +1,15 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { subDays } from 'date-fns'
+import { requireUserId } from '@/lib/auth/clerk'
+// import { db } from '@/lib/db'
+// import { apiUsageLogs } from '@/lib/db/schema'
+// import { eq, gte, and } from 'drizzle-orm'
 
 export const runtime = 'edge'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await requireUserId()
 
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'week'
@@ -19,17 +17,24 @@ export async function GET(request: NextRequest) {
     const days = period === 'day' ? 1 : period === 'week' ? 7 : 30
     const startDate = subDays(new Date(), days)
 
-    // Fetch logs
-    const { data: logs, error } = await supabase
-      .from('api_usage_logs')
-      .select('service, cost_usd, duration_ms, status_code')
-      .eq('user_id', user.id)
-      .gte('created_at', startDate.toISOString())
+    // TODO: Implement api_usage_logs table in schema
+    // Table needs: user_id, service, cost_usd, duration_ms, status_code, created_at
+    // const logs = await db
+    //   .select({
+    //     service: apiUsageLogs.service,
+    //     costUsd: apiUsageLogs.costUsd,
+    //     durationMs: apiUsageLogs.durationMs,
+    //     statusCode: apiUsageLogs.statusCode,
+    //   })
+    //   .from(apiUsageLogs)
+    //   .where(
+    //     and(
+    //       eq(apiUsageLogs.userId, userId),
+    //       gte(apiUsageLogs.createdAt, startDate)
+    //     )
+    //   )
 
-    if (error) {
-      console.error('[Admin Analytics] Error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    const logs: any[] = []
 
     // Group by service
     const serviceMap: Record<string, {
@@ -39,7 +44,7 @@ export async function GET(request: NextRequest) {
       successCount: number
     }> = {}
 
-    logs?.forEach(log => {
+    logs.forEach(log => {
       if (!serviceMap[log.service]) {
         serviceMap[log.service] = {
           totalCalls: 0,
@@ -49,9 +54,9 @@ export async function GET(request: NextRequest) {
         }
       }
       serviceMap[log.service].totalCalls += 1
-      serviceMap[log.service].totalCost += Number(log.cost_usd) || 0
-      serviceMap[log.service].totalDuration += log.duration_ms || 0
-      if (log.status_code && log.status_code >= 200 && log.status_code < 300) {
+      serviceMap[log.service].totalCost += Number(log.costUsd) || 0
+      serviceMap[log.service].totalDuration += log.durationMs || 0
+      if (log.statusCode && log.statusCode >= 200 && log.statusCode < 300) {
         serviceMap[log.service].successCount += 1
       }
     })

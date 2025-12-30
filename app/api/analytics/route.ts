@@ -6,8 +6,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
 import { cacheGet, cacheSet, CACHE_PREFIXES, CACHE_TTL } from '@/lib/redis/client'
+import { db } from '@/lib/db'
+import { writingFrameworks, chatMessages } from '@/lib/db/schema'
+import { desc, gte } from 'drizzle-orm'
 
 export const runtime = 'edge'
 
@@ -21,6 +24,134 @@ interface AnalyticsData {
     activeUsersThisWeek: number
     activeUsersThisMonth: number
   }
+  usageByDay: Array<{
+    date: string
+    messages: number
+    contentGenerated: number
+    exports: number
+  }>
+  popularFrameworks: Array<{
+    name: string
+    category: string
+    usageCount: number
+  }>
+  topFeatures: Array<{
+    feature: string
+    usageCount: number
+  }>
+  apiEndpointUsage: Array<{
+    endpoint: string
+    requestCount: number
+  }>
+}
+
+/**
+ * Get date string in YYYY-MM-DD format
+ */
+function getDateString(date: Date): string {
+  return date.toISOString().split('T')[0]
+}
+
+/**
+ * Get date N days ago
+ */
+function getDateDaysAgo(days: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  return getDateString(date)
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const userId = await requireUserId()
+
+    // Check cache first (cache for 5 minutes)
+    const cacheKey = `${CACHE_PREFIXES.USER_ANALYTICS}${userId}`
+    const cached = await cacheGet<AnalyticsData>(cacheKey)
+    
+    if (cached) {
+      return NextResponse.json({ data: cached, cached: true })
+    }
+
+    // Get date ranges
+    const today = getDateString(new Date())
+    const weekAgo = getDateDaysAgo(7)
+    const monthAgo = getDateDaysAgo(30)
+    
+    // TODO: Implement user_stats table in schema
+    const overview = {
+      totalUsers: 1,
+      totalMessages: 0,
+      totalContentGenerated: 0,
+      totalExports: 0,
+      activeUsersToday: 1,
+      activeUsersThisWeek: 1,
+      activeUsersThisMonth: 1,
+    }
+    
+    // TODO: Implement analytics_snapshots table in schema
+    const usageByDay: Array<{
+      date: string
+      messages: number
+      contentGenerated: number
+      exports: number
+    }> = []
+    
+    // Get popular frameworks (existing table)
+    const frameworks = await db
+      .select({
+        name: writingFrameworks.name,
+        category: writingFrameworks.category,
+        usageCount: writingFrameworks.usageCount,
+      })
+      .from(writingFrameworks)
+      .orderBy(desc(writingFrameworks.usageCount))
+      .limit(10)
+    
+    const popularFrameworks = frameworks.map((f) => ({
+      name: f.name,
+      category: f.category,
+      usageCount: f.usageCount || 0,
+    }))
+    
+    // TODO: Query chat_messages table - already exists in schema but query needs proper filtering
+    const topFeatures: Array<{ feature: string; usageCount: number }> = []
+    
+    // API endpoint usage (mock data for now)
+    const apiEndpointUsage = [
+      { endpoint: '/api/chat', requestCount: Math.floor(Math.random() * 1000) },
+      { endpoint: '/api/content/export', requestCount: Math.floor(Math.random() * 500) },
+      { endpoint: '/api/keywords/research', requestCount: Math.floor(Math.random() * 300) },
+      { endpoint: '/api/competitors/discover', requestCount: Math.floor(Math.random() * 200) },
+    ].sort((a, b) => b.requestCount - a.requestCount)
+    
+    const analyticsData: AnalyticsData = {
+      overview,
+      usageByDay,
+      popularFrameworks,
+      topFeatures,
+      apiEndpointUsage,
+    }
+    
+    // Cache for 5 minutes
+    await cacheSet(cacheKey, analyticsData, 300)
+    
+    return NextResponse.json({ data: analyticsData, cached: false })
+  } catch (error) {
+    console.error('[Analytics] Error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch analytics' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * Get current user's rate limit status
+ */
+export async function OPTIONS(req: NextRequest) {
+  return NextResponse.json({ message: 'Analytics API' })
+}
   usageByDay: Array<{
     date: string
     messages: number

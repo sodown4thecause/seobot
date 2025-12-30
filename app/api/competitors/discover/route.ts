@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
+import { db } from '@/lib/db'
+import { competitors } from '@/lib/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { competitorAnalysis, domainMetrics } from '@/lib/api/dataforseo-service'
 
 export const runtime = 'edge'
@@ -21,12 +24,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await requireUserId()
 
     // Get competitors from DataForSEO
     const competitorsResult = await competitorAnalysis({ domain })
@@ -38,8 +36,8 @@ export async function POST(req: Request) {
       )
     }
 
-    const competitors = competitorsResult.data.tasks[0]?.result || []
-    const topCompetitors = competitors.slice(0, limit)
+    const competitorsList = competitorsResult.data.tasks[0]?.result || []
+    const topCompetitors = competitorsList.slice(0, limit)
 
     // Get detailed metrics for each competitor
     const competitorsWithMetrics = await Promise.all(
@@ -70,16 +68,28 @@ export async function POST(req: Request) {
 
     // Save to database
     const competitorsToInsert = competitorsWithMetrics.map(comp => ({
-      user_id: user.id,
+      userId,
       domain: comp.domain,
-      domain_authority: comp.domain_authority,
-      monthly_traffic: comp.monthly_traffic,
+      domainAuthority: comp.domain_authority,
+      monthlyTraffic: comp.monthly_traffic,
       priority: 'primary' as const,
       metadata: comp.metadata,
     }))
 
     if (competitorsToInsert.length > 0) {
-      await supabase.from('competitors').upsert(competitorsToInsert)
+      // Upsert - update if exists, insert if not
+      for (const comp of competitorsToInsert) {
+        await db.insert(competitors).values(comp)
+          .onConflictDoUpdate({
+            target: [competitors.userId, competitors.domain],
+            set: {
+              domainAuthority: sql`excluded.domain_authority`,
+              monthlyTraffic: sql`excluded.monthly_traffic`,
+              metadata: sql`excluded.metadata`,
+              updatedAt: new Date(),
+            },
+          })
+      }
     }
 
     return NextResponse.json({

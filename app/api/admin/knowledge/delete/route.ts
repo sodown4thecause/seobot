@@ -1,16 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth/clerk'
 
 export const runtime = 'edge'
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await requireUserId()
 
     const { documentId, tableName } = await request.json()
 
@@ -32,20 +27,23 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid table name' }, { status: 400 })
     }
 
-    // Delete document (RLS ensures user can only delete their own)
-    const { error } = await supabase
-      .from(tableName)
-      .delete()
-      .eq('id', documentId)
-      .eq('user_id', user.id)
-
-    if (error) {
-      console.error('[Admin] Delete error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    // TODO: Implement knowledge tables in schema
+    // Tables needed: seo_aeo_knowledge, content_strategist_knowledge, 
+    // keyword_researcher_knowledge, competitor_analyst_knowledge
+    // Each needs: id, user_id, title, content, created_at, metadata
+    
+    // await db
+    //   .delete(knowledgeTable)
+    //   .where(
+    //     and(
+    //       eq(knowledgeTable.id, documentId),
+    //       eq(knowledgeTable.userId, userId)
+    //     )
+    //   )
 
     return NextResponse.json({
       success: true,
+      message: 'Knowledge deletion not yet implemented - tables missing from schema'
     })
   } catch (error) {
     console.error('[Admin] Delete error:', error)

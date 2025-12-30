@@ -1,7 +1,8 @@
 import { RAGWriterOrchestrator, ProgressUpdate } from '@/lib/agents/rag-writer-orchestrator'
-import { createClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
-import { checkCreditLimit } from '@/lib/usage/limit-check'
+// TODO: Re-implement credit limit checking with Drizzle ORM
+// import { checkCreditLimit } from '@/lib/usage/limit-check'
 import { z } from 'zod'
 import { NextRequest } from 'next/server'
 
@@ -24,31 +25,24 @@ export async function POST(req: NextRequest) {
     }
 
     // Auth check
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const userId = await requireUserId()
 
-    if (authError || !user) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' },
-        })
-    }
-
+    // TODO: Re-implement credit limit checking with Drizzle ORM
     // Credit limit check
-    const limitCheck = await checkCreditLimit(user.id, req)
-    if (!limitCheck.allowed) {
-        return new Response(
-            JSON.stringify({
-                error: limitCheck.reason || 'Credit limit exceeded',
-                code: 'CREDIT_LIMIT_EXCEEDED',
-                isPaused: limitCheck.isPaused,
-            }),
-            {
-                status: 403,
-                headers: { 'Content-Type': 'application/json' },
-            }
-        )
-    }
+    // const limitCheck = await checkCreditLimit(userId, req)
+    // if (!limitCheck.allowed) {
+    //     return new Response(
+    //         JSON.stringify({
+    //             error: limitCheck.reason || 'Credit limit exceeded',
+    //             code: 'CREDIT_LIMIT_EXCEEDED',
+    //             isPaused: limitCheck.isPaused,
+    //         }),
+    //         {
+    //             status: 403,
+    //             headers: { 'Content-Type': 'application/json' },
+    //         }
+    //     )
+    // }
 
     // Validate request body
     let body
@@ -94,7 +88,7 @@ export async function POST(req: NextRequest) {
                 // Generate content with progress streaming and abort signal
                 const result = await orchestrator.generateContent({
                     ...body,
-                    userId: user.id,
+                    userId,
                     onProgress,
                     abortSignal: abortController.signal,
                 })

@@ -1,4 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
+import { db, businessProfiles } from '@/lib/db'
+import { eq, sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { extractCleanText } from '@/lib/api/jina-service'
 import { serverEnv } from '@/lib/config/env'
@@ -41,12 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 })
     }
 
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await requireUserId()
 
     // Use Jina service to extract content
     const extractionResult = await extractCleanText(url)
@@ -63,13 +60,23 @@ export async function POST(req: Request) {
     // Analyze with Gemini
     const analysis = await analyzeWithGemini(content, url)
 
-    // Save to database
-    await supabase.from('business_profiles').upsert({
-      user_id: user.id,
-      website_url: url,
-      industry: analysis.industry,
-      updated_at: new Date().toISOString(),
-    })
+    // Upsert to database
+    await db
+      .insert(businessProfiles)
+      .values({
+        userId,
+        websiteUrl: url,
+        industry: analysis.industry,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [businessProfiles.userId],
+        set: {
+          websiteUrl: sql`excluded.website_url`,
+          industry: sql`excluded.industry`,
+          updatedAt: new Date(),
+        }
+      })
 
     return NextResponse.json(analysis)
   } catch (error: unknown) {

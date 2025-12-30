@@ -1,28 +1,26 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
+import { db, businessProfiles } from '@/lib/db'
+import { eq } from 'drizzle-orm'
 import { type OnboardingData } from '@/lib/onboarding/state'
 
 export const runtime = 'edge'
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient()
-    const { userId, stepData } = await req.json()
+    const { userId: requestUserId, stepData } = await req.json()
     
-    if (!userId) {
+    if (!requestUserId) {
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
       )
     }
 
-    // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user || user.id !== userId) {
+    // Get current user and verify it matches request
+    const userId = await requireUserId()
+    
+    if (userId !== requestUserId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -30,36 +28,31 @@ export async function POST(req: Request) {
     }
 
     // Check if profile exists
-    const { data: existing } = await supabase
-      .from('business_profiles')
-      .select('id')
-      .eq('user_id', userId)
-      .single()
+    const existing = await db
+      .select({ id: businessProfiles.id })
+      .from(businessProfiles)
+      .where(eq(businessProfiles.userId, userId))
+      .limit(1)
 
-    const profileData: any = {
-      user_id: userId,
-      website_url: stepData.websiteUrl || null,
+    const profileData = {
+      userId,
+      websiteUrl: stepData.websiteUrl || null,
       industry: stepData.industry || null,
       goals: stepData.goals || null,
       locations: stepData.location ? [stepData.location] : null,
-      content_frequency: stepData.contentFrequency || null,
-      updated_at: new Date().toISOString(),
+      contentFrequency: stepData.contentFrequency || null,
+      updatedAt: new Date(),
     }
 
-    let result
-    if (existing) {
-      result = await supabase
-        .from('business_profiles')
-        .update(profileData)
-        .eq('user_id', userId)
+    if (existing.length > 0) {
+      await db
+        .update(businessProfiles)
+        .set(profileData)
+        .where(eq(businessProfiles.userId, userId))
     } else {
-      result = await supabase
-        .from('business_profiles')
-        .insert(profileData)
-    }
-
-    if (result.error) {
-      throw result.error
+      await db
+        .insert(businessProfiles)
+        .values(profileData)
     }
 
     return NextResponse.json({ success: true })
