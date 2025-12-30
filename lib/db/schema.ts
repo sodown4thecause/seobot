@@ -151,7 +151,7 @@ export const chatMessages = pgTable('chat_messages', {
 export const libraryItems = pgTable('library_items', {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: text('user_id').notNull(),
-    conversationId: uuid('conversation_id').references(() => conversations.id),
+    conversationId: uuid('conversation_id').references(() => conversations.id, { onDelete: 'cascade' }),
     messageId: uuid('message_id'),
     itemType: text('item_type').notNull(),
     title: text('title').notNull(),
@@ -228,6 +228,43 @@ export const writingFrameworks = pgTable('writing_frameworks', {
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+/**
+ * Agent Documents - RAG knowledge base for AI agents
+ * Contains uploaded PDFs, research documents, and expert knowledge
+ */
+export const agentDocuments = pgTable('agent_documents', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    agentType: text('agent_type').notNull().default('general'),
+    title: text('title').notNull(),
+    content: text('content').notNull(),
+    embedding: vector('embedding', { dimensions: 1536 }), // OpenAI embeddings
+    sourceType: text('source_type').default('pdf'),
+    metadata: jsonb('metadata').$type<Json>().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+/**
+ * Content Learnings - Cross-user learning from content generation
+ * Stores successful patterns and techniques
+ */
+export const contentLearnings = pgTable('content_learnings', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id'),
+    contentType: text('content_type').notNull(),
+    topic: text('topic').notNull(),
+    keywords: text('keywords').array(),
+    aiDetectionScore: real('ai_detection_score'),
+    humanProbability: real('human_probability'),
+    successful: boolean('successful').default(false),
+    techniquesUsed: text('techniques_used').array(),
+    feedback: text('feedback'),
+    contentSample: text('content_sample'),
+    embedding: vector('embedding', { dimensions: 1536 }),
+    metadata: jsonb('metadata').$type<Json>().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
@@ -270,3 +307,9 @@ export type NewUserProgress = typeof userProgress.$inferInsert
 
 export type WritingFramework = typeof writingFrameworks.$inferSelect
 export type NewWritingFramework = typeof writingFrameworks.$inferInsert
+
+export type AgentDocument = typeof agentDocuments.$inferSelect
+export type NewAgentDocument = typeof agentDocuments.$inferInsert
+
+export type ContentLearning = typeof contentLearnings.$inferSelect
+export type NewContentLearning = typeof contentLearnings.$inferInsert

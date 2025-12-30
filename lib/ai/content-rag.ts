@@ -2,9 +2,7 @@
  * Content RAG - Retrieval Augmented Generation for content writing
  * Combines cross-user learnings with uploaded expert documents
  * 
- * NOTE: Agent document retrieval is currently disabled pending Neon migration.
- * The vector search function requires the agent_documents table and
- * match_agent_documents_v2 PostgreSQL function to be set up in Neon.
+ * Uses Neon PostgreSQL with pgvector via Drizzle ORM
  */
 
 import {
@@ -13,11 +11,12 @@ import {
   getCrossUserInsights,
   getRecentHighScores,
 } from './learning-storage'
+import { generateEmbedding } from './embeddings'
+import { searchAgentDocuments } from '@/lib/db/vector-search'
 
 /**
- * Retrieve relevant agent documents
- * 
- * Uses writing_frameworks table with match_frameworks vector similarity search
+ * Retrieve relevant agent documents using Neon/Drizzle vector search
+ * Uses OpenAI text-embedding-3-small (1536 dimensions)
  */
 import { db, writingFrameworks } from '@/lib/db'
 import { sql, gt, desc } from 'drizzle-orm'
@@ -28,64 +27,17 @@ export async function retrieveAgentDocuments(
   limit: number = 3
 ): Promise<any[]> {
   try {
-    console.log(`[Content RAG] Retrieving agent docs for topic: "${topic}", type: ${agentType}, limit: ${limit}`)
+    // Generate embedding for the topic using OpenAI
+    const embedding = await generateEmbedding(topic)
     
-    // Generate embedding for the topic
-    const { generateEmbedding } = await import('@/lib/ai/embedding')
-    const queryEmbedding = await generateEmbedding(topic)
-    
-    if (!queryEmbedding || queryEmbedding.length === 0) {
-      console.warn('[Content RAG] Failed to generate query embedding')
-      return []
-    }
-    
-    // Use the match_frameworks vector similarity search function
-    // Match threshold of 0.3 means similarity >= 70%
-    const embeddingString = `[${queryEmbedding.join(',')}]`
-    
-    // Define result row type for Neon query
-    interface FrameworkRow {
-      id: string
-      name: string
-      description: string | null
-      category: string | null
-      similarity: number
-    }
-    
-    const results = await db.execute(sql`
-      SELECT 
-        wf.id,
-        wf.name,
-        wf.description,
-        wf.category,
-        1 - (wf.embedding <=> ${embeddingString}::vector) AS similarity
-      FROM writing_frameworks wf
-      WHERE 
-        wf.embedding IS NOT NULL 
-        AND 1 - (wf.embedding <=> ${embeddingString}::vector) > 0.3
-      ORDER BY similarity DESC
-      LIMIT ${limit}
-    `)
-    
-    // Cast Neon query result to typed array
-    const rows = results as unknown as FrameworkRow[]
-    
-    if (!rows || rows.length === 0) {
-      console.log(`[Content RAG] No agent documents found for topic: "${topic}"`)
-      return []
-    }
-    
-    const documents = rows.map((row) => ({
-      id: row.id,
-      title: row.name,
-      description: row.description,
-      category: row.category,
-      type: 'writing_framework',
-      source: 'agent_knowledge_base'
-    }))
-    
-    console.log(`[Content RAG] Retrieved ${documents.length} agent documents`)
-    return documents
+    // Use Drizzle/Neon vector search instead of Supabase RPC
+    const results = await searchAgentDocuments(embedding, agentType, {
+      threshold: 0.3, // Lowered from 0.5 - semantic similarity typically ranges 0.3-0.7
+      limit,
+    })
+
+    console.log(`[Content RAG] Retrieved ${results.length} agent documents for "${topic.slice(0, 50)}..."`)
+    return results
   } catch (error) {
     console.error('[Content RAG] Error retrieving agent documents:', error)
     return []
@@ -113,7 +65,7 @@ export async function getContentGuidance(
     ])
 
     console.log(
-      `[Content RAG] 🌐 Cross-user insights: ${crossUserInsights.uniqueUsers} users, ${crossUserInsights.successfulLearnings} successful patterns`
+      `[Content RAG] Cross-user insights: ${crossUserInsights.uniqueUsers} users, ${crossUserInsights.successfulLearnings} successful patterns`
     )
     console.log('[Content RAG] Agent docs retrieved:', agentDocs?.length ?? 0)
 
@@ -127,7 +79,7 @@ export async function getContentGuidance(
       highScores,
     )
 
-    console.log('[Content RAG] ✓ Guidance retrieved')
+    console.log('[Content RAG] Guidance retrieved')
     return guidance
   } catch (error) {
     console.error('[Content RAG] Error getting guidance:', error)
@@ -249,7 +201,7 @@ function summarizeDocContent(content: string, maxChars: number): string {
     .slice(0, 4)
     .join(' ')
   if (sentences.length <= maxChars) return sentences
-  return sentences.slice(0, maxChars).trimEnd() + '…'
+  return sentences.slice(0, maxChars).trimEnd() + '...'
 }
 
 function summarizeBestPractices(practices: any[], limit: number): string[] {
@@ -267,12 +219,3 @@ function summarizeBestPractices(practices: any[], limit: number): string[] {
     return [techniques, successRate, aiScore].filter(Boolean).join(' • ')
   })
 }
-
-
-
-
-
-
-
-
-

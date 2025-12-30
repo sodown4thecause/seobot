@@ -109,11 +109,13 @@ export function ProgressWidgets({
                   Current: {learningProgress.currentTutorial}
                 </div>
               )}
-              <Progress
-                value={(learningProgress.tutorialsCompleted / learningProgress.totalTutorials) * 100}
-                className="h-1.5 bg-zinc-800"
-                indicatorClassName="bg-zinc-400"
-              />
+              {learningProgress.totalTutorials > 0 && (
+                <Progress
+                  value={(learningProgress.tutorialsCompleted / learningProgress.totalTutorials) * 100}
+                  className="h-1.5 bg-zinc-800"
+                  indicatorClassName="bg-zinc-400"
+                />
+              )}
             </div>
           </CardContent>
         </Card>

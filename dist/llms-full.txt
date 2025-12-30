@@ -1,0 +1,55 @@
+# FlowIntent - Complete Documentation
+
+> AI-powered SEO platform that optimizes for Google, ChatGPT, and Perplexity. Get AI Trust Audits, competitor analysis, and automated content creation.
+
+FlowIntent is the first SEO platform built for both traditional search engines and AI answer engines. We help businesses rank in Google while ensuring accurate representation in ChatGPT, Perplexity, and other AI assistants.
+
+Our platform combines specialized AI agents with 70+ DataForSEO API endpoints to deliver research-driven, EEAT-optimized content that ranks in both search engines and AI answer engines.
+
+## Core Features
+
+- **AI Trust Audits**: Discover how AI chatbots represent your brand and identify hallucinations or misrepresentations
+- **Answer Engine Optimization (AEO)**: Optimize content for AI search engines like ChatGPT, Perplexity, and Gemini
+- **Multi-Agent SEO Intelligence**: Specialized research agents that gather and analyze SEO data, then hand off to content writing agents
+- **EEAT-Focused Content Quality**: Measure and optimize content against Experience, Expertise, Authoritativeness, and Trustworthiness metrics
+- **Comprehensive DataForSEO Integration**: Access to 70+ SEO data endpoints in a conversational interface
+
+## Platform Links
+
+### Most Important
+
+- [Get Your Free AI Trust Audit](https://flowintent.com/audit): Discover how AI chatbots represent your brand
+- [Answer Engine Optimization Guide](https://flowintent.com/guides/answer-engine-optimization): Complete guide to AEO
+- [Pricing](https://flowintent.com/prices): Free beta access and upcoming premium plan ($40/month)
+
+### Product
+
+- [Home](https://flowintent.com): Platform overview and key features
+- [Pricing](https://flowintent.com/prices): Plans and features
+- [FAQ](https://flowintent.com/faq): Frequently asked questions about AEO and FlowIntent
+
+### Guides and Tutorials
+
+- [Answer Engine Optimization (AEO)](https://flowintent.com/guides/answer-engine-optimization): What is AEO and why it matters
+- [AEO vs GEO](https://flowintent.com/guides/aeo-vs-geo): Understanding the difference between Answer Engine and Generative Engine Optimization
+- [ChatGPT SEO](https://flowintent.com/guides/chatgpt-seo): How to optimize for ChatGPT search and citations
+
+### Documentation
+
+- [Documentation](https://flowintent.com/docs): How FlowIntent works and platform architecture
+- [Knowledge Hub](https://flowintent.com/blog): Latest articles on SEO, AEO, and AI search
+
+### Support
+
+- [Contact](https://flowintent.com/contact): Get in touch with our team
+- [Privacy Policy](https://flowintent.com/privacy): How we handle your data
+- [Terms of Service](https://flowintent.com/terms): Terms and conditions
+
+## Target Audience
+
+- SEO professionals and content strategists
+- Marketing agencies managing client SEO
+- Businesses focused on AI search visibility
+- Content creators optimizing for answer engines
+- Data-driven marketing teams requiring competitive intelligence
+

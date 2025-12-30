@@ -304,15 +304,20 @@ export class RAGWriterOrchestrator {
 
 
         // Create content record in database
-        const contentData = await database.insert(content).values({
-          user_id: params.userId,
+        // Validate userId before inserting
+        if (!params.userId) {
+          throw new Error('userId is required to create content record')
+        }
+
+        const [contentData] = await database.insert(content).values({
+          userId: params.userId,
           title: params.topic,
           slug: this.generateSlug(params.topic),
-          content_type: params.type,
-          target_keyword: params.keywords[0] || params.topic,
-          word_count: currentDraft.content.split(/\s+/).length,
+          contentType: params.type,
+          targetKeyword: params.keywords[0] || params.topic,
+          wordCount: currentDraft.content.split(/\s+/).length,
           status: 'draft',
-        }).returning().get()
+        }).returning()
 
         if (!contentData) {
           throw new Error('Failed to create content record')

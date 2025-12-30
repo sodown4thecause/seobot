@@ -6,7 +6,7 @@ import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { useAgent } from '@/components/providers/agent-provider'
 import { useUserMode } from '@/components/providers/user-mode-provider'
 import { ModeSelectionDialog } from '@/components/user-mode/mode-selection-dialog'
-import { createClient } from '@/lib/supabase/client'
+import { useUser } from '@clerk/nextjs'
 import { WelcomeSection } from '@/components/dashboard/welcome-section'
 import { QuickStartGrid } from '@/components/dashboard/quick-start-grid'
 import { ProgressWidgets } from '@/components/dashboard/progress-widgets'
@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const { state: userModeState } = useUserMode()
   const activeConversationId = state.activeConversation?.id
   const activeAgentId = state.activeAgent?.id
+  const { user, isLoaded } = useUser()
 
   const [isNewUser, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -33,58 +34,58 @@ export default function DashboardPage() {
   useEffect(() => {
     async function checkUserProfile() {
       try {
-        const supabase = createClient()
-        
-        // For Clerk integration: We'll need to get the user ID from Clerk
-        // For now, we'll fetch the Supabase session to get the user ID
-        // Note: This assumes Clerk is syncing with Supabase via webhook/JWT
-        const { data: { session } } = await supabase.auth.getSession()
+        // Wait for Clerk to load user data
+        if (!isLoaded) {
+          return
+        }
 
-        if (!session?.user) {
+        if (!user) {
           setIsLoading(false)
           return
         }
 
-        const user = session.user
-
-        // Get user name from Clerk metadata (synced to Supabase)
-        // Clerk uses fullName property, shim maps to full_name or fullName directly
-        const fullName = (user as any).fullName || user.user_metadata?.full_name
+        // Get user name from Clerk
+        const fullName = user.fullName || user.firstName || ''
         if (fullName) {
           setUserName(fullName)
-        } else if (user.email) {
-          setUserName(user.email.split('@')[0])
+        } else if (user.emailAddresses?.[0]?.emailAddress) {
+          setUserName(user.emailAddresses[0].emailAddress.split('@')[0])
         }
 
-        // Check if user has a business profile
-        const { data: profile, error } = await supabase
-          .from('business_profiles')
-          .select('id, website_url, industry')
-          .eq('user_id', user.id)
-          .single()
-
-        if (error || !profile?.website_url) {
-          // First-time user - trigger onboarding and mode selection
+        // Check if user has a business profile using API route (Drizzle runs server-side)
+        const response = await fetch('/api/user/profile')
+        
+        if (!response.ok) {
+          // New user - no profile exists
           setIsNewUser(true)
           setInitialMessage('__START_ONBOARDING__')
-
-          // Show mode selection for new users after a brief delay
           setTimeout(() => {
             setShowModeSelection(true)
           }, 1000)
         } else {
-          // Load actions for existing users
-          await loadActions()
+          const data = await response.json()
+          if (!data.profile?.websiteUrl) {
+            // Profile exists but incomplete - trigger onboarding
+            setIsNewUser(true)
+            setInitialMessage('__START_ONBOARDING__')
+            setTimeout(() => {
+              setShowModeSelection(true)
+            }, 1000)
+          } else {
+            // Load actions for existing users
+            await loadActions()
+          }
         }
       } catch (error) {
         console.error('[Dashboard] Error checking user profile:', error)
+        // Don't trigger onboarding on errors
       } finally {
         setIsLoading(false)
       }
     }
 
     checkUserProfile()
-  }, [])
+  }, [user, isLoaded])
 
   const loadActions = async () => {
     try {
@@ -128,7 +129,7 @@ export default function DashboardPage() {
     [activeConversationId, isNewUser, userModeState.currentMode?.level]
   )
 
-  if (isLoading || userModeState.isLoading) {
+  if (!isLoaded || isLoading || userModeState.isLoading) {
     return (
       <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center bg-[#1a1a1a]">
         <div className="animate-pulse text-gray-400">Loading...</div>

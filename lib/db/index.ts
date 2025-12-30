@@ -20,5 +20,8 @@ export const db = drizzle(sql, { schema })
 // Export schema for convenience
 export * from './schema'
 
+// Export vector search functions
+export * from './vector-search'
+
 // Type for the database instance
 export type Database = typeof db

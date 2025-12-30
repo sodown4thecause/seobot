@@ -136,7 +136,15 @@ CREATE OR REPLACE FUNCTION save_workflow_checkpoint(
   p_checkpoint_type text,
   p_checkpoint_data jsonb
 ) RETURNS void AS $$
+DECLARE
+  v_owner_id uuid;
 BEGIN
+  -- Verify caller owns this execution
+  SELECT user_id INTO v_owner_id FROM workflow_executions WHERE id = p_execution_id;
+  IF v_owner_id IS NULL OR v_owner_id != auth.uid() THEN
+    RAISE EXCEPTION 'Access denied: execution not found or not owned by caller';
+  END IF;
+
   -- Save checkpoint
   INSERT INTO workflow_checkpoints (execution_id, step_id, checkpoint_type, checkpoint_data)
   VALUES (p_execution_id, p_step_id, p_checkpoint_type, p_checkpoint_data);
@@ -155,16 +163,23 @@ CREATE OR REPLACE FUNCTION resume_workflow_from_checkpoint(
   p_execution_id uuid
 ) RETURNS jsonb AS $$
 DECLARE
-  checkpoint_record record;
+  v_owner_id uuid;
+  v_checkpoint_data jsonb;
 BEGIN
+  -- Verify caller owns this execution
+  SELECT user_id INTO v_owner_id FROM workflow_executions WHERE id = p_execution_id;
+  IF v_owner_id IS NULL OR v_owner_id != auth.uid() THEN
+    RAISE EXCEPTION 'Access denied: execution not found or not owned by caller';
+  END IF;
+
   -- Get latest checkpoint
-  SELECT checkpoint_data INTO checkpoint_record
+  SELECT checkpoint_data INTO v_checkpoint_data
   FROM workflow_checkpoints
   WHERE execution_id = p_execution_id
   ORDER BY created_at DESC
   LIMIT 1;
   
-  IF checkpoint_record IS NULL THEN
+  IF v_checkpoint_data IS NULL THEN
     RETURN '{}'::jsonb;
   END IF;
   
@@ -172,11 +187,11 @@ BEGIN
   UPDATE workflow_executions
   SET 
     status = 'running',
-    workflow_state = checkpoint_record.checkpoint_data,
+    workflow_state = v_checkpoint_data,
     updated_at = now()
   WHERE id = p_execution_id;
   
-  RETURN checkpoint_record.checkpoint_data;
+  RETURN v_checkpoint_data;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

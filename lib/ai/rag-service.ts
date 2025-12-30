@@ -2,7 +2,7 @@
  * RAG Retrieval Service for Writing Frameworks
  * 
  * Provides semantic search over the writing_frameworks knowledge base using:
- * - Vector similarity search with pgvector
+ * - Vector similarity search with pgvector via Neon/Drizzle
  * - Hybrid re-ranking (semantic + keyword matching)
  * - LRU caching for performance
  * - Edge-compatible implementation (no Node.js APIs)
@@ -14,13 +14,14 @@ import { LRUCache } from 'lru-cache'
 import {
   cacheGet,
   cacheSet,
-  cacheGetBatch,
-  cacheSetBatch,
   CACHE_PREFIXES,
   CACHE_TTL,
 } from '../redis/client'
-import { db, writingFrameworks } from '@/lib/db'
-import { sql, eq, inArray } from 'drizzle-orm'
+import { 
+  searchFrameworks, 
+  incrementFrameworkUsage,
+  type FrameworkSearchResult 
+} from '@/lib/db/vector-search'
 
 // ============================================================================
 // TYPES
@@ -56,21 +57,14 @@ export interface Framework {
   created_at?: string
 }
 
-interface MatchFrameworkResult {
-  id: string
-  name: string
-  structure: unknown
-  similarity: number
-}
-
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
 const CONFIG = {
   defaultMaxResults: 3,
-  defaultThreshold: 0.7,
-  fallbackThreshold: 0.6, // If no results, try lower threshold
+  defaultThreshold: 0.5,
+  fallbackThreshold: 0.3, // If no results, try lower threshold
   cacheSize: 200,
   cacheTTL: 10 * 60 * 1000, // 10 minutes in milliseconds
   retrievalMultiplier: 2.5, // Fetch 2.5x more for re-ranking
@@ -104,36 +98,6 @@ function getCacheKey(query: string, options: RetrievalOptions = {}): string {
 }
 
 // ============================================================================
-// DRIZZLE VECTOR SEARCH
-// ============================================================================
-
-/**
- * Perform vector similarity search using Drizzle SQL
- */
-async function matchFrameworks(
-  queryEmbedding: number[],
-  matchThreshold: number,
-  matchCount: number
-): Promise<MatchFrameworkResult[]> {
-  const embeddingString = `[${queryEmbedding.join(',')}]`
-
-  const results = await db.execute(sql`
-    SELECT 
-      id,
-      name,
-      structure,
-      1 - (embedding <=> ${embeddingString}::vector) as similarity
-    FROM writing_frameworks
-    WHERE embedding IS NOT NULL
-      AND 1 - (embedding <=> ${embeddingString}::vector) > ${matchThreshold}
-    ORDER BY embedding <=> ${embeddingString}::vector
-    LIMIT ${matchCount}
-  `)
-
-  return results.rows as unknown as MatchFrameworkResult[]
-}
-
-// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -157,13 +121,13 @@ function calculateKeywordBoost(
   }
 
   // Tag matches: +0.05 per matching tag (max +0.15)
-  const matchingTags = framework.tags.filter((tag) =>
+  const matchingTags = framework.tags?.filter((tag) =>
     queryLower.includes(tag.toLowerCase())
-  )
+  ) || []
   boost += Math.min(matchingTags.length * 0.05, 0.15)
 
   // Category match in query: +0.03
-  if (queryLower.includes(framework.category.toLowerCase())) {
+  if (framework.category && queryLower.includes(framework.category.toLowerCase())) {
     boost += 0.03
   }
 
@@ -218,12 +182,39 @@ function reRankFrameworks(
   }))
 }
 
+/**
+ * Convert search result to Framework type
+ */
+function toFramework(result: FrameworkSearchResult): Framework {
+  const structure = result.structure as Framework['structure'] || {
+    sections: [],
+    best_practices: [],
+    use_cases: [],
+  }
+  
+  const metadata = result.metadata as { tags?: string[] } || {}
+  
+  return {
+    id: result.id,
+    name: result.name,
+    description: result.description || '',
+    structure,
+    example: result.examples || '',
+    category: result.category as FrameworkCategory,
+    tags: metadata.tags || [],
+    similarity: result.similarity,
+    usage_count: result.usageCount || 0,
+  }
+}
+
 // ============================================================================
 // MAIN RETRIEVAL FUNCTION
 // ============================================================================
 
 /**
  * Find relevant frameworks using semantic search and hybrid re-ranking
+ * 
+ * Uses Neon PostgreSQL with pgvector for vector similarity search
  * 
  * @param query - User's natural language query
  * @param options - Retrieval options (maxResults, threshold, category, etc.)
@@ -241,7 +232,6 @@ export async function findRelevantFrameworks(
       maxResults = CONFIG.defaultMaxResults,
       threshold = CONFIG.defaultThreshold,
       category,
-      userId,
     } = options
 
     // Check cache first - try LRU cache (fastest)
@@ -281,26 +271,13 @@ export async function findRelevantFrameworks(
     // Calculate retrieval count (fetch more for re-ranking)
     const retrievalCount = Math.ceil(maxResults * CONFIG.retrievalMultiplier)
 
-    // Call Drizzle vector search function
-    let data: MatchFrameworkResult[] = []
-    try {
-      data = await matchFrameworks(queryEmbedding, threshold, retrievalCount)
-    } catch (error) {
-      console.error('[RAG] Vector search error:', error)
+    // Use Drizzle/Neon for vector similarity search
+    const searchResults = await searchFrameworks(queryEmbedding, {
+      threshold,
+      limit: retrievalCount,
+    })
 
-      // Try with lower threshold as fallback
-      if (threshold > CONFIG.fallbackThreshold) {
-        console.log('[RAG] Retrying with lower threshold...')
-        return findRelevantFrameworks(query, {
-          ...options,
-          threshold: CONFIG.fallbackThreshold,
-        })
-      }
-
-      return []
-    }
-
-    if (!data || data.length === 0) {
+    if (searchResults.length === 0) {
       const duration = Date.now() - startTime
       console.log(`[RAG] No results found (${duration}ms)`)
 
@@ -316,46 +293,16 @@ export async function findRelevantFrameworks(
       return []
     }
 
-    // Fetch full framework details using Drizzle
-    const frameworkIds = data.map((r) => r.id)
-    let fullFrameworks: any[] = []
-    try {
-      fullFrameworks = await db
-        .select({
-          id: writingFrameworks.id,
-          name: writingFrameworks.name,
-          description: writingFrameworks.description,
-          structure: writingFrameworks.structure,
-          examples: writingFrameworks.examples,
-          category: writingFrameworks.category,
-          metadata: writingFrameworks.metadata,
-        })
-        .from(writingFrameworks)
-        .where(inArray(writingFrameworks.id, frameworkIds))
-    } catch (fetchError) {
-      console.error('[RAG] Error fetching full frameworks:', fetchError)
-      return []
-    }
-
-    // Merge similarity scores with full data
-    const frameworksWithScores: Framework[] = fullFrameworks.map((fw: any) => {
-      const match = data.find((m) => m.id === fw.id)
-      return {
-        ...fw,
-        similarity: match?.similarity || 0,
-      } as Framework
-    })
+    // Convert to Framework type
+    let frameworks = searchResults.map(toFramework)
 
     // Apply category filter if specified
-    let filteredFrameworks = frameworksWithScores
     if (category) {
-      filteredFrameworks = frameworksWithScores.filter(
-        (fw) => fw.category === category
-      )
+      frameworks = frameworks.filter((fw) => fw.category === category)
     }
 
     // Apply hybrid re-ranking
-    const reRanked = reRankFrameworks(filteredFrameworks, query, category)
+    const reRanked = reRankFrameworks(frameworks, query, category)
 
     // Take top N results
     const results = reRanked.slice(0, maxResults)
@@ -456,21 +403,16 @@ export function formatFrameworksForPrompt(frameworks: Framework[]): string {
 
 /**
  * Increment usage count for a framework (fire-and-forget)
+ * Uses Drizzle/Neon instead of Supabase
  * 
  * @param frameworkId - ID of the framework to track
  */
-export async function incrementFrameworkUsage(
+export async function trackFrameworkUsage(
   frameworkId: string
 ): Promise<void> {
   try {
-    // Fire-and-forget: use raw SQL for atomic increment
-    db.execute(sql`
-      UPDATE writing_frameworks 
-      SET usage_count = COALESCE(usage_count, 0) + 1
-      WHERE id = ${frameworkId}
-    `).catch((error) => {
-      console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, error)
-    })
+    // Fire-and-forget: don't await in caller
+    await incrementFrameworkUsage(frameworkId)
   } catch (error) {
     // Silently fail - usage tracking is non-critical
     console.warn('[RAG] Usage tracking error:', error)
@@ -488,16 +430,10 @@ export async function batchIncrementUsage(
   if (frameworkIds.length === 0) return
 
   try {
-    // Increment all frameworks using Drizzle
-    for (const frameworkId of frameworkIds) {
-      db.execute(sql`
-        UPDATE writing_frameworks 
-        SET usage_count = COALESCE(usage_count, 0) + 1
-        WHERE id = ${frameworkId}
-      `).catch((error) => {
-        console.warn(`[RAG] Failed to increment usage for ${frameworkId}:`, error)
-      })
-    }
+    // Process all increments in parallel
+    await Promise.all(
+      frameworkIds.map(id => incrementFrameworkUsage(id))
+    )
   } catch (error) {
     console.warn('[RAG] Batch usage tracking error:', error)
   }
