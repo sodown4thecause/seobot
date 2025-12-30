@@ -1,4 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
+import { db, conversations } from '@/lib/db'
+import { eq, desc, and } from 'drizzle-orm'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'edge'
@@ -9,52 +11,31 @@ export const runtime = 'edge'
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    
     // Get authenticated user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const userId = await requireUserId()
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || 'active'
     const limit = parseInt(searchParams.get('limit') || '50')
 
+    // Build where conditions
+    const conditions = [eq(conversations.userId, userId)]
+    
+    // Filter by status if specified
+    if (status === 'active' || status === 'archived') {
+      conditions.push(eq(conversations.status, status))
+    }
+
     // Query conversations
-    let query = supabase
-      .from('conversations')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('updated_at', { ascending: false })
+    const conversationList = await db
+      .select()
+      .from(conversations)
+      .where(and(...conditions))
+      .orderBy(desc(conversations.updatedAt))
       .limit(limit)
 
-    // Filter by status if specified
-    if (status === 'active') {
-      query = query.eq('status', 'active')
-    } else if (status === 'archived') {
-      query = query.eq('status', 'archived')
-    }
-
-    const { data: conversations, error } = await query
-
-    if (error) {
-      console.error('[Conversations API] Error fetching conversations:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch conversations' },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({ conversations: conversations || [] })
+    return NextResponse.json({ conversations: conversationList })
   } catch (error) {
     console.error('[Conversations API] Unexpected error:', error)
     return NextResponse.json(
@@ -70,20 +51,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    
     // Get authenticated user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const userId = await requireUserId()
 
     // Parse request body
     const body = await request.json()
@@ -97,24 +66,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create conversation
-    const { data: conversation, error } = await supabase
-      .from('conversations')
-      .insert({
-        user_id: user.id,
-        agent_type: agentId,
+    const [conversation] = await db
+      .insert(conversations)
+      .values({
+        userId,
+        agentType: agentId,
         title: title || 'New Conversation',
         status: 'active',
       })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('[Conversations API] Error creating conversation:', error)
-      return NextResponse.json(
-        { error: 'Failed to create conversation' },
-        { status: 500 }
-      )
-    }
+      .returning()
 
     return NextResponse.json({ conversation })
   } catch (error) {

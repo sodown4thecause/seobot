@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { executeWorkflow, formatWorkflowResults } from '@/lib/workflows/executor'
-import { createClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
 
 export const runtime = 'edge'
 
@@ -24,23 +24,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get user from Supabase
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    // Get authenticated user
+    const userId = await requireUserId()
 
     console.log('[Workflow API] Executing workflow:', {
       workflowId,
-      userId: user.id,
+      userId,
       conversationId,
       query: userQuery.substring(0, 100),
     })
@@ -50,7 +39,7 @@ export async function POST(req: NextRequest) {
       workflowId,
       userQuery,
       conversationId: conversationId || crypto.randomUUID(),
-      userId: user.id,
+      userId,
       parameters,
       cache: new Map(), // Fresh cache for each execution
     })

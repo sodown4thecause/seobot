@@ -1,16 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth/clerk'
+// import { db } from '@/lib/db'
+// import { apiUsageLogs } from '@/lib/db/schema'
+// import { eq, gte, and } from 'drizzle-orm'
 
 export const runtime = 'edge'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await requireUserId()
 
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'week'
@@ -33,28 +31,34 @@ export async function GET(request: NextRequest) {
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     }
 
-    // Fetch summary data
-    const { data: logs, error } = await supabase
-      .from('api_usage_logs')
-      .select('service, cost_usd, duration_ms')
-      .eq('user_id', user.id)
-      .gte('created_at', startDate.toISOString())
+    // TODO: Implement api_usage_logs table in schema
+    // Table needs: user_id, service, cost_usd, duration_ms, created_at
+    // const logs = await db
+    //   .select({
+    //     service: apiUsageLogs.service,
+    //     costUsd: apiUsageLogs.costUsd,
+    //     durationMs: apiUsageLogs.durationMs,
+    //   })
+    //   .from(apiUsageLogs)
+    //   .where(
+    //     and(
+    //       eq(apiUsageLogs.userId, userId),
+    //       gte(apiUsageLogs.createdAt, startDate)
+    //     )
+    //   )
 
-    if (error) {
-      console.error('[Admin Analytics] Error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    const logs: any[] = []
 
     // Calculate summary
-    const totalCalls = logs?.length || 0
-    const totalCost = logs?.reduce((sum, log) => sum + (Number(log.cost_usd) || 0), 0) || 0
-    const avgDuration = logs?.length 
-      ? logs.reduce((sum, log) => sum + (log.duration_ms || 0), 0) / logs.length
+    const totalCalls = logs.length
+    const totalCost = logs.reduce((sum, log) => sum + (Number(log.costUsd) || 0), 0)
+    const avgDuration = logs.length 
+      ? logs.reduce((sum, log) => sum + (log.durationMs || 0), 0) / logs.length
       : 0
 
     // Find top service
     const serviceCounts: Record<string, number> = {}
-    logs?.forEach(log => {
+    logs.forEach(log => {
       serviceCounts[log.service] = (serviceCounts[log.service] || 0) + 1
     })
     const topService = Object.entries(serviceCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A'

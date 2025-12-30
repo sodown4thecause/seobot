@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireUserId } from '@/lib/auth/clerk'
 import { getConversationForUser, loadConversationMessages } from '@/lib/chat/storage'
 
 export const runtime = 'edge'
@@ -9,15 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await requireUserId()
 
     const { id: conversationId } = await params
     if (!conversationId) {
@@ -29,12 +21,12 @@ export async function GET(
     const offset = parseInt(searchParams.get('offset') || '0', 10)
     const limit = parseInt(searchParams.get('limit') || '50', 10)
 
-    const conversation = await getConversationForUser(supabase, user.id, conversationId)
+    const conversation = await getConversationForUser(userId, conversationId)
     if (!conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
     }
 
-    const allMessages = await loadConversationMessages(supabase, conversationId)
+    const allMessages = await loadConversationMessages(conversationId)
 
     // Apply pagination (messages are already sorted by created_at ascending)
     const paginatedMessages = allMessages.slice(offset, offset + limit)
