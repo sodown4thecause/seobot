@@ -72,21 +72,12 @@ export class DataForSEOScoringAgent {
       // Step 1: Get detailed citation data using content_analysis_search
       let citationData: any = {}
       try {
-        const { withMCPLogging } = await import('@/lib/analytics/mcp-logger');
-        const searchResult = await withMCPLogging(
-          {
-            userId: params.userId,
-            provider: 'dataforseo',
-            endpoint: 'content_analysis_search',
-            agentType: 'dataforseo_scoring',
-          },
-          () => executeTool(mcpDataforseoTools.content_analysis_search, {
-            keyword: params.targetKeyword,
-            limit: 10,
-            offset: 0,
-            page_type: ['blogs', 'news'] as const,
-          })
-        )
+        const searchResult = await executeTool(mcpDataforseoTools.content_analysis_search, {
+          keyword: params.targetKeyword,
+          limit: 10,
+          offset: 0,
+          page_type: ['blogs', 'news'] as const,
+        })
 
         const searchParsed = typeof searchResult === 'string' ? JSON.parse(searchResult) : searchResult
         if (searchParsed && searchParsed.tasks && searchParsed.tasks[0]?.result) {
@@ -100,21 +91,12 @@ export class DataForSEOScoringAgent {
       // Step 2: Get phrase trends for content optimization
       let phraseTrends: Array<{ phrase: string; trend: number }> = []
       try {
-        const { withMCPLogging } = await import('@/lib/analytics/mcp-logger');
-        const trendsResult = await withMCPLogging(
-          {
-            userId: params.userId,
-            provider: 'dataforseo',
-            endpoint: 'content_analysis_phrase_trends',
-            agentType: 'dataforseo_scoring',
-          },
-          () => executeTool(mcpDataforseoTools.content_analysis_phrase_trends, {
-            keyword: params.targetKeyword,
-            date_from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
-            date_group: 'month' as const,
-            internal_list_limit: 10,
-          })
-        )
+        const trendsResult = await executeTool(mcpDataforseoTools.content_analysis_phrase_trends, {
+          keyword: params.targetKeyword,
+          date_from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
+          date_group: 'month' as const,
+          internal_list_limit: 10,
+        })
 
         const trendsParsed = typeof trendsResult === 'string' ? JSON.parse(trendsResult) : trendsResult
         if (trendsParsed && trendsParsed.tasks && trendsParsed.tasks[0]?.result) {
@@ -131,23 +113,14 @@ export class DataForSEOScoringAgent {
       // Step 3: Get related keywords for semantic coverage check
       let relatedKeywords: string[] = []
       try {
-        const { withMCPLogging } = await import('@/lib/analytics/mcp-logger');
-        const relatedResult = await withMCPLogging(
-          {
-            userId: params.userId,
-            provider: 'dataforseo',
-            endpoint: 'dataforseo_labs_google_related_keywords',
-            agentType: 'dataforseo_scoring',
-          },
-          () => executeTool(mcpDataforseoTools.dataforseo_labs_google_related_keywords, {
-            keyword: params.targetKeyword,
-            language_code: params.language || 'en',
-            location_name: 'United States',
-            depth: 1,
-            limit: 20,
-            include_clickstream_data: false,
-          })
-        )
+        const relatedResult = await executeTool(mcpDataforseoTools.dataforseo_labs_google_related_keywords, {
+          keyword: params.targetKeyword,
+          language_code: params.language || 'en',
+          location_name: 'United States',
+          depth: 1,
+          limit: 20,
+          include_clickstream_data: false,
+        })
 
         const relatedParsed = typeof relatedResult === 'string' ? JSON.parse(relatedResult) : relatedResult
         if (relatedParsed && relatedParsed.tasks && relatedParsed.tasks[0]?.result) {
@@ -161,21 +134,12 @@ export class DataForSEOScoringAgent {
 
       // Step 4: Fallback to summary if search didn't work
       if (!citationData || Object.keys(citationData).length === 0) {
-        const { withMCPLogging } = await import('@/lib/analytics/mcp-logger');
-        const summaryResult = await withMCPLogging(
-          {
-            userId: params.userId,
-            provider: 'dataforseo',
-            endpoint: 'content_analysis_summary',
-            agentType: 'dataforseo_scoring',
-          },
-          () => executeTool(mcpDataforseoTools.content_analysis_summary, {
-            keyword: params.targetKeyword,
-            internal_list_limit: 5,
-            positive_connotation_threshold: 0.4,
-            sentiments_connotation_threshold: 0.4,
-          })
-        )
+        const summaryResult = await executeTool(mcpDataforseoTools.content_analysis_summary, {
+          keyword: params.targetKeyword,
+          internal_list_limit: 5,
+          positive_connotation_threshold: 0.4,
+          sentiments_connotation_threshold: 0.4,
+        })
 
         try {
           citationData = typeof summaryResult === 'string' ? JSON.parse(summaryResult) : summaryResult
@@ -190,19 +154,10 @@ export class DataForSEOScoringAgent {
 
       if (params.contentUrl) {
         try {
-          const { withMCPLogging } = await import('@/lib/analytics/mcp-logger');
-          const parseResult = await withMCPLogging(
-            {
-              userId: params.userId,
-              provider: 'dataforseo',
-              endpoint: 'on_page_content_parsing',
-              agentType: 'dataforseo_scoring',
-            },
-            () => executeTool(mcpDataforseoTools.on_page_content_parsing, {
-              url: params.contentUrl!,
-              enable_javascript: true,
-            })
-          )
+          const parseResult = await executeTool(mcpDataforseoTools.on_page_content_parsing, {
+            url: params.contentUrl!,
+            enable_javascript: true,
+          })
 
           const parseParsed = typeof parseResult === 'string' ? JSON.parse(parseResult) : parseResult
           if (parseParsed && parseParsed.tasks && parseParsed.tasks[0]?.result) {
@@ -218,19 +173,10 @@ export class DataForSEOScoringAgent {
 
           // Get Lighthouse score for technical quality
           try {
-            const { withMCPLogging } = await import('@/lib/analytics/mcp-logger');
-            const lighthouseResult = await withMCPLogging(
-              {
-                userId: params.userId,
-                provider: 'dataforseo',
-                endpoint: 'on_page_lighthouse',
-                agentType: 'dataforseo_scoring',
-              },
-              () => executeTool(mcpDataforseoTools.on_page_lighthouse, {
-                url: params.contentUrl!,
-                enable_javascript: true,
-              })
-            )
+            const lighthouseResult = await executeTool(mcpDataforseoTools.on_page_lighthouse, {
+              url: params.contentUrl!,
+              enable_javascript: true,
+            })
 
             const lighthouseParsed = typeof lighthouseResult === 'string' ? JSON.parse(lighthouseResult) : lighthouseResult
             if (lighthouseParsed && lighthouseParsed.tasks && lighthouseParsed.tasks[0]?.result) {
