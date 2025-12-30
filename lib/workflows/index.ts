@@ -1,11 +1,25 @@
-// Workflow System Exports
+/**
+ * Workflow Index
+ * TODO: Re-implement with Drizzle ORM
+ */
 
-export * from './types'
-export * from './engine'
-export * from './registry'
-export * from './executor'
-export * from './detector'
-export { rankOnChatGPTWorkflow } from './definitions/rank-on-chatgpt'
-export { competitorAnalysisWorkflow } from './definitions/competitor-analysis'
-export { orchestratedWorkflows } from './orchestrator'
+export type { Workflow, WorkflowStep, WorkflowExecution, WorkflowContext } from './types'
+export { 
+  registerWorkflow, 
+  getWorkflow, 
+  listWorkflows,
+  getAllWorkflows,
+} from './registry'
 
+// Workflow detection utilities (stub)
+export function detectWorkflow(): boolean {
+  return false
+}
+
+export function isWorkflowRequest(): boolean {
+  return false
+}
+
+export function extractWorkflowId(): string | null {
+  return null
+}

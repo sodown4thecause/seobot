@@ -2,14 +2,12 @@ import { generateObject } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { createAdminClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { eq, desc, sql } from 'drizzle-orm'
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
-
-// Use singleton admin client for Supabase operations
-const supabase = createAdminClient()
 
 export interface ABTestVariant {
   id: string
@@ -100,53 +98,10 @@ export async function createABTest(params: {
       return acc
     }, {} as Record<string, number>)
 
-    const { data, error } = await supabase
-      .from('ab_tests')
-      .insert({
-        user_id: params.userId,
-        content_id: params.contentId,
-        test_name: params.name,
-        description: params.description,
-        variants,
-        traffic_split: trafficSplit,
-        status: 'draft',
-        results: {
-          totalImpressions: 0,
-          totalClicks: 0,
-          totalConversions: 0,
-          variantResults: variants.reduce((acc, variant) => {
-            acc[variant.id] = {
-              impressions: 0,
-              clicks: 0,
-              conversions: 0,
-              ctr: 0,
-              conversionRate: 0
-            }
-            return acc
-          }, {} as Record<string, any>)
-        }
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-
-    return {
-      id: data.id,
-      name: data.test_name,
-      description: data.description,
-      contentId: data.content_id,
-      variants: data.variants,
-      status: data.status,
-      trafficSplit: data.traffic_split,
-      startDate: data.start_date,
-      endDate: data.end_date,
-      results: data.results,
-      winner: data.winner,
-      confidenceScore: data.confidence_score,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    }
+    // TODO: Create ab_tests table in schema with these fields:
+    // id, user_id, content_id, test_name, description, variants (jsonb), traffic_split (jsonb),
+    // status, results (jsonb), winner, confidence_score, start_date, end_date, created_at, updated_at
+    throw new Error('AB testing tables not yet implemented in Drizzle schema')
   } catch (error) {
     console.error('Failed to create A/B test:', error)
     throw error
@@ -193,16 +148,8 @@ Return only the variations as a JSON array of strings, no explanations.`
  */
 export async function startABTest(testId: string, userId: string): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('ab_tests')
-      .update({
-        status: 'active',
-        start_date: new Date().toISOString()
-      })
-      .eq('id', testId)
-      .eq('user_id', userId)
-
-    if (error) throw error
+    // TODO: Implement with Drizzle when ab_tests table is added
+    throw new Error('AB testing tables not yet implemented in Drizzle schema')
   } catch (error) {
     console.error('Failed to start A/B test:', error)
     throw error
@@ -219,49 +166,11 @@ export async function recordImpression(
   ipAddress?: string
 ): Promise<void> {
   try {
+    // TODO: Implement with Drizzle when ab_tests table is added
     // Get current test data
-    const { data: test, error: fetchError } = await supabase
-      .from('ab_tests')
-      .select('results, status')
-      .eq('id', testId)
-      .single()
-
-    if (fetchError || !test) throw fetchError || new Error('Test not found')
-    if (test.status !== 'active') return // Don't record if test is not active
-
     // Update results
-    const updatedResults = { ...test.results }
-    updatedResults.totalImpressions += 1
-    updatedResults.variantResults[variantId].impressions += 1
-
-    // Recalculate rates
-    Object.keys(updatedResults.variantResults).forEach(key => {
-      const variant = updatedResults.variantResults[key]
-      variant.ctr = variant.impressions > 0 ? (variant.clicks / variant.impressions) * 100 : 0
-      variant.conversionRate = variant.impressions > 0 ? (variant.conversions / variant.impressions) * 100 : 0
-    })
-
-    const { error: updateError } = await supabase
-      .from('ab_tests')
-      .update({
-        results: updatedResults,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', testId)
-
-    if (updateError) throw updateError
-
     // Record individual impression for analytics
-    await supabase
-      .from('ab_test_impressions')
-      .insert({
-        test_id: testId,
-        variant_id: variantId,
-        user_agent: userAgent,
-        ip_address: ipAddress,
-        created_at: new Date().toISOString()
-      })
-
+    throw new Error('AB testing tables not yet implemented in Drizzle schema')
   } catch (error) {
     console.error('Failed to record impression:', error)
     // Don't throw error to avoid breaking user experience
@@ -278,49 +187,11 @@ export async function recordClick(
   ipAddress?: string
 ): Promise<void> {
   try {
+    // TODO: Implement with Drizzle when ab_tests table is added
     // Get current test data
-    const { data: test, error: fetchError } = await supabase
-      .from('ab_tests')
-      .select('results, status')
-      .eq('id', testId)
-      .single()
-
-    if (fetchError || !test) throw fetchError || new Error('Test not found')
-    if (test.status !== 'active') return
-
     // Update results
-    const updatedResults = { ...test.results }
-    updatedResults.totalClicks += 1
-    updatedResults.variantResults[variantId].clicks += 1
-
-    // Recalculate rates
-    Object.keys(updatedResults.variantResults).forEach(key => {
-      const variant = updatedResults.variantResults[key]
-      variant.ctr = variant.impressions > 0 ? (variant.clicks / variant.impressions) * 100 : 0
-      variant.conversionRate = variant.impressions > 0 ? (variant.conversions / variant.impressions) * 100 : 0
-    })
-
-    const { error: updateError } = await supabase
-      .from('ab_tests')
-      .update({
-        results: updatedResults,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', testId)
-
-    if (updateError) throw updateError
-
     // Record individual click for analytics
-    await supabase
-      .from('ab_test_clicks')
-      .insert({
-        test_id: testId,
-        variant_id: variantId,
-        user_agent: userAgent,
-        ip_address: ipAddress,
-        created_at: new Date().toISOString()
-      })
-
+    throw new Error('AB testing tables not yet implemented in Drizzle schema')
   } catch (error) {
     console.error('Failed to record click:', error)
     // Don't throw error to avoid breaking user experience
@@ -336,56 +207,8 @@ export async function getVariantForUser(
   sessionId?: string
 ): Promise<ABTestVariant | null> {
   try {
-    // Get test data
-    const { data: test, error } = await supabase
-      .from('ab_tests')
-      .select('variants, traffic_split, status')
-      .eq('id', testId)
-      .single()
-
-    if (error || !test || test.status !== 'active') return null
-
-    // Check if user already has an assigned variant
-    if (userId || sessionId) {
-      const { data: assignment } = await supabase
-        .from('ab_test_assignments')
-        .select('variant_id')
-        .or(`user_id.eq.${userId},session_id.eq.${sessionId}`)
-        .eq('test_id', testId)
-        .single()
-
-      if (assignment) {
-        return test.variants.find((v: ABTestVariant) => v.id === assignment.variant_id) || null
-      }
-    }
-
-    // Assign new variant based on traffic split
-    const random = Math.random() * 100
-    let cumulative = 0
-    let selectedVariant: ABTestVariant | null = null
-
-    for (const [variantId, percentage] of Object.entries(test.traffic_split)) {
-      cumulative += (percentage as number)
-      if (random <= cumulative) {
-        selectedVariant = test.variants.find((v: ABTestVariant) => v.id === variantId) || null
-        break
-      }
-    }
-
-    // Record assignment
-    if (selectedVariant && (userId || sessionId)) {
-      await supabase
-        .from('ab_test_assignments')
-        .insert({
-          test_id: testId,
-          variant_id: selectedVariant.id,
-          user_id: userId || null,
-          session_id: sessionId || null,
-          created_at: new Date().toISOString()
-        })
-    }
-
-    return selectedVariant
+    // TODO: Implement with Drizzle when ab_tests table is added
+    throw new Error('AB testing tables not yet implemented in Drizzle schema')
   } catch (error) {
     console.error('Failed to get variant for user:', error)
     return null
@@ -397,58 +220,8 @@ export async function getVariantForUser(
  */
 export async function calculateABTestInsights(testId: string): Promise<ABTestInsights> {
   try {
-    const { data: test, error } = await supabase
-      .from('ab_tests')
-      .select('results, start_date')
-      .eq('id', testId)
-      .single()
-
-    if (error || !test) throw error || new Error('Test not found')
-
-    const results = test.results
-    const variantIds = Object.keys(results.variantResults)
-    
-    if (variantIds.length < 2) {
-      throw new Error('Need at least 2 variants for statistical analysis')
-    }
-
-    // Calculate basic metrics
-    const totalImpressions = results.totalImpressions
-    const totalClicks = results.totalClicks
-    const overallCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
-
-    // Find best performing variant
-    let bestVariant = ''
-    let bestCTR = 0
-    for (const [variantId, variantResult] of Object.entries(results.variantResults)) {
-      const result = variantResult as { ctr: number }
-      if (result.ctr > bestCTR) {
-        bestCTR = result.ctr
-        bestVariant = variantId
-      }
-    }
-
-    // Calculate statistical significance using chi-square test
-    const significance = calculateStatisticalSignificance(results.variantResults)
-
-    // Calculate recommended duration (based on traffic and desired confidence)
-    const daysRunning = test.start_date ? 
-      Math.floor((Date.now() - new Date(test.start_date).getTime()) / (1000 * 60 * 60 * 24)) : 0
-    
-    const recommendedDuration = calculateRecommendedDuration(
-      totalImpressions,
-      overallCTR,
-      significance.confidenceLevel
-    )
-
-    return {
-      statisticalSignificance: significance.isSignificant,
-      confidenceLevel: significance.confidenceLevel,
-      recommendedDuration,
-      sampleSizeRequired: calculateSampleSize(overallCTR, 0.05, 0.8), // 5% minimum detectable effect, 80% power
-      power: 0.8,
-      effectSize: significance.effectSize
-    }
+    // TODO: Implement with Drizzle when ab_tests table is added
+    throw new Error('AB testing tables not yet implemented in Drizzle schema')
   } catch (error) {
     console.error('Failed to calculate A/B test insights:', error)
     throw error
@@ -547,37 +320,8 @@ export async function getUserABTests(
   limit: number = 20
 ): Promise<ABTest[]> {
   try {
-    let query = supabase
-      .from('ab_tests')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(limit)
-
-    if (status) {
-      query = query.eq('status', status)
-    }
-
-    const { data, error } = await query
-
-    if (error) throw error
-
-    return data.map((test: any) => ({
-      id: test.id,
-      name: test.test_name,
-      description: test.description,
-      contentId: test.content_id,
-      variants: test.variants,
-      status: test.status,
-      trafficSplit: test.traffic_split,
-      startDate: test.start_date,
-      endDate: test.end_date,
-      results: test.results,
-      winner: test.winner,
-      confidenceScore: test.confidence_score,
-      createdAt: test.created_at,
-      updatedAt: test.updated_at
-    }))
+    // TODO: Implement with Drizzle when ab_tests table is added
+    throw new Error('AB testing tables not yet implemented in Drizzle schema')
   } catch (error) {
     console.error('Failed to get user A/B tests:', error)
     throw error
