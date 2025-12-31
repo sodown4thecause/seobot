@@ -51,6 +51,7 @@ export const linkBuildingCampaignWorkflow: Workflow = {
       parallel: true,
       tools: [
         {
+          id: 'n8n_backlinks_1',
           name: 'n8n_backlinks',
           params: {
             domain: '{{competitorDomains[0]}}',
@@ -59,11 +60,13 @@ export const linkBuildingCampaignWorkflow: Workflow = {
           required: true,
         },
         {
+          id: 'n8n_backlinks_2',
           name: 'n8n_backlinks',
           params: {
             domain: '{{competitorDomains[1]}}',
             action: 'analyze',
           },
+          required: true,
         },
       ],
       systemPrompt: `You are analyzing competitor backlinks to identify link building opportunities.
@@ -88,11 +91,12 @@ Create a list of potential link prospects based on competitor analysis.`,
       dependencies: ['discovery-competitor-backlinks'],
       tools: [
         {
-          name: 'dataforseo_labs_google_page_intersection',
+          id: 'dataforseo_labs_google_relevant_pages',
+          name: 'dataforseo_labs_google_relevant_pages',
           params: {
             targets: '{{competitorDomains}}',
             location_name: 'United States',
-            limit: 100,
+            limit: 50,
           },
           required: true,
         },
@@ -121,14 +125,16 @@ Prioritize prospects by:
       dependencies: ['discovery-content-intersection'],
       tools: [
         {
-          name: 'firecrawl_crawl',
+          id: 'jina_scrape',
+          name: 'jina_scrape',
           params: {
-            url: '{{prospect_url}}',
-            limit: 10,
+            url: '{{prospectUrl}}',
+            limit: 5000,
             scrapeOptions: {
-              formats: ['links'],
+              formats: ['markdown', 'text'],
             },
           },
+          required: true,
         },
       ],
       systemPrompt: `You are finding broken links on prospect pages that could be replaced with target domain links.
@@ -153,19 +159,22 @@ This is a powerful link building tactic - offering to replace broken links.`,
       dependencies: ['discovery-broken-links'],
       tools: [
         {
-          name: 'firecrawl_extract',
+          id: 'contact_finder',
+          name: 'contact_finder',
           params: {
-            url: '{{prospect_url_1}}',
+            url: '{{prospectUrl}}',
             extractionSchema: {
               contacts: {
-                emails: 'array',
-                names: 'array',
-                social: 'object',
+                emails: 'string',
+                names: 'string',
+                social: 'string',
               },
             },
           },
+          required: true,
         },
         {
+          id: 'firecrawl_extract',
           name: 'firecrawl_extract',
           params: {
             url: '{{prospect_url_2}}',
@@ -177,6 +186,7 @@ This is a powerful link building tactic - offering to replace broken links.`,
               },
             },
           },
+          required: true,
         },
       ],
       systemPrompt: `You are extracting contact information from prospect pages.
@@ -201,11 +211,13 @@ This information will be used for personalized outreach.`,
       dependencies: ['preparation-contact-discovery'],
       tools: [
         {
-          name: 'perplexity_search',
+          id: 'google_search',
+          name: 'google_search',
           params: {
             query: 'Recent content and interests of {{prospect_name}} at {{prospect_domain}}',
-            search_recency_filter: 'month',
+            search_recency_filter: 'past_year',
           },
+          required: true,
         },
       ],
       systemPrompt: `You are researching prospects to personalize outreach emails.
@@ -239,8 +251,7 @@ For each prospect, create a pitch that:
 5. Includes a clear call-to-action
 
 Make each pitch unique and personalized - avoid generic templates.`,
-      outputFormat: 'component',
-      componentType: 'OutreachPitches',
+      outputFormat: 'json',
     },
 
     // PHASE 3: OUTREACH EXECUTION
@@ -344,12 +355,14 @@ Set up alerts for:
       dependencies: ['tracking-response-monitoring'],
       tools: [
         {
+          id: 'n8n_backlinks_3',
           name: 'n8n_backlinks',
           params: {
             domain: '{{targetDomain}}',
             action: 'monitor',
             checkInterval: 'weekly',
           },
+          required: true,
         },
       ],
       systemPrompt: `You are setting up automated backlink detection.
@@ -362,8 +375,7 @@ Configure monitoring to:
 5. Alert on new high-quality links
 
 This enables tracking campaign success and identifying which outreach worked.`,
-      outputFormat: 'component',
-      componentType: 'BacklinkTracking',
+      outputFormat: 'json',
     },
   ],
 

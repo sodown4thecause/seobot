@@ -81,11 +81,22 @@ export const localSEOCampaignWorkflow: Workflow = {
       parallel: true,
       tools: [
         {
+          id: 'business_data_business_listings_search_3',
           name: 'business_data_business_listings_search',
           params: {
-            keyword: '{{businessName}}',
+            keyword: '{{competitorName}}',
             location_name: '{{businessAddress.city}}, {{businessAddress.state}}',
-            depth: 1,
+            depth: 2,
+          },
+          required: true,
+        },
+        {
+          id: 'dataforseo_labs_google_ranked_keywords_2',
+          name: 'dataforseo_labs_google_ranked_keywords',
+          params: {
+            keywords: '{{localKeywords}}',
+            location_name: '{{businessAddress.city}}, {{businessAddress.state}}',
+            limit: 100,
           },
           required: true,
         },
@@ -113,6 +124,7 @@ Identify specific gaps and optimization opportunities.`,
       parallel: true,
       tools: [
         {
+          id: 'dataforseo_labs_google_keyword_ideas',
           name: 'dataforseo_labs_google_keyword_ideas',
           params: {
             keywords: [
@@ -149,12 +161,13 @@ Create a prioritized list of local keywords to target.`,
       dependencies: ['audit-local-keyword-research'],
       tools: [
         {
-          name: 'serp_organic_live_advanced',
+          id: 'serp_google_organic_search',
+          name: 'serp_google_organic_search',
           params: {
             keyword: '{{primary_local_keyword}}',
             location_name: '{{businessAddress.city}}, {{businessAddress.state}}',
             device: 'mobile',
-            analyze: ['local_pack', 'organic', 'maps'],
+            analyze: ['local_pack', 'organic_results'],
           },
           required: true,
         },
@@ -182,6 +195,7 @@ Identify what's needed to improve local pack visibility.`,
       dependencies: ['audit-local-pack-analysis'],
       tools: [
         {
+          id: 'business_data_business_listings_search_4',
           name: 'business_data_business_listings_search',
           params: {
             keyword: '{{businessCategory}} {{businessAddress.city}}',
@@ -214,7 +228,8 @@ Identify opportunities to outperform competitors.`,
       dependencies: ['audit-gbp-analysis', 'audit-competitor-analysis'],
       tools: [
         {
-          name: 'upsertLocalSEOProfile',
+          id: 'gbp_optimization',
+          name: 'gbp_optimization',
           params: {
             businessName: '{{businessName}}',
             businessCategory: '{{businessCategory}}',
@@ -224,6 +239,7 @@ Identify opportunities to outperform competitors.`,
             servicesOffered: '{{servicesOffered}}',
             serviceAreas: '{{serviceAreas}}',
           },
+          required: true,
         },
       ],
       systemPrompt: `You are creating a comprehensive GBP optimization checklist.
@@ -239,8 +255,7 @@ Generate actionable tasks for:
 8. Posts and updates strategy
 
 Make each task specific and actionable.`,
-      outputFormat: 'component',
-      componentType: 'OptimizationChecklist',
+      outputFormat: 'json',
     },
 
     {
@@ -276,14 +291,16 @@ Ensure all required fields are populated with accurate data.`,
       dependencies: ['optimization-local-schema'],
       tools: [
         {
-          name: 'generateLocalContentIdeas',
+          id: 'local_content_generator',
+          name: 'local_content_generator',
           params: {
             businessName: '{{businessName}}',
             businessCategory: '{{businessCategory}}',
             businessAddress: '{{businessAddress}}',
             servicesOffered: '{{servicesOffered}}',
-            localKeywords: '{{local_keywords}}',
+            localKeywords: '{{localKeywords}}',
           },
+          required: true,
         },
       ],
       systemPrompt: `You are generating local SEO content ideas.
@@ -395,8 +412,7 @@ Generate:
 6. Follow-up sequences
 
 Make templates personalized, professional, and compliant with platform guidelines.`,
-      outputFormat: 'component',
-      componentType: 'ReviewStrategy',
+      outputFormat: 'json',
     },
   ],
 
