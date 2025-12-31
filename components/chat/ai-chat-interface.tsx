@@ -32,6 +32,7 @@ interface AIChatInterfaceProps {
   initialMessage?: string
   conversationId?: string
   agentId?: string
+  autoSendMessage?: string // For workflow prompts that should be sent automatically
 }
 
 const formatToolName = (name: string) => {
@@ -359,10 +360,11 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   initialMessage,
   conversationId: conversationIdProp,
   agentId: agentIdProp,
+  autoSendMessage,
 }, ref) => {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [input, setInput] = useState('')
-  const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
+   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
   // Start with false - the bootstrap effect will set to true when it starts
   const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
@@ -372,6 +374,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
    const agentPreference = agentIdProp ?? (chatContext as any)?.agentId ?? 'general'
    const bootstrapTimeoutRef = useRef<NodeJS.Timeout | null>(null)
    const bootstrapAbortControllerRef = useRef<AbortController | null>(null)
+   const lastAutoSentMessage = useRef<string | null>(null)
 
   useEffect(() => {
     return () => {
@@ -688,6 +691,16 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     sendMessage({ text: data.text })
   }
 
+  // Auto-send workflow messages when provided
+  useEffect(() => {
+    if (autoSendMessage && autoSendMessage !== lastAutoSentMessage.current && !isBootstrapping && status === 'ready') {
+      lastAutoSentMessage.current = autoSendMessage
+      // Small delay to ensure chat is ready
+      setTimeout(() => {
+        sendMessage({ text: autoSendMessage })
+      }, 300)
+    }
+  }, [autoSendMessage, isBootstrapping, status, sendMessage])
 
   // ... Workflow and Component handling (Keeping as is) ...
   const handleComponentSubmit = (componentType: string, data: any) => {

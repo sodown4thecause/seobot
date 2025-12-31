@@ -6,6 +6,11 @@
 export interface Workflow {
   id: string
   name: string
+  description?: string
+  category?: string
+  tags?: string[]
+  icon?: string
+  estimatedTime?: string
   steps: WorkflowStep[]
 }
 
@@ -25,6 +30,8 @@ export interface WorkflowStepResult {
   id: string
   status: WorkflowStepStatus
   toolResults?: Record<string, any>
+  error?: string
+  duration?: number
 }
 
 export type WorkflowStepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped'
@@ -40,6 +47,7 @@ export interface WorkflowExecution {
   endTime?: number
   currentStep?: string
   errorMessage?: string
+  checkpointData?: Record<string, any>
   metadata?: Record<string, any>
 }
 

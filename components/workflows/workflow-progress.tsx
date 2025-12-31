@@ -76,7 +76,7 @@ export function WorkflowProgress({ execution, className }: WorkflowProgressProps
         <div className="space-y-3">
           {execution.stepResults.map((step, index) => (
             <div
-              key={step.stepId}
+              key={step.id}
               className={cn(
                 'flex items-start gap-3 p-3 rounded-md border transition-all',
                 step.status === 'running' && 'bg-blue-950/20 border-blue-900/50',
@@ -95,7 +95,7 @@ export function WorkflowProgress({ execution, className }: WorkflowProgressProps
                     "text-sm font-medium",
                     step.status === 'pending' ? 'text-zinc-500' : 'text-zinc-200'
                   )}>
-                    Step {index + 1}: {step.stepId}
+                    Step {index + 1}: {step.id}
                   </span>
                   {step.duration && (
                     <div className="flex items-center gap-1 text-xs text-zinc-500">

@@ -108,7 +108,7 @@ export function LinkBuildingDashboard({
   }, [campaigns, activeCampaign])
 
   // Group prospects by status
-  const prospectsByStatus = React.useMemo(() => {
+  const prospectsByStatus = React.useMemo((): Partial<Record<ProspectStatus, LinkProspect[]>> => {
     if (!activeCampaign) return {}
 
     const filtered = activeCampaign.prospects.filter(prospect => {
@@ -126,9 +126,9 @@ export function LinkBuildingDashboard({
       if (!acc[status]) {
         acc[status] = []
       }
-      acc[status].push(prospect)
+      acc[status]!.push(prospect)
       return acc
-    }, {} as Record<ProspectStatus, LinkProspect[]>)
+    }, {} as Partial<Record<ProspectStatus, LinkProspect[]>>)
   }, [activeCampaign, searchQuery, filterDomain])
 
   // Get unique domains for filter

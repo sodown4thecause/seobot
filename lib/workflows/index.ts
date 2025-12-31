@@ -5,6 +5,12 @@ export * from './engine'
 export * from './registry'
 export * from './executor'
 export * from './detector'
+export { 
+  GUIDED_WORKFLOWS,
+  getWorkflowPrompt,
+  getAllWorkflows as getAllGuidedWorkflows,
+  type GuidedWorkflow
+} from './guided-prompts'
 export { rankOnChatGPTWorkflow } from './definitions/rank-on-chatgpt'
 export { competitorAnalysisWorkflow } from './definitions/competitor-analysis'
 export { orchestratedWorkflows } from './orchestrator'

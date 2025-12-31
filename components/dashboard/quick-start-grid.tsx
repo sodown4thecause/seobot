@@ -12,7 +12,6 @@ import {
   Bot,
   ArrowRight
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 
 interface QuickStartAction {
   title: string
@@ -26,7 +25,7 @@ const QUICK_START_ACTIONS: QuickStartAction[] = [
   {
     title: 'SEO Tools',
     description: 'Keyword analysis, content gaps & AI search volume',
-    workflow: '/dashboard/seo-tools',
+    workflow: 'seo-tools',
     icon: Search,
     color: 'text-blue-400'
   },
@@ -72,21 +71,15 @@ interface QuickStartGridProps {
 }
 
 export function QuickStartGrid({ onWorkflowSelect }: QuickStartGridProps) {
-  const router = useRouter()
+  const [activeWorkflow, setActiveWorkflow] = React.useState<string | null>(null)
 
   const handleWorkflowClick = (workflowId: string) => {
-    // Check if it's a direct route (starts with /)
-    if (workflowId.startsWith('/')) {
-      router.push(workflowId)
-      return
-    }
-    
+    setActiveWorkflow(workflowId)
     if (onWorkflowSelect) {
       onWorkflowSelect(workflowId)
-    } else {
-      // Default: navigate to workflow or trigger via chat
-      router.push(`/dashboard?workflow=${workflowId}`)
     }
+    // Clear active state after animation
+    setTimeout(() => setActiveWorkflow(null), 2000)
   }
 
   return (
@@ -98,7 +91,11 @@ export function QuickStartGrid({ onWorkflowSelect }: QuickStartGridProps) {
           return (
             <Card
               key={action.workflow}
-              className="glass-card hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer group border-none bg-black/40"
+              className={`glass-card hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer group border-none ${
+                activeWorkflow === action.workflow 
+                  ? 'bg-white/10 border-white/30 ring-2 ring-white/20' 
+                  : 'bg-black/40'
+              }`}
               onClick={() => handleWorkflowClick(action.workflow)}
             >
               <CardContent className="p-6">
@@ -113,9 +110,22 @@ export function QuickStartGrid({ onWorkflowSelect }: QuickStartGridProps) {
                     <p className="text-sm text-zinc-500 mb-3 ml-0">
                       {action.description}
                     </p>
-                    <Button variant="ghost" size="sm" className="text-zinc-400 group-hover:text-zinc-200 p-0 h-auto hover:bg-transparent">
-                      Start
-                      <ArrowRight className="w-4 h-4 ml-2" />
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-zinc-400 group-hover:text-zinc-200 p-0 h-auto hover:bg-transparent"
+                    >
+                      {activeWorkflow === action.workflow ? (
+                        <>
+                          Loading...
+                          <div className="w-4 h-4 ml-2 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                        </>
+                      ) : (
+                        <>
+                          Start
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>

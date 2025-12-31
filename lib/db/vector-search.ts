@@ -142,17 +142,17 @@ export async function searchFrameworks(
             LIMIT ${limit}
         `)
 
-        return (results.rows as FrameworkRawRow[]).map(row => ({
-            id: row.id,
-            name: row.name,
-            description: row.description,
-            structure: row.structure,
-            examples: row.examples,
-            category: row.category,
-            metadata: row.metadata,
-            usageCount: row.usage_count,
-            similarity: parseFloat(String(row.similarity)),
-        }))
+      return (results.rows as unknown[]).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        structure: row.structure as unknown,
+        examples: row.examples,
+        category: row.category,
+        metadata: row.metadata as unknown,
+        usageCount: row.usage_count,
+        similarity: parseFloat(String(row.similarity)),
+      }))
     } catch (error) {
         console.error('[Vector Search] Framework search failed:', error)
         return []
@@ -172,14 +172,14 @@ export async function searchAgentDocuments(
     queryEmbedding: number[],
     agentType: string = 'general',
     options: VectorSearchOptions = {}
-): Promise<AgentDocumentSearchResult[]> {
+  ): Promise<AgentDocumentSearchResult[]> {
     const { threshold = 0.3, limit = 5 } = options
 
     try {
-        const embeddingStr = `[${queryEmbedding.join(',')}]`
+      const embeddingStr = `[${queryEmbedding.join(',')}]`
 
-        const results = await db.execute(sql`
-            SELECT 
+      const results = await db.execute(sql`
+        SELECT
                 id,
                 agent_type,
                 title,
@@ -188,25 +188,23 @@ export async function searchAgentDocuments(
                 1 - (embedding <=> ${embeddingStr}::vector) as similarity
             FROM agent_documents
             WHERE agent_type = ${agentType}
-              AND embedding IS NOT NULL
-              AND 1 - (embedding <=> ${embeddingStr}::vector) > ${threshold}
-            ORDER BY embedding <=> ${embeddingStr}::vector
+            ORDER BY similarity DESC
             LIMIT ${limit}
         `)
 
-        return (results.rows as any[]).map(row => ({
-            id: row.id,
-            agentType: row.agent_type,
-            title: row.title,
-            content: row.content,
-            metadata: row.metadata,
-            similarity: parseFloat(row.similarity),
-        }))
+      return (results.rows as Record<string, unknown>[]).map(row => ({
+        id: row.id as string,
+        agentType: row.agent_type as string,
+        title: row.title as string,
+        content: row.content as string,
+        metadata: row.metadata as unknown,
+        similarity: parseFloat(String(row.similarity)),
+      }))
     } catch (error) {
-        console.error('[Vector Search] Agent documents search failed:', error)
-        return []
+      console.error('[Vector Search] Framework search failed:', error)
+      return []
     }
-}
+  }
 
 /**
  * Search content learnings by semantic similarity
@@ -316,14 +314,14 @@ export async function searchBrandVoices(
             LIMIT ${limit}
         `)
 
-        return (results.rows as BrandVoiceRawRow[]).map(row => ({
-            id: row.id,
-            userId: row.user_id,
-            tone: row.tone,
-            style: row.style,
-            personality: row.personality,
-            samplePhrases: row.sample_phrases,
-            source: row.source,
+        return (results.rows as Record<string, unknown>[]).map(row => ({
+            id: row.id as string,
+            userId: row.user_id as string | null,
+            tone: row.tone as string | null,
+            style: row.style as string | null,
+            personality: row.personality as string | null,
+            samplePhrases: row.sample_phrases as string | null,
+            source: row.source as string | null,
             similarity: parseFloat(String(row.similarity)),
         }))
     } catch (error) {

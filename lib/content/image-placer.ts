@@ -62,8 +62,8 @@ export class ContentImagePlacer {
     // For markdown: Look for first paragraph after H1
     // For HTML: Look for first <p> after <h1>
     
-    const markdownPattern = /^(#\s+.+?\n\n)(.+)/s
-    const htmlPattern = /(<h1[^>]*>.*?<\/h1>\s*)(.+)/is
+    const markdownPattern = /^(#\s+.+?\n\n)([\s\S]+)/
+    const htmlPattern = /(<h1[^>]*>.*?<\/h1>\s*)([\s\S]+)/gi
     
     let match = content.match(markdownPattern)
     if (match) {
@@ -274,7 +274,7 @@ export class ContentImagePlacer {
     let cleaned = content.replace(/!\[.*?\]\(.*?\)/g, '')
     
     // Remove HTML images
-    cleaned = cleaned.replace(/<figure[^>]*>.*?<\/figure>/gis, '')
+    cleaned = cleaned.replace(/<figure[^>]*>[\s\S]*?<\/figure>/gi, '')
     cleaned = cleaned.replace(/<img[^>]+>/gi, '')
     
     // Clean up extra blank lines

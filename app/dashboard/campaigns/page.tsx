@@ -35,13 +35,13 @@ export default function CampaignsPage() {
 
     const workflows = getAllWorkflows()
 
-    const categories = Array.from(new Set(workflows.map(w => w.category)))
+    const categories = Array.from(new Set(workflows.map(w => w.category).filter((c): c is string => !!c)))
 
     const filteredWorkflows = workflows.filter(workflow => {
         const matchesSearch = !searchQuery ||
             workflow.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            workflow.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            workflow.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+            (workflow.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+            (workflow.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ?? false)
 
         const matchesCategory = !selectedCategory || workflow.category === selectedCategory
 
@@ -110,23 +110,25 @@ export default function CampaignsPage() {
                 {filteredWorkflows.map((workflow) => (
                     <Card key={workflow.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
                         {/* Gradient Header Bar */}
-                        <div className={`h-2 bg-gradient-to-r ${getCategoryColor(workflow.category)}`} />
+                        <div className={`h-2 bg-gradient-to-r ${getCategoryColor(workflow.category || 'default')}`} />
 
                         <CardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg bg-gradient-to-br ${getCategoryColor(workflow.category)} text-white`}>
-                                        {getCategoryIcon(workflow.category)}
+                                    <div className={`p-2 rounded-lg bg-gradient-to-br ${getCategoryColor(workflow.category || 'default')} text-white`}>
+                                        {getCategoryIcon(workflow.category || 'default')}
                                     </div>
                                     <div>
                                         <CardTitle className="text-lg flex items-center gap-2">
-                                            <span>{workflow.icon}</span>
+                                            {workflow.icon && <span>{workflow.icon}</span>}
                                             {workflow.name}
                                         </CardTitle>
+                                        {workflow.estimatedTime && (
                                         <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                                             <Clock className="w-3 h-3" />
                                             {workflow.estimatedTime}
                                         </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -139,14 +141,14 @@ export default function CampaignsPage() {
 
                             {/* Tags */}
                             <div className="flex flex-wrap gap-1.5">
-                                {workflow.tags.slice(0, 3).map((tag) => (
+                                {workflow.tags?.slice(0, 3).map((tag) => (
                                     <Badge key={tag} variant="secondary" className="text-xs">
                                         {tag}
                                     </Badge>
                                 ))}
-                                {workflow.tags.length > 3 && (
+                                {(workflow.tags?.length ?? 0) > 3 && (
                                     <Badge variant="outline" className="text-xs">
-                                        +{workflow.tags.length - 3}
+                                        +{(workflow.tags?.length ?? 0) - 3}
                                     </Badge>
                                 )}
                             </div>
