@@ -29,6 +29,7 @@ export const aeoMultiPlatformOptimizationWorkflow: Workflow = {
       parallel: false,
       tools: [
         {
+          id: 'jina_scrape',
           name: 'jina_scrape',
           params: {
             url: '{{url}}',
@@ -50,6 +51,7 @@ export const aeoMultiPlatformOptimizationWorkflow: Workflow = {
       dependencies: ['extract-content'],
       tools: [
         {
+          id: 'aeo_compare_platforms',
           name: 'aeo_compare_platforms',
           params: {
             content: '{{content}}',
@@ -72,7 +74,8 @@ export const aeoMultiPlatformOptimizationWorkflow: Workflow = {
       dependencies: ['platform-comparison'],
       tools: [
         {
-          name: 'aeo_optimize_for_platform',
+          id: 'aeo_optimize_for_chatgpt',
+          name: 'aeo_optimize_for_chatgpt',
           params: {
             content: '{{content}}',
             platform: 'chatgpt',
@@ -80,7 +83,8 @@ export const aeoMultiPlatformOptimizationWorkflow: Workflow = {
           required: true,
         },
         {
-          name: 'aeo_optimize_for_platform',
+          id: 'aeo_optimize_for_perplexity',
+          name: 'aeo_optimize_for_perplexity',
           params: {
             content: '{{content}}',
             platform: 'perplexity',
@@ -88,7 +92,8 @@ export const aeoMultiPlatformOptimizationWorkflow: Workflow = {
           required: true,
         },
         {
-          name: 'aeo_optimize_for_platform',
+          id: 'aeo_optimize_for_claude',
+          name: 'aeo_optimize_for_claude',
           params: {
             content: '{{content}}',
             platform: 'claude',
@@ -96,7 +101,8 @@ export const aeoMultiPlatformOptimizationWorkflow: Workflow = {
           required: true,
         },
         {
-          name: 'aeo_optimize_for_platform',
+          id: 'aeo_optimize_for_gemini',
+          name: 'aeo_optimize_for_gemini',
           params: {
             content: '{{content}}',
             platform: 'gemini',
@@ -135,7 +141,7 @@ export const aeoMultiPlatformOptimizationWorkflow: Workflow = {
 3. Nice-to-have platform-specific improvements
 
 Present as an actionable roadmap.`,
-      outputFormat: 'structured',
+      outputFormat: 'json',
     },
   ],
 

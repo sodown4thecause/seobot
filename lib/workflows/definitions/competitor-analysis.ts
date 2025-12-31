@@ -26,6 +26,7 @@ export const competitorAnalysisWorkflow: Workflow = {
       parallel: true,
       tools: [
         {
+          id: 'domain_overview',
           name: 'domain_overview',
           params: {
             domain: '{{domain}}',
@@ -34,6 +35,7 @@ export const competitorAnalysisWorkflow: Workflow = {
           required: true,
         },
         {
+          id: 'google_rankings',
           name: 'google_rankings',
           params: {
             keyword: '{{keyword}}', // Main keyword to find who ranks
@@ -62,6 +64,7 @@ Output a clear summary of the competitive landscape.`,
       dependencies: ['competitor-discovery'],
       tools: [
         {
+          id: 'domain_overview_1',
           name: 'domain_overview',
           params: {
             domain: '{{competitor_1}}', // Extracted from previous step
@@ -69,6 +72,7 @@ Output a clear summary of the competitive landscape.`,
           },
         },
         {
+          id: 'competitor_domain_analysis_2',
           name: 'domain_overview',
           params: {
             domain: '{{competitor_2}}',
@@ -96,6 +100,7 @@ Highlight their strengths and weaknesses.`,
       dependencies: ['competitor-deep-dive'],
       tools: [
         {
+          id: 'dataforseo_labs_google_ranked_keywords',
           name: 'dataforseo_labs_google_ranked_keywords',
           params: {
             target: '{{domain}}',
@@ -106,21 +111,23 @@ Highlight their strengths and weaknesses.`,
           required: true,
         },
         {
+          id: 'dataforseo_labs_google_ranked_keywords_1',
           name: 'dataforseo_labs_google_ranked_keywords',
           params: {
-            target: '{{competitor_1}}',
+            target: '{{competitor1}}',
             location_name: 'United States',
-            limit: 500,
-            order_by: ['metrics.organic.count,desc'],
+            limit: 100,
+            order_by: ['traffic', 'desc'],
           },
         },
         {
+          id: 'dataforseo_labs_google_ranked_keywords_2',
           name: 'dataforseo_labs_google_ranked_keywords',
           params: {
-            target: '{{competitor_2}}',
+            target: '{{competitor2}}',
             location_name: 'United States',
-            limit: 500,
-            order_by: ['metrics.organic.count,desc'],
+            limit: 100,
+            order_by: ['traffic', 'desc'],
           },
         },
       ],
@@ -139,8 +146,7 @@ Compare profiles to identify:
 - Traffic opportunities
 
 Output comprehensive keyword profiles with gap analysis.`,
-      outputFormat: 'component',
-      componentType: 'DomainKeywordProfile',
+      outputFormat: 'json',
     },
 
     // PHASE 3: STRATEGY FORMULATION
@@ -160,8 +166,7 @@ Based on the competitor analysis:
 4. Estimate effort vs impact for each recommendation
 
 Create a prioritized action plan.`,
-      outputFormat: 'component',
-      componentType: 'ContentStrategy',
+      outputFormat: 'json',
     },
   ],
 }

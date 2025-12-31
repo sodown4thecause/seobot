@@ -5,7 +5,7 @@
 
 import { db, userProgress, type Json } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth/clerk'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, and, desc, like } from 'drizzle-orm'
 import type { WorkflowExecution, WorkflowStepResult } from './types'
 
 export class WorkflowPersistence {
@@ -31,7 +31,6 @@ export class WorkflowPersistence {
             status: execution.status,
             currentStep: execution.currentStep,
             stepResults: execution.stepResults,
-            workflowState: execution.workflowState || {},
             checkpointData: execution.checkpointData || {},
             startTime: execution.startTime,
             endTime: execution.endTime,
@@ -100,7 +99,6 @@ export class WorkflowPersistence {
         status: metadata?.status as WorkflowExecution['status'],
         currentStep: metadata?.currentStep as string | undefined,
         stepResults: (metadata?.stepResults as WorkflowStepResult[]) || [],
-        workflowState: (metadata?.workflowState as Record<string, unknown>) || {},
         checkpointData: (metadata?.checkpointData as Record<string, unknown>) || {},
         startTime: (metadata?.startTime as number) || Date.now(),
         endTime: metadata?.endTime as number | undefined,
@@ -123,7 +121,7 @@ export class WorkflowPersistence {
         .from(userProgress)
         .where(and(
           eq(userProgress.category, 'workflow_checkpoint'),
-          eq(userProgress.itemKey, executionId)
+          like(userProgress.itemKey, `${executionId}:%`)
         ))
         .orderBy(desc(userProgress.completedAt))
         .limit(1)

@@ -308,23 +308,119 @@ export async function getClientPortals(
 }
 
 /**
+ * Validate and sanitize CSS color values
+ */
+function sanitizeColor(color: string): string {
+  if (!color || typeof color !== 'string') {
+    return '#000000'
+  }
+  
+  // Length limit to prevent overly long values
+  if (color.length > 100) {
+    console.warn('Color value too long, using default')
+    return '#000000'
+  }
+  
+  const trimmed = color.trim()
+  
+  // Allow hex colors
+  const hexPattern = /^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/
+  if (hexPattern.test(trimmed)) {
+    return trimmed
+  }
+  
+  // Allow rgb/rgba colors
+  const rgbPattern = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*([01]?\.\?\d*)\s*)?\)$/
+  if (rgbPattern.test(trimmed)) {
+    return trimmed
+  }
+  
+  // Allow hsl/hsla colors
+  const hslPattern = /^hsla?\(\s*(\d{1,3})\s*,\s*(\d{1,3})%\s*,\s*(\d{1,3})%\s*(?:,\s*([01]?\.\?\d*)\s*)?\)$/
+  if (hslPattern.test(trimmed)) {
+    return trimmed
+  }
+  
+  // Allow predefined CSS color names
+  const cssColorNames = [
+    'black', 'white', 'red', 'green', 'blue', 'yellow', 'orange', 'purple', 'pink',
+    'brown', 'gray', 'grey', 'silver', 'gold', 'navy', 'teal', 'cyan', 'magenta',
+    'lime', 'indigo', 'violet', 'aqua', 'fuchsia', 'maroon', 'olive', 'transparent'
+  ]
+  if (cssColorNames.includes(trimmed.toLowerCase())) {
+    return trimmed.toLowerCase()
+  }
+  
+  // If nothing matches, reject and use default
+  console.warn('Invalid color format, using default:', color)
+  return '#000000'
+}
+
+/**
+ * Sanitize custom CSS to prevent injection
+ */
+function sanitizeCustomCSS(css: string): string {
+  if (!css || typeof css !== 'string') {
+    return ''
+  }
+  
+  // Length limit
+  if (css.length > 10000) {
+    console.warn('Custom CSS too long, truncating')
+    css = css.substring(0, 10000)
+  }
+  
+  // Remove dangerous sequences
+  let sanitized = css
+    .replace(/<\/style>/gi, '') // Remove closing style tags
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove script blocks
+    .replace(/<[^>]*>/g, '') // Remove all HTML tags
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/data:/gi, '') // Remove data: protocol
+    .replace(/vbscript:/gi, '') // Remove vbscript: protocol
+    .replace(/on\w+\s*=/gi, '') // Remove event handlers
+    .replace(/expression\s*\(/gi, '') // Remove CSS expressions
+    .replace(/@import/gi, '') // Remove @import
+    .replace(/@charset/gi, '') // Remove @charset
+  
+  return sanitized.trim()
+}
+
+/**
  * Generate white-label CSS from settings
  */
 export function generateWhiteLabelCSS(settings: WhiteLabelSettings): string {
   const { brandColors, customCss } = settings
 
+  // Sanitize brand colors
+  const sanitizedColors = {
+    primary: sanitizeColor(brandColors.primary),
+    secondary: sanitizeColor(brandColors.secondary),
+    accent: sanitizeColor(brandColors.accent),
+    background: sanitizeColor(brandColors.background),
+    text: sanitizeColor(brandColors.text),
+    textSecondary: sanitizeColor(brandColors.textSecondary),
+    border: sanitizeColor(brandColors.border),
+    success: sanitizeColor(brandColors.success),
+    warning: sanitizeColor(brandColors.warning),
+    error: sanitizeColor(brandColors.error)
+  }
+
+  // Sanitize custom CSS
+  const sanitizedCustomCss = sanitizeCustomCSS(customCss || '')
+
   const cssVariables = `
 :root {
-  --brand-primary: ${brandColors.primary};
-  --brand-secondary: ${brandColors.secondary};
-  --brand-accent: ${brandColors.accent};
-  --brand-background: ${brandColors.background};
-  --brand-text: ${brandColors.text};
-  --brand-text-secondary: ${brandColors.textSecondary};
-  --brand-border: ${brandColors.border};
-  --brand-success: ${brandColors.success};
-  --brand-warning: ${brandColors.warning};
-  --brand-error: ${brandColors.error};
+  --brand-primary: ${sanitizedColors.primary};
+  --brand-secondary: ${sanitizedColors.secondary};
+  --brand-accent: ${sanitizedColors.accent};
+  --brand-background: ${sanitizedColors.background};
+  --brand-text: ${sanitizedColors.text};
+  --brand-text-secondary: ${sanitizedColors.textSecondary};
+  --brand-border: ${sanitizedColors.border};
+  --brand-success: ${sanitizedColors.success};
+  --brand-warning: ${sanitizedColors.warning};
+  --brand-error: ${sanitizedColors.error};
 }
 
 /* Override default styles with brand colors */
@@ -354,7 +450,7 @@ ${settings.featureFlags.hideBranding ? `
 ` : ''}
 
 /* Custom CSS from user */
-${customCss || ''}
+${sanitizedCustomCss}
 `
 
   return cssVariables

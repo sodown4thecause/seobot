@@ -29,6 +29,7 @@ export const aeoComprehensiveAuditWorkflow: Workflow = {
       parallel: false,
       tools: [
         {
+          id: 'jina_scrape',
           name: 'jina_scrape',
           params: {
             url: '{{url}}',
@@ -50,6 +51,7 @@ export const aeoComprehensiveAuditWorkflow: Workflow = {
       dependencies: ['extract-content'],
       tools: [
         {
+          id: 'aeo_find_citation_opportunities',
           name: 'aeo_find_citation_opportunities',
           params: {
             yourUrl: '{{url}}',
@@ -58,6 +60,7 @@ export const aeoComprehensiveAuditWorkflow: Workflow = {
           required: true,
         },
         {
+          id: 'aeo_detect_eeat_signals',
           name: 'aeo_detect_eeat_signals',
           params: {
             content: '{{content}}',
@@ -66,6 +69,7 @@ export const aeoComprehensiveAuditWorkflow: Workflow = {
           required: true,
         },
         {
+          id: 'aeo_compare_platforms',
           name: 'aeo_compare_platforms',
           params: {
             content: '{{content}}',
@@ -93,6 +97,7 @@ Execute all analyses in parallel for efficiency.`,
       dependencies: ['parallel-analysis'],
       tools: [
         {
+          id: 'aeo_analyze_citations',
           name: 'aeo_analyze_citations',
           params: {
             topic: '{{topic}}',
@@ -115,6 +120,7 @@ Execute all analyses in parallel for efficiency.`,
       dependencies: ['citation-analysis'],
       tools: [
         {
+          id: 'aeo_optimize_for_citations',
           name: 'aeo_optimize_for_citations',
           params: {
             content: '{{content}}',
@@ -124,10 +130,29 @@ Execute all analyses in parallel for efficiency.`,
           required: true,
         },
         {
+          id: 'aeo_enhance_eeat_signals',
           name: 'aeo_enhance_eeat_signals',
           params: {
             content: '{{content}}',
             focusAreas: ['all'],
+          },
+          required: true,
+        },
+        {
+          id: 'aeo_analyze_sentiment',
+          name: 'aeo_analyze_sentiment',
+          params: {
+            content: '{{content}}',
+            url: '{{url}}',
+          },
+          required: true,
+        },
+        {
+          id: 'aeo_analyze_entities',
+          name: 'aeo_analyze_entities',
+          params: {
+            content: '{{content}}',
+            platforms: ['all'],
           },
           required: true,
         },
@@ -140,7 +165,7 @@ Execute all analyses in parallel for efficiency.`,
 5. Quick wins vs. long-term improvements
 
 Present as an actionable roadmap.`,
-      outputFormat: 'structured',
+      outputFormat: 'json',
     },
   ],
 

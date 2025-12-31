@@ -113,7 +113,7 @@ export const conversations = pgTable('conversations', {
     userId: text('user_id').notNull(),
     agentType: text('agent_type').default('general').notNull(),
     title: text('title').default('New Conversation').notNull(),
-    status: text('status'),
+    status: text('status').default('active').notNull(),
     metadata: jsonb('metadata').$type<Json>(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

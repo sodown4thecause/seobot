@@ -7,6 +7,26 @@
 
 import { mcpDataforseoTools } from '@/lib/mcp/dataforseo'
 
+// Helper to safely execute MCP tools with required options argument
+async function safeExecute(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  toolFn: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  params: any
+): Promise<string | null> {
+  try {
+    if (!toolFn?.execute) return null
+    const result = await toolFn.execute(params, { 
+      abortSignal: new AbortController().signal,
+      toolCallId: 'content-gap-analysis-call',
+      messages: []
+    })
+    return result
+  } catch {
+    return null
+  }
+}
+
 export interface RelevantPageData {
   type: string
   domain: string
@@ -173,25 +193,30 @@ export async function analyzeRelevantPages(
   } = options
 
   try {
-    // TODO: Fix AI SDK tool usage
-    // const response = await mcpDataforseoTools.dataforseo_labs_google_relevant_pages({
-    //   target: domain,
-    //   limit,
-    //   offset,
-    //   filters,
-    //   include_clickstream_data: false,
-    //   ignore_synonyms: true,
-    //   exclude_top_domains: false,
-    //   item_types: ["page", "article"]
-    // });
+    const response = await safeExecute(mcpDataforseoTools.dataforseo_labs_google_relevant_pages, {
+      target: domain,
+      limit,
+      offset,
+      filters,
+      include_clickstream_data: false,
+      ignore_synonyms: true,
+      exclude_top_domains: false,
+      item_types: ["page", "article"]
+    });
     
-    // Return placeholder data for now
-    return []; // Placeholder - empty array of RelevantPageData
-    // if (!response.tasks?.[0]?.result) {
-    //   throw new Error('No relevant pages data received')
-    // }
+    if (!response) {
+      console.warn('No relevant pages data received, returning empty array');
+      return [];
+    }
 
-    // return response.tasks[0].result
+    // Parse the JSON response
+    const parsedResponse = JSON.parse(response);
+    if (!parsedResponse.tasks?.[0]?.result) {
+      console.warn('No relevant pages data received, returning empty array');
+      return [];
+    }
+
+    return parsedResponse.tasks[0].result
   } catch (error) {
     console.error('Error analyzing relevant pages:', error)
     throw new Error(`Failed to analyze relevant pages for ${domain}: ${error instanceof Error ? error.message : 'Unknown error'}`)

@@ -63,7 +63,7 @@ export class ContentImagePlacer {
     // For HTML: Look for first <p> after <h1>
     
     const markdownPattern = /^(#\s+.+?\n\n)([\s\S]+)/
-    const htmlPattern = /(<h1[^>]*>.*?<\/h1>\s*)([\s\S]+)/gi
+    const htmlPattern = /(<h1[^>]*>.*?<\/h1>\s*)([\s\S]+)/i
     
     let match = content.match(markdownPattern)
     if (match) {

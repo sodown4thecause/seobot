@@ -201,7 +201,7 @@ export async function searchAgentDocuments(
         similarity: parseFloat(String(row.similarity)),
       }))
     } catch (error) {
-      console.error('[Vector Search] Framework search failed:', error)
+      console.error('[Vector Search] searchAgentDocuments failed:', error)
       return []
     }
   }

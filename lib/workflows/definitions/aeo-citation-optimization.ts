@@ -47,13 +47,13 @@ export const aeoCitationOptimizationWorkflow: Workflow = {
       dependencies: ['citation-landscape'],
       tools: [
         {
+          id: 'aeo_analyze_citations',
           name: 'aeo_analyze_citations',
           platforms: ['perplexity'],
           required: true,
         },
-          required: true,
-        },
         {
+          id: 'aeo_find_citation_opportunities',
           name: 'aeo_find_citation_opportunities',
           params: {
             yourUrl: '{{url}}',
@@ -76,6 +76,7 @@ export const aeoCitationOptimizationWorkflow: Workflow = {
       dependencies: ['analyze-your-content'],
       tools: [
         {
+          id: 'aeo_optimize_for_citations',
           name: 'aeo_optimize_for_citations',
           params: {
             content: '{{content}}',
@@ -86,7 +87,7 @@ export const aeoCitationOptimizationWorkflow: Workflow = {
         },
       ],
       systemPrompt: `Create a comprehensive citation optimization plan with priority recommendations.`,
-      outputFormat: 'structured',
+      outputFormat: 'json',
     },
   ],
 

@@ -11,19 +11,31 @@ export interface Workflow {
   tags?: string[]
   icon?: string
   estimatedTime?: string
+  requiredTools?: string[]
+  requiredAPIs?: string[]
+  parameters?: Record<string, any>
+  output?: Record<string, any>
   steps: WorkflowStep[]
 }
 
 export interface WorkflowStep {
   id: string
   name: string
+  description?: string
+  agent?: string
   tools: WorkflowTool[]
   parallel?: boolean
+  dependencies?: string[]
+  systemPrompt?: string
+  outputFormat?: 'json' | 'text'
 }
 
 export interface WorkflowTool {
   id: string
   name: string
+  platforms?: string[]
+  params?: Record<string, any>
+  required?: boolean
 }
 
 export interface WorkflowStepResult {
@@ -41,13 +53,14 @@ export interface WorkflowExecution {
   workflowId: string
   conversationId: string
   userId: string
-  status: 'running' | 'completed' | 'failed'
+  status: 'running' | 'completed' | 'failed' | 'paused'
   stepResults: WorkflowStepResult[]
   startTime: number
   endTime?: number
   currentStep?: string
   errorMessage?: string
   checkpointData?: Record<string, any>
+  workflowState?: Record<string, any>
   metadata?: Record<string, any>
 }
 
