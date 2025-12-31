@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       prompt: systemPrompt,
       system: 'You are a professional content writer.',
       experimental_telemetry: createTelemetryConfig('content-generate-api', {
-        userId,
+        userId: userId ?? undefined,
         sessionId, // Langfuse session tracking for content generation
         topic,
         contentType: type,

@@ -34,19 +34,25 @@ export function WorkflowCard({ workflow, onStart, className }: WorkflowCardProps
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="text-3xl grayscale group-hover:grayscale-0 transition-all duration-300">{workflow.icon}</div>
+            {workflow.icon && (
+              <div className="text-3xl grayscale group-hover:grayscale-0 transition-all duration-300">{workflow.icon}</div>
+            )}
             <div>
               <CardTitle className="text-lg text-zinc-100 group-hover:text-white transition-colors">
                 {workflow.name}
               </CardTitle>
               <div className="flex items-center gap-2 mt-1">
-                <Badge className={cn('text-xs border', getCategoryColor(workflow.category))}>
-                  {workflow.category.toUpperCase()}
-                </Badge>
-                <div className="flex items-center gap-1 text-xs text-zinc-500">
-                  <Clock className="w-3 h-3" />
-                  <span>{workflow.estimatedTime}</span>
-                </div>
+                {workflow.category && (
+                  <Badge className={cn('text-xs border', getCategoryColor(workflow.category))}>
+                    {workflow.category.toUpperCase()}
+                  </Badge>
+                )}
+                {workflow.estimatedTime && (
+                  <div className="flex items-center gap-1 text-xs text-zinc-500">
+                    <Clock className="w-3 h-3" />
+                    <span>{workflow.estimatedTime}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

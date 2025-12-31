@@ -84,7 +84,7 @@ export function WorkflowErrorRecovery({
             <div className="mt-2 space-y-1">
               {failedStep && (
                 <div>
-                  <strong>Failed Step:</strong> {failedStep.stepId}
+                  <strong>Failed Step:</strong> {failedStep.id}
                 </div>
               )}
               {execution.errorMessage && (
@@ -107,7 +107,7 @@ export function WorkflowErrorRecovery({
             <div className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <span>
-                Last successful step: <strong>{lastSuccessfulStep.stepId}</strong>
+                Last successful step: <strong>{lastSuccessfulStep.id}</strong>
               </span>
             </div>
             <div className="mt-1 text-xs text-muted-foreground">

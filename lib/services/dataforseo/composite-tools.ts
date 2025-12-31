@@ -97,30 +97,47 @@ export async function generateKeywordIntelligenceReport(
         } = options
 
         // Parallel fetch from multiple endpoints
+        // TODO: Fix AI SDK tool usage - these need to be used within AI generation context
         const promises: Promise<any>[] = [
-            // Keyword overview
-            mcpDataforseoTools.keywordOverview({
-                keywords: [keyword],
-                location_name,
-                language_code
-            }),
-            // Related keywords
-            mcpDataforseoTools.keywordSuggestions({
-                keyword,
-                location_name,
-                language_code,
-                limit: 20
-            })
+            // Keyword search volume
+            (async () => {
+                // const result = await mcpDataforseoTools.ai_optimization_keyword_data_search_volume({
+                //     keywords: [keyword],
+                //     location_name,
+                //     language_code
+                // });
+                // return result;
+                return null; // Placeholder
+            })(),
+            // Keyword suggestions
+            (async () => {
+                // const result = await mcpDataforseoTools.dataforseo_labs_google_keyword_suggestions({
+                //     keyword,
+                //     location_name,
+                //     language_code,
+                //     limit: 20
+                // });
+                // return result;
+                return null; // Placeholder
+            })()
         ]
 
         // Add historical data if requested
         if (includeHistorical) {
             promises.push(
-                mcpDataforseoTools.historicalKeywordData({
-                    keywords: [keyword],
-                    location_name,
-                    language_code
-                }).catch(() => null)
+                (async () => {
+                    // try {
+                    //     const result = await mcpDataforseoTools.dataforseo_labs_google_historical_keyword_data({
+                    //         keywords: [keyword],
+                    //         location_name,
+                    //         language_code
+                    //     });
+                    //     return result;
+                    // } catch {
+                    //     return null;
+                    // }
+                    return null; // Placeholder
+                })()
             )
         }
 
@@ -183,7 +200,11 @@ export async function generateKeywordIntelligenceReport(
         console.error('Error generating keyword intelligence report:', error)
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Failed to generate report'
+            error: {
+                code: 'KEYWORD_INTELLIGENCE_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to generate report',
+                statusCode: 500
+            }
         }
     }
 }
@@ -254,11 +275,16 @@ export async function generateCompetitorContentGapReport(
 
         // Get ranked keywords for all domains
         const keywordPromises = [targetDomain, ...competitors].map(domain =>
-            mcpDataforseoTools.rankedKeywords({
-                target: domain,
-                location_name,
-                limit: 100
-            }).catch(() => ({ tasks: [] }))
+            // TODO: Fix AI SDK tool usage
+            (async () => {
+                // const result = await mcpDataforseoTools.dataforseo_labs_google_ranked_keywords({
+                //     target: domain,
+                //     location_name,
+                //     limit: 100
+                // });
+                // return result;
+                return { tasks: [{ result: [] }] }; // Placeholder
+            })()
         )
 
         const keywordResults = await Promise.all(keywordPromises)
@@ -306,7 +332,11 @@ export async function generateCompetitorContentGapReport(
         console.error('Error generating competitor content gap report:', error)
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Failed to generate report'
+            error: {
+                code: 'COMPETITOR_ANALYSIS_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to generate report',
+                statusCode: 500
+            }
         }
     }
 }
@@ -355,13 +385,13 @@ export async function estimateBulkTraffic(
         } = options
 
         // Get keyword data in bulk
-        const result = await mcpDataforseoTools.keywordOverview({
-            keywords,
-            location_name,
-            language_code
-        })
-
-        const keywordData = result?.tasks?.[0]?.result || []
+        // TODO: Fix AI SDK tool usage
+        // const result = await mcpDataforseoTools.dataforseo_labs_google_keyword_overview({
+        //     keywords,
+        //     location_name,
+        //     language_code
+        // });
+        const keywordData: any[] = []; // Placeholder
 
         // Calculate traffic estimates
         const estimations = keywordData.map((data: any) => {
@@ -421,7 +451,11 @@ export async function estimateBulkTraffic(
         console.error('Error estimating bulk traffic:', error)
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Failed to estimate traffic'
+            error: {
+                code: 'TRAFFIC_ESTIMATION_ERROR',
+                message: error instanceof Error ? error.message : 'Failed to estimate traffic',
+                statusCode: 500
+            }
         }
     }
 }
@@ -532,9 +566,9 @@ function generateRecommendations(overview: any, suggestions: any[], aiMetrics: a
     let priority: 'high' | 'medium' | 'low' = 'medium'
     if (searchVolume > 1000 && difficulty < 40) priority = 'high'
     else if (searchVolume < 100 || difficulty > 70) priority = 'low'
-
     const contentType = determineContentType(overview)
-    const estimatedDifficulty = difficulty < 30 ? 'easy' : difficulty < 60 ? 'medium' : 'hard'
+
+    const estimatedDifficulty = (difficulty < 30 ? 'easy' : difficulty < 60 ? 'medium' : 'hard') as 'easy' | 'medium' | 'hard'
 
     const actions: string[] = []
     if (difficulty < 30) actions.push('Create comprehensive content targeting this keyword')

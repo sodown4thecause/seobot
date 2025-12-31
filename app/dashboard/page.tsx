@@ -5,15 +5,10 @@ import { useMemo, useEffect, useState } from 'react'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { useAgent } from '@/components/providers/agent-provider'
 import { useUserMode } from '@/components/providers/user-mode-provider'
-import { ModeSelectionDialog } from '@/components/user-mode/mode-selection-dialog'
 import { useUser } from '@clerk/nextjs'
 import { WelcomeSection } from '@/components/dashboard/welcome-section'
 import { QuickStartGrid } from '@/components/dashboard/quick-start-grid'
-import { ProgressWidgets } from '@/components/dashboard/progress-widgets'
-import { PendingActions } from '@/components/dashboard/pending-actions'
-import { AIInsightsCard } from '@/components/dashboard/ai-insights-card'
-import { ActionGenerator } from '@/lib/actions/action-generator'
-import type { ActionItem } from '@/types/actions'
+import { getWorkflowPrompt } from '@/lib/workflows/guided-prompts'
 
 export default function DashboardPage() {
   const { state } = useAgent()
@@ -25,10 +20,8 @@ export default function DashboardPage() {
   const [isNewUser, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [initialMessage, setInitialMessage] = useState<string | undefined>()
-  const [showModeSelection, setShowModeSelection] = useState(false)
-  const [pendingActions, setPendingActions] = useState<ActionItem[]>([])
-  const [nextAction, setNextAction] = useState<ActionItem | undefined>()
   const [userName, setUserName] = useState<string>('')
+  const [workflowMessage, setWorkflowMessage] = useState<string | undefined>()
 
   // Check if user has a business profile (first-time user detection)
   useEffect(() => {
@@ -61,20 +54,11 @@ export default function DashboardPage() {
             // Profile exists but incomplete - trigger onboarding
             setIsNewUser(true)
             setInitialMessage('__START_ONBOARDING__')
-            setTimeout(() => {
-              setShowModeSelection(true)
-            }, 1000)
-          } else {
-            // Load actions for existing users
-            await loadActions()
           }
         } else if (response.status === 404) {
           // New user - no profile exists
           setIsNewUser(true)
           setInitialMessage('__START_ONBOARDING__')
-          setTimeout(() => {
-            setShowModeSelection(true)
-          }, 1000)
         } else if (response.status === 401) {
           // Unauthorized - redirect to sign-in
           window.location.href = '/auth/sign-in'
@@ -95,36 +79,22 @@ export default function DashboardPage() {
     checkUserProfile()
   }, [user, isLoaded])
 
-  const loadActions = async () => {
-    try {
-      // Mock action generation - in production, this would use real analysis context
-      const actionGenerator = new ActionGenerator()
-      const mockContext = {
-        keywords: { current: [], opportunities: [], gaps: [] },
-        competitors: { domains: [], advantages: [], weaknesses: [] },
-        technical: { issues: [], scores: { pageSpeed: 75, coreWebVitals: 80 } },
-        content: { gaps: [], opportunities: [], performance: {} },
-        links: { current: 0, opportunities: [], quality: 'medium' as const }
-      }
-
-      const config = {
-        userMode: userModeState.currentMode?.level || 'beginner',
-        preferences: {
-          maxActionsPerCategory: 5,
-          priorityThreshold: 'medium' as const,
-          includeAutomation: true,
-          focusAreas: []
-        },
-        context: {}
-      }
-
-      const result = await actionGenerator.generateActions(mockContext, config)
-      setPendingActions(result.actions)
-      setNextAction(result.recommendations.startWith[0])
-    } catch (error) {
-      console.error('[Dashboard] Failed to load actions:', error)
+  const handleWorkflowSelect = (workflowId: string) => {
+    const workflow = getWorkflowPrompt(workflowId)
+    if (workflow) {
+      // Set the workflow message which will be picked up by the chat
+      setWorkflowMessage(workflow.initialPrompt)
+      // Scroll to chat
+      setTimeout(() => {
+        const chatElement = document.getElementById('dashboard-chat-section')
+        if (chatElement) {
+          chatElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 100)
     }
   }
+
+
 
   // Build context with onboarding flag
   const context = useMemo(
@@ -157,66 +127,14 @@ export default function DashboardPage() {
       >
         {/* Action-Oriented Dashboard - Always Visible */}
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Welcome Section with Next Action */}
-          <WelcomeSection nextAction={nextAction} userName={userName} />
+          {/* Welcome Section */}
+          <WelcomeSection userName={userName} />
 
           {/* Quick Start Grid */}
-          <QuickStartGrid />
-
-          {/* Progress & Insights Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Progress Widgets */}
-            <div className="lg:col-span-2">
-              <ProgressWidgets
-                campaignProgress={{
-                  active: 3,
-                  completed: 12,
-                  total: 15
-                }}
-                rankingProgress={{
-                  keywordsTracked: 24,
-                  averagePosition: 12.3,
-                  top10Count: 8
-                }}
-                learningProgress={{
-                  tutorialsCompleted: 2,
-                  totalTutorials: 8,
-                  currentTutorial: 'SEO Fundamentals'
-                }}
-              />
-            </div>
-
-            {/* AI Insights */}
-            <AIInsightsCard
-              insights={[
-                {
-                  id: '1',
-                  type: 'opportunity',
-                  title: 'High-value keyword opportunity',
-                  description: 'Found 5 keywords with low competition and high search volume',
-                  action: {
-                    label: 'View keywords',
-                    onClick: () => console.log('View keywords')
-                  },
-                  confidence: 'high'
-                },
-                {
-                  id: '2',
-                  type: 'tip',
-                  title: 'Content freshness matters',
-                  description: '3 of your top pages haven\'t been updated in 6+ months',
-                  confidence: 'medium'
-                }
-              ]}
-            />
-          </div>
-
-          {/* Pending Actions */}
-          <PendingActions actions={pendingActions} />
+          <QuickStartGrid onWorkflowSelect={handleWorkflowSelect} />
 
           {/* Chat Interface - Always visible below dashboard */}
-          <div className="mt-8">
-            <h2 className="text-xl font-bold text-zinc-100 mb-4">AI Assistant</h2>
+          <div id="dashboard-chat-section" className="mt-8 scroll-mt-8">
             <AIChatInterface
               context={context}
               placeholder={isNewUser ? "Tell me about your business..." : "Ask anything..."}
@@ -224,19 +142,12 @@ export default function DashboardPage() {
               conversationId={activeConversationId}
               agentId={activeAgentId}
               initialMessage={initialMessage}
+              autoSendMessage={workflowMessage}
+              key={workflowMessage}
             />
           </div>
         </div>
       </motion.div>
-
-      {/* Mode Selection Dialog for new users */}
-      <ModeSelectionDialog
-        open={showModeSelection}
-        onOpenChange={setShowModeSelection}
-        onModeSelected={() => {
-          setShowModeSelection(false)
-        }}
-      />
     </div>
   )
 }

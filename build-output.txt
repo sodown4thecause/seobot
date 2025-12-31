@@ -1,0 +1,32 @@
+
+> seo-platform@0.1.0 prebuild
+> npm run validate:env || echo 'Env validation skipped'
+
+
+> seo-platform@0.1.0 validate:env
+> tsx scripts/validate-env.ts
+
+[dotenv@17.2.3] injecting env (51) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+🔍 Validating environment variables...
+
+✅ Server environment variables validated successfully
+✅ Client environment variables validated successfully
+
+============================================================
+
+✅ All environment variables validated successfully!
+
+📊 Summary:
+   - Public variables: 4
+   - Server-only variables: 19
+   - Total validated: 23
+
+
+> seo-platform@0.1.0 build
+> next build
+
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
