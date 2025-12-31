@@ -240,7 +240,7 @@ export async function getAllPostSlugs(): Promise<string[]> {
 export async function getCaseStudies(first = 10, after?: string): Promise<PostsResponse> {
     const query = `
     query GetCaseStudies($first: Int!, $after: String) {
-      caseStudies(first: $first, after: $after, where: { status: PUBLISH }) {
+      posts(first: $first, after: $after, where: { status: PUBLISH, categoryName: "case-studies" }) {
         nodes {
           id
           title
@@ -281,7 +281,7 @@ export async function getCaseStudies(first = 10, after?: string): Promise<PostsR
     // Transform the response to match our interface
     return {
         posts: {
-            nodes: data.caseStudies.nodes.map((post: any) => ({
+            nodes: data.posts.nodes.map((post: any) => ({
                 id: post.id,
                 title: post.title,
                 slug: post.slug,
@@ -300,7 +300,7 @@ export async function getCaseStudies(first = 10, after?: string): Promise<PostsR
                     : undefined,
                 categories: post.categories,
             })),
-            pageInfo: data.caseStudies.pageInfo,
+            pageInfo: data.posts.pageInfo,
         },
     }
 }
@@ -311,7 +311,7 @@ export async function getCaseStudies(first = 10, after?: string): Promise<PostsR
 export async function getCaseStudyBySlug(slug: string): Promise<WordPressPost | null> {
     const query = `
     query GetCaseStudyBySlug($slug: ID!) {
-      caseStudy(id: $slug, idType: SLUG) {
+      post(id: $slug, idType: SLUG) {
         id
         title
         slug
@@ -344,11 +344,11 @@ export async function getCaseStudyBySlug(slug: string): Promise<WordPressPost | 
 
     const data = await fetchGraphQL<any>(query, { slug })
 
-    if (!data.caseStudy) {
+    if (!data.post) {
         return null
     }
 
-    const post = data.caseStudy
+    const post = data.post
 
     return {
         id: post.id,
@@ -377,7 +377,7 @@ export async function getCaseStudyBySlug(slug: string): Promise<WordPressPost | 
 export async function getAllCaseStudySlugs(): Promise<string[]> {
     const query = `
     query GetAllCaseStudySlugs {
-      caseStudies(first: 1000, where: { status: PUBLISH }) {
+      posts(first: 1000, where: { status: PUBLISH, categoryName: "case-studies" }) {
         nodes {
           slug
         }
@@ -386,7 +386,7 @@ export async function getAllCaseStudySlugs(): Promise<string[]> {
   `
 
     const data = await fetchGraphQL<any>(query)
-    return data.caseStudies.nodes.map((post: any) => post.slug)
+    return data.posts.nodes.map((post: any) => post.slug)
 }
 
 /**
@@ -395,12 +395,13 @@ export async function getAllCaseStudySlugs(): Promise<string[]> {
 export async function getResources(first = 10, after?: string): Promise<PostsResponse> {
     const query = `
     query GetResources($first: Int!, $after: String) {
-      resources(first: $first, after: $after, where: { status: PUBLISH }) {
+      posts(first: $first, after: $after, where: { status: PUBLISH, categoryName: "resources" }) {
         nodes {
           id
           title
           slug
           excerpt
+          content
           date
           author {
             node {
@@ -436,7 +437,7 @@ export async function getResources(first = 10, after?: string): Promise<PostsRes
     // Transform the response to match our interface
     return {
         posts: {
-            nodes: data.resources.nodes.map((post: any) => ({
+            nodes: data.posts.nodes.map((post: any) => ({
                 id: post.id,
                 title: post.title,
                 slug: post.slug,
@@ -455,7 +456,7 @@ export async function getResources(first = 10, after?: string): Promise<PostsRes
                     : undefined,
                 categories: post.categories,
             })),
-            pageInfo: data.resources.pageInfo,
+            pageInfo: data.posts.pageInfo,
         },
     }
 }
@@ -466,7 +467,7 @@ export async function getResources(first = 10, after?: string): Promise<PostsRes
 export async function getResourceBySlug(slug: string): Promise<WordPressPost | null> {
     const query = `
     query GetResourceBySlug($slug: ID!) {
-      resource(id: $slug, idType: SLUG) {
+      post(id: $slug, idType: SLUG) {
         id
         title
         slug
@@ -499,11 +500,11 @@ export async function getResourceBySlug(slug: string): Promise<WordPressPost | n
 
     const data = await fetchGraphQL<any>(query, { slug })
 
-    if (!data.resource) {
+    if (!data.post) {
         return null
     }
 
-    const post = data.resource
+    const post = data.post
 
     return {
         id: post.id,
@@ -532,7 +533,7 @@ export async function getResourceBySlug(slug: string): Promise<WordPressPost | n
 export async function getAllResourceSlugs(): Promise<string[]> {
     const query = `
     query GetAllResourceSlugs {
-      resources(first: 1000, where: { status: PUBLISH }) {
+      posts(first: 1000, where: { status: PUBLISH, categoryName: "resources" }) {
         nodes {
           slug
         }
@@ -541,5 +542,5 @@ export async function getAllResourceSlugs(): Promise<string[]> {
   `
 
     const data = await fetchGraphQL<any>(query)
-    return data.resources.nodes.map((post: any) => post.slug)
+    return data.posts.nodes.map((post: any) => post.slug)
 }
