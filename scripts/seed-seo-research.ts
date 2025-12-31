@@ -1,13 +1,12 @@
-/**
- * Seed additional SEO/AEO research documents from the comprehensive research file
- * This adds more detailed chunks for better RAG retrieval
- * Run: npx tsx scripts/seed-seo-research.ts
- * 
- * NOTE: This script requires Neon database and Drizzle ORM migration.
- * Currently stubbed to indicate not implemented.
- */
+import { createClient } from '@supabase/supabase-js'
+import { serverEnv } from '../lib/config/env'
 
-const NOT_IMPLEMENTED = '[SEO Research Seeder] Script not implemented - requires Neon + Drizzle migration'
+const supabase = createClient(
+  serverEnv.NEXT_PUBLIC_SUPABASE_URL as string,
+  serverEnv.SUPABASE_SERVICE_ROLE_KEY as string
+)
+
+const NOT_IMPLEMENTED = '[SEO Research Seeder] Script requires Neon + Drizzle migration'
 
 async function generateEmbedding(text: string): Promise<number[]> {
   console.warn(NOT_IMPLEMENTED)
@@ -215,10 +214,10 @@ LLMs process text sequentially, and information presented early in the context w
 
 async function main() {
   console.log('[SEO Research Seeder] Starting...')
-  
+
   let successCount = 0
   let failCount = 0
-  
+
   for (const doc of additionalDocuments) {
     try {
       // Check if document with similar title already exists
@@ -227,17 +226,17 @@ async function main() {
         .select('id')
         .ilike('title', `%${doc.title.substring(0, 30)}%`)
         .single()
-      
+
       if (existing) {
         console.log(`[SEO Research Seeder] Skipping (exists): ${doc.title.substring(0, 50)}...`)
         continue
       }
-      
+
       console.log(`[SEO Research Seeder] Adding: ${doc.title.substring(0, 50)}...`)
-      
+
       // Generate embedding
       const embedding = await generateEmbedding(doc.content)
-      
+
       // Insert document
       const { error } = await supabase
         .from('agent_documents')
@@ -247,7 +246,7 @@ async function main() {
           agent_type: doc.agent_type,
           embedding,
         })
-      
+
       if (error) {
         console.error(`[SEO Research Seeder] Failed to insert ${doc.title}:`, error)
         failCount++
@@ -255,24 +254,24 @@ async function main() {
         console.log(`[SEO Research Seeder] ✓ Added: ${doc.title}`)
         successCount++
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 200))
-      
+
     } catch (error) {
       console.error(`[SEO Research Seeder] Error processing ${doc.title}:`, error)
       failCount++
     }
   }
-  
+
   console.log(`\n[SEO Research Seeder] Complete!`)
   console.log(`✓ Added: ${successCount}`)
   console.log(`✗ Failed: ${failCount}`)
-  
+
   // Show total count
   const { count } = await supabase
     .from('agent_documents')
     .select('*', { count: 'exact', head: true })
-  
+
   console.log(`\nTotal documents in database: ${count}`)
 }
 

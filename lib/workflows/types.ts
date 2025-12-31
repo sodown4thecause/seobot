@@ -27,11 +27,12 @@ export interface WorkflowStep {
   parallel?: boolean
   dependencies?: string[]
   systemPrompt?: string
-  outputFormat?: 'json' | 'text'
+  outputFormat?: 'json' | 'text' | 'component'
+  componentType?: string
 }
 
 export interface WorkflowTool {
-  id: string
+  id?: string
   name: string
   platforms?: string[]
   params?: Record<string, any>
@@ -39,10 +40,13 @@ export interface WorkflowTool {
 }
 
 export interface WorkflowStepResult {
-  id: string
+  id?: string
+  stepId?: string
   status: WorkflowStepStatus
   toolResults?: Record<string, any>
   error?: string
+  startTime?: number
+  endTime?: number
   duration?: number
 }
 
@@ -66,11 +70,19 @@ export interface WorkflowExecution {
 
 export interface WorkflowContext {
   previousStepResults: Record<string, Record<string, any>>
+  userQuery?: string
+  userPreferences?: Record<string, any>
+  cache?: Map<string, any>
 }
 
 export interface ToolExecutionResult {
-  toolId: string
-  status: 'success' | 'failure'
+  toolId?: string
+  toolName?: string
+  status?: 'success' | 'failure'
+  success?: boolean
   result?: any
+  data?: any
   error?: string
+  cached?: boolean
+  duration?: number
 }

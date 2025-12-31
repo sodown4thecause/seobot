@@ -13,8 +13,8 @@ async function applyMigration() {
 
   // Create Supabase admin client
   const supabase = createClient(
-    clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-    serverEnv.SUPABASE_SERVICE_ROLE_KEY
+    serverEnv.NEXT_PUBLIC_SUPABASE_URL as string,
+    serverEnv.SUPABASE_SERVICE_ROLE_KEY as string
   )
 
   // Read migration file
@@ -41,7 +41,7 @@ async function applyMigration() {
     // Try using Supabase's rpc to execute SQL
     // Note: Supabase doesn't have a direct SQL execution endpoint via JS client
     // We'll need to use the REST API or Supabase CLI
-    
+
     console.log('⚠️  Direct SQL execution via JS client is not supported.')
     console.log('📋 Please apply the migration using one of these methods:\n')
     console.log('1. Supabase Dashboard:')
@@ -56,7 +56,7 @@ async function applyMigration() {
 
     // However, we can check if the migration was already applied by checking for some of the changes
     console.log('🔍 Checking if migration was already applied...\n')
-    
+
     // Check if check_is_admin function has the correct search_path
     const { data: functionCheck, error: funcError } = await supabase.rpc('check_is_admin', {
       user_id: '00000000-0000-0000-0000-000000000000' // dummy UUID for check
