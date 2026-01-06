@@ -25,6 +25,12 @@ const BrandVoiceSchema = z.object({
 
 export type ExtractedBrandVoice = z.infer<typeof BrandVoiceSchema>
 
+/**
+ * Stored brand voice type - represents what's actually persisted in the database
+ * (targetAudience, industryContext, uniqueVoiceElements are not stored)
+ */
+export type StoredBrandVoice = Pick<ExtractedBrandVoice, 'tone' | 'style' | 'personality' | 'samplePhrases'>
+
 export interface BrandVoiceExtractionResult {
     success: boolean
     brandVoice?: ExtractedBrandVoice
@@ -181,33 +187,34 @@ export async function extractAndStoreBrandVoice(
             .limit(1)
 
         if (existing.length > 0) {
-            // Update existing brand voice
-            await db.execute(`
-        UPDATE brand_voices 
-        SET 
-          tone = '${brandVoice.tone}',
-          style = '${brandVoice.style}',
-          personality = '${JSON.stringify(brandVoice.personality)}'::jsonb,
-          sample_phrases = ARRAY[${brandVoice.samplePhrases.map(p => `'${p.replace(/'/g, "''")}'`).join(',')}],
-          embedding = '${embeddingStr}'::vector,
-          source = 'firecrawl'
-        WHERE user_id = '${userId}'
-      `)
+            // Update existing brand voice using Drizzle ORM
+            const { sql } = await import('drizzle-orm')
+            await db
+                .update(brandVoices)
+                .set({
+                    tone: brandVoice.tone,
+                    style: brandVoice.style,
+                    personality: brandVoice.personality, // Drizzle handles jsonb casting
+                    samplePhrases: brandVoice.samplePhrases, // Drizzle handles array binding
+                    embedding: sql`${embeddingStr}::vector`, // Proper vector casting
+                    source: 'firecrawl',
+                })
+                .where(eq(brandVoices.userId, userId))
             console.log('[Brand Voice Extractor] Updated existing brand voice')
         } else {
-            // Insert new brand voice
-            await db.execute(`
-        INSERT INTO brand_voices (user_id, tone, style, personality, sample_phrases, embedding, source)
-        VALUES (
-          '${userId}',
-          '${brandVoice.tone}',
-          '${brandVoice.style}',
-          '${JSON.stringify(brandVoice.personality)}'::jsonb,
-          ARRAY[${brandVoice.samplePhrases.map(p => `'${p.replace(/'/g, "''")}'`).join(',')}],
-          '${embeddingStr}'::vector,
-          'firecrawl'
-        )
-      `)
+            // Insert new brand voice using Drizzle ORM
+            const { sql } = await import('drizzle-orm')
+            await db
+                .insert(brandVoices)
+                .values({
+                    userId: userId,
+                    tone: brandVoice.tone,
+                    style: brandVoice.style,
+                    personality: brandVoice.personality, // Drizzle handles jsonb casting
+                    samplePhrases: brandVoice.samplePhrases, // Drizzle handles array binding
+                    embedding: sql`${embeddingStr}::vector`, // Proper vector casting
+                    source: 'firecrawl',
+                })
             console.log('[Brand Voice Extractor] Inserted new brand voice')
         }
 
@@ -236,8 +243,9 @@ export async function extractAndStoreBrandVoice(
 
 /**
  * Get brand voice for a user (for use in content generation)
+ * Returns only the fields that are stored in the database
  */
-export async function getUserBrandVoice(userId: string): Promise<ExtractedBrandVoice | null> {
+export async function getUserBrandVoice(userId: string): Promise<StoredBrandVoice | null> {
     try {
         const [result] = await db
             .select()
@@ -252,9 +260,6 @@ export async function getUserBrandVoice(userId: string): Promise<ExtractedBrandV
             style: result.style,
             personality: (result.personality as string[]) || [],
             samplePhrases: result.samplePhrases || [],
-            targetAudience: '',
-            industryContext: '',
-            uniqueVoiceElements: [],
         }
     } catch (error) {
         console.error('[Brand Voice Extractor] Error fetching brand voice:', error)

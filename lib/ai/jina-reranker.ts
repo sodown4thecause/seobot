@@ -30,11 +30,31 @@ export class JinaReranker {
 
     /**
      * Rerank documents based on relevance to the query
-     * @param query - The search query
-     * @param documents - Array of document texts to rerank
+     * 
+     * ⚠️ **SECURITY & COMPLIANCE WARNING**
+     * This method sends the query and all document texts to Jina AI's external API (https://api.jina.ai).
+     * 
+     * **Data Transmission:**
+     * - Query text and all document contents are transmitted to Jina AI's servers
+     * - Data is processed on Jina AI's infrastructure (not on-premises)
+     * - Review Jina AI's data handling policies: https://jina.ai/privacy
+     * 
+     * **Disable Mechanism:**
+     * - Set `JINA_API_KEY` environment variable to empty/falsy to disable external API calls
+     * - When disabled, falls back to local ranking (returns documents in original order with decreasing scores)
+     * 
+     * **Compliance Considerations:**
+     * - ⚠️ DO NOT send PII (Personally Identifiable Information) or sensitive internal data
+     * - Review GDPR compliance requirements if processing EU user data
+     * - Consider data residency requirements for your jurisdiction
+     * - For sensitive use cases, consider Jina on-premises deployments
+     * - Consult your legal/compliance team before enabling in production
+     * 
+     * @param query - The search query (transmitted to Jina AI API)
+     * @param documents - Array of document texts to rerank (transmitted to Jina AI API)
      * @param topN - Number of top results to return (default: 5)
      * @param returnDocuments - Whether to include document text in results (default: false)
-     * @returns Reranked results with relevance scores
+     * @returns Reranked results with relevance scores, or fallback ranking if API key not configured
      */
     async rerank(
         query: string,

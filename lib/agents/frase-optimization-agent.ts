@@ -687,10 +687,11 @@ export class FraseOptimizationAgent {
     retries: number = 2,
     timeoutMs: number = 30000
   ): Promise<any> {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
     for (let attempt = 0; attempt <= retries; attempt++) {
+      // Create a new AbortController for each attempt
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
       try {
         const response = await fetch(endpoint, {
           method: 'POST',

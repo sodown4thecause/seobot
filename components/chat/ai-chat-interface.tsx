@@ -778,17 +778,10 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       bootstrapConversation()
     } else {
       // Edge case: no conversationId but hasInitializedRef is true
-      // This can happen after failed bootstrap attempts - ensure loading state is cleared
-      console.log('[AIChatInterface] No conversation and already initialized, resetting for retry')
+      // This can happen after failed bootstrap attempts - clear state and let effect re-run
+      console.log('[AIChatInterface] No conversation and already initialized, clearing stuck state')
       hasInitializedRef.current = false
       setIsBootstrapping(false)
-      // Trigger bootstrap on next render
-      setTimeout(() => {
-        if (mountedRef.current && !conversationId) {
-          hasInitializedRef.current = true
-          bootstrapConversation()
-        }
-      }, 100)
     }
   }, [conversationId, setMessages, bootstrapConversation])
 

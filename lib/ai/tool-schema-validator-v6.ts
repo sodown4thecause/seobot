@@ -506,8 +506,8 @@ export function loadToolsForIntents(
 
   console.log(`[Intent Tool Loader] Loaded ${Object.keys(selectedTools).length}/${allToolNames.length} tools for intents`)
 
-  if (missingTools.length > 0 && missingTools.length <= 10) {
-    console.warn(`[Intent Tool Loader] Missing tools: ${missingTools.join(', ')}`)
+  if (missingTools.length > 0) {
+    console.warn(`[Intent Tool Loader] Missing tools: ${missingTools.slice(0, 10).join(', ')}${missingTools.length > 10 ? ` (and ${missingTools.length - 10} more)` : ''}`)
   }
 
   return selectedTools
