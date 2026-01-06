@@ -122,6 +122,10 @@ const serverEnvSchema = z.object({
     (val) => (val ? Number(val) : undefined),
     z.number().min(0).max(100).optional()
   ),
+  MIN_AEO_SCORE: z.preprocess(
+    (val) => (val ? Number(val) : undefined),
+    z.number().min(0).max(100).optional()
+  ),
   MIN_OVERALL_SCORE: z.preprocess(
     (val) => (val ? Number(val) : undefined),
     z.number().min(0).max(100).optional()

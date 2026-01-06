@@ -190,6 +190,98 @@ const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComp
   )
 }
 
+const ToolPartInvocation = ({
+  toolName,
+  toolCallId,
+  state,
+  input,
+  output,
+}: {
+  toolName: string
+  toolCallId?: string
+  state?: string
+  input?: any
+  output?: any
+}) => {
+  const isLoading = state !== 'output-available' && state !== 'result'
+  const isSuccess = !isLoading
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <div
+      className={cn(
+        'glass-card rounded-xl my-2 overflow-hidden transition-all',
+        isSuccess ? 'border-white/10' : 'border-white/5',
+        isLoading && 'animate-pulse border-indigo-500/30'
+      )}
+    >
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center justify-between p-3">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={cn(
+                'w-6 h-6 rounded-lg flex items-center justify-center',
+                isLoading ? 'bg-indigo-500/10 text-indigo-400' : 'bg-zinc-800/50 text-zinc-400'
+              )}
+            >
+              {isLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Terminal className="w-3.5 h-3.5" />
+              )}
+            </div>
+            <span className="text-sm font-medium text-zinc-200">{formatToolName(toolName)}</span>
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                isLoading ? 'bg-amber-500/15 text-amber-200' : 'bg-emerald-500/15 text-emerald-200'
+              )}
+            >
+              {isLoading ? 'Running' : 'Completed'}
+            </span>
+          </div>
+          <CollapsibleTrigger asChild>
+            <button className="p-1 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-zinc-300 transition-colors">
+              {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
+          <div className="border-t border-white/5 p-3 space-y-3 bg-black/20">
+            {input !== undefined && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1.5">Input</div>
+                <div className="bg-black/40 rounded-lg p-2 border border-white/5">
+                  <pre className="text-xs text-zinc-400 whitespace-pre-wrap font-mono overflow-x-auto">
+                    {typeof input === 'string' ? input : JSON.stringify(input, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+            {output !== undefined && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1.5">Output</div>
+                <div className="bg-black/40 rounded-lg p-2 border border-white/5 max-h-60 overflow-y-auto">
+                  <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono">
+                    {typeof output === 'string' ? output : JSON.stringify(output, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+            {!isLoading && output === undefined && (
+              <div className="text-xs text-zinc-500">No output returned for this tool call.</div>
+            )}
+            {toolCallId && (
+              <div className="text-[10px] text-zinc-600 font-mono">{toolCallId}</div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  )
+}
+
 type SourceItem = {
   title?: string
   url?: string
@@ -364,17 +456,17 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 }, ref) => {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [input, setInput] = useState('')
-   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
+  const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
   // Start with false - the bootstrap effect will set to true when it starts
   const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
-   const hasInitializedRef = useRef(false)
-   const mountedRef = useRef(true)
-   const lastLoadedConversationId = useRef<string | null>(null)
-   const agentPreference = agentIdProp ?? (chatContext as any)?.agentId ?? 'general'
-   const bootstrapTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-   const bootstrapAbortControllerRef = useRef<AbortController | null>(null)
-   const lastAutoSentMessage = useRef<string | null>(null)
+  const hasInitializedRef = useRef(false)
+  const mountedRef = useRef(true)
+  const lastLoadedConversationId = useRef<string | null>(null)
+  const agentPreference = agentIdProp ?? (chatContext as any)?.agentId ?? 'general'
+  const bootstrapTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const bootstrapAbortControllerRef = useRef<AbortController | null>(null)
+  const lastAutoSentMessage = useRef<string | null>(null)
 
   useEffect(() => {
     return () => {
@@ -652,9 +744,18 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           if (mountedRef.current) {
             setMessages(historyMessages)
           }
+        } else {
+          console.error('[AIChatInterface] Failed to load messages, status:', response.status)
+          // Clear messages on error but don't leave in stuck loading state
+          if (mountedRef.current) {
+            setMessages([])
+          }
         }
       } catch (error) {
         console.error('[AIChatInterface] Error loading messages:', error)
+        if (mountedRef.current) {
+          setMessages([])
+        }
       } finally {
         if (mountedRef.current) {
           setIsBootstrapping(false)
@@ -662,8 +763,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       }
     }
 
-    // Skip if we already loaded this conversation
-    if (lastLoadedConversationId.current === conversationId) {
+    // Skip if we already loaded this specific conversation (but not if both are null)
+    if (conversationId && lastLoadedConversationId.current === conversationId) {
       console.log('[AIChatInterface] Already loaded conversation:', conversationId)
       return
     }
@@ -675,6 +776,19 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       // First mount with no conversation - bootstrap to get/create one
       hasInitializedRef.current = true
       bootstrapConversation()
+    } else {
+      // Edge case: no conversationId but hasInitializedRef is true
+      // This can happen after failed bootstrap attempts - ensure loading state is cleared
+      console.log('[AIChatInterface] No conversation and already initialized, resetting for retry')
+      hasInitializedRef.current = false
+      setIsBootstrapping(false)
+      // Trigger bootstrap on next render
+      setTimeout(() => {
+        if (mountedRef.current && !conversationId) {
+          hasInitializedRef.current = true
+          bootstrapConversation()
+        }
+      }, 100)
     }
   }, [conversationId, setMessages, bootstrapConversation])
 
@@ -846,9 +960,14 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         // For other tools, show a collapsed view
         if (part.state === 'output-available' || part.state === 'result') {
           return (
-            <div key={`tool-${part.toolCallId}-${index}`} className="my-2 text-xs text-zinc-500">
-              <span className="bg-zinc-800/50 px-2 py-1 rounded">✓ {formatToolName(toolName)}</span>
-            </div>
+            <ToolPartInvocation
+              key={`tool-${part.toolCallId || toolName}-${index}`}
+              toolName={toolName}
+              toolCallId={part.toolCallId}
+              state={part.state}
+              input={part.input ?? part.args}
+              output={part.output ?? part.result}
+            />
           );
         }
         if (part.state === 'input-streaming' || part.state === 'input-available') {

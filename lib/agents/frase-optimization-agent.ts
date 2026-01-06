@@ -61,7 +61,7 @@ export interface FraseOptimizationResult {
 
 export class FraseOptimizationAgent {
   private apiKey: string
-  private baseUrl = 'https://api.frase.io/v1'
+  private baseUrl = 'https://api.frase.io/api/v1'  // Correct path per Frase docs
 
   constructor() {
     this.apiKey = process.env.FRASE_API_KEY || ''
@@ -679,30 +679,73 @@ export class FraseOptimizationAgent {
   }
 
   /**
-   * Make API request to Frase
+   * Make API request to Frase with timeout and retry
    */
-  private async makeAPIRequest(endpoint: string, body: any): Promise<any> {
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
+  private async makeAPIRequest(
+    endpoint: string,
+    body: any,
+    retries: number = 2,
+    timeoutMs: number = 30000
+  ): Promise<any> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Frase API error (${response.status}): ${errorText}`)
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'token': this.apiKey,  // Frase uses 'token' header, not 'Authorization: Bearer'
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          const errorMsg = `Frase API error (${response.status}): ${errorText}`
+
+          // Retry on 5xx errors or rate limits
+          if (response.status >= 500 || response.status === 429) {
+            if (attempt < retries) {
+              console.warn(`[Frase Agent] ${errorMsg}, retrying (${attempt + 1}/${retries})...`)
+              await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
+              continue
+            }
+          }
+
+          throw new Error(errorMsg)
+        }
+
+        const data = await response.json()
+        return data
+      } catch (error) {
+        clearTimeout(timeoutId)
+
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error(`[Frase Agent] Request timed out after ${timeoutMs}ms`)
+          if (attempt < retries) {
+            console.warn(`[Frase Agent] Retrying after timeout (${attempt + 1}/${retries})...`)
+            continue
+          }
+          throw new Error(`Frase API request timed out after ${timeoutMs}ms`)
+        }
+
+        if (attempt < retries) {
+          console.warn(`[Frase Agent] Request failed, retrying (${attempt + 1}/${retries}):`, error)
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
+          continue
+        }
+
+        console.error('[Frase Agent] API request failed after retries:', error)
+        throw error
       }
-
-      const data = await response.json()
-      return data
-    } catch (error) {
-      console.error('[Frase Agent] API request failed:', error)
-      throw error
     }
+
+    throw new Error('Frase API request failed after all retries')
   }
 
   /**
@@ -712,19 +755,21 @@ export class FraseOptimizationAgent {
     console.log('[Frase Agent] Fetching document:', documentId)
 
     try {
-      const endpoint = `${this.baseUrl}/documents/${documentId}`
+      // Frase uses POST to /get_document_id with doc_id in body
+      const endpoint = `${this.baseUrl}/get_document_id`
 
-      // Make API request directly without MCP logging
       const response = await fetch(endpoint, {
-        method: 'GET',
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'token': this.apiKey,  // Frase uses 'token' header
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ doc_id: documentId }),
       })
 
       if (!response.ok) {
-        throw new Error(`Frase API error (${response.status})`)
+        const errorText = await response.text()
+        throw new Error(`Frase API error (${response.status}): ${errorText}`)
       }
 
       const result = await response.json()

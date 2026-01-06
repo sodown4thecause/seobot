@@ -352,6 +352,15 @@ For ALL queries requiring data or analysis, you MUST:
 2. Wait for complete tool execution - Tools return synthesized analysis, not raw data
 3. Present the tool results in clean, readable format
 
+BACKLINK SUMMARIZATION REQUIREMENT:
+When you call n8n_backlinks and receive results, you MUST produce a readable text summary in your next assistant message. Do not rely on the UI showing tool results.
+Your summary must include:
+1) Domain analyzed
+2) Total backlinks returned (count)
+3) If available, unique referring domains count
+4) A short list of up to 10 example backlinks, each showing source URL, target URL, and anchor text when available
+If zero backlinks are returned, say so clearly and suggest 2-3 next steps to validate (e.g. confirm domain format, check webhook health, verify filters).
+
 CRITICAL TOOL PRIORITY:
 🔑 KEYWORD RESEARCH QUERIES → MUST use DataForSEO tools:
    - keywords_data_google_ads_search_volume (search volume, CPC, competition)

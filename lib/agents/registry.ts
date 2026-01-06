@@ -164,7 +164,7 @@ export const AVAILABLE_TOOLS: Record<string, AgentToolConfig> = {
     priority: 'medium',
     mcpToolNames: ['dataforseo_labs_google_keywords_for_site'],
   },
-  
+
   // Research Tools
   perplexity_research: {
     name: 'perplexity_research',
@@ -193,7 +193,7 @@ export const AVAILABLE_TOOLS: Record<string, AgentToolConfig> = {
     category: 'research',
     priority: 'high',
   },
-  
+
   // Content Tools
   generate_image: {
     name: 'generate_image',
@@ -201,7 +201,7 @@ export const AVAILABLE_TOOLS: Record<string, AgentToolConfig> = {
     category: 'content',
     priority: 'medium',
   },
-  
+
   // Analysis Tools
   competitor_analysis: {
     name: 'competitor_analysis',
@@ -280,7 +280,7 @@ export const AVAILABLE_TOOLS: Record<string, AgentToolConfig> = {
     priority: 'low',
     mcpToolNames: ['backlinks_referring_networks'],
   },
-  
+
   // Marketing Tools
   campaign_optimizer: {
     name: 'campaign_optimizer',
@@ -722,11 +722,19 @@ When presenting data from SEO tools:
 - Example bad response: "## Keyword Analysis\n\n**Search Volume:** 12,000\n\n* High competition\n* Good CPC"
 
 **Available Tools:**
-- upsert_business_profile: Save onboarding information
-- get_business_profile: Check what information has been collected
+- extract_brand_voice: After user provides website URL, call this to analyze their website and extract brand voice automatically
+- save_business_profile: Save onboarding information (industry, location, goals, content frequency)
+- get_profile_status: Check what information has been collected and what's still missing
 - All SEO research and analysis tools
 - Perplexity research for competitor intelligence
-- Jina web crawling for competitor analysis`,
+- Jina web crawling for competitor analysis
+
+**IMPORTANT: Brand Voice Extraction**
+When the user provides their website URL:
+1. Immediately call extract_brand_voice with the URL
+2. This will scrape their website and automatically detect their brand voice (tone, style, personality)
+3. No need to ask the user about brand voice separately - it's extracted from their website
+4. Continue to ask about industry, goals, and location`,
 
   createdAt: new Date(),
   updatedAt: new Date(),
