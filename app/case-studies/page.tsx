@@ -1,20 +1,17 @@
-import Link from 'next/link'
-import Image from 'next/image'
-import DOMPurify from 'isomorphic-dompurify'
-import { getCaseStudies } from '@/lib/wordpress'
-import { Navbar } from '@/components/navbar'
+import Link from "next/link";
+import { type SanityDocument } from "next-sanity";
+import { client } from "@/sanity/lib/client";
+import { Navbar } from '@/components/navbar';
 
-export const revalidate = 60 // Revalidate every minute
+const CASE_STUDIES_QUERY = `*[
+  _type == "caseStudy"
+  && defined(slug.current)
+]|order(publishedAt desc)[0...12]{_id, title, slug, publishedAt, client, industry, excerpt, results}`;
+
+const options = { next: { revalidate: 30 } };
 
 export default async function CaseStudiesPage() {
-    let caseStudies
-    try {
-        const result = await getCaseStudies()
-        caseStudies = result.posts
-    } catch (error) {
-        console.error('Error fetching case studies:', error)
-        caseStudies = { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } }
-    }
+    const caseStudies = await client.fetch<SanityDocument[]>(CASE_STUDIES_QUERY, {}, options);
 
     return (
         <div className="min-h-screen bg-black text-white selection:bg-primary/30">
@@ -26,69 +23,61 @@ export default async function CaseStudiesPage() {
                         Case Studies
                     </h1>
                     <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-                        Real-world results and success stories from our clients.
+                        See how businesses achieved remarkable results with our AI-powered SEO solutions.
                     </p>
                 </div>
 
-                {caseStudies.nodes.length === 0 ? (
+                {caseStudies.length === 0 ? (
                     <div className="text-center py-20">
-                        <p className="text-zinc-400 text-lg">No case studies found.</p>
+                        <p className="text-zinc-400 text-lg mb-4">No case studies found.</p>
+                        <Link href="/studio" className="text-indigo-400 hover:underline">
+                            Create your first case study in Sanity Studio →
+                        </Link>
                     </div>
                 ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {caseStudies.nodes.map((caseStudy) => (
-                        <Link
-                            key={caseStudy.id}
-                            href={`/case-studies/${caseStudy.slug}`}
-                            className="group block bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden hover:bg-white/[0.05] transition-all duration-300 hover:-translate-y-1"
-                        >
-                            {/* Featured Image */}
-                            <div className="aspect-[16/9] relative overflow-hidden bg-white/5">
-                                {caseStudy.featuredImage ? (
-                                    <Image
-                                        src={caseStudy.featuredImage.sourceUrl}
-                                        alt={caseStudy.featuredImage.altText || caseStudy.title}
-                                        fill
-                                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-zinc-700">
-                                        <span className="text-4xl">📊</span>
+                        {caseStudies.map((study) => (
+                            <Link
+                                key={study._id}
+                                href={`/case-studies/${study.slug.current}`}
+                                className="group block bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden hover:bg-white/[0.05] transition-all duration-300 hover:-translate-y-1"
+                            >
+                                <div className="p-8">
+                                    <div className="flex items-center gap-4 text-xs text-zinc-500 mb-4 font-medium uppercase tracking-wider">
+                                        {study.industry && <span className="text-indigo-400">{study.industry}</span>}
+                                        {study.client && <span>• {study.client}</span>}
                                     </div>
-                                )}
-                            </div>
 
-                            <div className="p-8">
-                                <div className="flex items-center gap-4 text-xs text-zinc-500 mb-4 font-medium uppercase tracking-wider">
-                                    {caseStudy.categories?.nodes[0] && (
-                                        <span className="text-indigo-400">{caseStudy.categories.nodes[0].name}</span>
+                                    <h2 className="text-2xl font-bold mb-3 leading-tight group-hover:text-indigo-300 transition-colors">
+                                        {study.title}
+                                    </h2>
+
+                                    {study.excerpt && (
+                                        <p className="text-zinc-400 text-sm mb-4 line-clamp-2">{study.excerpt}</p>
                                     )}
-                                    <span>•</span>
-                                    <span>{new Date(caseStudy.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+
+                                    {study.results && study.results.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {study.results.slice(0, 2).map((result: string, i: number) => (
+                                                <span key={i} className="text-xs bg-green-500/10 text-green-400 px-2 py-1 rounded-full">
+                                                    {result}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="mt-6 flex items-center text-sm font-medium text-white group-hover:text-indigo-300 transition-colors">
+                                        Read Case Study
+                                        <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                        </svg>
+                                    </div>
                                 </div>
-
-                                <h2 className="text-2xl font-bold mb-3 leading-tight group-hover:text-indigo-300 transition-colors">
-                                    {caseStudy.title}
-                                </h2>
-
-                                <div
-                                    className="text-zinc-400 line-clamp-3 text-sm leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(caseStudy.excerpt) }}
-                                />
-
-                                <div className="mt-6 flex items-center text-sm font-medium text-white group-hover:text-indigo-300 transition-colors">
-                                    View Case Study
-                                    <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </Link>
+                            </Link>
                         ))}
                     </div>
                 )}
             </main>
         </div>
-    )
+    );
 }
-

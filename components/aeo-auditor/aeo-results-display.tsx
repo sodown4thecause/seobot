@@ -42,180 +42,116 @@ export function AEOResultsDisplay({ report, brandName, onReset, sessionId, tools
   const urgencyMessage = getUrgencyMessage(score)
   const potentialImprovement = getPotentialImprovement(score)
 
-  const getGradeColor = (g: string) => ({ A: 'from-green-500 to-emerald-500', B: 'from-emerald-500 to-teal-500', C: 'from-yellow-500 to-amber-500', D: 'from-orange-500 to-red-500' }[g] || 'from-red-500 to-rose-500')
-  const getScoreColor = (s: number) => s >= 80 ? 'text-green-400' : s >= 60 ? 'text-yellow-400' : s >= 40 ? 'text-orange-400' : 'text-red-400'
+  const getScoreColor = (s: number) => s >= 80 ? 'text-white' : s >= 60 ? 'text-zinc-300' : s >= 40 ? 'text-zinc-500' : 'text-zinc-600'
 
   return (
-    <motion.div key="results" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="relative z-10 space-y-8">
+    <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10 space-y-12 text-left font-sans">
       {/* Score Header */}
-      <div className="text-center">
-        <div className={`inline-flex items-center justify-center w-32 h-32 rounded-3xl bg-gradient-to-br ${getGradeColor(scoreCard.grade)} mb-4`}>
-          <div className="w-28 h-28 rounded-2xl bg-black/50 flex flex-col items-center justify-center">
-            <span className="text-5xl font-bold text-white">{scoreCard.grade}</span>
-            <span className="text-sm text-white/70">{score}/100</span>
-          </div>
+      <div className="flex flex-col md:flex-row items-center gap-12 border-b border-white/10 pb-12">
+        <div className="w-40 h-40 bg-white flex flex-col items-center justify-center shrink-0">
+          <span className="text-7xl font-black italic text-black leading-none">{scoreCard.grade}</span>
+          <span className="text-xs font-mono font-black text-black mt-2 tracking-widest">{score}/100</span>
         </div>
-        <h3 className="text-2xl font-bold text-white mb-1">{brandName} - {scoreCard.verdict}</h3>
-        <p className="text-zinc-400 text-sm max-w-lg mx-auto mb-3">{summary}</p>
-        {/* Urgency Banner */}
-        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm ${score <= 50 ? 'bg-red-500/20 text-red-300' : score <= 75 ? 'bg-yellow-500/20 text-yellow-300' : 'bg-green-500/20 text-green-300'}`}>
-          <AlertCircle className="w-4 h-4" />{urgencyMessage}
+        <div className="space-y-4 text-center md:text-left">
+          <h3 className="text-4xl font-black text-white italic uppercase tracking-tighter italic leading-none">{brandName} - {scoreCard.verdict}</h3>
+          <p className="text-zinc-400 text-lg font-light leading-tight uppercase tracking-tighter max-w-2xl">{summary}</p>
+          <div className="inline-flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-zinc-300">
+            <AlertCircle className="w-3.5 h-3.5" /> {urgencyMessage}
+          </div>
         </div>
       </div>
 
-      {/* Score Breakdown with Deficiency Indicators */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Score Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-px bg-white/10 border border-white/10">
         {[
-          { label: 'Entity Recognition', value: entityRecognition, max: 25, feature: 'schema' as const },
-          { label: 'Accuracy', value: accuracyScore, max: 25, feature: 'content' as const },
-          { label: 'Citation Strength', value: citationStrength, max: 25, feature: 'monitoring' as const },
-          { label: 'Technical Readiness', value: technicalReadiness, max: 25, feature: 'chat' as const },
+          { label: 'ENTITY RECOGNITION', value: entityRecognition, max: 25, feature: 'schema' as const },
+          { label: 'ACCURACY SCORE', value: accuracyScore, max: 25, feature: 'content' as const },
+          { label: 'CITATION STRENGTH', value: citationStrength, max: 25, feature: 'monitoring' as const },
+          { label: 'TECHNICAL READINESS', value: technicalReadiness, max: 25, feature: 'chat' as const },
         ].map((item, i) => {
           const pct = (item.value / item.max) * 100
           const needsWork = pct < 60
           return (
-            <div key={i} className={`rounded-xl p-4 border transition-all ${needsWork ? 'bg-red-500/5 border-red-500/20 hover:border-red-500/40' : 'bg-white/5 border-white/10'}`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-zinc-500">{item.label}</span>
-                {needsWork && <AlertTriangle className="w-3 h-3 text-red-400" />}
+            <div key={i} className="bg-black p-8 group transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-mono text-zinc-600 tracking-widest leading-none">{item.label}</span>
+                {needsWork && <AlertTriangle className="w-3 h-3 text-red-900" />}
               </div>
-              <div className={`text-2xl font-bold ${getScoreColor(pct)}`}>{item.value}/{item.max}</div>
-              <Progress value={pct} className="h-1 mt-2" />
-              {needsWork && <p className="text-xs text-red-400 mt-2">Use {PRODUCT_FEATURES[item.feature].name} →</p>}
+              <div className={`text-3xl font-black italic ${getScoreColor(pct)} tracking-tighter`}>{item.value} / {item.max}</div>
+              <div className="w-full h-1 bg-zinc-900 mt-4 overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className="h-full bg-white transition-all shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
+              </div>
+              {needsWork && <p className="text-[9px] font-mono text-zinc-500 mt-4 tracking-[0.2em] italic uppercase italic">SYSTEM GAP DETECTED</p>}
             </div>
           )
         })}
       </div>
 
-      {/* Knowledge Graph & Hallucinations */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className={`rounded-xl p-5 border ${knowledgeGraphStatus.exists ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            {knowledgeGraphStatus.exists ? <CheckCircle2 className="w-5 h-5 text-green-400" /> : <AlertTriangle className="w-5 h-5 text-red-400" />}
-            <span className="font-semibold text-white">Knowledge Graph</span>
+      {/* Competitive Intelligence */}
+      <div className="grid md:grid-cols-2 gap-px bg-white/10">
+        <div className="bg-black p-8 space-y-4">
+          <div className="flex items-center gap-4 text-xs font-mono font-bold uppercase tracking-widest text-white italic">
+            <Users className="w-4 h-4 text-zinc-500" /> Competitor Intelligence
           </div>
-          <p className="text-sm text-zinc-400">{knowledgeGraphStatus.message}</p>
-        </div>
-        <div className={`rounded-xl p-5 border ${hallucinations.isHallucinating ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            {hallucinations.isHallucinating ? <AlertTriangle className="w-5 h-5 text-red-400" /> : <Shield className="w-5 h-5 text-green-400" />}
-            <span className="font-semibold text-white">AI Accuracy</span>
-          </div>
-          <p className="text-sm text-zinc-400">{hallucinations.isHallucinating ? `${hallucinations.positive.length + hallucinations.negative.length} inaccuracies detected (${hallucinations.riskLevel} risk)` : 'No hallucinations detected'}</p>
-        </div>
-      </div>
-
-      {/* Premium APIs Used Section */}
-      <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl p-5 border border-emerald-500/20">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-emerald-400" />
-            <span className="font-semibold text-white">Premium APIs Used in This Audit</span>
-          </div>
-          <span className="text-sm text-emerald-300 font-medium">
-            ${(apiCost || perception?.apiCosts?.total || 0.75).toFixed(2)} value
-          </span>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {(toolsUsed || [
-            'DataForSEO LLM Mentions',
-            'DataForSEO ChatGPT Scraper',
-            'DataForSEO Knowledge Graph',
-            'DataForSEO Competitor Analysis',
-            'Perplexity Sonar AI',
-            'Firecrawl Web Scraper',
-            'Google Gemini 2.0 Flash',
-          ]).map((tool, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs text-zinc-400">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-              <span>{tool}</span>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-zinc-500 mt-3">
-          This audit analyzed your brand across 7 premium APIs. With Flow Intent, get <strong className="text-emerald-300">unlimited access</strong> to all these tools through simple prompts.
-        </p>
-      </div>
-
-      {/* Competitor Comparison Section */}
-      {perception?.competitors && perception.competitors.length > 0 && (
-        <div className="bg-white/5 rounded-xl p-5 border border-white/10">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="w-5 h-5 text-orange-400" />
-            <span className="font-semibold text-white">Competitor AI Visibility</span>
-          </div>
-          <div className="space-y-3">
-            {perception.competitors.slice(0, 3).map((comp, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                <div className="flex items-center gap-3">
-                  <Globe className="w-4 h-4 text-zinc-500" />
-                  <span className="text-sm text-white">{comp.domain}</span>
-                </div>
-                <div className="flex items-center gap-4 text-xs">
-                  {comp.organicTraffic && (
-                    <span className="text-zinc-400">
-                      <BarChart3 className="w-3 h-3 inline mr-1" />
-                      {comp.organicTraffic.toLocaleString()} traffic
-                    </span>
-                  )}
-                  {comp.hasSchema !== undefined && (
-                    <span className={comp.hasSchema ? 'text-green-400' : 'text-red-400'}>
-                      {comp.hasSchema ? '✓ Schema' : '✗ No Schema'}
-                    </span>
-                  )}
-                </div>
+          <div className="space-y-2">
+            {perception?.competitors?.slice(0, 3).map((comp, i) => (
+              <div key={i} className="flex items-center justify-between py-2 border-b border-white/[0.03] text-[10px] font-mono uppercase tracking-widest">
+                <span className="text-zinc-500">{comp.domain}</span>
+                <span className="text-white italic">DETECTION: ACTIVE</span>
               </div>
             ))}
           </div>
-          <p className="text-xs text-zinc-500 mt-3">
-            Flow Intent's Competitor Intelligence tool tracks these competitors continuously and alerts you to changes.
+        </div>
+        <div className="bg-black p-8 space-y-4">
+          <div className="flex items-center gap-4 text-xs font-mono font-bold uppercase tracking-widest text-white italic">
+            <Bot className="w-4 h-4 text-zinc-500" /> Perplexity Analysis
+          </div>
+          <p className="text-xs text-zinc-500 italic uppercase leading-relaxed font-light font-mono">
+            {perception?.perplexitySummary || "Analyzing verified sources for entity mentions and sentiment alignment..."}
           </p>
         </div>
-      )}
+      </div>
 
-      {/* Perplexity Insight Section */}
-      {perception?.perplexitySummary && (
-        <div className="bg-blue-500/10 rounded-xl p-5 border border-blue-500/20">
-          <div className="flex items-center gap-2 mb-3">
-            <Bot className="w-5 h-5 text-blue-400" />
-            <span className="font-semibold text-white">What Perplexity AI Says</span>
+      {/* APIS Used Badge */}
+      <div className="bg-white/5 border border-white/10 p-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-white flex items-center justify-center text-black font-black italic">!</div>
+            <div>
+              <span className="text-xs font-mono font-bold uppercase tracking-widest block text-white italic">Premium Intelligence Engine</span>
+              <p className="text-[10px] font-mono text-zinc-600 mt-1 uppercase tracking-tight">ANALYZED VIA {(toolsUsed?.length || 7)} FEDERATION ENDPOINTS</p>
+            </div>
           </div>
-          <p className="text-sm text-zinc-300 italic">"{perception.perplexitySummary}"</p>
-          {perception.perplexitySources && perception.perplexitySources.length > 0 && (
-            <p className="text-xs text-zinc-500 mt-2">
-              Sources cited: {perception.perplexitySources.slice(0, 3).join(', ')}
-            </p>
-          )}
+          <div className="text-right">
+            <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest block">REPORT VALUE</span>
+            <span className="text-2xl font-black italic text-white">${(apiCost || 0.75).toFixed(2)} USD</span>
+          </div>
         </div>
-      )}
+        <div className="flex flex-wrap gap-x-8 gap-y-2">
+          {(toolsUsed || ['GPT-4-SONAR', 'FIRE-CRAWL-RECON', 'KG-ENTITIES', 'SEARCH-CONSULTANT-AI']).map((tool, i) => (
+            <div key={i} className="text-[9px] font-mono text-zinc-700 uppercase tracking-widest flex items-center gap-2 italic">
+              <span className="w-1 h-1 bg-zinc-800" /> {tool}
+            </div>
+          ))}
+        </div>
+      </div>
 
-      {/* Quick Wins Section - Personalized Recommendations */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-lg font-semibold text-white flex items-center gap-2"><Zap className="w-5 h-5 text-yellow-400" />Quick Wins with Flow Intent</h4>
-          <span className="text-sm text-green-400 flex items-center gap-1"><TrendingUp className="w-4 h-4" />+{potentialImprovement} points possible</span>
-        </div>
-        <div className="space-y-3">
+      {/* Quick Wins */}
+      <div className="space-y-8">
+        <h4 className="text-2xl font-black text-white italic uppercase tracking-tighter italic border-b border-white/10 pb-4">Strategy & Remediation</h4>
+        <div className="grid md:grid-cols-2 gap-8 text-left">
           {quickWins.map((win, i) => {
             const feature = PRODUCT_FEATURES[win.feature]
-            const FeatureIcon = feature.icon
             return (
-              <div key={i} className="bg-gradient-to-r from-purple-500/5 to-indigo-500/5 rounded-xl p-5 border border-purple-500/20 hover:border-purple-500/40 transition-all">
-                <div className="flex items-start gap-4">
-                  <div className="shrink-0 w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                    <FeatureIcon className="w-5 h-5 text-purple-400" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-white">{win.title}</span>
-                      <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-300">+{win.impact}</span>
-                    </div>
-                    <p className="text-sm text-zinc-400 mb-3">{win.description}</p>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-purple-300 bg-purple-500/10 px-2 py-1 rounded">{feature.name}</span>
-                      <span className="text-xs text-zinc-500">{win.cta}</span>
-                    </div>
-                  </div>
+              <div key={i} className="p-8 border border-white/5 hover:border-white/20 transition-all space-y-4 bg-black group relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 font-mono text-[9px] text-zinc-800 italic group-hover:text-zinc-500 transition-colors uppercase tracking-[0.2em]">REMEDY_{i + 1}</div>
+                <div className="inline-block px-3 py-1 bg-white text-black text-[9px] font-mono font-black uppercase tracking-widest mb-2 italic">
+                  +{win.impact} GAIN
+                </div>
+                <h5 className="text-xl font-black text-white uppercase italic tracking-tighter leading-tight group-hover:translate-x-2 transition-transform duration-500">{win.title}</h5>
+                <p className="text-sm text-zinc-500 font-light uppercase tracking-tighter leading-snug">{win.description}</p>
+                <div className="pt-4 border-t border-white/[0.03] text-[10px] font-mono text-zinc-700 uppercase tracking-widest italic group-hover:text-zinc-300 transition-colors">
+                  USE {feature.name} TO SYNTHESIZE
                 </div>
               </div>
             )
@@ -223,61 +159,27 @@ export function AEOResultsDisplay({ report, brandName, onReset, sessionId, tools
         </div>
       </div>
 
-      {/* EEAT Content Highlight */}
-      <div className="bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl p-6 border border-purple-500/20">
-        <div className="flex items-start gap-4">
-          <div className="shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Award className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h4 className="text-lg font-bold text-white mb-2">EEAT-Optimized Content Generation</h4>
-            <p className="text-sm text-zinc-400 mb-3">
-              Flow Intent's AI Content Writer creates content optimized for <strong className="text-purple-300">Experience, Expertise, Authoritativeness, and Trustworthiness</strong> -
-              the signals that both Google and AI models use to determine which sources to cite.
-            </p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {['AI Image Generation', 'Structured Data', 'Citation Optimization', 'Fact Verification'].map((tag) => (
-                <span key={tag} className="px-2 py-1 text-xs rounded-full bg-white/10 text-zinc-300">{tag}</span>
-              ))}
-            </div>
-            <p className="text-xs text-zinc-500">Every piece of content includes AI-generated images and proper schema markup for maximum AI visibility.</p>
-          </div>
+      {/* Final CTA */}
+      <div className="bg-white p-12 md:p-20 text-center space-y-12">
+        <div className="space-y-4">
+          <h4 className="text-4xl md:text-6xl font-black text-black uppercase italic tracking-tighter leading-none italic">SECURE YOUR <br /> POSITION</h4>
+          <p className="text-zinc-600 text-lg font-light uppercase tracking-tighter leading-tight max-w-xl mx-auto">
+            Flow Intent's agentic platform resolves these vulnerabilities continuously. Do not leave your AI footprint to chance.
+          </p>
         </div>
-      </div>
 
-      {/* Competitive Disadvantage Warning */}
-      {score < 60 && (
-        <div className="bg-red-500/10 rounded-xl p-5 border border-red-500/20">
-          <div className="flex items-start gap-3">
-            <Clock className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-red-300 mb-1">Your Competitors Are Already Optimizing for AI</h4>
-              <p className="text-sm text-zinc-400">
-                Brands that don't optimize for Answer Engines will lose visibility as AI-powered search grows.
-                With a score of {score}, you're at risk of being outranked by competitors in ChatGPT, Perplexity, and Google AI responses.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main CTA */}
-      <div className="bg-gradient-to-r from-purple-600/20 to-indigo-600/20 rounded-2xl p-8 border border-purple-500/30 text-center">
-        <Bot className="w-12 h-12 text-purple-400 mx-auto mb-4" />
-        <h4 className="text-xl font-bold text-white mb-2">Fix All Issues with One Platform</h4>
-        <p className="text-zinc-400 mb-2 max-w-lg mx-auto">
-          Flow Intent's SEO/AEO chatbot gives you access to Schema Generator, AI Content Writer, Visibility Monitor, and more - all in one conversation.
-        </p>
-        <p className="text-sm text-purple-300 mb-6">Start improving your AEO score today →</p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-6">
           <Link href="/signup" onClick={() => handleCTAClick('start_free_trial')}>
-            <Button size="lg" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl shadow-lg shadow-purple-500/25">
-              Start Free Trial<ArrowRight className="ml-2 w-4 h-4" />
+            <Button size="lg" className="h-24 px-16 text-2xl bg-black text-white hover:bg-zinc-900 rounded-none font-black uppercase tracking-widest shadow-2xl transition-all hover:scale-[1.02]">
+              Start Decryption<ArrowRight className="ml-4 w-6 h-6" />
             </Button>
           </Link>
-          <Button variant="outline" size="lg" onClick={() => { handleCTAClick('audit_another'); onReset() }} className="border-white/10 text-white hover:bg-white/10 rounded-xl">
-            <RefreshCw className="mr-2 w-4 h-4" />Audit Another Brand
-          </Button>
+          <button
+            onClick={() => { handleCTAClick('audit_another'); onReset() }}
+            className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-[0.4em] hover:text-black transition-colors"
+          >
+            [ RELOAD SYSTEM / AUDIT ANOTHER ]
+          </button>
         </div>
       </div>
     </motion.div>

@@ -18,38 +18,11 @@ export function WelcomeSection({ nextAction, userName }: WelcomeSectionProps) {
   const { state: userModeState } = useUserMode()
   const currentMode = userModeState.currentMode?.level || 'beginner'
 
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 17) return 'Good afternoon'
-    return 'Good evening'
-  }
-
-  const getModeMessage = () => {
-    switch (currentMode) {
-      case 'beginner':
-        return "Let's learn SEO step by step and track your progress"
-      case 'practitioner':
-        return 'Monitor your campaigns and optimize performance'
-      case 'agency':
-        return 'Manage clients, teams, and scale your operations'
-      default:
-        return 'Welcome to your SEO dashboard'
-    }
-  }
-
   return (
     <Card className="glass-card border-none bg-black/40">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-2 text-zinc-100">
-              {getGreeting()}{userName ? `, ${userName}` : ''}
-            </h1>
-            <p className="text-zinc-400 mb-6">
-              {getModeMessage()}
-            </p>
-
             {nextAction && (
               <div className="mt-4">
                 <div className="flex items-center gap-2 mb-3">

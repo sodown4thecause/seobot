@@ -16,6 +16,7 @@ import {
   Edit3,
   Target,
   BarChart3,
+  Workflow,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -36,6 +37,7 @@ export interface SidebarProps {
 
 const MAIN_NAV = [
   { name: 'Home', href: '/dashboard', icon: Home },
+  { name: 'Workflows', href: '/dashboard/workflows', icon: Workflow },
   { name: 'SEO Tools', href: '/dashboard/seo-tools', icon: Search },
   { name: 'Blog', href: '/dashboard/blog', icon: BookOpen },
   { name: 'Tutorials', href: '/dashboard/tutorials', icon: BookOpen },

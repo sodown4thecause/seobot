@@ -6,9 +6,8 @@ import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { useAgent } from '@/components/providers/agent-provider'
 import { useUserMode } from '@/components/providers/user-mode-provider'
 import { useUser } from '@clerk/nextjs'
-import { WelcomeSection } from '@/components/dashboard/welcome-section'
-import { QuickStartGrid } from '@/components/dashboard/quick-start-grid'
 import { getWorkflowPrompt } from '@/lib/workflows/guided-prompts'
+
 
 export default function DashboardPage() {
   const { state } = useAgent()
@@ -47,7 +46,7 @@ export default function DashboardPage() {
 
         // Check if user has a business profile using API route (Drizzle runs server-side)
         const response = await fetch('/api/user/profile')
-        
+
         if (response.ok) {
           const data = await response.json()
           if (!data.profile?.websiteUrl) {
@@ -125,27 +124,18 @@ export default function DashboardPage() {
         transition={{ duration: 0.6 }}
         className="flex-1 px-6 pt-6"
       >
-        {/* Action-Oriented Dashboard - Always Visible */}
-        <div className="max-w-7xl mx-auto space-y-8">
-          {/* Welcome Section */}
-          <WelcomeSection userName={userName} />
-
-          {/* Quick Start Grid */}
-          <QuickStartGrid onWorkflowSelect={handleWorkflowSelect} />
-
-          {/* Chat Interface - Always visible below dashboard */}
-          <div id="dashboard-chat-section" className="mt-8 scroll-mt-8">
-            <AIChatInterface
-              context={context}
-              placeholder={isNewUser ? "Tell me about your business..." : "Ask anything..."}
-              className="h-[500px]"
-              conversationId={activeConversationId}
-              agentId={activeAgentId}
-              initialMessage={initialMessage}
-              autoSendMessage={workflowMessage}
-              key={workflowMessage}
-            />
-          </div>
+        {/* Chat Interface - Full height */}
+        <div className="max-w-7xl mx-auto">
+          <AIChatInterface
+            context={context}
+            placeholder={isNewUser ? "Tell me about your business..." : "Ask anything..."}
+            className="h-[calc(100vh-12rem)]"
+            conversationId={activeConversationId}
+            agentId={activeAgentId}
+            initialMessage={initialMessage}
+            autoSendMessage={workflowMessage}
+            key={workflowMessage}
+          />
         </div>
       </motion.div>
     </div>

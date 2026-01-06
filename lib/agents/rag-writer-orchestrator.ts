@@ -181,24 +181,24 @@ export class RAGWriterOrchestrator {
         }
 
         // Step 0.5: Fetch user's business context for personalized content
-        // TODO: Re-implement business profile context with Drizzle ORM
         checkAborted()
-        let businessContext: { brandVoice?: any; profile?: any } = {}
-        // if (params.userId) {
-        //   try {
-        //     const { getUserBusinessContext } = await import('@/lib/tools/business-profile-tools')
-        //     const context = await getUserBusinessContext(params.userId)
-        //     if (context.hasProfile) {
-        //       businessContext = {
-        //         brandVoice: context.brandVoice,
-        //         profile: context.profile,
-        //       }
-        //       console.log(`[Orchestrator] ✓ Loaded business context - Industry: ${context.profile?.industry || 'N/A'}`)
-        //     }
-        //   } catch (error) {
-        //     console.warn('[Orchestrator] Failed to load business context:', error)
-        //   }
-        // }
+        let businessContext: { brandVoice?: any; profile?: any; context?: string } = {}
+        if (params.userId) {
+          try {
+            const { getUserBusinessContext } = await import('@/lib/onboarding/user-context-service')
+            const userContext = await getUserBusinessContext(params.userId)
+            if (userContext.hasProfile) {
+              businessContext = {
+                brandVoice: userContext.brandVoice,
+                profile: userContext.profile,
+                context: userContext.context,
+              }
+              console.log(`[Orchestrator] ✓ Loaded business context - Industry: ${userContext.profile?.industry || 'N/A'}, Voice: ${userContext.brandVoice?.tone || 'N/A'}`)
+            }
+          } catch (error) {
+            console.warn('[Orchestrator] Failed to load business context:', error)
+          }
+        }
 
         // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
         console.log('[Orchestrator] Phase 1: Research')
@@ -300,6 +300,11 @@ export class RAGWriterOrchestrator {
           userId: params.userId,
           langfuseTraceId: traceId, // Link to parent trace
           sessionId, // Link to session
+          // Brand voice from user's business context
+          brandVoice: businessContext.brandVoice,
+          industry: businessContext.profile?.industry,
+          // Citation enforcement - only cite from verified sources
+          allowedCitations: researchResult.citations,
         })
         await this.emitProgress(params, 'writing', 'completed', 'Initial draft complete', `${currentDraft.content.split(/\s+/).length} words written`)
 
@@ -336,6 +341,7 @@ export class RAGWriterOrchestrator {
           slug?: string
           directAnswer?: string
         } = {}
+        let aeoScore = 50 // Default AEO score (neutral fallback if syntax optimization fails)
 
         try {
           const syntaxResult = await this.syntaxAgent.optimize({
@@ -362,8 +368,11 @@ export class RAGWriterOrchestrator {
             directAnswer: syntaxResult.directAnswer,
           }
 
-          console.log(`[Orchestrator] ? Syntax optimization complete - H1: ${syntaxResult.syntaxReport.h1Present}, Question H2: ${syntaxResult.syntaxReport.h2QuestionHeading}`)
-          await this.emitProgress(params, 'syntax', 'completed', 'Syntax optimization complete', 'Meta tags and structure optimized')
+          // Calculate AEO compliance score from syntax report
+          aeoScore = this.calculateAEOScore(syntaxResult.syntaxReport)
+
+          console.log(`[Orchestrator] ✓ Syntax optimization complete - H1: ${syntaxResult.syntaxReport.h1Present}, Question H2: ${syntaxResult.syntaxReport.h2QuestionHeading}, AEO Score: ${aeoScore}`)
+          await this.emitProgress(params, 'syntax', 'completed', 'Syntax optimization complete', `Meta tags optimized, AEO Score: ${aeoScore}`)
         } catch (syntaxError) {
           console.error('[Orchestrator] Syntax optimization failed, continuing with original draft:', syntaxError)
           await this.emitProgress(params, 'syntax', 'completed', 'Skipped syntax optimization', 'Continuing with original structure')
@@ -470,6 +479,7 @@ export class RAGWriterOrchestrator {
             depth: qaResult.qaReport.depth_score,
             factual: qaResult.qaReport.factual_score,
             frase: fraseScore,
+            aeo: aeoScore, // AEO compliance from syntax analysis
             overall: overallScore,
           }
 
@@ -538,29 +548,27 @@ export class RAGWriterOrchestrator {
             // Continue with default passed status
           }
 
-          // Store quality review in database metadata (simplified for now)
+          // Store quality review in database metadata (using merge to preserve previous data)
           if (contentId) {
-            await database.update(content).set({
-              metadata: {
-                qualityScores: finalScores,
-                qaReport: finalQAReport,
-                revisionRound,
-                langwatchEvaluations: {
-                  eeat: {
-                    evaluationId: eeatEvaluation.evaluationId,
-                    passed: eeatEvaluation.passed,
-                    scores: eeatEvaluation.scores,
-                    feedback: eeatEvaluation.feedback,
-                  },
-                  content_quality: {
-                    evaluationId: contentQualityEvaluation.evaluationId,
-                    passed: contentQualityEvaluation.passed,
-                    scores: contentQualityEvaluation.scores,
-                    feedback: contentQualityEvaluation.feedback,
-                  },
+            await this.mergeContentMetadata(contentId, {
+              qualityScores: finalScores,
+              qaReport: finalQAReport,
+              revisionRound,
+              langwatchEvaluations: {
+                eeat: {
+                  evaluationId: eeatEvaluation.evaluationId,
+                  passed: eeatEvaluation.passed,
+                  scores: eeatEvaluation.scores,
+                  feedback: eeatEvaluation.feedback,
                 },
-              }
-            }).where(eq(content.id, contentId))
+                content_quality: {
+                  evaluationId: contentQualityEvaluation.evaluationId,
+                  passed: contentQualityEvaluation.passed,
+                  scores: contentQualityEvaluation.scores,
+                  feedback: contentQualityEvaluation.feedback,
+                },
+              },
+            })
           }
 
           // Step 5: Check if revision is needed
@@ -646,19 +654,22 @@ export class RAGWriterOrchestrator {
             dataforseoMetrics: scoringResult.metrics,
             qaReport: qaResult.qaReport,
             revisionRound,
+            // Maintain brand voice consistency across revisions
+            brandVoice: businessContext.brandVoice,
+            industry: businessContext.profile?.industry,
+            // Citation enforcement - only cite from verified sources
+            allowedCitations: researchResult.citations,
           })
 
           currentDraft = revisedDraft
           bestDraft = revisedDraft.content
 
-          // Update content with revision (simplified - just update the content record)
+          // Update content with revision (using merge to preserve quality scores)
           if (contentId) {
-            await database.update(content).set({
-              metadata: {
-                revisionRound,
-                lastRevision: new Date().toISOString(),
-              }
-            }).where(eq(content.id, contentId))
+            await this.mergeContentMetadata(contentId, {
+              revisionRound,
+              lastRevision: new Date().toISOString(),
+            })
           }
         }
 
@@ -805,6 +816,63 @@ export class RAGWriterOrchestrator {
       factual * adjustedWeights.factual +
       frase * adjustedWeights.frase
     )
+  }
+
+  /**
+   * Merge new metadata with existing, preserving previous data
+   * Prevents metadata overwrites that clobber qualityScores/qaReport
+   */
+  private async mergeContentMetadata(
+    contentId: string,
+    newMetadata: Record<string, any>
+  ): Promise<void> {
+    // Fetch existing metadata
+    const existing = await db
+      .select({ metadata: content.metadata })
+      .from(content)
+      .where(eq(content.id, contentId))
+      .limit(1)
+
+    const existingMeta = (existing[0]?.metadata as Record<string, any>) || {}
+
+    // Deep merge: new values override old, but preserves unaffected keys
+    const merged = {
+      ...existingMeta,
+      ...newMetadata,
+      // Preserve important objects that should be updated, not replaced
+      qualityScores: newMetadata.qualityScores || existingMeta.qualityScores,
+      qaReport: newMetadata.qaReport || existingMeta.qaReport,
+      langwatchEvaluations: {
+        ...existingMeta.langwatchEvaluations,
+        ...newMetadata.langwatchEvaluations,
+      },
+    }
+
+    await db.update(content).set({ metadata: merged }).where(eq(content.id, contentId))
+  }
+
+  /**
+   * Calculate AEO compliance score from syntax report
+   * This enables the revision loop to use AEO as a quality gate
+   */
+  private calculateAEOScore(syntaxReport: any): number {
+    if (!syntaxReport) return 50 // Neutral fallback
+
+    let score = 40 // Base score
+
+    // +25 for following direct answer protocol (key AEO requirement)
+    if (syntaxReport.directAnswerProtocolFollowed) score += 25
+
+    // +15 for valid heading hierarchy (H1 > H2 > H3)
+    if (syntaxReport.headingHierarchyValid) score += 15
+
+    // +10 for H1 present
+    if (syntaxReport.h1Present) score += 10
+
+    // +10 for question-style H2 headings (AEO-friendly)
+    if (syntaxReport.h2QuestionHeading) score += 10
+
+    return Math.min(100, score)
   }
 
   /**

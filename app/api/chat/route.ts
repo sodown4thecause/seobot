@@ -25,7 +25,8 @@ import { getDataForSEOTools } from "@/lib/mcp/dataforseo-client";
 import { getFirecrawlTools } from "@/lib/mcp/firecrawl-client";
 import { getJinaTools } from "@/lib/mcp/jina-client";
 import { getWinstonTools } from "@/lib/mcp/winston-client";
-import { loadToolsForAgent } from "@/lib/ai/tool-schema-validator-v6";
+import { loadToolsForAgent, loadToolsForIntents } from "@/lib/ai/tool-schema-validator-v6";
+import { IntentToolRouter } from "@/lib/agents/intent-tool-router";
 import { fixAllMCPTools } from "@/lib/mcp/schema-fixer";
 import { getContentQualityTools } from "@/lib/ai/content-quality-tools";
 import { getEnhancedContentQualityTools } from "@/lib/ai/content-quality-enhancements";
@@ -38,6 +39,7 @@ import { generateImageWithGatewayGemini } from "@/lib/ai/image-generation";
 import { rateLimitMiddleware } from "@/lib/redis/rate-limit";
 import { z } from "zod";
 import { researchAgentTool, competitorAgentTool, frameworkRagTool } from "@/lib/agents/tools";
+import { onboardingTools } from "@/lib/onboarding/tools";
 import { handleApiError } from "@/lib/errors/handlers";
 import { createTelemetryConfig } from "@/lib/observability/langfuse";
 // TODO: Re-enable credit limit checking once limit-check is implemented
@@ -224,11 +226,11 @@ const handler = async (req: Request) => {
     // Extract last user message content for intent detection
     // AI SDK 6 uses 'parts' array instead of 'content' string
     const lastMsg = incomingMessages[incomingMessages.length - 1] as any;
-    const lastUserMessageContent = lastMsg?.content 
+    const lastUserMessageContent = lastMsg?.content
       ? String(lastMsg.content)
-      : (Array.isArray(lastMsg?.parts) 
-          ? lastMsg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') 
-          : '');
+      : (Array.isArray(lastMsg?.parts)
+        ? lastMsg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
+        : '');
 
     // WORKFLOW DETECTION: Check if user wants to run a workflow
     const { detectWorkflow, isWorkflowRequest, extractWorkflowId } =
@@ -255,26 +257,62 @@ const handler = async (req: Request) => {
       );
     }
 
-    // MULTI-AGENT ROUTING: Determine which specialized agent should handle this query
-    const routingResult = AgentRouter.routeQuery(lastUserMessageContent, context);
-    console.log('[Chat API] Agent routing result:', {
+    // LLM-BASED AGENT ROUTING: Use intent classifier to determine agent and tools
+    // This replaces keyword-based routing for more accurate agent selection
+    let intentClassification: Awaited<ReturnType<typeof IntentToolRouter.classifyAndGetTools>> | null = null;
+    type AgentTypeUnion = 'seo-aeo' | 'content' | 'general' | 'onboarding';
+    let selectedAgent: AgentTypeUnion = 'general';
+
+    // Skip LLM classification for onboarding
+    if (context?.page === 'onboarding' || AgentRouter.routeQuery(lastUserMessageContent, context).agent === 'onboarding') {
+      selectedAgent = 'onboarding';
+      console.log('[Chat API] Onboarding detected, skipping LLM classification');
+    } else {
+      try {
+        // Tier 1: LLM classifies intent AND recommends agent
+        intentClassification = await IntentToolRouter.classifyAndGetTools(lastUserMessageContent);
+        selectedAgent = intentClassification.classification.recommendedAgent as AgentTypeUnion;
+
+        console.log('[Chat API] LLM Intent Classification:', {
+          primary: intentClassification.classification.primaryIntent,
+          secondary: intentClassification.classification.secondaryIntents,
+          recommendedAgent: intentClassification.classification.recommendedAgent,
+          confidence: intentClassification.classification.confidence,
+          toolsCount: intentClassification.tools.length,
+          reasoning: intentClassification.classification.reasoning,
+        });
+      } catch (error) {
+        console.error('[Chat API] LLM classification failed, falling back to keyword routing:', error);
+        // Fallback to keyword-based routing
+        const keywordRouting = AgentRouter.routeQuery(lastUserMessageContent, context);
+        selectedAgent = keywordRouting.agent as AgentTypeUnion;
+      }
+    }
+
+    // Create routing result for compatibility with existing code
+    const routingResult: { agent: AgentTypeUnion; confidence: number; reasoning: string; tools: string[] } = {
+      agent: selectedAgent,
+      confidence: intentClassification?.classification.confidence ?? 0.7,
+      reasoning: intentClassification?.classification.reasoning ?? 'Keyword-based routing fallback',
+      tools: intentClassification?.tools ?? [],
+    };
+
+    console.log('[Chat API] Final agent selection:', {
       agent: routingResult.agent,
       confidence: routingResult.confidence,
       reasoning: routingResult.reasoning,
       toolsCount: routingResult.tools.length,
-      toolsSample: routingResult.tools.slice(0, 10) // Log first 10 tools
     });
 
     // Update Langfuse trace with conversation context and user input
-    // (After routingResult is defined so we can include agentType in metadata)
     updateActiveObservation({
       input: lastUserMessageContent,
     });
 
     updateActiveTrace({
       name: "chat-message",
-      sessionId: activeConversationId || undefined, // Groups related messages together
-      userId: user?.id || undefined, // Track which user made the request
+      sessionId: activeConversationId || undefined,
+      userId: user?.id || undefined,
       input: lastUserMessageContent,
       metadata: {
         agentType: routingResult.agent,
@@ -282,6 +320,7 @@ const handler = async (req: Request) => {
         isOnboarding: !!isOnboarding,
         onboardingStep: onboardingContext?.currentStep,
         workflowId: workflowId || undefined,
+        intentClassification: intentClassification?.classification.primaryIntent,
       },
     });
 
@@ -296,6 +335,14 @@ const handler = async (req: Request) => {
       );
     } else {
       systemPrompt = AgentRouter.getAgentSystemPrompt(routingResult.agent, context);
+
+      // Add intent-specific guidance if we have classification
+      if (intentClassification) {
+        const intentAddendum = IntentToolRouter.getIntentSystemPromptAddendum(intentClassification.allIntents);
+        if (intentAddendum) {
+          systemPrompt = systemPrompt + '\n\n' + intentAddendum;
+        }
+      }
     }
 
     // LOAD MCP TOOLS based on selected agent
@@ -528,7 +575,9 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
         try {
           console.log('[Chat API] Fetching backlinks for domain via n8n:', domain);
 
-          const response = await fetch('https://n8n-production-43e3.up.railway.app/webhook/get-backlinks', {
+          const webhookUrl = serverEnv.N8N_BACKLINKS_WEBHOOK_URL || 'https://n8n-production-43e3.up.railway.app/webhook/get-backlinks';
+
+          const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -549,13 +598,124 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
           console.log('[Chat API] N8N backlinks response received:', {
             domain,
             hasData: !!data,
-            dataKeys: data ? Object.keys(data) : []
+            isArray: Array.isArray(data),
+            dataKeys: data && !Array.isArray(data) && typeof data === 'object' ? Object.keys(data) : [],
+            length: Array.isArray(data) ? data.length : undefined,
           });
+
+          const normalizeUrlHostname = (value: unknown): string | null => {
+            if (typeof value !== 'string' || value.trim().length === 0) return null;
+            const raw = value.trim();
+            const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+            try {
+              return new URL(withScheme).hostname || null;
+            } catch {
+              return null;
+            }
+          };
+
+          const normalizeBacklinkItem = (item: any) => {
+            const sourceUrl =
+              item?.source_url ??
+              item?.sourceUrl ??
+              item?.from_url ??
+              item?.fromUrl ??
+              item?.url_from ??
+              item?.referring_url ??
+              item?.referringUrl ??
+              item?.source ??
+              item?.url ??
+              null;
+
+            const targetUrl =
+              item?.target_url ??
+              item?.targetUrl ??
+              item?.to_url ??
+              item?.toUrl ??
+              item?.url_to ??
+              item?.destination_url ??
+              item?.destinationUrl ??
+              item?.target ??
+              null;
+
+            const anchorText = item?.anchor_text ?? item?.anchorText ?? item?.anchor ?? item?.text ?? null;
+            const referringDomain =
+              item?.referring_domain ??
+              item?.referringDomain ??
+              item?.source_domain ??
+              item?.sourceDomain ??
+              normalizeUrlHostname(sourceUrl) ??
+              null;
+
+            return {
+              sourceUrl,
+              targetUrl,
+              anchorText,
+              referringDomain,
+              raw: item,
+            };
+          };
+
+          const extractBacklinksArray = (payload: any): any[] => {
+            if (Array.isArray(payload)) return payload;
+            if (!payload || typeof payload !== 'object') return [];
+            const candidates = [
+              payload.backlinks,
+              payload.links,
+              payload.items,
+              payload.results,
+              payload.data,
+              payload.result,
+              payload.backlinkData,
+            ];
+            for (const candidate of candidates) {
+              if (Array.isArray(candidate)) return candidate;
+            }
+            return [];
+          };
+
+          const backlinksRaw = extractBacklinksArray(data);
+          const backlinks = backlinksRaw.map(normalizeBacklinkItem);
+          const backlinksCount = backlinks.length;
+
+          const explicitRefDomainsCount =
+            (typeof (data as any)?.referringDomainsCount === 'number' ? (data as any).referringDomainsCount : undefined) ??
+            (typeof (data as any)?.referring_domains_count === 'number' ? (data as any).referring_domains_count : undefined) ??
+            (typeof (data as any)?.ref_domains_count === 'number' ? (data as any).ref_domains_count : undefined);
+
+          const derivedRefDomains = new Set<string>();
+          for (const b of backlinks) {
+            if (b?.referringDomain) derivedRefDomains.add(String(b.referringDomain));
+          }
+          const referringDomainsCount = explicitRefDomainsCount ?? derivedRefDomains.size;
+
+          const exampleBacklinks = backlinks.slice(0, 10).map((b) => ({
+            sourceUrl: b.sourceUrl,
+            targetUrl: b.targetUrl,
+            anchorText: b.anchorText,
+            referringDomain: b.referringDomain,
+          }));
+
+          // Preserve array payloads (common for webhook outputs) instead of spreading into numeric keys.
+          if (Array.isArray(data)) {
+            return {
+              status: 'success',
+              domain,
+              backlinks,
+              backlinksCount,
+              referringDomainsCount,
+              exampleBacklinks,
+            };
+          }
 
           return {
             status: 'success',
             domain,
-            ...data,
+            backlinks,
+            backlinksCount,
+            referringDomainsCount,
+            exampleBacklinks,
+            ...(data && typeof data === 'object' ? data : { raw: data }),
           };
         } catch (error: any) {
           console.error('[Chat API] N8N backlinks tool failed:', error);
@@ -575,10 +735,16 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       client_ui: clientUiTool,
       gateway_image: gatewayImageTool,
 
-      // Best Practice: Specialized Agents as Tools
-      research_agent: researchAgentTool,
-      competitor_analysis: competitorAgentTool,
-      consult_frameworks: frameworkRagTool,
+      // High-level Agent Tools - ONLY for Content and General agents
+      // For SEO/AEO, we want the LLM to use DataForSEO tools directly
+      ...(routingResult.agent !== 'seo-aeo' ? {
+        research_agent: researchAgentTool,
+        competitor_analysis: competitorAgentTool,
+        consult_frameworks: frameworkRagTool,
+      } : {}),
+
+      // Onboarding Tools (for extracting brand voice and saving profile)
+      ...onboardingTools,
 
       // Kept for backward compatibility/Router specific requests (can be refactored to use research_agent)
       // Perplexity specific tool for direct queries if requested by agent
@@ -600,8 +766,10 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       // N8N Backlinks - Only for SEO/AEO agent (provides backlinks via n8n webhook)
       ...(routingResult.agent === 'seo-aeo' ? { n8n_backlinks: n8nBacklinksTool } : {}),
 
-      // MCP Tools (Loaded based on agent type)
-      ...loadToolsForAgent(routingResult.agent, allMCPTools),
+      // MCP Tools - Use intent-based filtering for SEO/AEO, otherwise load by agent type
+      ...(intentClassification
+        ? loadToolsForIntents(intentClassification.tools, allMCPTools)
+        : loadToolsForAgent(routingResult.agent, allMCPTools)),
     };
 
     // Filter out any undefined tools and ensure valid schema

@@ -9,11 +9,12 @@
  */
 
 import { db } from './index'
-import { 
-    writingFrameworks, 
+import {
+    writingFrameworks,
     type WritingFramework,
 } from './schema'
 import { sql, desc, eq } from 'drizzle-orm'
+import { jinaReranker } from '@/lib/ai/jina-reranker'
 
 // ============================================================================
 // TYPES
@@ -22,6 +23,8 @@ import { sql, desc, eq } from 'drizzle-orm'
 export interface VectorSearchOptions {
     threshold?: number      // Minimum similarity score (0-1), default: 0.3
     limit?: number          // Maximum results to return, default: 5
+    rerank?: boolean        // Whether to use Jina reranker for better relevance
+    rerankQuery?: string    // Query text to use for reranking (required if rerank=true)
 }
 
 export interface FrameworkSearchResult {
@@ -99,14 +102,14 @@ interface BrandVoiceRawRow {
  * Replaces Supabase RPC: match_frameworks
  * 
  * @param queryEmbedding - 1536-dimensional embedding vector
- * @param options - Search options (threshold, limit)
+ * @param options - Search options (threshold, limit, rerank)
  * @returns Array of matching frameworks with similarity scores
  */
 export async function searchFrameworks(
     queryEmbedding: number[],
     options: VectorSearchOptions = {}
 ): Promise<FrameworkSearchResult[]> {
-    const { threshold = 0.3, limit = 5 } = options
+    const { threshold = 0.3, limit = 5, rerank = false, rerankQuery } = options
 
     // Validate embedding input
     if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
@@ -121,6 +124,9 @@ export async function searchFrameworks(
     try {
         // Convert embedding array to pgvector format
         const embeddingStr = `[${queryEmbedding.join(',')}]`
+
+        // If reranking enabled, fetch 2x results for better reranking candidates
+        const fetchLimit = rerank && rerankQuery ? limit * 2 : limit
 
         // Query using cosine distance
         // Similarity = 1 - distance, so we filter where distance < (1 - threshold)
@@ -139,20 +145,37 @@ export async function searchFrameworks(
             WHERE embedding IS NOT NULL
               AND 1 - (embedding <=> ${embeddingStr}::vector) > ${threshold}
             ORDER BY embedding <=> ${embeddingStr}::vector
-            LIMIT ${limit}
+            LIMIT ${fetchLimit}
         `)
 
-      return (results.rows as unknown[]).map((row: any) => ({
-        id: row.id,
-        name: row.name,
-        description: row.description,
-        structure: row.structure as unknown,
-        examples: row.examples,
-        category: row.category,
-        metadata: row.metadata as unknown,
-        usageCount: row.usage_count,
-        similarity: parseFloat(String(row.similarity)),
-      }))
+        let mappedResults = (results.rows as unknown[]).map((row: any) => ({
+            id: row.id,
+            name: row.name,
+            description: row.description,
+            structure: row.structure as unknown,
+            examples: row.examples,
+            category: row.category,
+            metadata: row.metadata as unknown,
+            usageCount: row.usage_count,
+            similarity: parseFloat(String(row.similarity)),
+        }))
+
+        // Apply Jina reranking if enabled
+        if (rerank && rerankQuery && mappedResults.length > 0 && jinaReranker.isConfigured()) {
+            const documents = mappedResults.map(r => `${r.name}: ${r.description || ''}`)
+            const reranked = await jinaReranker.rerank(rerankQuery, documents, limit)
+
+            // Reorder results based on reranking
+            mappedResults = reranked.map(r => ({
+                ...mappedResults[r.index],
+                similarity: r.relevance_score, // Use reranker score
+            }))
+        } else if (mappedResults.length > limit) {
+            // If we fetched extra but didn't rerank, trim to limit
+            mappedResults = mappedResults.slice(0, limit)
+        }
+
+        return mappedResults
     } catch (error) {
         console.error('[Vector Search] Framework search failed:', error)
         return []
@@ -172,13 +195,13 @@ export async function searchAgentDocuments(
     queryEmbedding: number[],
     agentType: string = 'general',
     options: VectorSearchOptions = {}
-  ): Promise<AgentDocumentSearchResult[]> {
+): Promise<AgentDocumentSearchResult[]> {
     const { threshold = 0.3, limit = 5 } = options
 
     try {
-      const embeddingStr = `[${queryEmbedding.join(',')}]`
+        const embeddingStr = `[${queryEmbedding.join(',')}]`
 
-      const results = await db.execute(sql`
+        const results = await db.execute(sql`
         SELECT
                 id,
                 agent_type,
@@ -192,19 +215,19 @@ export async function searchAgentDocuments(
             LIMIT ${limit}
         `)
 
-      return (results.rows as Record<string, unknown>[]).map(row => ({
-        id: row.id as string,
-        agentType: row.agent_type as string,
-        title: row.title as string,
-        content: row.content as string,
-        metadata: row.metadata as unknown,
-        similarity: parseFloat(String(row.similarity)),
-      }))
+        return (results.rows as Record<string, unknown>[]).map(row => ({
+            id: row.id as string,
+            agentType: row.agent_type as string,
+            title: row.title as string,
+            content: row.content as string,
+            metadata: row.metadata as unknown,
+            similarity: parseFloat(String(row.similarity)),
+        }))
     } catch (error) {
-      console.error('[Vector Search] searchAgentDocuments failed:', error)
-      return []
+        console.error('[Vector Search] searchAgentDocuments failed:', error)
+        return []
     }
-  }
+}
 
 /**
  * Search content learnings by semantic similarity
@@ -226,8 +249,8 @@ export async function searchContentLearnings(
         const embeddingStr = `[${queryEmbedding.join(',')}]`
 
         // Build query with optional content type filter
-        const contentTypeFilter = contentType 
-            ? sql`AND content_type = ${contentType}` 
+        const contentTypeFilter = contentType
+            ? sql`AND content_type = ${contentType}`
             : sql``
 
         const results = await db.execute(sql`
@@ -469,7 +492,7 @@ export async function updateDocumentEmbedding(
     }
 
     // Build the SET clause conditionally - only agent_documents has updated_at column
-    const setClause = table === 'agent_documents' 
+    const setClause = table === 'agent_documents'
         ? `embedding = ${embeddingStr}::vector, updated_at = NOW()`
         : `embedding = ${embeddingStr}::vector`
 
@@ -489,7 +512,7 @@ export async function updateDocumentEmbedding(
 export async function incrementFrameworkUsage(frameworkId: string) {
     // Validate UUID before executing query
     const validId = validateUUID(frameworkId)
-    
+
     await db.execute(sql`
         UPDATE writing_frameworks
         SET usage_count = COALESCE(usage_count, 0) + 1
@@ -508,7 +531,7 @@ export async function getDocumentsWithoutEmbeddings(
     table: 'writing_frameworks' | 'agent_documents',
     limit: number = 100
 ): Promise<{ id: string; content: string }[]> {
-    const contentColumn = table === 'writing_frameworks' 
+    const contentColumn = table === 'writing_frameworks'
         ? sql`CONCAT(name, ' ', COALESCE(description, ''), ' ', COALESCE(examples, ''))`
         : sql`CONCAT(title, ' ', content)`
 

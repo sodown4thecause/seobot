@@ -1,4 +1,4 @@
-import { requireUserId } from '@/lib/auth/clerk'
+import { getUserId } from '@/lib/auth/clerk'
 import { db, conversations } from '@/lib/db'
 import { eq, desc, and } from 'drizzle-orm'
 import { NextRequest, NextResponse } from 'next/server'
@@ -11,8 +11,15 @@ export const runtime = 'edge'
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get authenticated user
-    const userId = await requireUserId()
+    // Get authenticated user (optional to avoid throwing)
+    const userId = await getUserId()
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
@@ -21,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Build where conditions
     const conditions = [eq(conversations.userId, userId)]
-    
+
     // Filter by status if specified
     if (status === 'active' || status === 'archived') {
       conditions.push(eq(conversations.status, status))
@@ -51,8 +58,15 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user
-    const userId = await requireUserId()
+    // Get authenticated user (optional to avoid throwing)
+    const userId = await getUserId()
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
 
     // Parse request body
     const body = await request.json()

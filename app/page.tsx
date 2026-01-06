@@ -1,257 +1,175 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, MessageSquare, LineChart, Sparkles, Zap, Globe, Lock, Play } from 'lucide-react'
+import { ArrowRight, MessageSquare, Search, Brain, LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
-import { Logo } from '@/components/ui/logo'
 import { Navbar } from '@/components/navbar'
 import { AEOAuditor } from '@/components/aeo-auditor'
+import { SymbolBackground } from '@/components/landing/symbol-background'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-}
-
-const itemVariants = {
+const itemVariants: any = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.5
+      duration: 0.6,
+      ease: "circOut"
     }
   }
 }
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden selection:bg-primary/30">
+    <div className="min-h-screen bg-black text-white selection:bg-white/20 font-sans">
+      <SymbolBackground />
 
-      {/* Background Ambience */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-purple-900/20 rounded-full blur-[120px] animate-pulse-glow" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-indigo-900/20 rounded-full blur-[120px] animate-pulse-glow" style={{ animationDelay: '1.5s' }} />
-        <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[40%] h-[40%] bg-cyan-900/10 rounded-full blur-[100px]" />
-        <div className="absolute inset-0 noise-overlay" />
-      </div>
-
-      {/* Navbar */}
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-40 pb-20 px-6">
-        <div className="max-w-5xl mx-auto text-center">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-          >
-            <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.05] border border-white/[0.1] text-xs font-medium text-indigo-300 mb-8 backdrop-blur-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-              </span>
-              New: Advanced Competitor Analysis
-            </motion.div>
+      <section className="relative z-10 pt-48 pb-32 px-6 overflow-hidden">
+        <div className="container mx-auto">
+          <div className="max-w-6xl">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={itemVariants}
+              className="space-y-6"
+            >
+              <h1 className="text-6xl md:text-[110px] font-black tracking-tight leading-none uppercase italic">
+                Rank on Google.<br />
+                Be the <span className="bg-white text-black px-4 not-italic inline-block">Answer</span> on AI.
+              </h1>
 
-            <motion.h1 variants={itemVariants} className="text-6xl md:text-8xl font-bold tracking-tight mb-8 leading-[1.1]">
-              <span className="block text-gradient">AI SEO Platform</span>
-              <span className="block text-gradient-primary">for Google & Answer Engines</span>
-            </motion.h1>
-
-            <motion.p variants={itemVariants} className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-              The only SEO platform built for the AI search era. Optimize for Google, ChatGPT, and Perplexity with AI Trust Audits, competitor analysis, and automated content creation.
-            </motion.p>
-
-            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/signup" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-lg bg-white text-black hover:bg-zinc-200 rounded-full shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.4)] transition-all duration-300">
-                  Get Your Free AI Trust Audit
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-              <Link href="#demo" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-lg border-white/10 bg-white/5 hover:bg-white/10 rounded-full backdrop-blur-sm">
-                  <Play className="mr-2 w-4 h-4 fill-current" />
-                  View Demo
-                </Button>
-              </Link>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Trust Signals Section */}
-      <section className="relative z-10 py-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            className="text-center mb-8"
-          >
-            <motion.p variants={itemVariants} className="text-sm text-zinc-500 uppercase tracking-wider font-medium mb-6">
-              Trusted by 2,000+ marketing teams
-            </motion.p>
-            <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-center gap-8 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-300">
-              {/* Placeholder for client logos - you can add real logos here */}
-              <div className="h-8 w-24 bg-white/10 rounded flex items-center justify-center text-xs text-zinc-500">Client Logo</div>
-              <div className="h-8 w-24 bg-white/10 rounded flex items-center justify-center text-xs text-zinc-500">Client Logo</div>
-              <div className="h-8 w-24 bg-white/10 rounded flex items-center justify-center text-xs text-zinc-500">Client Logo</div>
-              <div className="h-8 w-24 bg-white/10 rounded flex items-center justify-center text-xs text-zinc-500">Client Logo</div>
-            </motion.div>
-          </motion.div>
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            className="max-w-3xl mx-auto mt-12"
-          >
-            <motion.div variants={itemVariants} className="glass-card p-8 rounded-2xl border border-white/10">
-              <p className="text-lg text-zinc-300 italic mb-4">
-                "FlowIntent helped us rank in ChatGPT in just 2 weeks. The AI Trust Audit revealed gaps we didn't even know existed."
-              </p>
-              <p className="text-sm text-zinc-500">
-                — CMO, TechCo
-              </p>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* AEO Auditor - Lead Magnet */}
-      <AEOAuditor />
-
-      {/* Stats/Social Proof */}
-      <section className="border-y border-white/[0.05] bg-white/[0.01] backdrop-blur-sm py-16 relative z-10">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12">
-          {[
-            { label: 'Marketing Teams Trust FlowIntent', value: '2,000+', subtext: '' },
-            { label: 'Keywords Tracked', value: '500K+', subtext: '' },
-            { label: 'Articles Generated', value: '1M+', subtext: '' },
-            { label: 'Avg. Traffic Increase', value: '145%', subtext: '(Based on 500+ Client Audits)' },
-          ].map((stat, i) => (
-            <div key={i} className="text-center group cursor-default">
-              <div className="text-4xl font-bold text-white mb-2 group-hover:scale-110 transition-transform duration-300 ease-out">{stat.value}</div>
-              <div className="text-sm text-zinc-500 uppercase tracking-wider font-medium mb-1">{stat.label}</div>
-              {stat.subtext && (
-                <div className="text-xs text-zinc-600">{stat.subtext}</div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="py-32 px-6 relative z-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">Rank in Traditional Search AND AI Answer Engines</h2>
-            <p className="text-zinc-400 text-lg max-w-2xl mx-auto">Comprehensive tools to dominate the search results, built with next-generation AI.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: MessageSquare,
-                title: 'Conversational Research',
-                desc: 'Chat with your SEO data. Ask questions, get insights, and formulate strategies naturally.'
-              },
-              {
-                icon: LineChart,
-                title: 'Competitor Intelligence',
-                desc: 'Spy on competitors\' keywords and backlink strategies to find your winning edge.'
-              },
-              {
-                icon: Zap,
-                title: 'Instant Content',
-                desc: 'Generate high-quality, SEO-optimized articles that are ready to publish in seconds.'
-              },
-              {
-                icon: Globe,
-                title: 'Global Rank Tracking',
-                desc: 'Monitor your keyword positions across any country and language with precise accuracy.'
-              },
-              {
-                icon: Sparkles,
-                title: 'AI Suggestions',
-                desc: 'Get proactive recommendations on how to improve your existing content and meta tags.'
-              },
-              {
-                icon: Lock,
-                title: 'Enterprise Security',
-                desc: 'Your data is encrypted and secure. Built for teams that value privacy and compliance.'
-              }
-            ].map((feature, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ y: -10 }}
-                className="glass-card p-8 rounded-3xl group"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-white/[0.05] flex items-center justify-center mb-6 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-300 transition-colors duration-300">
-                  <feature.icon className="w-7 h-7" />
+              <div className="flex flex-col md:flex-row items-baseline gap-8 pt-8">
+                <div className="max-w-xl">
+                  <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-[0.4em] mb-4">
+                    SEO AGENTIC CLOUD / v2.0
+                  </p>
+                  <p className="text-2xl md:text-3xl text-zinc-300 font-light leading-tight uppercase tracking-tighter">
+                    We do the heavy lifting so you don't have to.
+                  </p>
                 </div>
-                <h3 className="text-xl font-semibold mb-3 text-white">{feature.title}</h3>
-                <p className="text-zinc-400 leading-relaxed">
-                  {feature.desc}
-                </p>
-              </motion.div>
-            ))}
+
+                <div className="flex-1 flex justify-end items-end">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <Link href="/signup">
+                      <Button size="lg" className="h-16 px-10 text-lg bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-wider group border-4 border-white">
+                        Get Started
+                        <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Lead Magnet Section */}
+      <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5 backdrop-blur-sm">
+        <div className="container mx-auto px-6 text-center">
+          <AEOAuditor />
+        </div>
+      </section>
+
+      {/* Value Propositions / Process Section */}
+      <section id="features" className="relative z-10 py-32 px-6">
+        <div className="container mx-auto">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid gap-24">
+              <ValueProp
+                number="01"
+                title="You Ask"
+                description="No complex dashboards. Just chat with the agent like you would an SEO consultant. Our LLM understands intent and delivers strategy in plain English."
+                icon={MessageSquare}
+              />
+              <ValueProp
+                number="02"
+                title="We Hunt"
+                description="Our agents hit 60+ distinct SEO endpoints simultaneously, scrape live data and write the best EEAT content. We find what's missing and fill the gap."
+                icon={Search}
+              />
+              <ValueProp
+                number="03"
+                title="AI Synthesizes"
+                description="We don't just dump data. AI distills thousands of metrics into a single, actionable answer. Real-time intelligence that drives rankings."
+                icon={Brain}
+              />
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-32 px-6 relative z-10">
-        <div className="max-w-5xl mx-auto">
-          <div className="glass-panel rounded-[2.5rem] p-16 text-center relative overflow-hidden border border-white/10">
-            {/* Decorative glows */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/20 blur-[100px]" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-600/20 blur-[100px]" />
-
-            <div className="relative z-10">
-              <h2 className="text-4xl md:text-6xl font-bold mb-8 text-white">Turn AI Visibility into Traffic & Revenue</h2>
-              <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto">
-                Join thousands of marketers who are already using Flow Intent to automate their SEO workflows.
-              </p>
-              <Link href="/signup">
-                <Button size="lg" className="h-16 px-10 text-xl bg-white text-black hover:bg-zinc-200 rounded-full shadow-2xl shadow-white/10">
-                  Get Started for Free
-                </Button>
-              </Link>
-            </div>
-          </div>
+      <section className="relative z-10 py-48 px-6 bg-gradient-to-b from-transparent to-zinc-900/50">
+        <div className="container mx-auto text-center border-t border-white/10 pt-32">
+          <h2 className="text-5xl md:text-8xl font-bold tracking-tighter mb-12 uppercase italic">
+            Ready to <span className="text-zinc-500">Evolve?</span>
+          </h2>
+          <Link href="/signup">
+            <Button size="lg" className="h-20 px-16 text-2xl bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-widest shadow-2xl shadow-white/5">
+              Secure Your Position
+            </Button>
+          </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/[0.05] bg-black/40 backdrop-blur-xl relative z-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 flex items-center justify-center shadow-lg shadow-indigo-500/10">
-              <Logo className="w-6 h-6" />
+      <footer className="relative z-10 py-16 px-6 border-t border-white/5 bg-black">
+        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white flex items-center justify-center text-black font-black italic text-2xl">
+              FI
             </div>
-            <span className="font-bold text-xl tracking-tight text-white">Flow Intent</span>
+            <span className="font-bold text-2xl tracking-tighter uppercase italic">Flow Intent</span>
           </div>
-          <div className="flex flex-wrap gap-6 text-sm text-zinc-500 justify-center">
+
+          <div className="flex flex-wrap gap-10 text-xs font-mono text-zinc-500 uppercase tracking-widest justify-center">
             <Link href="/guides" className="hover:text-white transition-colors">Guides</Link>
             <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
-            <Link href="/docs" className="hover:text-white transition-colors">Docs</Link>
+            <Link href="/resources" className="hover:text-white transition-colors">Resources</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
-            <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
           </div>
-          <div className="text-sm text-zinc-600">
-            © 2025 Flow Intent. All rights reserved.
+
+          <div className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase">
+            © 2026 FLOW INTENT AGENTIC SEO. ALL RIGHTS SECURED.
           </div>
         </div>
       </footer>
     </div>
+  )
+}
+
+function ValueProp({ number, title, description, icon: Icon }: { number: string; title: string, description: string, icon: LucideIcon }) {
+  return (
+    <motion.div
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-100px" }}
+      variants={itemVariants}
+      className="group relative"
+    >
+      <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-start">
+        <div className="flex-shrink-0">
+          <span className="text-sm font-mono text-zinc-700 block mb-2">{number}</span>
+          <div className="w-16 h-16 bg-white/[0.03] border border-white/10 flex items-center justify-center text-zinc-400 group-hover:border-white group-hover:text-white transition-all duration-500">
+            <Icon className="w-8 h-8 font-light" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          <h3 className="text-4xl md:text-5xl font-bold uppercase tracking-tight group-hover:italic transition-all duration-500 text-white">
+            {title}
+          </h3>
+          <p className="text-xl text-zinc-400 leading-relaxed font-light">
+            {description}
+          </p>
+        </div>
+      </div>
+    </motion.div>
   )
 }
