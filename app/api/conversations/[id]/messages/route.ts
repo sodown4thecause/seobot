@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+import { getUserId } from '@/lib/auth/clerk'
 import { getConversationForUser, loadConversationMessages } from '@/lib/chat/storage'
 
 export const runtime = 'edge'
@@ -9,7 +9,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const userId = await requireUserId()
+    const userId = await getUserId()
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
 
     const { id: conversationId } = await params
     if (!conversationId) {

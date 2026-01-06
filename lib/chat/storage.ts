@@ -15,6 +15,9 @@ export interface ChatMessage {
   content: string
   createdAt: Date
   metadata?: Record<string, any>
+  // AI SDK 6 required fields for proper rendering
+  parts?: any[]
+  toolInvocations?: any[]
 }
 
 export interface ConversationRecord {
@@ -134,6 +137,7 @@ export async function loadConversationMessages(
   conversationId: string,
   limit: number = 50
 ): Promise<ChatMessage[]> {
+  // Fetch most recent messages first, then reverse to get chronological order
   const result = await db
     .select()
     .from(messages)
@@ -141,13 +145,20 @@ export async function loadConversationMessages(
     .orderBy(desc(messages.createdAt))
     .limit(limit)
 
-  return result.map((msg) => ({
-    id: msg.id,
-    conversationId: msg.conversationId,
-    role: msg.role as 'user' | 'assistant',
-    content: msg.content,
-    createdAt: msg.createdAt,
-  }))
+  // Return in ascending order (oldest first) for proper chat display
+  return result.reverse().map((msg) => {
+    const metadata = (msg.metadata || {}) as Record<string, any>
+    return {
+      id: msg.id,
+      conversationId: msg.conversationId,
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+      createdAt: msg.createdAt,
+      // AI SDK 6 required fields for proper rendering
+      parts: metadata.parts || [{ type: 'text', text: msg.content }],
+      toolInvocations: metadata.toolInvocations,
+    }
+  })
 }
 
 /**

@@ -91,11 +91,10 @@ export function QuickStartGrid({ onWorkflowSelect }: QuickStartGridProps) {
           return (
             <Card
               key={action.workflow}
-              className={`glass-card hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer group border-none ${
-                activeWorkflow === action.workflow 
-                  ? 'bg-white/10 border-white/30 ring-2 ring-white/20' 
-                  : 'bg-black/40'
-              }`}
+              className={`glass-card hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer group border-none ${activeWorkflow === action.workflow
+                  ? 'bg-white/10 border-white/30 ring-2 ring-white/20'
+                  : 'bg-zinc-800/50'
+                }`}
               onClick={() => handleWorkflowClick(action.workflow)}
             >
               <CardContent className="p-6">
@@ -110,9 +109,9 @@ export function QuickStartGrid({ onWorkflowSelect }: QuickStartGridProps) {
                     <p className="text-sm text-zinc-500 mb-3 ml-0">
                       {action.description}
                     </p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="text-zinc-400 group-hover:text-zinc-200 p-0 h-auto hover:bg-transparent"
                     >
                       {activeWorkflow === action.workflow ? (

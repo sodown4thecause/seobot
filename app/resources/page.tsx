@@ -1,20 +1,27 @@
-import Link from 'next/link'
-import Image from 'next/image'
-import DOMPurify from 'isomorphic-dompurify'
-import { getResources } from '@/lib/wordpress'
-import { Navbar } from '@/components/navbar'
+import Link from "next/link";
+import { type SanityDocument } from "next-sanity";
+import { client } from "@/sanity/lib/client";
+import { Navbar } from '@/components/navbar';
 
-export const revalidate = 60 // Revalidate every minute
+const RESOURCES_QUERY = `*[
+  _type == "resource"
+  && defined(slug.current)
+]|order(publishedAt desc)[0...12]{_id, title, slug, publishedAt, category, excerpt, downloadUrl}`;
+
+const options = { next: { revalidate: 30 } };
+
+const categoryColors: Record<string, string> = {
+    template: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    checklist: 'bg-green-500/10 text-green-400 border-green-500/20',
+    toolkit: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+    whitepaper: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    ebook: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+    webinar: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    tool: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+};
 
 export default async function ResourcesPage() {
-    let resources
-    try {
-        const result = await getResources()
-        resources = result.posts
-    } catch (error) {
-        console.error('Error fetching resources:', error)
-        resources = { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } }
-    }
+    const resources = await client.fetch<SanityDocument[]>(RESOURCES_QUERY, {}, options);
 
     return (
         <div className="min-h-screen bg-black text-white selection:bg-primary/30">
@@ -26,69 +33,57 @@ export default async function ResourcesPage() {
                         Resources
                     </h1>
                     <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-                        Tools, guides, and helpful content to grow your SEO knowledge.
+                        Templates, checklists, and tools to supercharge your SEO workflow.
                     </p>
                 </div>
 
-                {resources.nodes.length === 0 ? (
+                {resources.length === 0 ? (
                     <div className="text-center py-20">
-                        <p className="text-zinc-400 text-lg">No resources found.</p>
+                        <p className="text-zinc-400 text-lg mb-4">No resources found.</p>
+                        <Link href="/studio" className="text-indigo-400 hover:underline">
+                            Create your first resource in Sanity Studio →
+                        </Link>
                     </div>
                 ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {resources.nodes.map((resource) => (
-                        <Link
-                            key={resource.id}
-                            href={`/resources/${resource.slug}`}
-                            className="group block bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden hover:bg-white/[0.05] transition-all duration-300 hover:-translate-y-1"
-                        >
-                            {/* Featured Image */}
-                            <div className="aspect-[16/9] relative overflow-hidden bg-white/5">
-                                {resource.featuredImage ? (
-                                    <Image
-                                        src={resource.featuredImage.sourceUrl}
-                                        alt={resource.featuredImage.altText || resource.title}
-                                        fill
-                                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-zinc-700">
-                                        <span className="text-4xl">📚</span>
+                        {resources.map((resource) => (
+                            <Link
+                                key={resource._id}
+                                href={`/resources/${resource.slug.current}`}
+                                className="group block bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden hover:bg-white/[0.05] transition-all duration-300 hover:-translate-y-1"
+                            >
+                                <div className="p-8">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        {resource.category && (
+                                            <span className={`text-xs px-3 py-1 rounded-full border ${categoryColors[resource.category] || 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'}`}>
+                                                {resource.category.charAt(0).toUpperCase() + resource.category.slice(1)}
+                                            </span>
+                                        )}
+                                        {resource.downloadUrl && (
+                                            <span className="text-xs text-green-400">📥 Downloadable</span>
+                                        )}
                                     </div>
-                                )}
-                            </div>
 
-                            <div className="p-8">
-                                <div className="flex items-center gap-4 text-xs text-zinc-500 mb-4 font-medium uppercase tracking-wider">
-                                    {resource.categories?.nodes[0] && (
-                                        <span className="text-indigo-400">{resource.categories.nodes[0].name}</span>
+                                    <h2 className="text-2xl font-bold mb-3 leading-tight group-hover:text-indigo-300 transition-colors">
+                                        {resource.title}
+                                    </h2>
+
+                                    {resource.excerpt && (
+                                        <p className="text-zinc-400 text-sm mb-4 line-clamp-2">{resource.excerpt}</p>
                                     )}
-                                    <span>•</span>
-                                    <span>{new Date(resource.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+
+                                    <div className="mt-6 flex items-center text-sm font-medium text-white group-hover:text-indigo-300 transition-colors">
+                                        View Resource
+                                        <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                        </svg>
+                                    </div>
                                 </div>
-
-                                <h2 className="text-2xl font-bold mb-3 leading-tight group-hover:text-indigo-300 transition-colors">
-                                    {resource.title}
-                                </h2>
-
-                                <div
-                                    className="text-zinc-400 line-clamp-3 text-sm leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resource.excerpt) }}
-                                />
-
-                                <div className="mt-6 flex items-center text-sm font-medium text-white group-hover:text-indigo-300 transition-colors">
-                                    View Resource
-                                    <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </Link>
+                            </Link>
                         ))}
                     </div>
                 )}
             </main>
         </div>
-    )
+    );
 }
-

@@ -480,3 +480,36 @@ export function loadEssentialTools(
 
   return essentialTools
 }
+
+/**
+ * Load tools based on classified intents from IntentToolRouter
+ * This is the new intent-based approach that replaces loading all tools
+ */
+export function loadToolsForIntents(
+  intentToolNames: string[],
+  allTools: Record<string, Tool>
+): Record<string, Tool> {
+  const selectedTools: Record<string, Tool> = {}
+  const missingTools: string[] = []
+
+  // Always include core tools
+  const coreTools = [...TOOL_CATEGORIES.CORE]
+  const allToolNames = [...new Set([...coreTools, ...intentToolNames])]
+
+  for (const name of allToolNames) {
+    if (allTools[name]) {
+      selectedTools[name] = allTools[name]
+    } else {
+      missingTools.push(name)
+    }
+  }
+
+  console.log(`[Intent Tool Loader] Loaded ${Object.keys(selectedTools).length}/${allToolNames.length} tools for intents`)
+
+  if (missingTools.length > 0) {
+    console.warn(`[Intent Tool Loader] Missing tools: ${missingTools.slice(0, 10).join(', ')}${missingTools.length > 10 ? ` (and ${missingTools.length - 10} more)` : ''}`)
+  }
+
+  return selectedTools
+}
+

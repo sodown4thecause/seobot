@@ -20,36 +20,31 @@ export function Navbar() {
         <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/40 backdrop-blur-xl shadow-lg shadow-black/5">
             <div className="container mx-auto px-6 h-20 flex items-center justify-between">
                 {/* Logo */}
-                <Link href="/" className="flex items-center gap-3 group">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 flex items-center justify-center shadow-lg shadow-indigo-500/10 group-hover:scale-105 transition-transform duration-300">
-                        <Logo className="w-6 h-6 text-white" />
+                <Link href="/" className="flex items-center gap-4 group">
+                    <div className="w-10 h-10 bg-white flex items-center justify-center text-black font-black italic text-xl transition-transform group-hover:scale-105">
+                        FI
                     </div>
-                    <span className="font-bold text-xl tracking-tight text-white group-hover:text-indigo-300 transition-colors">Flow Intent</span>
+                    <span className="font-bold text-xl tracking-tighter text-white uppercase italic">Flow Intent</span>
                 </Link>
 
                 {/* Center Navigation */}
-                <div className="hidden md:flex absolute left-1/2 -translate-x-1/2">
-                    <NavigationMenu>
-                        <NavigationMenuList>
-
-                            <NavigationMenuItem>
-                                <NavigationMenuLink asChild>
-                                    <Link href="/prices" className={navigationMenuTriggerStyle()}>
-                                        Prices
-                                    </Link>
-                                </NavigationMenuLink>
-                            </NavigationMenuItem>
-
-                            <NavigationMenuItem>
-                                <NavigationMenuLink asChild>
-                                    <Link href="/blog" className={navigationMenuTriggerStyle()}>
-                                        Knowledge Hub
-                                    </Link>
-                                </NavigationMenuLink>
-                            </NavigationMenuItem>
-
-                        </NavigationMenuList>
-                    </NavigationMenu>
+                <div className="hidden lg:flex items-center gap-1">
+                    {[
+                        { label: 'Features', href: '#features' },
+                        { label: 'Pricing', href: '/prices' },
+                        { label: 'Guides', href: '/guides' },
+                        { label: 'FAQ', href: '/faq' },
+                        { label: 'Resources', href: '/resources' },
+                        { label: 'Case Studies', href: '/case-studies' },
+                    ].map((item) => (
+                        <Link
+                            key={item.label}
+                            href={item.href}
+                            className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors tracking-wide uppercase"
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
                 </div>
 
                 {/* Right Actions */}
