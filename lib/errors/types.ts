@@ -226,6 +226,10 @@ export class NotFoundError extends AppError {
  * Check if an error is retryable
  */
 export function isRetryable(error: unknown): boolean {
+  if (error instanceof Error && error.name === 'AbortError') {
+    return false
+  }
+
   if (error instanceof ProviderError) {
     return error.retryable
   }

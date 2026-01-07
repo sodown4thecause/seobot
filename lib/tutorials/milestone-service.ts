@@ -1,10 +1,15 @@
 /**
  * Tutorial Milestone Service
  * Handles milestone tracking, badge awards, and achievement system
+ * 
+ * TODO: Migrate to Drizzle ORM once milestone tables are created
+ * Currently uses in-memory storage after Supabase removal
  */
 
-import { createClient } from '@/lib/supabase/client'
 import type { TutorialMilestone } from './types'
+
+// In-memory storage for user progress (temporary until Drizzle migration)
+const userProgressStore = new Map<string, { badges: Badge[]; milestones: string[]; points: number }>()
 
 export interface Milestone {
   id: string
@@ -47,7 +52,11 @@ export interface UserMilestoneProgress {
 }
 
 export class MilestoneService {
-  private supabase = createClient()
+  private userId: string | null = null
+
+  setUserId(userId: string) {
+    this.userId = userId
+  }
 
   // Define all milestones
   private milestones: Milestone[] = [
@@ -299,6 +308,7 @@ export class MilestoneService {
 
   /**
    * Award a badge to a user
+   * TODO: Implement with Drizzle
    */
   private async awardBadge(userId: string, milestone: Milestone): Promise<Badge> {
     const badge: Badge = {
@@ -311,53 +321,27 @@ export class MilestoneService {
       earnedAt: new Date(),
     }
 
-    // Save to database
-    const { error } = await this.supabase.from('tutorial_milestones').insert({
-      user_id: userId,
-      milestone_id: milestone.id,
-      milestone_type: 'milestone_achieved',
-      badge_data: badge,
-      achieved_at: new Date().toISOString(),
-      metadata: {
-        points: milestone.reward.points || 0,
-        unlocks: milestone.reward.unlocks || [],
-      },
-    })
-
-    if (error) {
-      console.error('Failed to save badge:', error)
+    // Save to in-memory store (temporary)
+    if (!userProgressStore.has(userId)) {
+      userProgressStore.set(userId, { badges: [], milestones: [], points: 0 })
     }
+    const progress = userProgressStore.get(userId)!
+    progress.badges.push(badge)
+    progress.milestones.push(milestone.id)
+    progress.points += milestone.reward.points || 0
 
     return badge
   }
 
   /**
    * Get user's milestone progress
+   * TODO: Implement with Drizzle
    */
   async getUserProgress(userId: string): Promise<UserMilestoneProgress> {
     try {
-      // Get earned badges
-      const { data: badgesData } = await this.supabase
-        .from('tutorial_milestones')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('milestone_type', 'milestone_achieved')
-
-      const earnedBadges: Badge[] = (badgesData || []).map((item: any) => ({
-        id: item.milestone_id,
-        name: item.badge_data?.name || '',
-        description: item.badge_data?.description || '',
-        icon: item.badge_data?.icon || '🏅',
-        category: item.badge_data?.category || 'achievement',
-        rarity: item.badge_data?.rarity || 'common',
-        earnedAt: new Date(item.achieved_at),
-      }))
-
-      // Calculate total points
-      const totalPoints = earnedBadges.reduce((sum, badge) => {
-        const milestone = this.milestones.find(m => m.id === badge.id)
-        return sum + (milestone?.reward.points || 0)
-      }, 0)
+      const stored = userProgressStore.get(userId)
+      const earnedBadges = stored?.badges || []
+      const totalPoints = stored?.points || 0
 
       // Calculate level (every 100 points = 1 level)
       const level = Math.floor(totalPoints / 100) + 1
@@ -366,7 +350,7 @@ export class MilestoneService {
       return {
         userId,
         earnedBadges,
-        completedMilestones: earnedBadges.map(b => b.id),
+        completedMilestones: stored?.milestones || [],
         totalPoints,
         level,
         nextLevelPoints,
@@ -399,51 +383,39 @@ export class MilestoneService {
     return progress.earnedBadges
   }
 
-  // Helper methods
+  // Helper methods - stubbed until Drizzle migration
   private async getCompletedTutorials(userId: string): Promise<string[]> {
-    const { data } = await this.supabase
-      .from('tutorial_progress')
-      .select('tutorial_id')
-      .eq('user_id', userId)
-      .not('completed_at', 'is', null)
-
-    return (data || []).map((item: { tutorial_id: string }) => item.tutorial_id)
+    // TODO: Implement with Drizzle
+    return []
   }
 
   private async getCompletedSteps(userId: string): Promise<string[]> {
-    const { data } = await this.supabase
-      .from('tutorial_step_completions')
-      .select('step_id')
-      .eq('user_id', userId)
-
-    return (data || []).map((item: { step_id: string }) => item.step_id)
+    // TODO: Implement with Drizzle
+    return []
   }
 
   private async getPerfectQuizzes(userId: string, minScore: number): Promise<string[]> {
-    const { data } = await this.supabase
-      .from('tutorial_step_completions')
-      .select('step_id')
-      .eq('user_id', userId)
-      .gte('quiz_score', minScore)
-
-    return (data || []).map((item: { step_id: string }) => item.step_id)
+    // TODO: Implement with Drizzle
+    return []
   }
 
   private async getCompletedWorkflows(userId: string): Promise<string[]> {
-    // This would query workflow execution table
-    // For now, return empty array - would need workflow execution tracking
+    // TODO: Implement with Drizzle
     return []
   }
 
   private async getCompletedActions(userId: string): Promise<string[]> {
-    // This would query action completion table
-    // For now, return empty array - would need action tracking
+    // TODO: Implement with Drizzle
     return []
   }
 
   private async updateUserProgress(userId: string, progress: UserMilestoneProgress): Promise<void> {
-    // Update user's milestone progress in database
-    // This could be stored in a user_milestone_progress table
+    // TODO: Implement with Drizzle
+    userProgressStore.set(userId, {
+      badges: progress.earnedBadges,
+      milestones: progress.completedMilestones,
+      points: progress.totalPoints,
+    })
   }
 
   private calculateRarity(milestone: Milestone): Badge['rarity'] {

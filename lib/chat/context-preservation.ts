@@ -1,9 +1,10 @@
 /**
  * Chat Context Preservation
  * Handles preserving context across conversations
+ * 
+ * TODO: Migrate to Drizzle ORM once chat_contexts table is created
+ * Currently uses in-memory storage after Supabase removal
  */
-
-import { createClient } from '@/lib/supabase/client'
 
 export type ContextType = 'workflow' | 'analysis' | 'business' | 'preference'
 
@@ -14,31 +15,46 @@ export interface ChatContext {
   expiresAt?: Date
 }
 
+// In-memory context storage (temporary until Drizzle migration)
+const contextStore = new Map<string, Map<string, ChatContext>>()
+
 export class ChatContextPreservation {
-  private supabase = createClient()
+  private userId: string | null = null
+
+  /**
+   * Set user ID for context operations
+   */
+  setUserId(userId: string) {
+    this.userId = userId
+  }
 
   /**
    * Get user context for a conversation
+   * TODO: Implement with Drizzle
    */
   async getUserContext(contextKeys?: string[]): Promise<Record<string, any>> {
-    const { data: { user } } = await this.supabase.auth.getUser()
-    if (!user) return {}
+    if (!this.userId) return {}
 
-    const { data, error } = await this.supabase.rpc('get_user_chat_context', {
-      p_user_id: user.id,
-      p_context_keys: contextKeys || null
-    })
+    const userContexts = contextStore.get(this.userId)
+    if (!userContexts) return {}
 
-    if (error) {
-      console.error('Failed to get user context:', error)
-      return {}
+    const result: Record<string, any> = {}
+    if (contextKeys) {
+      contextKeys.forEach(key => {
+        const ctx = userContexts.get(key)
+        if (ctx) result[key] = ctx.contextData
+      })
+    } else {
+      userContexts.forEach((ctx, key) => {
+        result[key] = ctx.contextData
+      })
     }
-
-    return data || {}
+    return result
   }
 
   /**
    * Set user context
+   * TODO: Implement with Drizzle
    */
   async setUserContext(
     contextKey: string,
@@ -46,56 +62,48 @@ export class ChatContextPreservation {
     contextData: Record<string, any>,
     expiresAt?: Date
   ): Promise<void> {
-    const { data: { user } } = await this.supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
+    if (!this.userId) throw new Error('User not authenticated')
 
-    const { error } = await this.supabase.rpc('set_user_chat_context', {
-      p_user_id: user.id,
-      p_context_key: contextKey,
-      p_context_type: contextType,
-      p_context_data: contextData,
-      p_expires_at: expiresAt?.toISOString() || null
-    })
-
-    if (error) {
-      throw new Error(`Failed to set context: ${error.message}`)
+    if (!contextStore.has(this.userId)) {
+      contextStore.set(this.userId, new Map())
     }
+    contextStore.get(this.userId)!.set(contextKey, {
+      contextKey,
+      contextType,
+      contextData,
+      expiresAt,
+    })
   }
 
   /**
    * Clear user context
+   * TODO: Implement with Drizzle
    */
   async clearContext(contextKey: string): Promise<void> {
-    const { data: { user } } = await this.supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
+    if (!this.userId) throw new Error('User not authenticated')
 
-    const { error } = await this.supabase
-      .from('chat_contexts')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('context_key', contextKey)
-
-    if (error) {
-      throw new Error(`Failed to clear context: ${error.message}`)
+    const userContexts = contextStore.get(this.userId)
+    if (userContexts) {
+      userContexts.delete(contextKey)
     }
   }
 
   /**
    * Clear all expired contexts
+   * TODO: Implement with Drizzle
    */
   async clearExpiredContexts(): Promise<void> {
-    const { data: { user } } = await this.supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
+    if (!this.userId) throw new Error('User not authenticated')
 
-    const { error } = await this.supabase
-      .from('chat_contexts')
-      .delete()
-      .eq('user_id', user.id)
-      .lt('expires_at', new Date().toISOString())
+    const userContexts = contextStore.get(this.userId)
+    if (!userContexts) return
 
-    if (error) {
-      console.error('Failed to clear expired contexts:', error)
-    }
+    const now = new Date()
+    userContexts.forEach((ctx, key) => {
+      if (ctx.expiresAt && ctx.expiresAt < now) {
+        userContexts.delete(key)
+      }
+    })
   }
 }
 

@@ -150,18 +150,25 @@ export function UserModeProvider({ children }: { children: ReactNode }) {
 
   // Initialize user mode on mount
   useEffect(() => {
-    // Check if user has saved mode preference in localStorage
-    const savedMode = localStorage.getItem('user_mode_preference') as UserModeLevel | null
+    try {
+      // Check if user has saved mode preference in localStorage
+      const savedMode = localStorage.getItem('user_mode_preference') as UserModeLevel | null
 
-    if (savedMode && ['beginner', 'practitioner', 'agency'].includes(savedMode)) {
-      // Use saved mode preference
-      const configWithSavedMode: UserModeConfig = {
-        ...createDefaultConfig('guest'),
-        currentMode: savedMode,
+      if (savedMode && ['beginner', 'practitioner', 'agency'].includes(savedMode)) {
+        // Use saved mode preference
+        const configWithSavedMode: UserModeConfig = {
+          ...createDefaultConfig('guest'),
+          currentMode: savedMode,
+        }
+        dispatch({ type: 'SET_MODE_CONFIG', payload: configWithSavedMode })
+      } else {
+        // No saved preference, use default beginner mode
+        const defaultConfig = createDefaultConfig('guest')
+        dispatch({ type: 'SET_MODE_CONFIG', payload: defaultConfig })
       }
-      dispatch({ type: 'SET_MODE_CONFIG', payload: configWithSavedMode })
-    } else {
-      // No saved preference, use default beginner mode
+    } catch (error) {
+      console.error('[UserModeProvider] Error initializing user mode:', error)
+      // Fallback to default config if anything fails
       const defaultConfig = createDefaultConfig('guest')
       dispatch({ type: 'SET_MODE_CONFIG', payload: defaultConfig })
     }

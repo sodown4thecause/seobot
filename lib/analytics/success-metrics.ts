@@ -6,9 +6,10 @@
  * - Error recovery success rates
  * - User engagement metrics
  * - Content performance metrics
+ * 
+ * TODO: Migrate to Drizzle ORM once analytics tables are created
+ * Currently stubbed after Supabase removal
  */
-
-import { createClient } from '@/lib/supabase/client'
 
 export interface SuccessMetrics {
   // Workflow Metrics
@@ -41,115 +42,90 @@ export interface MetricSnapshot {
 }
 
 export class SuccessMetricsService {
-  private supabase = createClient()
-
   /**
    * Record workflow completion
+   * TODO: Implement with Drizzle once workflow_metrics table exists
    */
   async recordWorkflowCompletion(
     workflowId: string,
     success: boolean,
     duration: number
   ): Promise<void> {
-    const { error } = await this.supabase.rpc('record_workflow_completion', {
-      p_workflow_id: workflowId,
-      p_success: success,
-      p_duration: duration,
-    })
-
-    if (error) {
-      console.error('Failed to record workflow completion:', error)
-    }
+    // Stub - metrics recording not yet implemented with Drizzle
+    console.log(`[Metrics] Workflow ${workflowId} completed: ${success} in ${duration}ms`)
   }
 
   /**
    * Record error recovery
+   * TODO: Implement with Drizzle once error_metrics table exists
    */
   async recordErrorRecovery(
     executionId: string,
     recovered: boolean
   ): Promise<void> {
-    const { error } = await this.supabase.rpc('record_error_recovery', {
-      p_execution_id: executionId,
-      p_recovered: recovered,
-    })
-
-    if (error) {
-      console.error('Failed to record error recovery:', error)
-    }
+    // Stub - metrics recording not yet implemented with Drizzle
+    console.log(`[Metrics] Error recovery for ${executionId}: ${recovered}`)
   }
 
   /**
    * Record user engagement
+   * TODO: Implement with Drizzle
    */
   async recordUserEngagement(
     userId: string,
     action: string,
     metadata?: Record<string, any>
   ): Promise<void> {
-    const { error } = await this.supabase.rpc('record_user_engagement', {
-      p_user_id: userId,
-      p_action: action,
-      p_metadata: metadata || {},
-    })
-
-    if (error) {
-      console.error('Failed to record user engagement:', error)
-    }
+    console.log(`[Metrics] User engagement: ${userId} - ${action}`)
   }
 
   /**
    * Get success metrics for a time period
+   * TODO: Implement with Drizzle
    */
   async getSuccessMetrics(
     startDate: Date,
     endDate: Date
   ): Promise<SuccessMetrics | null> {
-    const { data, error } = await this.supabase.rpc('get_success_metrics', {
-      p_start_date: startDate.toISOString(),
-      p_end_date: endDate.toISOString(),
-    })
-
-    if (error) {
-      console.error('Failed to get success metrics:', error)
-      return null
+    // Return default metrics - implement when tables exist
+    return {
+      workflowCompletionRate: 0,
+      averageWorkflowDuration: 0,
+      workflowsCompleted: 0,
+      workflowsFailed: 0,
+      errorRecoverySuccessRate: 0,
+      errorsRecovered: 0,
+      errorsTotal: 0,
+      activeUsers: 0,
+      workflowsPerUser: 0,
+      averageSessionDuration: 0,
+      featureAdoptionRate: {},
+      contentGenerated: 0,
+      contentPublished: 0,
+      averageContentQuality: 0,
+      rankingImprovements: 0,
     }
-
-    return data as SuccessMetrics
   }
 
   /**
    * Get workflow completion rate
+   * TODO: Implement with Drizzle
    */
   async getWorkflowCompletionRate(workflowId?: string): Promise<number> {
-    const { data, error } = await this.supabase.rpc('get_workflow_completion_rate', {
-      p_workflow_id: workflowId || null,
-    })
-
-    if (error) {
-      console.error('Failed to get workflow completion rate:', error)
-      return 0
-    }
-
-    return data || 0
+    return 0
   }
 
   /**
    * Get error recovery success rate
+   * TODO: Implement with Drizzle
    */
   async getErrorRecoveryRate(): Promise<number> {
-    const { data, error } = await this.supabase.rpc('get_error_recovery_rate')
-
-    if (error) {
-      console.error('Failed to get error recovery rate:', error)
-      return 0
-    }
-
-    return data || 0
+    return 0
   }
 
   /**
    * Get user engagement metrics
+   * TODO: Implement with Drizzle
    */
   async getUserEngagementMetrics(
     startDate: Date,
@@ -159,31 +135,15 @@ export class SuccessMetricsService {
     workflowsPerUser: number
     averageSessionDuration: number
   } | null> {
-    const { data, error } = await this.supabase.rpc('get_user_engagement_metrics', {
-      p_start_date: startDate.toISOString(),
-      p_end_date: endDate.toISOString(),
-    })
-
-    if (error) {
-      console.error('Failed to get user engagement metrics:', error)
-      return null
-    }
-
-    return data
+    return { activeUsers: 0, workflowsPerUser: 0, averageSessionDuration: 0 }
   }
 
   /**
    * Get feature adoption rates
+   * TODO: Implement with Drizzle
    */
   async getFeatureAdoptionRates(): Promise<Record<string, number>> {
-    const { data, error } = await this.supabase.rpc('get_feature_adoption_rates')
-
-    if (error) {
-      console.error('Failed to get feature adoption rates:', error)
-      return {}
-    }
-
-    return data || {}
+    return {}
   }
 }
 

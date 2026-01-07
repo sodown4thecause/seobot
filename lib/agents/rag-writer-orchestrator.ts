@@ -39,34 +39,57 @@ export interface RAGWriterParams {
   searchIntent?: string
 }
 
+export interface QualityScores {
+  dataforseo: number
+  eeat: number
+  depth: number
+  factual: number
+  frase: number
+  aeo?: number
+  overall: number
+}
+
+export interface QAReport {
+  eeat_score: number
+  depth_score: number
+  factual_score: number
+  improvement_instructions?: string[]
+  strengths?: string[]
+  weaknesses?: string[]
+  expertise_signals?: string[]
+  trust_indicators?: string[]
+}
+
+export interface FraseOptimization {
+  score: number
+  contentBrief: Record<string, unknown>
+  recommendations: {
+    optimizationTips?: string[]
+    missingTopics?: string[]
+    missingQuestions?: string[]
+    suggestedTopics?: string[]
+  }
+  searchIntent?: string
+}
+
+export interface ContentMetadata {
+  researchSummary?: string
+  citations?: Array<{ url: string; title?: string }>
+  metaTitle?: string
+  metaDescription?: string
+  slug?: string
+  directAnswer?: string
+}
+
 export interface RAGWriterResult {
   content: string
   contentId?: string
   contentVersionId?: string
-  qualityScores: {
-    dataforseo: number
-    eeat: number
-    depth: number
-    factual: number
-    frase: number
-    overall: number
-  }
+  qualityScores: QualityScores
   revisionCount: number
-  qaReport: any
-  fraseOptimization?: {
-    score: number
-    contentBrief: any
-    recommendations: any
-    searchIntent?: string
-  }
-  metadata: {
-    researchSummary?: string
-    citations?: Array<{ url: string; title?: string }>
-    metaTitle?: string
-    metaDescription?: string
-    slug?: string
-    directAnswer?: string
-  }
+  qaReport: QAReport
+  fraseOptimization?: FraseOptimization
+  metadata: ContentMetadata
 }
 
 export class RAGWriterOrchestrator {
@@ -99,7 +122,11 @@ export class RAGWriterOrchestrator {
     details?: string
   ) {
     if (params.onProgress) {
-      await params.onProgress({ phase, status, message, details })
+      try {
+        await params.onProgress({ phase, status, message, details })
+      } catch (error) {
+        console.warn('[RAG Writer Orchestrator] Progress callback error:', error)
+      }
     }
   }
 
@@ -111,7 +138,9 @@ export class RAGWriterOrchestrator {
 
     // Check abort signal immediately
     if (params.abortSignal?.aborted) {
-      throw new Error('Content generation aborted by client')
+      const error = new Error('Content generation aborted by client')
+      error.name = 'AbortError'
+      throw error
     }
 
     const database = db
@@ -176,7 +205,9 @@ export class RAGWriterOrchestrator {
         // Helper function to check abort signal
         const checkAborted = () => {
           if (params.abortSignal?.aborted) {
-            throw new Error('Content generation aborted by client')
+            const error = new Error('Content generation aborted by client')
+            error.name = 'AbortError'
+            throw error
           }
         }
 
@@ -228,6 +259,7 @@ export class RAGWriterOrchestrator {
           userId: params.userId,
           langfuseTraceId: traceId, // Link to parent trace
           sessionId, // Link to session
+          abortSignal: params.abortSignal,
         })
         await this.emitProgress(params, 'research', 'completed', 'Research complete', `Found ${researchResult.competitorSnippets?.length || 0} competitors`)
 
@@ -258,6 +290,7 @@ export class RAGWriterOrchestrator {
             country: 'us',
             userId: params.userId,
             contentType: params.type,
+            abortSignal: params.abortSignal,
           })
 
           // Create a comprehensive content brief from Frase results
@@ -305,6 +338,7 @@ export class RAGWriterOrchestrator {
           industry: businessContext.profile?.industry,
           // Citation enforcement - only cite from verified sources
           allowedCitations: researchResult.citations,
+          abortSignal: params.abortSignal,
         })
         await this.emitProgress(params, 'writing', 'completed', 'Initial draft complete', `${currentDraft.content.split(/\s+/).length} words written`)
 
@@ -352,6 +386,7 @@ export class RAGWriterOrchestrator {
             userId: params.userId,
             langfuseTraceId: traceId, // Link to parent trace
             sessionId, // Link to session
+            abortSignal: params.abortSignal,
           })
 
           // Use optimized content for subsequent phases
@@ -396,6 +431,7 @@ export class RAGWriterOrchestrator {
             targetKeyword: params.keywords[0] || params.topic,
             contentUrl: params.competitorUrls?.[0], // Pass a URL if available for on-page analysis
             userId: params.userId,
+            abortSignal: params.abortSignal,
           })
 
           // Step 4: EEAT QA Review
@@ -420,6 +456,7 @@ export class RAGWriterOrchestrator {
             userId: params.userId,
             langfuseTraceId: traceId, // Link to parent trace
             sessionId, // Link to session
+            abortSignal: params.abortSignal,
           })
 
           // Step 4.5: Frase Content Analysis (evaluate against SERP)
@@ -436,6 +473,7 @@ export class RAGWriterOrchestrator {
               country: 'us',
               userId: params.userId,
               contentType: params.type,
+              abortSignal: params.abortSignal,
             })
 
             fraseScore = fraseContentAnalysis.optimizationScore
@@ -470,6 +508,7 @@ export class RAGWriterOrchestrator {
             qaResult.qaReport.eeat_score,
             qaResult.qaReport.depth_score,
             qaResult.qaReport.factual_score,
+            aeoScore,
             fraseScore
           )
 
@@ -659,6 +698,7 @@ export class RAGWriterOrchestrator {
             industry: businessContext.profile?.industry,
             // Citation enforcement - only cite from verified sources
             allowedCitations: researchResult.citations,
+            abortSignal: params.abortSignal,
           })
 
           currentDraft = revisedDraft
@@ -694,6 +734,8 @@ export class RAGWriterOrchestrator {
                 `DataForSEO: ${finalScores.dataforseo}`,
                 `Depth: ${finalScores.depth}`,
                 `Factual: ${finalScores.factual}`,
+                `AEO: ${finalScores.aeo}`,
+                `Frase: ${finalScores.frase}`,
                 `Revisions: ${revisionRound}`,
               ],
               successful: isSuccessful,
@@ -796,16 +838,18 @@ export class RAGWriterOrchestrator {
     eeat: number,
     depth: number,
     factual: number,
+    aeo: number,
     frase: number = 50
   ): number {
     const weights = QUALITY_THRESHOLDS.SCORING_WEIGHTS
     // Adjust weights to accommodate Frase (reduce others proportionally by 15%)
     // Original weights: dataforseo: 25%, eeat: 40%, depth: 20%, factual: 15%
     const adjustedWeights = {
-      dataforseo: weights.dataforseo * 0.85, // 21.25% (was 25%)
-      eeat: weights.eeat * 0.85, // 34% (was 40%)
-      depth: weights.depth * 0.85, // 17% (was 20%)
+      dataforseo: weights.dataforseo * 0.85, // 17% (was 20%)
+      eeat: weights.eeat * 0.85, // 29.75% (was 35%)
+      depth: weights.depth * 0.85, // 12.75% (was 15%)
       factual: weights.factual * 0.85, // 12.75% (was 15%)
+      aeo: weights.aeo * 0.85,
       frase: 0.15, // 15% - Frase SEO/AEO optimization score
     }
 
@@ -814,17 +858,48 @@ export class RAGWriterOrchestrator {
       eeat * adjustedWeights.eeat +
       depth * adjustedWeights.depth +
       factual * adjustedWeights.factual +
+      aeo * adjustedWeights.aeo +
       frase * adjustedWeights.frase
     )
   }
 
   /**
+   * Deep merge utility for nested objects
+   */
+  private deepMerge<T extends Record<string, unknown>>(
+    target: T,
+    source: Partial<T>
+  ): T {
+    const result = { ...target } as T
+    for (const key in source) {
+      const sourceVal = source[key]
+      const targetVal = target[key]
+      if (
+        sourceVal &&
+        typeof sourceVal === 'object' &&
+        !Array.isArray(sourceVal) &&
+        targetVal &&
+        typeof targetVal === 'object' &&
+        !Array.isArray(targetVal)
+      ) {
+        result[key] = this.deepMerge(
+          targetVal as Record<string, unknown>,
+          sourceVal as Record<string, unknown>
+        ) as T[Extract<keyof T, string>]
+      } else if (sourceVal !== undefined) {
+        result[key] = sourceVal as T[Extract<keyof T, string>]
+      }
+    }
+    return result
+  }
+
+  /**
    * Merge new metadata with existing, preserving previous data
-   * Prevents metadata overwrites that clobber qualityScores/qaReport
+   * Uses deep merge to properly handle nested objects like langwatchEvaluations
    */
   private async mergeContentMetadata(
     contentId: string,
-    newMetadata: Record<string, any>
+    newMetadata: Record<string, unknown>
   ): Promise<void> {
     // Fetch existing metadata
     const existing = await db
@@ -833,22 +908,12 @@ export class RAGWriterOrchestrator {
       .where(eq(content.id, contentId))
       .limit(1)
 
-    const existingMeta = (existing[0]?.metadata as Record<string, any>) || {}
+    const existingMeta = (existing[0]?.metadata as Record<string, unknown>) || {}
 
-    // Deep merge: new values override old, but preserves unaffected keys
-    const merged = {
-      ...existingMeta,
-      ...newMetadata,
-      // Preserve important objects that should be updated, not replaced
-      qualityScores: newMetadata.qualityScores || existingMeta.qualityScores,
-      qaReport: newMetadata.qaReport || existingMeta.qaReport,
-      langwatchEvaluations: {
-        ...existingMeta.langwatchEvaluations,
-        ...newMetadata.langwatchEvaluations,
-      },
-    }
+    // Deep merge: new values override old, preserves unaffected nested keys
+    const merged = this.deepMerge(existingMeta, newMetadata)
 
-    await db.update(content).set({ metadata: merged }).where(eq(content.id, contentId))
+    await db.update(content).set({ metadata: merged as unknown as typeof content.metadata }).where(eq(content.id, contentId))
   }
 
   /**

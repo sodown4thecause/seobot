@@ -42,11 +42,12 @@ export class AISearchOptimizer {
     keywords: string[],
     location: string = 'United States',
     language: string = 'en',
-    traditionalVolumes?: Record<string, number>
+    traditionalVolumes?: Record<string, number>,
+    abortSignal?: AbortSignal
   ): Promise<AISearchAnalysis> {
     try {
       // Fetch AI search volume data
-      const aiVolumes = await this.fetchAISearchVolumes(keywords, location, language)
+      const aiVolumes = await this.fetchAISearchVolumes(keywords, location, language, abortSignal)
 
       // Combine with traditional volumes if provided
       const combined = aiVolumes.map(ai => {
@@ -109,6 +110,9 @@ export class AISearchOptimizer {
         recommendations,
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error
+      }
       console.error('Failed to analyze AI search volume:', error)
       throw error
     }
@@ -120,18 +124,26 @@ export class AISearchOptimizer {
   private async fetchAISearchVolumes(
     keywords: string[],
     location: string,
-    language: string
+    language: string,
+    abortSignal?: AbortSignal
   ): Promise<Array<{ keyword: string; chatgptVolume: number; perplexityVolume: number }>> {
     try {
       if (!this.aiSearchVolumeTool?.execute) {
         return keywords.map(k => ({ keyword: k, chatgptVolume: 0, perplexityVolume: 0 }))
       }
+
+      if (abortSignal?.aborted) {
+        const error = new Error('AI search volume fetch aborted')
+        error.name = 'AbortError'
+        throw error
+      }
+
       const result = await this.aiSearchVolumeTool.execute({
         keywords,
         location_name: location,
         language_code: language,
       }, {
-        abortSignal: new AbortController().signal,
+        abortSignal: abortSignal ?? new AbortController().signal,
         toolCallId: 'ai-search-optimizer',
         messages: []
       })
@@ -156,6 +168,16 @@ export class AISearchOptimizer {
         perplexityVolume: item.perplexity_search_volume || item.perplexity || 0,
       }))
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error
+      }
+
+      if (abortSignal?.aborted) {
+        const abortError = new Error('AI search volume fetch aborted')
+        abortError.name = 'AbortError'
+        throw abortError
+      }
+
       console.error('Failed to fetch AI search volumes:', error)
       return keywords.map(k => ({ keyword: k, chatgptVolume: 0, perplexityVolume: 0 }))
     }

@@ -10,16 +10,22 @@ import { aiSearchOptimizer } from '@/lib/ai/ai-search-optimizer'
 // The execute function can return string | AsyncIterable<string> | PromiseLike<string>
 const executeTool = async <T>(
   tool: { execute?: (args: T, ctx?: any) => string | AsyncIterable<string> | PromiseLike<string> },
-  args: T
+  args: T,
+  ctx: any = { toolCallId: 'agent-exec', messages: [] }
 ): Promise<string> => {
   if (!tool.execute) throw new Error('Tool does not have execute function')
-  const result = tool.execute(args, { toolCallId: 'agent-exec', messages: [] })
+  const result = tool.execute(args, ctx)
   // Handle different return types
   if (typeof result === 'string') return result
   if ('then' in result) return await result
   // AsyncIterable - collect all chunks
   let collected = ''
   for await (const chunk of result) {
+    if (ctx?.abortSignal?.aborted) {
+      const error = new Error('Tool execution aborted')
+      error.name = 'AbortError'
+      throw error
+    }
     collected += chunk
   }
   return collected
@@ -69,15 +75,32 @@ export class DataForSEOScoringAgent {
     console.log('[DataForSEO Scoring] Analyzing content for keyword:', params.targetKeyword)
 
     try {
+      const checkAborted = () => {
+        if (params.abortSignal?.aborted) {
+          const error = new Error('DataForSEO scoring aborted')
+          error.name = 'AbortError'
+          throw error
+        }
+      }
+
+      const toolCtx = {
+        toolCallId: 'agent-exec',
+        messages: [],
+        abortSignal: params.abortSignal,
+      }
+
+      checkAborted()
+
       // Step 1: Get detailed citation data using content_analysis_search
       let citationData: any = {}
       try {
+        checkAborted()
         const searchResult = await executeTool(mcpDataforseoTools.content_analysis_search, {
           keyword: params.targetKeyword,
           limit: 10,
           offset: 0,
           page_type: ['blogs', 'news'] as const,
-        })
+        }, toolCtx)
 
         const searchParsed = typeof searchResult === 'string' ? JSON.parse(searchResult) : searchResult
         if (searchParsed && searchParsed.tasks && searchParsed.tasks[0]?.result) {
@@ -91,12 +114,13 @@ export class DataForSEOScoringAgent {
       // Step 2: Get phrase trends for content optimization
       let phraseTrends: Array<{ phrase: string; trend: number }> = []
       try {
+        checkAborted()
         const trendsResult = await executeTool(mcpDataforseoTools.content_analysis_phrase_trends, {
           keyword: params.targetKeyword,
           date_from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
           date_group: 'month' as const,
           internal_list_limit: 10,
-        })
+        }, toolCtx)
 
         const trendsParsed = typeof trendsResult === 'string' ? JSON.parse(trendsResult) : trendsResult
         if (trendsParsed && trendsParsed.tasks && trendsParsed.tasks[0]?.result) {
@@ -113,6 +137,7 @@ export class DataForSEOScoringAgent {
       // Step 3: Get related keywords for semantic coverage check
       let relatedKeywords: string[] = []
       try {
+        checkAborted()
         const relatedResult = await executeTool(mcpDataforseoTools.dataforseo_labs_google_related_keywords, {
           keyword: params.targetKeyword,
           language_code: params.language || 'en',
@@ -120,7 +145,7 @@ export class DataForSEOScoringAgent {
           depth: 1,
           limit: 20,
           include_clickstream_data: false,
-        })
+        }, toolCtx)
 
         const relatedParsed = typeof relatedResult === 'string' ? JSON.parse(relatedResult) : relatedResult
         if (relatedParsed && relatedParsed.tasks && relatedParsed.tasks[0]?.result) {
@@ -134,12 +159,13 @@ export class DataForSEOScoringAgent {
 
       // Step 4: Fallback to summary if search didn't work
       if (!citationData || Object.keys(citationData).length === 0) {
+        checkAborted()
         const summaryResult = await executeTool(mcpDataforseoTools.content_analysis_summary, {
           keyword: params.targetKeyword,
           internal_list_limit: 5,
           positive_connotation_threshold: 0.4,
           sentiments_connotation_threshold: 0.4,
-        })
+        }, toolCtx)
 
         try {
           citationData = typeof summaryResult === 'string' ? JSON.parse(summaryResult) : summaryResult
@@ -154,10 +180,11 @@ export class DataForSEOScoringAgent {
 
       if (params.contentUrl) {
         try {
+          checkAborted()
           const parseResult = await executeTool(mcpDataforseoTools.on_page_content_parsing, {
             url: params.contentUrl!,
             enable_javascript: true,
-          })
+          }, toolCtx)
 
           const parseParsed = typeof parseResult === 'string' ? JSON.parse(parseResult) : parseResult
           if (parseParsed && parseParsed.tasks && parseParsed.tasks[0]?.result) {
@@ -173,10 +200,11 @@ export class DataForSEOScoringAgent {
 
           // Get Lighthouse score for technical quality
           try {
+            checkAborted()
             const lighthouseResult = await executeTool(mcpDataforseoTools.on_page_lighthouse, {
               url: params.contentUrl!,
               enable_javascript: true,
-            })
+            }, toolCtx)
 
             const lighthouseParsed = typeof lighthouseResult === 'string' ? JSON.parse(lighthouseResult) : lighthouseResult
             if (lighthouseParsed && lighthouseParsed.tasks && lighthouseParsed.tasks[0]?.result) {
@@ -202,11 +230,13 @@ export class DataForSEOScoringAgent {
       // Step 6: Get AI search volume metrics
       let aiSearchMetrics: DataForSEOScoringResult['metrics']['aiSearchMetrics'] | undefined
       try {
+        checkAborted()
         const aiAnalysis = await aiSearchOptimizer.analyzeAISearchVolume(
           [params.targetKeyword],
           'United States',
           params.language || 'en',
-          {} // Traditional volumes would come from keyword research
+          {}, // Traditional volumes would come from keyword research
+          params.abortSignal
         )
         
         if (aiAnalysis.keywords.length > 0) {
@@ -224,9 +254,11 @@ export class DataForSEOScoringAgent {
       }
 
       // Step 7: Calculate content metrics from actual content
+      checkAborted()
       const contentMetrics = this.analyzeContentDirectly(params.content, params.targetKeyword, relatedKeywords)
 
       // Step 8: Normalize to a quality score (0-100) with accurate calculation
+      checkAborted()
       const qualityScore = this.calculateAccurateScore(
         citationData,
         contentMetrics,
@@ -254,6 +286,16 @@ export class DataForSEOScoringAgent {
         },
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error
+      }
+
+      if (params.abortSignal?.aborted) {
+        const abortError = new Error('DataForSEO scoring aborted')
+        abortError.name = 'AbortError'
+        throw abortError
+      }
+
       console.error('[DataForSEO Scoring] Error analyzing content:', error)
 
       // Return default scores on error

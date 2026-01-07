@@ -12,6 +12,8 @@ import { renderMessageComponent } from './message-types'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Logo } from '@/components/ui/logo'
+import { ProactiveSuggestions } from '@/components/chat/proactive-suggestions'
+import type { ProactiveSuggestion } from '@/lib/proactive/types'
 
 // AI Elements Imports
 import {
@@ -460,6 +462,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   // Start with false - the bootstrap effect will set to true when it starts
   const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
+  const [proactiveSuggestions, setProactiveSuggestions] = useState<ProactiveSuggestion[]>([])
   const hasInitializedRef = useRef(false)
   const mountedRef = useRef(true)
   const lastLoadedConversationId = useRef<string | null>(null)
@@ -558,6 +561,37 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
+
+  // Fetch proactive suggestions after messages change (when not loading)
+  const lastMessageRole = messages[messages.length - 1]?.role
+  useEffect(() => {
+    if (!conversationId || status !== 'ready' || lastMessageRole !== 'assistant') {
+      return
+    }
+
+    // Fetch suggestions after assistant response
+    const fetchSuggestions = async () => {
+      try {
+        const res = await fetch(`/api/suggestions?conversationId=${conversationId}`)
+        if (res.ok) {
+          const data = await res.json()
+          setProactiveSuggestions(data.suggestions || [])
+        }
+      } catch (err) {
+        console.warn('[Chat] Failed to fetch suggestions:', err)
+      }
+    }
+
+    fetchSuggestions()
+  }, [conversationId, status, lastMessageRole])
+
+  // Handler for sending a suggestion as a message
+  const handleSubmit = useCallback((prompt: string) => {
+    if (prompt.trim() && conversationId) {
+      sendMessage({ text: prompt })
+      setInput('')
+    }
+  }, [conversationId, sendMessage])
 
   const bootstrapConversation = useCallback(async (overrideConversationId?: string) => {
     setIsBootstrapping(true)
@@ -1213,6 +1247,20 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               </Message>
             )
           })}
+
+          {/* Proactive Suggestions - Show after last message when not loading */}
+          {!isLoading && proactiveSuggestions.length > 0 && messages.length > 0 && (
+            <div className="px-4 py-2">
+              <ProactiveSuggestions
+                suggestions={proactiveSuggestions}
+                onSuggestionClick={(prompt) => {
+                  handleSubmit(prompt)
+                  setProactiveSuggestions([])
+                }}
+                isLoading={isLoading}
+              />
+            </div>
+          )}
 
           {isLoading && (
             <Message from="assistant">

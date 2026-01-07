@@ -1,9 +1,12 @@
 /**
  * Usage Logger for AI Usage Events
  * Logs AI calls to ai_usage_events table with cost estimates
+ * 
+ * Migrated from Supabase to Drizzle ORM with Neon
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { aiUsageEvents, type Json } from '@/lib/db/schema'
 import { estimateCost, extractProviderFromModel, type AIProvider } from './cost-estimator'
 
 export interface UsageLogParams {
@@ -30,8 +33,6 @@ export async function logAIUsage(params: UsageLogParams): Promise<void> {
       return
     }
 
-    const supabase = await createClient()
-    
     // Determine provider
     const provider = params.provider || extractProviderFromModel(params.model)
     
@@ -54,25 +55,20 @@ export async function logAIUsage(params: UsageLogParams): Promise<void> {
       endpoint: params.endpoint,
     }
 
-    // Insert into ai_usage_events
-    const { error } = await supabase.from('ai_usage_events').insert({
-      user_id: params.userId,
-      conversation_id: params.conversationId || null,
-      message_id: params.messageId || null,
-      agent_type: params.agentType || null,
+    // Insert into ai_usage_events using Drizzle
+    await db.insert(aiUsageEvents).values({
+      userId: params.userId,
+      conversationId: params.conversationId || undefined,
+      messageId: params.messageId || undefined,
+      agentType: params.agentType || undefined,
       model: params.model,
-      prompt_tokens: params.promptTokens || 0,
-      completion_tokens: params.completionTokens || 0,
-      tool_calls: params.toolCalls || 0,
-      metadata,
+      promptTokens: params.promptTokens || 0,
+      completionTokens: params.completionTokens || 0,
+      toolCalls: params.toolCalls || 0,
+      metadata: metadata as Json,
     })
 
-    if (error) {
-      console.error('[Usage Logger] Failed to log AI usage:', error)
-      // Don't throw - logging failures shouldn't break the app
-    } else {
-      console.log(`[Usage Logger] Logged ${provider} usage: ${params.model} (${costUsd.toFixed(4)} USD)`)
-    }
+    console.log(`[Usage Logger] Logged ${provider} usage: ${params.model} (${costUsd.toFixed(4)} USD)`)
   } catch (error) {
     console.error('[Usage Logger] Error logging AI usage:', error)
     // Don't throw - logging failures shouldn't break the app

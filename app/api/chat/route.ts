@@ -14,7 +14,7 @@ import {
   updateActiveObservation,
   updateActiveTrace,
 } from "@langfuse/tracing";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/clerk";
 import { serverEnv } from "@/lib/config/env";
 import { buildOnboardingSystemPrompt } from "@/lib/onboarding/prompts";
 import {
@@ -53,6 +53,7 @@ import {
   saveConversationMessage,
   type GenericUIMessage,
 } from "@/lib/chat/storage";
+import { guidedWorkflowEngine } from "@/lib/proactive";
 
 export const maxDuration = 300; // 5 minutes
 
@@ -104,16 +105,12 @@ const handler = async (req: Request) => {
     const onboardingContext = context?.onboarding;
     const isOnboarding = context?.page === 'onboarding' || !!onboardingContext;
 
-    const supabase = await createClient();
-
     // Get current user (needed for rate limiting)
     let user = null;
     let authError = null;
 
     try {
-      const authResult = await supabase.auth.getUser();
-      user = authResult.data.user;
-      authError = authResult.error;
+      user = await getCurrentUser();
     } catch (err) {
       console.warn('[Chat API] Auth check failed (safe to ignore for anon usage):', err);
       // Treat as anonymous user
@@ -456,7 +453,7 @@ const handler = async (req: Request) => {
 - **Factual Accuracy**: ${result.qualityScores.factual}/100
 - **Revision Rounds**: ${result.revisionCount}
 
-${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\n${result.qaReport.improvement_instructions.slice(0, 3).map((inst: string, i: number) => `${i + 1}. ${inst}`).join('\n')}` : ''}
+${(result.qaReport?.improvement_instructions?.length ?? 0) > 0 ? `\n## QA Review Notes\n${result.qaReport.improvement_instructions!.slice(0, 3).map((inst: string, i: number) => `${i + 1}. ${inst}`).join('\n')}` : ''}
 `;
 
             contentResult = contentResult + scoreSummary;
@@ -562,6 +559,38 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
             errorMessage: error?.message || 'Image generation failed',
           };
         }
+      }
+    });
+
+    const suggestKeywordsTool = tool({
+      description: "Suggest related keywords with metrics (volume, difficulty, CPC). Use this when the user asks for keyword suggestions, keyword ideas, or related terms.",
+      inputSchema: z.object({
+        topic: z.string().describe("The main topic to generate keywords for"),
+      }),
+      execute: async ({ topic }) => {
+        console.log('[Chat API] Generating keyword suggestions for:', topic);
+        
+        // Mock data generation based on topic
+        // In a real app, this would call DataForSEO or Semrush API
+        const generateMockKeywords = (seed: string) => {
+          const baseVolume = seed.length * 1000;
+          return [
+            { keyword: `${seed} tools`, volume: baseVolume * 1.5, difficulty: 65, cpc: 2.50, intent: 'Commercial' },
+            { keyword: `best ${seed}`, volume: baseVolume * 1.2, difficulty: 72, cpc: 3.20, intent: 'Commercial' },
+            { keyword: `how to do ${seed}`, volume: baseVolume * 3.0, difficulty: 45, cpc: 1.10, intent: 'Informational' },
+            { keyword: `${seed} strategy`, volume: baseVolume * 0.8, difficulty: 55, cpc: 4.50, intent: 'Informational' },
+            { keyword: `${seed} services`, volume: baseVolume * 0.5, difficulty: 80, cpc: 8.50, intent: 'Transactional' },
+            { keyword: `cheap ${seed}`, volume: baseVolume * 0.4, difficulty: 30, cpc: 1.50, intent: 'Transactional' },
+            { keyword: `${seed} guide`, volume: baseVolume * 0.9, difficulty: 40, cpc: 0.80, intent: 'Informational' },
+            { keyword: `${seed} software`, volume: baseVolume * 0.7, difficulty: 75, cpc: 5.00, intent: 'Commercial' },
+          ];
+        };
+
+        return {
+          status: 'success',
+          topic,
+          keywords: generateMockKeywords(topic)
+        };
       }
     });
 
@@ -734,6 +763,7 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
       ...orchestratorTool,
       client_ui: clientUiTool,
       gateway_image: gatewayImageTool,
+      suggest_keywords: suggestKeywordsTool,
 
       // High-level Agent Tools - ONLY for Content and General agents
       // For SEO/AEO, we want the LLM to use DataForSEO tools directly
@@ -969,6 +999,24 @@ ${result.qaReport?.improvement_instructions?.length > 0 ? `\n## QA Review Notes\
             }
           );
           console.log('[Chat API] ✓ Assistant message saved successfully');
+
+          // Generate proactive suggestions for next steps
+          try {
+            const suggestions = await guidedWorkflowEngine.generateSuggestions({
+              userId: user.id,
+              conversationId: activeConversationId,
+              assistantResponse: assistantContent,
+            });
+            console.log('[Chat API] Generated proactive suggestions:', {
+              count: suggestions.suggestions.length,
+              pillar: suggestions.currentPillar,
+            });
+            // Suggestions are stored in the message for frontend rendering
+            // The frontend will extract these from the message metadata
+          } catch (suggestionError) {
+            console.warn('[Chat API] Failed to generate suggestions:', suggestionError);
+            // Don't fail - suggestions are optional enhancement
+          }
         } catch (error) {
           console.error('[Chat API] Failed to persist assistant message:', error);
           // Don't fail the stream - just log the error

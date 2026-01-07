@@ -15,17 +15,21 @@ async function safeExecute(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toolFn: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  params: any
+  params: any,
+  ctx?: { abortSignal?: AbortSignal }
 ): Promise<string | null> {
   try {
     if (!toolFn?.execute) return null
     const result = await toolFn.execute(params, { 
-      abortSignal: new AbortController().signal,
+      abortSignal: ctx?.abortSignal ?? new AbortController().signal,
       toolCallId: 'composite-tool-call',
       messages: []
     })
     return result
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error
+    }
     return null
   }
 }
@@ -43,7 +47,10 @@ export const keywordIntelligenceTool = tool({
     includeHistorical: z.boolean().default(true).describe('Include historical trend analysis'),
     includeAISearch: z.boolean().default(true).describe('Include AI search volume (ChatGPT, Perplexity)'),
   }),
-  execute: async ({ keyword, location, language, includeHistorical, includeAISearch }) => {
+  execute: async (
+    { keyword, location, language, includeHistorical, includeAISearch },
+    ctx?: { abortSignal?: AbortSignal }
+  ) => {
     try {
       // Parallel API calls for performance
       const [
@@ -59,14 +66,14 @@ export const keywordIntelligenceTool = tool({
           keywords: [keyword],
           location_name: location,
           language_code: language,
-        }),
+        }, ctx),
 
         // Keyword difficulty
         safeExecute(mcpDataforseoTools.dataforseo_labs_bulk_keyword_difficulty, {
           keywords: [keyword],
           location_name: location,
           language_code: language,
-        }),
+        }, ctx),
 
         // SERP analysis
         safeExecute(mcpDataforseoTools.serp_organic_live_advanced, {
@@ -74,12 +81,12 @@ export const keywordIntelligenceTool = tool({
           location_name: location,
           language_code: language,
           device: 'desktop',
-        }),
+        }, ctx),
 
         // Search intent
         safeExecute(mcpDataforseoTools.dataforseo_labs_search_intent, {
           keywords: [keyword],
-        }),
+        }, ctx),
 
         // Historical (conditional)
         includeHistorical
@@ -87,7 +94,7 @@ export const keywordIntelligenceTool = tool({
               keywords: [keyword],
               location_name: location,
               language_code: language,
-            })
+            }, ctx)
           : Promise.resolve(null),
 
         // AI search (conditional)
@@ -96,7 +103,7 @@ export const keywordIntelligenceTool = tool({
               keywords: [keyword],
               location_name: location,
               language_code: language,
-            })
+            }, ctx)
           : Promise.resolve(null),
       ])
 
@@ -137,7 +144,9 @@ export const keywordIntelligenceTool = tool({
         const aiVolumes = await aiSearchOptimizer.analyzeAISearchVolume(
           [keyword],
           location,
-          language
+          language,
+          undefined,
+          ctx?.abortSignal
         )
         if (aiVolumes.keywords.length > 0) {
           aiAnalysis = aiVolumes.keywords[0]

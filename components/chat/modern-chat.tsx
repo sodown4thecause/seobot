@@ -1,9 +1,10 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import type { UIMessage as Message } from 'ai'
-import { useEffect, useRef, useState } from 'react'
+import { DefaultChatTransport, type UIMessage as Message } from 'ai'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Send, Sparkles, Copy, Check } from 'lucide-react'
+import { KeywordSuggestionsTable } from './tool-ui/keyword-suggestions-table'
 
 interface ModernChatProps {
   context?: any
@@ -14,29 +15,48 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [input, setInput] = useState('')
-  
-  const chat = useChat({
-    body: { context },
-    onError: (error: any) => {
-      console.error('[Chat] Error:', error)
-      console.error('[Chat] Error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        error
-      })
+
+  const transport = useMemo(() => {
+    return new DefaultChatTransport({
+      api: '/api/chat',
+      body: { context },
+    })
+  }, [context])
+
+  const {
+    messages,
+    sendMessage,
+    status,
+    error,
+  } = useChat({
+    transport,
+    onError: (err: any) => {
+      console.error('[Chat] Error:', err)
       // Handle error gracefully - don't break the UI
     },
-  } as any) as any
+  })
 
   // Safely access properties
-  const messages = chat?.messages || []
-  const append = chat?.append || chat?.sendMessage
-  const status = chat?.status || 'ready'
   const isLoading = status === 'streaming' || status === 'submitted'
 
-  const sendMessage = (data: { text: string }) => {
-    if (append) {
-      append({ role: 'user', content: data.text })
+  const getMessageText = (message: any): string => {
+    if (typeof message.content === 'string' && message.content.trim().length > 0) {
+      return message.content
+    }
+
+    if (Array.isArray(message.parts)) {
+      return message.parts
+        .filter((part: any) => part?.type === 'text' && typeof part.text === 'string')
+        .map((part: any) => part.text)
+        .join('')
+    }
+
+    return ''
+  }
+
+  const handleSendMessage = (data: { text: string }) => {
+    if (sendMessage) {
+      sendMessage({ text: data.text })
     }
   }
 
@@ -50,29 +70,46 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const renderToolInvocation = (toolInvocation: { toolName: string; state: string }, index: number) => {
+    if (toolInvocation.toolName === 'suggest_keywords') {
+      return (
+        <div key={index} className="w-full my-2">
+          <KeywordSuggestionsTable toolInvocation={toolInvocation} />
+        </div>
+      )
+    }
+
+    // Fallback for other tools or if rendering is not implemented
+    return (
+      <div key={index} className="bg-gray-800 p-2 rounded text-xs text-gray-400 my-1 font-mono">
+        Tool: {toolInvocation.toolName} ({toolInvocation.state})
+      </div>
+    )
+  }
+
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
       height: '100%',
       backgroundColor: '#1a1d29',
       color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       {/* Messages Area */}
-      <div style={{ 
-        flex: 1, 
-        overflowY: 'auto', 
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
         padding: '24px',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px'
       }}>
         {messages.length === 0 && (
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
             justifyContent: 'center',
             height: '100%',
             gap: '12px',
@@ -84,7 +121,11 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
         )}
 
         {messages.map((message: any) => {
-          const textContent = message.content || ''
+          // Handle both simple content and tool invocations
+          // AI SDK 6 typically attaches toolInvocations to the message
+          const toolInvocations = message.toolInvocations || [];
+          const text = getMessageText(message);
+
           return (
             <div
               key={message.id}
@@ -93,12 +134,14 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
                 flexDirection: 'column',
                 gap: '8px',
                 alignItems: message.role === 'user' ? 'flex-end' : 'flex-start',
+                width: '100%'
               }}
             >
               <div style={{
                 display: 'flex',
                 gap: '12px',
-                maxWidth: '85%',
+                maxWidth: message.role === 'user' ? '85%' : '100%',
+                width: message.role === 'assistant' ? '100%' : 'auto',
                 alignItems: 'flex-start',
                 flexDirection: message.role === 'user' ? 'row-reverse' : 'row'
               }}>
@@ -116,21 +159,40 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
                     <Sparkles size={16} />
                   </div>
                 )}
-                
+
                 <div style={{
-                  backgroundColor: message.role === 'user' ? '#2d3748' : '#2a2f3f',
-                  padding: '12px 16px',
-                  borderRadius: '16px',
-                  lineHeight: '1.6',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word'
+                  display: 'flex',
+                  flexDirection: 'column',
+                  width: '100%',
+                  alignItems: message.role === 'user' ? 'flex-end' : 'flex-start',
                 }}>
-                  {textContent}
+                  {text && (
+                    <div style={{
+                      backgroundColor: message.role === 'user' ? '#2d3748' : '#2a2f3f',
+                      padding: '12px 16px',
+                      borderRadius: '16px',
+                      lineHeight: '1.6',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      maxWidth: '100%' // Ensure text doesn't overflow if container is full width
+                    }}>
+                      {text}
+                    </div>
+                  )}
+
+                  {/* Render Tool Invocations */}
+                  {toolInvocations.length > 0 && (
+                    <div className="w-full mt-2">
+                      {toolInvocations.map((toolInvocation: any, index: number) =>
+                        renderToolInvocation(toolInvocation, index)
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {message.role === 'assistant' && (
+                {message.role === 'assistant' && text && (
                   <button
-                    onClick={() => copyToClipboard(textContent, message.id)}
+                    onClick={() => copyToClipboard(text, message.id)}
                     style={{
                       background: 'transparent',
                       border: 'none',
@@ -139,7 +201,8 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
                       borderRadius: '8px',
                       color: copiedId === message.id ? '#10b981' : '#6b7280',
                       transition: 'all 0.2s',
-                      opacity: 0.7
+                      opacity: 0.7,
+                      height: 'fit-content'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.opacity = '1'
@@ -202,12 +265,12 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
-      <div style={{ 
+      <div style={{
         padding: '20px',
         borderTop: '1px solid #374151'
       }}>
@@ -215,11 +278,11 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
           e.preventDefault()
           if (input.trim() && !isLoading) {
             console.log('[Chat] Sending message:', input)
-            sendMessage({ text: input })
+            handleSendMessage({ text: input })
             setInput('')
           }
         }} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{ 
+          <div style={{
             flex: 1,
             position: 'relative',
             display: 'flex',

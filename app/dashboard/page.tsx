@@ -45,7 +45,18 @@ export default function DashboardPage() {
         }
 
         // Check if user has a business profile using API route (Drizzle runs server-side)
-        const response = await fetch('/api/user/profile')
+        // Add timeout to prevent infinite hanging
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => {
+          controller.abort()
+          console.warn('[Dashboard] Profile fetch timeout')
+        }, 5000) // 5 second timeout
+
+        const response = await fetch('/api/user/profile', {
+          signal: controller.signal
+        })
+
+        clearTimeout(timeoutId)
 
         if (response.ok) {
           const data = await response.json()
@@ -68,8 +79,13 @@ export default function DashboardPage() {
           setInitialMessage('Failed to load profile. Please refresh or contact support.')
         }
       } catch (error) {
-        console.error('[Dashboard] Error checking user profile:', error)
-        // Don't trigger onboarding on errors
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('[Dashboard] Profile fetch timed out')
+          setInitialMessage('Loading timed out. Please refresh the page.')
+        } else {
+          console.error('[Dashboard] Error checking user profile:', error)
+          // Don't trigger onboarding on errors
+        }
       } finally {
         setIsLoading(false)
       }

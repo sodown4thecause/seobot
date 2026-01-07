@@ -1,9 +1,10 @@
 /**
  * Workflow Scheduler
  * Handles scheduling and automation of workflows
+ * 
+ * TODO: Migrate to Drizzle ORM once scheduled_workflows table is created
+ * Currently stubbed after Supabase removal
  */
-
-import { createClient } from '@/lib/supabase/client'
 
 export type ScheduleType = 'once' | 'daily' | 'weekly' | 'monthly' | 'cron'
 
@@ -20,11 +21,19 @@ export interface WorkflowSchedule {
   runCount: number
 }
 
+// In-memory schedule storage (temporary until Drizzle migration)
+const scheduleStore = new Map<string, WorkflowSchedule>()
+
 export class WorkflowScheduler {
-  private supabase = createClient()
+  private userId: string | null = null
+
+  setUserId(userId: string) {
+    this.userId = userId
+  }
 
   /**
    * Create a workflow schedule
+   * TODO: Implement with Drizzle
    */
   async createSchedule(
     workflowId: string,
@@ -32,85 +41,64 @@ export class WorkflowScheduler {
     scheduleConfig: Record<string, any>,
     workflowParams: Record<string, any> = {}
   ): Promise<WorkflowSchedule> {
-    const { data: { user } } = await this.supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
+    if (!this.userId) throw new Error('User not authenticated')
 
     const nextRunAt = this.calculateNextRun(scheduleType, scheduleConfig)
+    const id = crypto.randomUUID()
 
-    const { data, error } = await this.supabase
-      .from('workflow_schedules')
-      .insert({
-        user_id: user.id,
-        workflow_id: workflowId,
-        schedule_type: scheduleType,
-        schedule_config: scheduleConfig,
-        workflow_params: workflowParams,
-        enabled: true,
-        next_run_at: nextRunAt?.toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) {
-      throw new Error(`Failed to create schedule: ${error.message}`)
+    const schedule: WorkflowSchedule = {
+      id,
+      userId: this.userId,
+      workflowId,
+      scheduleType,
+      scheduleConfig,
+      workflowParams,
+      enabled: true,
+      nextRunAt: nextRunAt || undefined,
+      runCount: 0,
     }
 
-    return this.mapSchedule(data)
+    scheduleStore.set(id, schedule)
+    return schedule
   }
 
   /**
    * Get schedules due for execution
+   * TODO: Implement with Drizzle
    */
   async getDueSchedules(): Promise<WorkflowSchedule[]> {
     const now = new Date()
+    const due: WorkflowSchedule[] = []
 
-    const { data, error } = await this.supabase
-      .from('workflow_schedules')
-      .select('*')
-      .eq('enabled', true)
-      .lte('next_run_at', now.toISOString())
+    scheduleStore.forEach((schedule) => {
+      if (schedule.enabled && schedule.nextRunAt && schedule.nextRunAt <= now) {
+        due.push(schedule)
+      }
+    })
 
-    if (error || !data) return []
-
-    return data.map((item: { id: string; itemKey: string; metadata?: Record<string, unknown> }) => this.mapSchedule(item))
+    return due
   }
 
   /**
    * Update schedule after execution
+   * TODO: Implement with Drizzle
    */
   async markScheduleExecuted(scheduleId: string): Promise<void> {
-    const schedule = await this.getSchedule(scheduleId)
+    const schedule = scheduleStore.get(scheduleId)
     if (!schedule) return
 
     const nextRunAt = this.calculateNextRun(schedule.scheduleType, schedule.scheduleConfig)
-
-    const { error } = await this.supabase
-      .from('workflow_schedules')
-      .update({
-        last_run_at: new Date().toISOString(),
-        next_run_at: nextRunAt?.toISOString(),
-        run_count: schedule.runCount + 1
-      })
-      .eq('id', scheduleId)
-
-    if (error) {
-      throw new Error(`Failed to update schedule: ${error.message}`)
-    }
+    schedule.lastRunAt = new Date()
+    schedule.nextRunAt = nextRunAt || undefined
+    schedule.runCount += 1
   }
 
   /**
    * Get schedule by ID
+   * TODO: Implement with Drizzle
    */
   async getSchedule(scheduleId: string): Promise<WorkflowSchedule | null> {
-    const { data, error } = await this.supabase
-      .from('workflow_schedules')
-      .select('*')
-      .eq('id', scheduleId)
-      .single()
-
-    if (error || !data) return null
-
-    return this.mapSchedule(data)
+    return scheduleStore.get(scheduleId) || null
   }
 
   /**

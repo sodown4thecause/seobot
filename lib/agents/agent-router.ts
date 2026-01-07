@@ -1,7 +1,7 @@
 /**
  * Agent Router - Determines which specialized agent should handle the query
  * Routes to: OnboardingAgent, SEOAEOAgent, or ContentAgent based on user intent
- * Enhanced with comprehensive keyword detection and tool assignments
+ * Enhanced with comprehensive keyword detection, word boundary matching, and tool assignments
  */
 
 export type AgentType = 'onboarding' | 'seo-aeo' | 'content' | 'general'
@@ -11,145 +11,170 @@ export interface AgentRoutingResult {
   confidence: number
   reasoning: string
   tools: string[]
+  matchedKeywords?: string[] // Keywords that triggered the routing decision
 }
+
+// Tool constants to avoid duplication and ensure consistency
+const ONBOARDING_TOOLS = ['client_ui', 'onboarding_progress'] as const
+
+const CONTENT_TOOLS = [
+  // Core content tools
+  'generate_researched_content',
+  'perplexity_search',
+  // Firecrawl (Research)
+  'firecrawl_scrape',
+  'firecrawl_search',
+  'firecrawl_crawl',
+  // Content Analysis
+  'content_analysis_search',
+  'content_analysis_summary',
+  'content_analysis_phrase_trends',
+  // Keyword Optimization
+  'keywords_data_google_ads_search_volume',
+  'dataforseo_labs_search_intent',
+  'dataforseo_labs_google_keyword_suggestions',
+  // Jina advanced tools
+  'read_url',
+  'search_web',
+  'expand_query',
+  'parallel_search_web',
+  'sort_by_relevance',
+] as const
+
+const SEO_TOOLS = [
+  // Keyword Research
+  'keywords_data_google_ads_search_volume',
+  'dataforseo_labs_google_keyword_ideas',
+  'dataforseo_labs_google_keyword_suggestions',
+  'dataforseo_labs_google_keyword_overview',
+  'dataforseo_labs_bulk_keyword_difficulty',
+  'dataforseo_labs_search_intent',
+  'dataforseo_labs_google_keywords_for_site',
+  'dataforseo_labs_google_related_keywords',
+  // SERP Analysis
+  'serp_organic_live_advanced',
+  'serp_locations',
+  'dataforseo_labs_google_serp_competitors',
+  'dataforseo_labs_google_historical_serp',
+  'dataforseo_labs_google_top_searches',
+  // YouTube SEO
+  'serp_youtube_organic_live_advanced',
+  'serp_youtube_video_info_live_advanced',
+  'serp_youtube_video_comments_live_advanced',
+  'serp_youtube_video_subtitles_live_advanced',
+  'serp_youtube_locations',
+  // Competitor Analysis
+  'dataforseo_labs_google_ranked_keywords',
+  'dataforseo_labs_google_competitors_domain',
+  'dataforseo_labs_google_domain_intersection',
+  'dataforseo_labs_google_page_intersection',
+  'dataforseo_labs_google_relevant_pages',
+  'dataforseo_labs_google_subdomains',
+  // Domain Analysis
+  'dataforseo_labs_google_domain_rank_overview',
+  'dataforseo_labs_google_historical_rank_overview',
+  'dataforseo_labs_bulk_traffic_estimation',
+  'domain_analytics_whois_overview',
+  'domain_analytics_technologies_domain_technologies',
+  // Backlinks
+  'n8n_backlinks',
+  // Trends
+  'keywords_data_google_trends_explore',
+  'keywords_data_dataforseo_trends_explore',
+  'keywords_data_dataforseo_trends_demography',
+  // Technical SEO
+  'on_page_lighthouse',
+  'on_page_content_parsing',
+  'on_page_instant_pages',
+  // AI/AEO Optimization
+  'ai_optimization_keyword_data_search_volume',
+  'ai_optimization_keyword_data_locations_and_languages',
+  // Content Analysis
+  'content_analysis_search',
+  'content_analysis_summary',
+  'content_analysis_phrase_trends',
+  // Business Data
+  'business_data_business_listings_search',
+  // Firecrawl (Web Scraping)
+  'firecrawl_scrape',
+  'firecrawl_search',
+  'firecrawl_crawl',
+  'firecrawl_map',
+  'firecrawl_extract',
+  'firecrawl_check_crawl_status',
+] as const
+
+const GENERAL_TOOLS = [
+  'web_search_competitors',
+  'perplexity_search',
+  'client_ui',
+] as const
 
 export class AgentRouter {
   /**
    * Route user query to appropriate specialized agent
+   * Uses word boundary matching for precise keyword detection
+   * Boosts confidence based on number of matched keywords
    */
   static routeQuery(
     message: string,
-    context?: { page?: string; onboarding?: any }
+    context?: { page?: string; onboarding?: any; conversationHistory?: string[] }
   ): AgentRoutingResult {
     const messageLower = message.toLowerCase()
 
     // 1. ONBOARDING AGENT - Handle setup and configuration
-    if (context?.page === 'onboarding' || this.isOnboardingQuery(messageLower)) {
+    if (context?.page === 'onboarding') {
       return {
         agent: 'onboarding',
-        confidence: 0.95,
-        reasoning: 'User is in onboarding flow or asking setup questions',
-        tools: ['client_ui', 'onboarding_progress']
+        confidence: 0.98,
+        reasoning: 'User is in onboarding flow',
+        tools: [...ONBOARDING_TOOLS],
+      }
+    }
+
+    const onboardingMatches = this.matchKeywords(messageLower, this.getOnboardingKeywords())
+    if (onboardingMatches.length > 0) {
+      return {
+        agent: 'onboarding',
+        confidence: this.calculateConfidence(onboardingMatches.length, 0.85, 0.98),
+        reasoning: `Onboarding query detected: ${onboardingMatches.slice(0, 3).join(', ')}`,
+        tools: [...ONBOARDING_TOOLS],
+        matchedKeywords: onboardingMatches,
       }
     }
 
     // 2. CONTENT AGENT - Handle content creation, optimization, humanization
     // PRIORITY: Check content creation BEFORE SEO analytics to avoid false routing
-    if (this.isContentCreationQuery(messageLower)) {
+    const contentMatches = this.matchKeywords(messageLower, this.getContentKeywords())
+    const seoMatches = this.matchKeywords(messageLower, this.getSEOKeywords())
+
+    // Content agent takes priority if explicit content creation patterns are found
+    const hasExplicitContentIntent = this.hasExplicitContentIntent(messageLower)
+    
+    if (hasExplicitContentIntent || (contentMatches.length > 0 && contentMatches.length >= seoMatches.length)) {
+      const confidence = hasExplicitContentIntent 
+        ? 0.95 
+        : this.calculateConfidence(contentMatches.length, 0.8, 0.95)
+      
       return {
         agent: 'content',
-        confidence: 0.9,
-        reasoning: 'Query requires content creation with research, optimization, and humanization',
-        tools: [
-          // Core content tools
-          'generate_researched_content',
-          'perplexity_search',
-
-          // ===== FIRECRAWL (Research) =====
-          'firecrawl_scrape',
-          'firecrawl_search',
-          'firecrawl_crawl',
-
-          // ===== CONTENT ANALYSIS =====
-          'content_analysis_search',
-          'content_analysis_summary',
-          'content_analysis_phrase_trends',
-
-          // ===== KEYWORD OPTIMIZATION =====
-          'keywords_data_google_ads_search_volume',
-          'dataforseo_labs_search_intent',
-          'dataforseo_labs_google_keyword_suggestions',
-
-          // Jina advanced tools
-          'read_url',
-          'search_web',
-          'expand_query',
-          'parallel_search_web',
-          'sort_by_relevance'
-        ]
+        confidence,
+        reasoning: hasExplicitContentIntent
+          ? 'Explicit content creation request detected'
+          : `Content creation query: ${contentMatches.slice(0, 3).join(', ')}`,
+        tools: [...CONTENT_TOOLS],
+        matchedKeywords: contentMatches,
       }
     }
 
     // 3. SEO/AEO AGENT - Handle analytics, technical SEO, competitor analysis
-    if (this.isSEOAnalyticsQuery(messageLower)) {
+    if (seoMatches.length > 0) {
       return {
         agent: 'seo-aeo',
-        confidence: 0.9,
-        reasoning: 'Query requires SEO analytics, competitor analysis, or technical SEO data',
-        tools: [
-          // ===== KEYWORD RESEARCH =====
-          'keywords_data_google_ads_search_volume',
-          'dataforseo_labs_google_keyword_ideas',
-          'dataforseo_labs_google_keyword_suggestions',
-          'dataforseo_labs_google_keyword_overview',
-          'dataforseo_labs_bulk_keyword_difficulty',
-          'dataforseo_labs_search_intent',
-          'dataforseo_labs_google_keywords_for_site',
-          'dataforseo_labs_google_related_keywords',
-
-          // ===== SERP ANALYSIS =====
-          'serp_organic_live_advanced',
-          'serp_locations',
-          'dataforseo_labs_google_serp_competitors',
-          'dataforseo_labs_google_historical_serp',
-          'dataforseo_labs_google_top_searches',
-
-          // ===== YOUTUBE SEO =====
-          'serp_youtube_organic_live_advanced',
-          'serp_youtube_video_info_live_advanced',
-          'serp_youtube_video_comments_live_advanced',
-          'serp_youtube_video_subtitles_live_advanced',
-          'serp_youtube_locations',
-
-          // ===== COMPETITOR ANALYSIS =====
-          'dataforseo_labs_google_ranked_keywords',
-          'dataforseo_labs_google_competitors_domain',
-          'dataforseo_labs_google_domain_intersection',
-          'dataforseo_labs_google_page_intersection',
-          'dataforseo_labs_google_relevant_pages',
-          'dataforseo_labs_google_subdomains',
-
-          // ===== DOMAIN ANALYSIS =====
-          'dataforseo_labs_google_domain_rank_overview',
-          'dataforseo_labs_google_historical_rank_overview',
-          'dataforseo_labs_bulk_traffic_estimation',
-          'domain_analytics_whois_overview',
-          'domain_analytics_technologies_domain_technologies',
-
-          // ===== BACKLINKS =====
-          // Using n8n webhook only - DataForSEO backlinks subscription is inactive
-          'n8n_backlinks',
-
-          // ===== TRENDS =====
-          'keywords_data_google_trends_explore',
-          'keywords_data_dataforseo_trends_explore',
-          'keywords_data_dataforseo_trends_demography',
-
-          // ===== TECHNICAL SEO =====
-          'on_page_lighthouse',
-          'on_page_content_parsing',
-          'on_page_instant_pages',
-
-          // ===== AI/AEO OPTIMIZATION =====
-          'ai_optimization_keyword_data_search_volume',
-          'ai_optimization_keyword_data_locations_and_languages',
-
-          // ===== CONTENT ANALYSIS =====
-          'content_analysis_search',
-          'content_analysis_summary',
-          'content_analysis_phrase_trends',
-
-          // ===== BUSINESS DATA =====
-          'business_data_business_listings_search',
-
-          // ===== FIRECRAWL (Web Scraping) =====
-          'firecrawl_scrape',
-          'firecrawl_search',
-          'firecrawl_crawl',
-          'firecrawl_map',
-          'firecrawl_extract',
-          'firecrawl_check_crawl_status'
-        ]
+        confidence: this.calculateConfidence(seoMatches.length, 0.8, 0.95),
+        reasoning: `SEO analytics query: ${seoMatches.slice(0, 3).join(', ')}`,
+        tools: [...SEO_TOOLS],
+        matchedKeywords: seoMatches,
       }
     }
 
@@ -157,36 +182,168 @@ export class AgentRouter {
     return {
       agent: 'general',
       confidence: 0.7,
-      reasoning: 'General query that doesn\'t require specialized agent',
-      tools: [
-        'web_search_competitors',
-        'perplexity_search',
-        'client_ui'
-      ]
+      reasoning: 'General query - no specialized agent keywords detected',
+      tools: [...GENERAL_TOOLS],
     }
   }
 
   /**
-   * Check if query is related to onboarding/setup
+   * Calculate confidence based on number of matched keywords
+   * More matches = higher confidence, capped at maxConfidence
    */
-  private static isOnboardingQuery(message: string): boolean {
-    const onboardingKeywords = [
+  private static calculateConfidence(
+    matchCount: number,
+    baseConfidence: number,
+    maxConfidence: number
+  ): number {
+    // Each additional match adds 0.03 confidence, up to max
+    const boost = Math.min((matchCount - 1) * 0.03, maxConfidence - baseConfidence)
+    return Math.min(baseConfidence + boost, maxConfidence)
+  }
+
+  /**
+   * Match keywords using word boundaries for precision
+   * Returns array of matched keywords
+   */
+  private static matchKeywords(message: string, keywords: string[]): string[] {
+    const matched: string[] = []
+    
+    for (const keyword of keywords) {
+      // For multi-word phrases, use simple includes
+      if (keyword.includes(' ')) {
+        if (message.includes(keyword)) {
+          matched.push(keyword)
+        }
+      } else {
+        // For single words, use word boundary regex to avoid partial matches
+        const regex = new RegExp(`\\b${this.escapeRegex(keyword)}\\b`, 'i')
+        if (regex.test(message)) {
+          matched.push(keyword)
+        }
+      }
+    }
+    
+    return matched
+  }
+
+  /**
+   * Escape special regex characters
+   */
+  private static escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }
+
+  /**
+   * Check for explicit content creation patterns (high-confidence signals)
+   */
+  private static hasExplicitContentIntent(message: string): boolean {
+    const explicitPatterns = [
+      /write\s+(a|an|me|us)\s+/i,
+      /create\s+(a|an|me|us)\s+/i,
+      /generate\s+(a|an|me|us)\s+/i,
+      /draft\s+(a|an|me|us)\s+/i,
+      /blog\s*(post|article)?\s*(about|on|for)/i,
+      /article\s*(about|on|for)/i,
+      /content\s*(about|on|for)/i,
+    ]
+    return explicitPatterns.some(pattern => pattern.test(message))
+  }
+
+  /**
+   * Get onboarding-related keywords for word boundary matching
+   */
+  private static getOnboardingKeywords(): string[] {
+    return [
       'setup', 'configure', 'getting started', 'onboard', 'initialize',
       'connect account', 'api key', 'integration', 'first time',
       'how to start', 'begin', 'tutorial', 'walkthrough'
     ]
-    return onboardingKeywords.some(keyword => message.includes(keyword))
   }
 
   /**
-   * Check if query requires SEO analytics/technical analysis
-   * Enhanced with comprehensive keyword patterns for all tool capabilities
+   * Get content creation keywords for word boundary matching
+   */
+  private static getContentKeywords(): string[] {
+    return [
+      // Explicit blog/article patterns
+      'blog post', 'blog article', 'write a blog', 'create a blog',
+      'write me a', 'create me a', 'generate a blog', 'generate a post',
+      'write an article', 'create an article', 'draft a blog',
+      'write about', 'article about', 'post about', 'blog about',
+      // Content creation verbs
+      'write', 'create', 'generate', 'draft', 'compose', 'craft',
+      // Content types
+      'blog post', 'article', 'landing page', 'copy',
+      'email', 'social post', 'tweet', 'headline',
+      'meta description', 'snippet', 'blog',
+      // Content optimization
+      'rewrite', 'humanize', 'make more human', 'less ai', 'more natural',
+      // Content quality
+      'plagiarism', 'ai detection', 'originality',
+      'fact check', 'verify', 'validate',
+      // Content research
+      'research for', 'find sources', 'gather information',
+      'summarize article', 'content ideas'
+    ]
+  }
+
+  /**
+   * Get SEO/AEO analytics keywords for word boundary matching
+   */
+  private static getSEOKeywords(): string[] {
+    return [
+      // Core SEO/AEO terms
+      'seo', 'aeo', 'answer engine', 'search engine optimization',
+      // Search Intent
+      'search intent', 'user intent', 'query intent',
+      'informational', 'navigational', 'transactional', 'commercial intent',
+      // Analytics & metrics
+      'traffic', 'ranking', 'position', 'visibility', 'metrics',
+      'analytics', 'performance', 'audit', 'technical seo',
+      // Competitor analysis
+      'competitor', 'competition', 'benchmark', 'competitive analysis', 'market share',
+      // Backlinks & domain analysis
+      'backlink', 'link building', 'domain authority', 'domain analysis',
+      'link profile', 'referring domains', 'anchor text',
+      'spam score', 'link quality', 'toxic links',
+      // SERP analysis
+      'serp', 'search results', 'google ranking', 'featured snippet',
+      'people also ask', 'related searches', 'serp features',
+      // Keyword research
+      'keyword research', 'search volume', 'keyword difficulty',
+      'keyword suggestions', 'keyword trends', 'keyword gap',
+      'cpc', 'cost per click', 'ppc', 'keyword ideas',
+      'keyword overview', 'top searches', 'related keywords',
+      // Ranking/Organic
+      'organic', 'organic search', 'what ranks', 'how to rank', 'top ranking',
+      // Analysis queries
+      'site analysis', 'website analysis', 'seo audit', 'seo analysis', 'seo strategy',
+      // Technical SEO
+      'sitemap', 'robots.txt', 'page speed', 'core web vitals', 'lighthouse',
+      // Web Scraping
+      'scrape', 'scraping', 'extract data', 'crawl website',
+      // YouTube SEO
+      'youtube', 'video seo', 'youtube ranking', 'youtube search',
+      // Trends
+      'trends', 'trending', 'google trends', 'trend analysis',
+      // Domain & WHOIS
+      'domain', 'whois', 'domain age', 'domain info', 'tech stack',
+      // Traffic & Estimation
+      'traffic estimation', 'estimated traffic', 'site traffic',
+      // Historical Data
+      'historical', 'ranking history', 'historical serp',
+      // Business Listings
+      'business listing', 'local seo', 'google my business'
+    ]
+  }
+
+  /**
+   * Check if query requires SEO analytics/technical analysis (legacy - kept for compatibility)
    */
   private static isSEOAnalyticsQuery(message: string): boolean {
     const seoAnalyticsKeywords = [
       // Core SEO/AEO terms (standalone)
       'seo', 'aeo', 'answer engine', 'search engine optimization',
-
       // Search Intent
       'search intent', 'intent', 'user intent', 'query intent',
       'informational', 'navigational', 'transactional', 'commercial intent',

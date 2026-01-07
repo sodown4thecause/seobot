@@ -2,14 +2,22 @@ import { generateObject } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { createAdminClient } from '@/lib/supabase/server'
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Use singleton admin client for Supabase operations
-const supabase = await createAdminClient()
+// TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
+// Stub database client - all operations return empty/mock data until Drizzle migration
+const createChainableStub = (): any => {
+  const stub: any = () => stub
+  stub.from = stub; stub.select = stub; stub.insert = stub; stub.update = stub; stub.delete = stub
+  stub.eq = stub; stub.neq = stub; stub.gt = stub; stub.gte = stub; stub.lt = stub; stub.lte = stub
+  stub.order = stub; stub.limit = stub; stub.single = stub; stub.maybeSingle = stub
+  stub.then = (resolve: any) => resolve({ data: [], error: null })
+  return stub
+}
+const supabase = createChainableStub()
 
 export interface CompetitorAlert {
   id: string

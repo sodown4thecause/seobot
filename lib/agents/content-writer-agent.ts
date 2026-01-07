@@ -77,6 +77,7 @@ export class ContentWriterAgent {
               system: this.buildSystemPrompt(guidance),
               prompt: prompt,
               temperature: 0.7,
+              abortSignal: params.abortSignal,
               experimental_telemetry: createTelemetryConfig(
                 params.revisionRound ? 'content-writer-revision' : 'content-writer',
                 {

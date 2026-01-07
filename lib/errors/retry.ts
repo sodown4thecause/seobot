@@ -77,6 +77,10 @@ export async function withAgentRetry<T>(
     } catch (error) {
       lastError = error
 
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error
+      }
+
       // Check if error is retryable
       if (!isRetryable(error)) {
         // For non-retryable errors, wrap in ProviderError if we have metadata
