@@ -182,7 +182,7 @@ export class RAGWriterOrchestrator {
 
         // Step 0.5: Fetch user's business context for personalized content
         checkAborted()
-        let businessContext: { brandVoice?: any; profile?: any; context?: string } = {}
+        let businessContext: { brandVoice?: any; profile?: any; context?: string; preferences?: any } = {}
         if (params.userId) {
           try {
             const { getUserBusinessContext } = await import('@/lib/onboarding/user-context-service')
@@ -192,12 +192,26 @@ export class RAGWriterOrchestrator {
                 brandVoice: userContext.brandVoice,
                 profile: userContext.profile,
                 context: userContext.context,
+                preferences: userContext.preferences,
               }
               console.log(`[Orchestrator] ✓ Loaded business context - Industry: ${userContext.profile?.industry || 'N/A'}, Voice: ${userContext.brandVoice?.tone || 'N/A'}`)
             }
           } catch (error) {
             console.warn('[Orchestrator] Failed to load business context:', error)
           }
+        }
+
+        // Extract location and language preferences
+        let userLocation = 'United States'
+        let userLanguage = 'en'
+
+        if (businessContext.profile?.location) {
+          const { city, region, country } = businessContext.profile.location
+          userLocation = [city, region, country].filter(Boolean).join(', ') || 'United States'
+        }
+
+        if (businessContext.preferences?.language) {
+          userLanguage = businessContext.preferences.language
         }
 
         // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
@@ -223,8 +237,8 @@ export class RAGWriterOrchestrator {
           targetKeyword: params.keywords[0] || params.topic,
           depth: 'standard',
           competitorUrls: params.competitorUrls,
-          languageCode: 'en', // TODO: Get from user preferences
-          location: 'United States', // TODO: Get from user preferences
+          languageCode: userLanguage,
+          location: userLocation,
           userId: params.userId,
           langfuseTraceId: traceId, // Link to parent trace
           sessionId, // Link to session
@@ -254,8 +268,8 @@ export class RAGWriterOrchestrator {
           fraseOptimizationResult = await this.fraseAgent.optimizeContent({
             targetKeyword: params.keywords[0] || params.topic,
             competitorUrls: params.competitorUrls || (researchResult.competitorSnippets?.length ? researchResult.competitorSnippets.map(c => c.url) : []),
-            language: 'en',
-            country: 'us',
+            language: userLanguage,
+            country: 'us', // Frase expects a country code (e.g., 'us'), not full name. Defaulting to 'us' as mapping full name to code is complex without a library.
             userId: params.userId,
             contentType: params.type,
           })
@@ -432,8 +446,8 @@ export class RAGWriterOrchestrator {
               content: currentDraft.content, // Analyze the current draft
               targetKeyword: params.keywords[0] || params.topic,
               competitorUrls: params.competitorUrls || (researchResult.competitorSnippets?.length ? researchResult.competitorSnippets.map(c => c.url) : []),
-              language: 'en',
-              country: 'us',
+              language: userLanguage,
+              country: 'us', // Defaulting to 'us' for now
               userId: params.userId,
               contentType: params.type,
             })
