@@ -12,21 +12,21 @@ interface ProactiveSuggestionsProps {
 
 const CATEGORY_STYLES = {
     deep_dive: {
-        bg: 'bg-blue-500/10 hover:bg-blue-500/20',
-        border: 'border-blue-500/20 hover:border-blue-500/40',
-        text: 'text-blue-300',
+        bg: 'bg-zinc-900/30 hover:bg-zinc-800/50',
+        border: 'border-zinc-800 hover:border-zinc-700',
+        text: 'text-zinc-400 group-hover:text-zinc-200',
         label: 'Deep Dive',
     },
     adjacent: {
-        bg: 'bg-purple-500/10 hover:bg-purple-500/20',
-        border: 'border-purple-500/20 hover:border-purple-500/40',
-        text: 'text-purple-300',
+        bg: 'bg-zinc-900/30 hover:bg-zinc-800/50',
+        border: 'border-zinc-800 hover:border-zinc-700',
+        text: 'text-zinc-400 group-hover:text-zinc-200',
         label: 'Adjacent Strategy',
     },
     execution: {
-        bg: 'bg-emerald-500/10 hover:bg-emerald-500/20',
-        border: 'border-emerald-500/20 hover:border-emerald-500/40',
-        text: 'text-emerald-300',
+        bg: 'bg-zinc-900/30 hover:bg-zinc-800/50',
+        border: 'border-zinc-800 hover:border-zinc-700',
+        text: 'text-zinc-400 group-hover:text-zinc-200',
         label: 'Execution',
     },
 }

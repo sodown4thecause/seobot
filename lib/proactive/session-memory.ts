@@ -6,7 +6,7 @@
  */
 
 import { db } from '@/lib/db'
-import { completedTasks, messages, type Json } from '@/lib/db/schema'
+import { completedTasks, messages, agentMemory, type Json } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import type { Pillar, SuggestionCategory } from './types'
 
@@ -104,6 +104,76 @@ export class SessionMemory {
     }
 
     /**
+     * Store a persistent fact in agent memory
+     */
+    async storeMemory(
+        userId: string,
+        key: string,
+        value: any,
+        category: string = 'general',
+        conversationId?: string
+    ): Promise<void> {
+        const existing = await db
+            .select()
+            .from(agentMemory)
+            .where(and(eq(agentMemory.userId, userId), eq(agentMemory.key, key)))
+            .limit(1)
+
+        if (existing.length > 0) {
+            await db.update(agentMemory)
+                .set({
+                    value: value as Json,
+                    category,
+                    conversationId,
+                    updatedAt: new Date()
+                })
+                .where(eq(agentMemory.id, existing[0].id))
+        } else {
+            await db.insert(agentMemory).values({
+                userId,
+                key,
+                value: value as Json,
+                category,
+                conversationId,
+            })
+        }
+    }
+
+    /**
+     * Retrieve a persistent fact from agent memory
+     */
+    async getMemory(userId: string, key: string): Promise<any | null> {
+        const result = await db
+            .select()
+            .from(agentMemory)
+            .where(and(eq(agentMemory.userId, userId), eq(agentMemory.key, key)))
+            .limit(1)
+
+        return result.length > 0 ? result[0].value : null
+    }
+
+    /**
+     * Retrieve all memories for a user, optionally filtered by category
+     */
+    async getAllMemories(userId: string, category?: string): Promise<Record<string, any>> {
+        const conditions = [eq(agentMemory.userId, userId)]
+        if (category) {
+            conditions.push(eq(agentMemory.category, category))
+        }
+
+        const result = await db
+            .select()
+            .from(agentMemory)
+            .where(and(...conditions))
+
+        const memoryMap: Record<string, any> = {}
+        result.forEach(row => {
+            memoryMap[row.key] = row.value
+        })
+        return memoryMap
+    }
+
+    /**
      * Extract key topics from recent messages for context-aware suggestions
      */
     extractTopics(messages: ConversationMessage[]): string[] {
@@ -116,7 +186,7 @@ export class SessionMemory {
         ]
 
         for (const msg of messages) {
-            if (msg.role !== 'user') continue
+            if (msg.role !== 'user' || !msg.content) continue
 
             for (const pattern of topicPatterns) {
                 const matches = msg.content.matchAll(pattern)

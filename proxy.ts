@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
@@ -25,6 +26,19 @@ const isPublicRoute = createRouteMatcher([
 ])
 
 export default clerkMiddleware(async (auth, request) => {
+  const { userId } = await auth()
+  const url = request.nextUrl
+
+  // Redirect /chat to /dashboard (fix broken redirect)
+  if (url.pathname === '/chat') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Redirect authenticated users away from auth pages
+  if (userId && (url.pathname.startsWith('/sign-in') || url.pathname.startsWith('/sign-up'))) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
   // Protect all routes except public ones
   if (!isPublicRoute(request)) {
     await auth.protect()

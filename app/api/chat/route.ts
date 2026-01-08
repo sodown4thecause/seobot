@@ -569,7 +569,7 @@ ${(result.qaReport?.improvement_instructions?.length ?? 0) > 0 ? `\n## QA Review
       }),
       execute: async ({ topic }) => {
         console.log('[Chat API] Generating keyword suggestions for:', topic);
-        
+
         // Mock data generation based on topic
         // In a real app, this would call DataForSEO or Semrush API
         const generateMockKeywords = (seed: string) => {
@@ -604,14 +604,14 @@ ${(result.qaReport?.improvement_instructions?.length ?? 0) > 0 ? `\n## QA Review
         try {
           console.log('[Chat API] Fetching backlinks for domain via n8n:', domain);
 
-          const webhookUrl = serverEnv.N8N_BACKLINKS_WEBHOOK_URL || 'https://n8n-production-43e3.up.railway.app/webhook/get-backlinks';
+          const baseUrl = serverEnv.N8N_BACKLINKS_WEBHOOK_URL || 'https://zuded9wg.rcld.app/webhook/domain';
+          const webhookUrl = `${baseUrl}?domain=${encodeURIComponent(domain)}`;
 
           const response = await fetch(webhookUrl, {
-            method: 'POST',
+            method: 'GET',
             headers: {
-              'Content-Type': 'application/json',
+              'Accept': 'application/json',
             },
-            body: JSON.stringify({ domain }),
           });
 
           if (!response.ok) {
@@ -688,6 +688,8 @@ ${(result.qaReport?.improvement_instructions?.length ?? 0) > 0 ? `\n## QA Review
           const extractBacklinksArray = (payload: any): any[] => {
             if (Array.isArray(payload)) return payload;
             if (!payload || typeof payload !== 'object') return [];
+
+            // Direct candidates
             const candidates = [
               payload.backlinks,
               payload.links,
@@ -700,6 +702,19 @@ ${(result.qaReport?.improvement_instructions?.length ?? 0) > 0 ? `\n## QA Review
             for (const candidate of candidates) {
               if (Array.isArray(candidate)) return candidate;
             }
+
+            // Deep DataForSEO candidates (tasks -> result -> items)
+            if (Array.isArray(payload.tasks)) {
+              for (const task of payload.tasks) {
+                if (Array.isArray(task.result)) {
+                  for (const res of task.result) {
+                    if (Array.isArray(res.items)) return res.items;
+                  }
+                }
+                if (task.result && Array.isArray(task.result.items)) return task.result.items;
+              }
+            }
+
             return [];
           };
 
@@ -710,7 +725,9 @@ ${(result.qaReport?.improvement_instructions?.length ?? 0) > 0 ? `\n## QA Review
           const explicitRefDomainsCount =
             (typeof (data as any)?.referringDomainsCount === 'number' ? (data as any).referringDomainsCount : undefined) ??
             (typeof (data as any)?.referring_domains_count === 'number' ? (data as any).referring_domains_count : undefined) ??
-            (typeof (data as any)?.ref_domains_count === 'number' ? (data as any).ref_domains_count : undefined);
+            (typeof (data as any)?.ref_domains_count === 'number' ? (data as any).ref_domains_count : undefined) ??
+            // DataForSEO Nested
+            (typeof (data as any)?.tasks?.[0]?.result?.[0]?.referring_domains_count === 'number' ? (data as any).tasks[0].result[0].referring_domains_count : undefined);
 
           const derivedRefDomains = new Set<string>();
           for (const b of backlinks) {
@@ -1011,6 +1028,18 @@ ${(result.qaReport?.improvement_instructions?.length ?? 0) > 0 ? `\n## QA Review
               count: suggestions.suggestions.length,
               pillar: suggestions.currentPillar,
             });
+
+            // Collect memories for persistence
+            try {
+              await guidedWorkflowEngine.collectMemories(
+                user.id,
+                activeConversationId || '',
+                incomingMessages || []
+              );
+              console.log('[Chat API] ✓ Memories collected successfully');
+            } catch (memoryError) {
+              console.warn('[Chat API] Failed to collect memories:', memoryError);
+            }
             // Suggestions are stored in the message for frontend rendering
             // The frontend will extract these from the message metadata
           } catch (suggestionError) {

@@ -3,8 +3,25 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage as Message } from 'ai'
 import { useEffect, useRef, useState, useMemo } from 'react'
+import { useAIState } from '@/lib/context/ai-state-context'
+import { AgentHandoffCard } from './agent-handoff-card'
 import { Send, Sparkles, Copy, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { KeywordSuggestionsTable } from './tool-ui/keyword-suggestions-table'
+import { BacklinksTable } from './tool-ui/backlinks-table'
+import { SERPTable } from './tool-ui/serp-table'
+import { FirecrawlResults } from './tool-ui/firecrawl-results'
+import { KeywordArtifact } from './artifacts/keyword-artifact'
+import { BacklinkArtifact } from './artifacts/backlink-artifact'
+import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
+import { useArtifactStore } from '@/lib/artifacts/artifact-store'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation'
+import { Message as AIMessage, MessageAvatar, MessageContent } from '@/components/ai-elements/message'
+import { Response } from '@/components/ai-elements/response'
+import { Loader } from '@/components/ai-elements/loader'
+import { Shimmer } from '@/components/ai-elements/shimmer'
+import { ChatInput } from '@/components/chat/chat-input'
 
 interface ModernChatProps {
   context?: any
@@ -12,10 +29,16 @@ interface ModernChatProps {
 }
 
 export function ModernChat({ context, placeholder = "Message the AI" }: ModernChatProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { roadmap, focus, setFocus, fetchRoadmap } = useAIState()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [input, setInput] = useState('')
+  const [prevFocus, setPrevFocus] = useState<string | null>(null)
+  const [showHandoff, setShowHandoff] = useState(false)
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null)
 
+  const { artifacts, updateArtifact } = useArtifactStore()
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: '/api/chat',
@@ -60,6 +83,18 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     }
   }
 
+  const addToast = (type: ToastMessage['type'], message: string) => {
+    const id = Math.random().toString(36).substring(7)
+    setToasts(prev => [...prev, { id, type, message }])
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 5000)
+  }
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id))
+  }
+
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text)
     setCopiedId(id)
@@ -67,294 +102,180 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
   }
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    // Refresh roadmap and detect intent on completion
+    if (status === 'ready' && messages.length > 0) {
+      const lastRole = messages[messages.length - 1].role
+      if (lastRole === 'assistant') {
+        fetchRoadmap()
 
-  const renderToolInvocation = (toolInvocation: { toolName: string; state: string }, index: number) => {
-    if (toolInvocation.toolName === 'suggest_keywords') {
+        const text = getMessageText(messages[messages.length - 1]).toLowerCase()
+        let detectedFocus = null
+        if (text.includes('keyword') || text.includes('search volume')) detectedFocus = 'keyword_research'
+        else if (text.includes('competitor') || text.includes('gap')) detectedFocus = 'gap_analysis'
+        else if (text.includes('backlink') || text.includes('authority')) detectedFocus = 'link_building'
+        else if (text.includes('write') || text.includes('article')) detectedFocus = 'content_production'
+
+        if (detectedFocus && detectedFocus !== focus) {
+          setPrevFocus(focus)
+          setFocus(detectedFocus)
+          setShowHandoff(true)
+          setTimeout(() => setShowHandoff(false), 8000) // Hide after 8s
+        }
+      }
+    }
+  }, [messages, status, fetchRoadmap, focus, setFocus])
+
+  const renderToolInvocation = (toolInvocation: { toolName: string; state: string; result?: any }, index: number) => {
+    const { toolName, state, result } = toolInvocation
+    const isSuccess = state === 'result'
+    const isExecuting = state === 'call' || state === 'executing'
+    const isActive = isSuccess || isExecuting
+
+    if (toolName === 'suggest_keywords' && isActive) {
+      // Sync to artifact store
+      if (isExecuting) {
+        updateArtifact('keyword-research', { type: 'keyword', title: 'Keyword Research', status: 'streaming', data: null });
+        setActiveArtifactId('keyword-research');
+      } else if (isSuccess) {
+        updateArtifact('keyword-research', { status: 'complete', data: result });
+        addToast('success', 'Keyword research analysis complete.');
+      }
+
       return (
-        <div key={index} className="w-full my-2">
+        <div key={index} className="w-full my-4">
           <KeywordSuggestionsTable toolInvocation={toolInvocation} />
+        </div>
+      )
+    }
+
+    if (toolName === 'n8n_backlinks' && isActive) {
+      // Sync to artifact store
+      if (isExecuting) {
+        updateArtifact('backlink-analysis', { type: 'backlink', title: 'Backlink Analysis', status: 'streaming', data: null });
+        setActiveArtifactId('backlink-analysis');
+      } else if (isSuccess) {
+        updateArtifact('backlink-analysis', { status: 'complete', data: result });
+        addToast('success', 'Backlink profile analysis complete.');
+      }
+
+      return (
+        <div key={index} className="w-full my-4">
+          <BacklinksTable toolInvocation={toolInvocation} />
+        </div>
+      )
+    }
+
+    if ((toolName === 'serp_organic_live_advanced' || toolName === 'dataforseo_labs_google_serp_competitors') && isActive) {
+      return (
+        <div key={index} className="w-full my-4">
+          <SERPTable toolInvocation={toolInvocation} />
+        </div>
+      )
+    }
+
+    if ((toolName === 'firecrawl_scrape' || toolName === 'firecrawl_search') && isActive) {
+      return (
+        <div key={index} className="w-full my-4">
+          <FirecrawlResults toolInvocation={toolInvocation} />
         </div>
       )
     }
 
     // Fallback for other tools or if rendering is not implemented
     return (
-      <div key={index} className="bg-gray-800 p-2 rounded text-xs text-gray-400 my-1 font-mono">
-        Tool: {toolInvocation.toolName} ({toolInvocation.state})
+      <div key={index} className="bg-zinc-900/50 border border-zinc-800 p-3 rounded-xl text-xs text-zinc-500 my-2 font-mono flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-zinc-700 animate-pulse" />
+        Tool: <span className="text-zinc-300 font-bold">{toolName}</span> ({state})
       </div>
     )
   }
 
+  const activeArtifact = activeArtifactId ? artifacts[activeArtifactId] : null;
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      backgroundColor: '#1a1d29',
-      color: '#fff',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }}>
-      {/* Messages Area */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '16px'
-      }}>
-        {messages.length === 0 && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            gap: '12px',
-            opacity: 0.6
-          }}>
-            <Sparkles size={48} style={{ color: '#8b5cf6' }} />
-            <p style={{ fontSize: '18px', fontWeight: 500 }}>How can I help you today?</p>
-          </div>
-        )}
+    <div className="flex w-full h-full overflow-hidden bg-zinc-950">
+      {/* Main Chat Area */}
+      <div className={cn(
+        "flex flex-col h-full transition-all duration-500 ease-in-out",
+        activeArtifact ? "w-1/2 border-r border-zinc-800" : "w-full"
+      )}>
+        <Conversation className="flex-1 overflow-hidden">
+          <ConversationContent className="px-4 py-8 max-w-3xl mx-auto space-y-8">
+            {messages.map((message, idx) => (
+              <AIMessage key={message.id || idx} from={message.role as any}>
+                <MessageAvatar role={message.role as any} isUser={message.role === 'user'} />
+                <MessageContent>
+                  <Response isStreaming={status === 'streaming' && idx === messages.length - 1}>
+                    {getMessageText(message)}
+                  </Response>
 
-        {messages.map((message: any) => {
-          // Handle both simple content and tool invocations
-          // AI SDK 6 typically attaches toolInvocations to the message
-          const toolInvocations = message.toolInvocations || [];
-          const text = getMessageText(message);
+                  {(message as any).toolInvocations?.map((toolInvocation: any, tIdx: number) => (
+                    renderToolInvocation(toolInvocation, tIdx)
+                  ))}
+                </MessageContent>
+              </AIMessage>
+            ))}
+            {isLoading && (
+              <AIMessage from="assistant">
+                <MessageAvatar name="AI" />
+                <MessageContent>
+                  <Loader />
+                </MessageContent>
+              </AIMessage>
+            )}
+            <div ref={messagesEndRef} />
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
 
-          return (
-            <div
-              key={message.id}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                alignItems: message.role === 'user' ? 'flex-end' : 'flex-start',
-                width: '100%'
-              }}
-            >
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                maxWidth: message.role === 'user' ? '85%' : '100%',
-                width: message.role === 'assistant' ? '100%' : 'auto',
-                alignItems: 'flex-start',
-                flexDirection: message.role === 'user' ? 'row-reverse' : 'row'
-              }}>
-                {message.role === 'assistant' && (
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <Sparkles size={16} />
-                  </div>
-                )}
-
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  width: '100%',
-                  alignItems: message.role === 'user' ? 'flex-end' : 'flex-start',
-                }}>
-                  {text && (
-                    <div style={{
-                      backgroundColor: message.role === 'user' ? '#2d3748' : '#2a2f3f',
-                      padding: '12px 16px',
-                      borderRadius: '16px',
-                      lineHeight: '1.6',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      maxWidth: '100%' // Ensure text doesn't overflow if container is full width
-                    }}>
-                      {text}
-                    </div>
-                  )}
-
-                  {/* Render Tool Invocations */}
-                  {toolInvocations.length > 0 && (
-                    <div className="w-full mt-2">
-                      {toolInvocations.map((toolInvocation: any, index: number) =>
-                        renderToolInvocation(toolInvocation, index)
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {message.role === 'assistant' && text && (
-                  <button
-                    onClick={() => copyToClipboard(text, message.id)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '8px',
-                      borderRadius: '8px',
-                      color: copiedId === message.id ? '#10b981' : '#6b7280',
-                      transition: 'all 0.2s',
-                      opacity: 0.7,
-                      height: 'fit-content'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.opacity = '1'
-                      e.currentTarget.style.backgroundColor = '#374151'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.opacity = '0.7'
-                      e.currentTarget.style.backgroundColor = 'transparent'
-                    }}
-                  >
-                    {copiedId === message.id ? <Check size={16} /> : <Copy size={16} />}
-                  </button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-
-        {isLoading && (
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Sparkles size={16} />
-            </div>
-            <div style={{
-              backgroundColor: '#2a2f3f',
-              padding: '12px 16px',
-              borderRadius: '16px',
-              display: 'flex',
-              gap: '6px'
-            }}>
-              <div style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: '#8b5cf6',
-                animation: 'bounce 1s infinite'
-              }} />
-              <div style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: '#8b5cf6',
-                animation: 'bounce 1s infinite 0.15s'
-              }} />
-              <div style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: '#8b5cf6',
-                animation: 'bounce 1s infinite 0.3s'
-              }} />
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Area */}
-      <div style={{
-        padding: '20px',
-        borderTop: '1px solid #374151'
-      }}>
-        <form onSubmit={(e) => {
-          e.preventDefault()
-          if (input.trim() && !isLoading) {
-            console.log('[Chat] Sending message:', input)
-            handleSendMessage({ text: input })
-            setInput('')
-          }
-        }} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{
-            flex: 1,
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            <input
-              id="modern-chat-input"
-              name="modern-chat-input"
+        <div className="p-4 border-t border-zinc-900 bg-zinc-950">
+          <div className="max-w-3xl mx-auto">
+            <ChatInput
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e: any) => setInput(e.target.value)}
+              onSubmit={() => {
+                handleSendMessage({ text: input })
+                setInput('')
+              }}
               placeholder={placeholder}
-              disabled={isLoading}
-              style={{
-                width: '100%',
-                padding: '14px 48px 14px 16px',
-                backgroundColor: '#2d3748',
-                border: '1px solid #4a5568',
-                borderRadius: '12px',
-                color: '#fff',
-                fontSize: '15px',
-                outline: 'none',
-                transition: 'all 0.2s'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#8b5cf6'
-                e.target.style.backgroundColor = '#374151'
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#4a5568'
-                e.target.style.backgroundColor = '#2d3748'
-              }}
             />
-            <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              style={{
-                position: 'absolute',
-                right: '8px',
-                width: '36px',
-                height: '36px',
-                borderRadius: '8px',
-                border: 'none',
-                background: input.trim() ? 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)' : '#4a5568',
-                color: '#fff',
-                cursor: input.trim() ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s',
-                opacity: isLoading ? 0.5 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (input.trim() && !isLoading) {
-                  e.currentTarget.style.transform = 'scale(1.05)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-              }}
-            >
-              <Send size={18} />
-            </button>
           </div>
-        </form>
+        </div>
       </div>
 
-      <style jsx>{`
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-      `}</style>
+      {/* Artifact Side Panel */}
+      <AnimatePresence>
+        {activeArtifact && (
+          <motion.div
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            className="w-1/2 h-full border-l border-zinc-800 bg-zinc-950 flex flex-col relative"
+          >
+            <button
+              onClick={() => setActiveArtifactId(null)}
+              className="absolute top-4 right-4 z-50 p-2 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+            >
+              <Send className="w-4 h-4 rotate-45" /> {/* Close icon substitute */}
+            </button>
+
+            {activeArtifact.type === 'keyword' && (
+              <KeywordArtifact data={activeArtifact.data} status={activeArtifact.status} />
+            )}
+            {activeArtifact.type === 'backlink' && (
+              <BacklinkArtifact data={activeArtifact.data} status={activeArtifact.status} />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ToastArtifact toasts={toasts} onRemove={removeToast} />
+
+      {showHandoff && focus && (
+        <div className="fixed top-20 right-8 z-50 w-80 pointer-events-none">
+          <AgentHandoffCard intent={focus as any} />
+        </div>
+      )}
     </div>
   )
 }

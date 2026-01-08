@@ -111,6 +111,38 @@ export class GuidedWorkflowEngine {
     }
 
     /**
+     * Collect and store important facts from messages into agent memory
+     */
+    async collectMemories(userId: string, conversationId: string, messages: any[]): Promise<void> {
+        // Extract topics using session memory logic
+        const topics = sessionMemory.extractTopics(messages)
+
+        // Store common patterns as specific memories
+        for (const topic of topics) {
+            const topicLower = topic.toLowerCase()
+
+            // Domain detection
+            if (topicLower.includes('.') && (topicLower.startsWith('www') || topicLower.endsWith('.com') || topicLower.endsWith('.io') || topicLower.endsWith('.ai'))) {
+                await sessionMemory.storeMemory(userId, 'target_domain', topic, 'domain', conversationId)
+            }
+            // Competitor detection
+            else if (topicLower.includes('competitor') || topicLower.includes('vs')) {
+                const competitors = await sessionMemory.getMemory(userId, 'competitors') || []
+                if (Array.isArray(competitors) && !competitors.includes(topic)) {
+                    await sessionMemory.storeMemory(userId, 'competitors', [...competitors, topic], 'competitor', conversationId)
+                }
+            }
+            // Keyword detection
+            else {
+                const keywords = await sessionMemory.getMemory(userId, 'primary_keywords') || []
+                if (Array.isArray(keywords) && !keywords.includes(topic)) {
+                    await sessionMemory.storeMemory(userId, 'primary_keywords', [...keywords, topic].slice(0, 10), 'keyword', conversationId)
+                }
+            }
+        }
+    }
+
+    /**
      * Detect which task was completed from assistant response
      */
     detectCompletedTask(

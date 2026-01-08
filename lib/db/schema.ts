@@ -4,7 +4,19 @@
  * Migrated from Supabase - all 13 tables with pgvector support
  */
 
-import { pgTable, text, timestamp, jsonb, integer, real, uuid, vector, boolean, primaryKey } from 'drizzle-orm/pg-core'
+import {
+    pgTable,
+    text,
+    timestamp,
+    uuid,
+    integer,
+    jsonb,
+    boolean,
+    index,
+    vector,
+    real,
+    primaryKey,
+} from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
 // ============================================================================
@@ -265,6 +277,25 @@ export const contentLearnings = pgTable('content_learnings', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+/**
+ * Agent Memory - Persistent key-value store for agent context
+ * Stores domain-specific facts, user preferences, and learned behaviors
+ */
+export const agentMemory = pgTable('agent_memory', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    conversationId: text('conversation_id'),
+    key: text('key').notNull(),
+    value: jsonb('value').$type<Json>().notNull(),
+    category: text('category').default('general').notNull(), // e.g., 'domain', 'competitor', 'user_preference'
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        userKeyIdx: index('user_key_idx').on(table.userId, table.key),
+    }
+})
+
 // ============================================================================
 // USAGE & LIMITS TABLES
 // ============================================================================
@@ -457,3 +488,6 @@ export type NewUserRoadmapProgress = typeof userRoadmapProgress.$inferInsert
 
 export type CompletedTask = typeof completedTasks.$inferSelect
 export type NewCompletedTask = typeof completedTasks.$inferInsert
+
+export type AgentMemory = typeof agentMemory.$inferSelect
+export type NewAgentMemory = typeof agentMemory.$inferInsert

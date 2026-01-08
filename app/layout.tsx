@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
+import { AIStateProvider } from '@/lib/context/ai-state-context';
 
 const notoSans = Noto_Sans({
   subsets: ["latin"],
@@ -107,7 +108,9 @@ export default function RootLayout({
             <body
               className={`${notoSans.variable} font-sans antialiased`}
             >
-              {children}
+              <AIStateProvider>
+                {children}
+              </AIStateProvider>
             </body>
           </html>
         </ClerkProvider>

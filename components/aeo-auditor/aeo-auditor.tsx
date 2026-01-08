@@ -106,8 +106,10 @@ export function AEOAuditor() {
           </h2>
           <p className="text-zinc-400 text-xl md:text-2xl font-light max-w-3xl mx-auto leading-tight uppercase tracking-tight">
             Discover how ChatGPT, Perplexity, and Google AI perceive your brand.
-            <span className="block font-mono text-sm mt-4 text-white font-bold tracking-[0.2em] bg-white/5 py-3 inline-block px-6 border border-white/10">GET ACTIONABLE FIXES IN 30 SECONDS</span>
           </p>
+          <div className="mt-6">
+            <span className="font-mono text-sm text-white font-bold tracking-[0.2em] bg-white/5 py-3 px-6 border border-white/10 inline-block">GET ACTIONABLE FIXES IN 30 SECONDS</span>
+          </div>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
