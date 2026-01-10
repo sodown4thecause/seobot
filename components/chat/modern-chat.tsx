@@ -20,7 +20,6 @@ import { Conversation, ConversationContent, ConversationScrollButton } from '@/c
 import { Message as AIMessage, MessageAvatar, MessageContent } from '@/components/ai-elements/message'
 import { Response } from '@/components/ai-elements/response'
 import { Loader } from '@/components/ai-elements/loader'
-import { Shimmer } from '@/components/ai-elements/shimmer'
 import { ChatInput } from '@/components/chat/chat-input'
 
 interface ModernChatProps {
@@ -29,16 +28,18 @@ interface ModernChatProps {
 }
 
 export function ModernChat({ context, placeholder = "Message the AI" }: ModernChatProps) {
-  const { roadmap, focus, setFocus, fetchRoadmap } = useAIState()
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const { focus, setFocus, fetchRoadmap } = useAIState()
   const [input, setInput] = useState('')
-  const [prevFocus, setPrevFocus] = useState<string | null>(null)
+
   const [showHandoff, setShowHandoff] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null)
 
   const { artifacts, updateArtifact } = useArtifactStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const handoffTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const toastTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
+  
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: '/api/chat',
@@ -50,7 +51,6 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     messages,
     sendMessage,
     status,
-    error,
   } = useChat({
     transport,
     onError: (err: any) => {
@@ -59,22 +59,42 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     },
   })
 
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (handoffTimeoutRef.current) clearTimeout(handoffTimeoutRef.current)
+      toastTimeoutsRef.current.forEach(timeout => clearTimeout(timeout))
+      toastTimeoutsRef.current.clear()
+    }
+  }, [])
+
+  // Cache for message text to avoid repeated filtering/mapping
+  const messageTextCache = useRef(new WeakMap<object, string>())
+
   // Safely access properties
   const isLoading = status === 'streaming' || status === 'submitted'
 
   const getMessageText = (message: any): string => {
-    if (typeof message.content === 'string' && message.content.trim().length > 0) {
-      return message.content
+    // Check cache first
+    const cached = messageTextCache.current.get(message)
+    if (cached !== undefined) {
+      return cached
     }
 
-    if (Array.isArray(message.parts)) {
-      return message.parts
+    let result = ''
+
+    if (typeof message.content === 'string' && message.content.trim().length > 0) {
+      result = message.content
+    } else if (Array.isArray(message.parts)) {
+      result = message.parts
         .filter((part: any) => part?.type === 'text' && typeof part.text === 'string')
         .map((part: any) => part.text)
         .join('')
     }
 
-    return ''
+    // Cache the result
+    messageTextCache.current.set(message, result)
+    return result
   }
 
   const handleSendMessage = (data: { text: string }) => {
@@ -86,19 +106,24 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
   const addToast = (type: ToastMessage['type'], message: string) => {
     const id = Math.random().toString(36).substring(7)
     setToasts(prev => [...prev, { id, type, message }])
-    setTimeout(() => {
+    
+    const timeoutId = setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
+      toastTimeoutsRef.current.delete(id)
     }, 5000)
+    
+    toastTimeoutsRef.current.set(id, timeoutId)
   }
 
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id))
-  }
-
-  const copyToClipboard = async (text: string, id: string) => {
-    await navigator.clipboard.writeText(text)
-    setCopiedId(id)
-    setTimeout(() => setCopiedId(null), 2000)
+    
+    // Clear the timeout if it exists
+    const timeoutId = toastTimeoutsRef.current.get(id)
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+      toastTimeoutsRef.current.delete(id)
+    }
   }
 
   useEffect(() => {
@@ -116,31 +141,80 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
         else if (text.includes('write') || text.includes('article')) detectedFocus = 'content_production'
 
         if (detectedFocus && detectedFocus !== focus) {
-          setPrevFocus(focus)
+          // Clear any existing handoff timeout
+          if (handoffTimeoutRef.current) {
+            clearTimeout(handoffTimeoutRef.current)
+          }
+
           setFocus(detectedFocus)
           setShowHandoff(true)
-          setTimeout(() => setShowHandoff(false), 8000) // Hide after 8s
+          handoffTimeoutRef.current = setTimeout(() => setShowHandoff(false), 8000) // Hide after 8s
         }
       }
     }
   }, [messages, status, fetchRoadmap, focus, setFocus])
 
+  // Artifact Synchronization - Handle side effects outside render
+  useEffect(() => {
+    messages.forEach((message: any) => {
+      const toolInvocations = message.toolInvocations
+      if (!toolInvocations || !Array.isArray(toolInvocations)) return
+
+      toolInvocations.forEach((tool: any) => {
+        const isSuccess = tool.state === 'result'
+        const isExecuting = tool.state === 'call' || tool.state === 'executing'
+        const isActive = isSuccess || isExecuting
+
+        if (!isActive) return
+
+        // Handle keyword research tool
+        if (tool.toolName === 'suggest_keywords') {
+          if (isExecuting) {
+            updateArtifact('keyword-research', { 
+              type: 'keyword', 
+              title: 'Keyword Research', 
+              status: 'streaming', 
+              data: null 
+            })
+            setActiveArtifactId('keyword-research')
+          } else if (isSuccess) {
+            updateArtifact('keyword-research', { 
+              status: 'complete', 
+              data: tool.result 
+            })
+            addToast('success', 'Keyword research analysis complete.')
+          }
+        }
+
+        // Handle backlinks tool
+        if (tool.toolName === 'n8n_backlinks') {
+          if (isExecuting) {
+            updateArtifact('backlink-analysis', { 
+              type: 'backlink', 
+              title: 'Backlink Analysis', 
+              status: 'streaming', 
+              data: null 
+            })
+            setActiveArtifactId('backlink-analysis')
+          } else if (isSuccess) {
+            updateArtifact('backlink-analysis', { 
+              status: 'complete', 
+              data: tool.result 
+            })
+            addToast('success', 'Backlink profile analysis complete.')
+          }
+        }
+      })
+    })
+  }, [messages, updateArtifact, addToast])
+
   const renderToolInvocation = (toolInvocation: { toolName: string; state: string; result?: any }, index: number) => {
-    const { toolName, state, result } = toolInvocation
+    const { toolName, state } = toolInvocation
     const isSuccess = state === 'result'
     const isExecuting = state === 'call' || state === 'executing'
     const isActive = isSuccess || isExecuting
 
     if (toolName === 'suggest_keywords' && isActive) {
-      // Sync to artifact store
-      if (isExecuting) {
-        updateArtifact('keyword-research', { type: 'keyword', title: 'Keyword Research', status: 'streaming', data: null });
-        setActiveArtifactId('keyword-research');
-      } else if (isSuccess) {
-        updateArtifact('keyword-research', { status: 'complete', data: result });
-        addToast('success', 'Keyword research analysis complete.');
-      }
-
       return (
         <div key={index} className="w-full my-4">
           <KeywordSuggestionsTable toolInvocation={toolInvocation} />
@@ -149,15 +223,6 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     }
 
     if (toolName === 'n8n_backlinks' && isActive) {
-      // Sync to artifact store
-      if (isExecuting) {
-        updateArtifact('backlink-analysis', { type: 'backlink', title: 'Backlink Analysis', status: 'streaming', data: null });
-        setActiveArtifactId('backlink-analysis');
-      } else if (isSuccess) {
-        updateArtifact('backlink-analysis', { status: 'complete', data: result });
-        addToast('success', 'Backlink profile analysis complete.');
-      }
-
       return (
         <div key={index} className="w-full my-4">
           <BacklinksTable toolInvocation={toolInvocation} />

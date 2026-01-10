@@ -8,6 +8,13 @@
       "when": 1767160870515,
       "tag": "0000_damp_famine",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767160870516,
+      "tag": "0003_add_new_tables",
+      "breakpoints": true
     }
   ]
 }

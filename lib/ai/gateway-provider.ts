@@ -6,36 +6,36 @@ import { createGateway } from '@ai-sdk/gateway';
 import { serverEnv } from '@/lib/config/env';
 
 // Initialize providers conditionally
-const google = serverEnv.GOOGLE_API_KEY 
+const google = serverEnv.GOOGLE_API_KEY
   ? createGoogleGenerativeAI({
-      apiKey: serverEnv.GOOGLE_API_KEY,
-    })
+    apiKey: serverEnv.GOOGLE_API_KEY,
+  })
   : null;
 
 const openai = serverEnv.OPENAI_API_KEY
   ? createOpenAI({
-      apiKey: serverEnv.OPENAI_API_KEY,
-    })
+    apiKey: serverEnv.OPENAI_API_KEY,
+  })
   : null;
 
 const anthropic = serverEnv.ANTHROPIC_API_KEY
   ? createAnthropic({
-      apiKey: serverEnv.ANTHROPIC_API_KEY,
-    })
+    apiKey: serverEnv.ANTHROPIC_API_KEY,
+  })
   : null;
 
 const deepseek = serverEnv.DEEPSEEK_API_KEY
   ? createDeepSeek({
-      apiKey: serverEnv.DEEPSEEK_API_KEY,
-    })
+    apiKey: serverEnv.DEEPSEEK_API_KEY,
+  })
   : null;
 
 // Vercel AI Gateway client (use @ai-sdk/gateway, not @ai-sdk/openai)
 const gateway = serverEnv.AI_GATEWAY_API_KEY
   ? createGateway({
-      apiKey: serverEnv.AI_GATEWAY_API_KEY,
-      baseURL: serverEnv.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1/ai',
-    })
+    apiKey: serverEnv.AI_GATEWAY_API_KEY,
+    baseURL: serverEnv.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1/ai',
+  })
   : null;
 
 
@@ -46,8 +46,8 @@ export const vercelGateway = {
     console.log('[Gateway] OpenAI configured:', !!openai);
     console.log('[Gateway] Google configured:', !!google);
     console.log('[Gateway] Anthropic configured:', !!anthropic);
-    console.log('[Gateway] DeepSeek configured:', !!deepseek);
-    
+    console.log('[Gateway] Moonshot (via Gateway) configured:', !!gateway);
+
     // OpenAI models
     if (modelId.startsWith('openai/')) {
       if (openai) {
@@ -87,7 +87,7 @@ export const vercelGateway = {
       throw new Error('Neither ANTHROPIC_API_KEY nor AI_GATEWAY_API_KEY is configured');
     }
 
-    // DeepSeek models
+    // DeepSeek models (legacy support)
     if (modelId.startsWith('deepseek/')) {
       if (deepseek) {
         console.log('[Gateway] Using DeepSeek provider for:', modelId);
@@ -99,19 +99,28 @@ export const vercelGateway = {
       }
       throw new Error('Neither DEEPSEEK_API_KEY nor AI_GATEWAY_API_KEY is configured');
     }
-    
+
+    // Moonshot AI models (Kimi K2)
+    if (modelId.startsWith('moonshotai/')) {
+      if (gateway) {
+        console.log('[Gateway] Using gateway for Moonshot model:', modelId);
+        return gateway(modelId);
+      }
+      throw new Error('AI_GATEWAY_API_KEY is required for Moonshot AI models');
+    }
+
     // Try gateway for other models
     if (gateway) {
-       console.log('[Gateway] Using gateway for:', modelId);
-       return gateway(modelId);
+      console.log('[Gateway] Using gateway for:', modelId);
+      return gateway(modelId);
     }
-    
+
     throw new Error(`Unsupported model ID: ${modelId} or missing configuration (Gateway/API Keys)`);
   },
 
   textEmbeddingModel(modelId: string): any {
     console.log('[Gateway] Requested embedding model:', modelId);
-    
+
     // Only OpenAI embeddings supported (text-embedding-3-small)
     if (modelId.startsWith('openai/')) {
       // Prefer Gateway for OpenAI embeddings (for monitoring/caching)
@@ -126,7 +135,7 @@ export const vercelGateway = {
       }
       throw new Error('Neither AI_GATEWAY_API_KEY nor OPENAI_API_KEY is configured for embeddings');
     }
-    
+
     throw new Error(`Unsupported embedding model: ${modelId}. Only OpenAI embeddings are supported.`);
   },
 
@@ -142,7 +151,7 @@ export const vercelGateway = {
         console.warn('[Gateway] Gateway imageModel failed, falling back to direct providers', error);
       }
     }
-    
+
     if (modelId.startsWith('google/')) {
       if (google) {
         console.log('[Gateway] Using Google provider for image:', modelId);
@@ -158,7 +167,7 @@ export const vercelGateway = {
       }
       throw new Error('OpenAI API key required for image generation');
     }
-    
+
     throw new Error(`Unsupported image model ID: ${modelId}`);
   }
 };

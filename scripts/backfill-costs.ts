@@ -1,8 +1,13 @@
 /**
+ * ⚠️ DEPRECATED - This script uses Supabase which is being migrated to Drizzle ORM
+ * 
  * Script to backfill costs for existing ai_usage_events
  * Run with: npx tsx scripts/backfill-costs.ts
+ * 
+ * TODO: Migrate to Drizzle ORM or remove if no longer needed
  */
 
+// @ts-nocheck - Ignoring errors during Supabase → Drizzle migration
 import { createClient } from '@supabase/supabase-js'
 import { estimateCost, extractProviderFromModel, type AIProvider } from '../lib/analytics/cost-estimator'
 

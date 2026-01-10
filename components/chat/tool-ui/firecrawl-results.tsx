@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Globe, FileText, ChevronRight, Hash, Link as LinkIcon, ExternalLink } from "lucide-react"
+import { Globe, FileText, ExternalLink } from "lucide-react"
 
 interface FirecrawlResultsProps {
     toolInvocation: any

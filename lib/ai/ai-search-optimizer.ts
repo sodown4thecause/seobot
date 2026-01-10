@@ -53,8 +53,8 @@ export class AISearchOptimizer {
       const combined = aiVolumes.map(ai => {
         const traditionalVolume = traditionalVolumes?.[ai.keyword] || 0
         const aiTotalVolume = ai.chatgptVolume + ai.perplexityVolume
-        const aiVsTraditionalRatio = traditionalVolume > 0 
-          ? aiTotalVolume / traditionalVolume 
+        const aiVsTraditionalRatio = traditionalVolume > 0
+          ? aiTotalVolume / traditionalVolume
           : aiTotalVolume > 0 ? 10 : 0 // If no traditional data but AI volume exists, assume high ratio
 
         const aiOpportunityScore = this.calculateAIOpportunityScore(
@@ -80,8 +80,8 @@ export class AISearchOptimizer {
       const totalTraditionalVolume = combined.reduce((sum, k) => sum + k.traditionalVolume, 0)
       const avgOpportunityScore = combined.reduce((sum, k) => sum + k.aiOpportunityScore, 0) / combined.length
       const highOpportunityCount = combined.filter(k => k.aiOpportunityScore >= 70).length
-      const overallRatio = totalTraditionalVolume > 0 
-        ? totalAIVolume / totalTraditionalVolume 
+      const overallRatio = totalTraditionalVolume > 0
+        ? totalAIVolume / totalTraditionalVolume
         : totalAIVolume > 0 ? 10 : 0
 
       // Get top opportunities
@@ -162,11 +162,31 @@ export class AISearchOptimizer {
 
       const items = taskData.result[0].items || []
 
-      return items.map((item: any) => ({
-        keyword: item.keyword || '',
-        chatgptVolume: item.chatgpt_search_volume || item.chatgpt || 0,
-        perplexityVolume: item.perplexity_search_volume || item.perplexity || 0,
-      }))
+      // Create a map for fast lookup by keyword (case-insensitive)
+      const itemMap = new Map<string, any>()
+      items.forEach((item: any) => {
+        if (item.keyword) {
+          itemMap.set(item.keyword.toLowerCase(), item)
+        }
+      })
+
+      // Map over input keywords to preserve order and handle missing data
+      return keywords.map((keyword) => {
+        const item = itemMap.get(keyword.toLowerCase())
+        if (item) {
+          return {
+            keyword, // Use input keyword to preserve original casing
+            chatgptVolume: item.chatgpt_search_volume || item.chatgpt || 0,
+            perplexityVolume: item.perplexity_search_volume || item.perplexity || 0,
+          }
+        }
+        // Keyword not found in API response - return zeros
+        return {
+          keyword,
+          chatgptVolume: 0,
+          perplexityVolume: 0,
+        }
+      })
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw error
@@ -299,7 +319,7 @@ export class AISearchOptimizer {
     return aiVolumes.map(ai => {
       const traditional = traditionalVolumes[ai.keyword] || 0
       const difference = ai.aiTotalVolume - traditional
-      const percentage = traditional > 0 
+      const percentage = traditional > 0
         ? ((difference / traditional) * 100)
         : ai.aiTotalVolume > 0 ? 100 : 0
 

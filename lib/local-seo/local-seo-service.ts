@@ -8,16 +8,169 @@ const google = createGoogleGenerativeAI({
 })
 
 // TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
-const createChainableStub = (): any => {
-  const stub: any = () => stub
-  stub.from = stub; stub.select = stub; stub.insert = stub; stub.update = stub; stub.delete = stub
-  stub.eq = stub; stub.neq = stub; stub.gt = stub; stub.gte = stub; stub.lt = stub; stub.lte = stub
-  stub.order = stub; stub.limit = stub; stub.single = stub; stub.maybeSingle = stub
-  stub.then = (resolve: any) => resolve({ data: [], error: null })
-  return stub
+// In-memory store for development/testing only - NOT for production use
+const inMemoryProfiles = new Map<string, LocalSEOProfile>()
+
+function throwNotImplemented(method: string): never {
+  console.error(`[Local SEO Service] Database operation '${method}' called - Service not implemented. Migrate to Drizzle ORM.`)
+  throw new Error(`Local SEO Service database operation '${method}' not available. Please migrate to Drizzle ORM.`)
 }
-const supabase = createChainableStub()
-const createAdminClient = () => supabase
+
+function createAdminClient() {
+  return {
+    from: (table: string) => {
+      if (table === 'local_seo_profiles') {
+        return {
+          select: () => ({
+            eq: (field: string, value: string) => ({
+              single: async () => {
+                const profile = Array.from(inMemoryProfiles.values()).find(p => p.userId === value)
+                if (!profile) {
+                  return { data: null, error: { message: 'Profile not found' } }
+                }
+                return { 
+                  data: {
+                    id: profile.id,
+                    user_id: profile.userId,
+                    business_name: profile.businessName,
+                    business_category: profile.businessCategory,
+                    business_address: profile.businessAddress,
+                    business_phone: profile.businessPhone,
+                    business_website: profile.businessWebsite,
+                    google_business_profile_id: profile.googleBusinessProfileId,
+                    business_hours: profile.businessHours,
+                    services_offered: profile.servicesOffered,
+                    service_areas: profile.serviceAreas,
+                    photos: profile.photos,
+                    reviews: profile.reviews,
+                    local_keywords: profile.localKeywords,
+                    competitor_businesses: profile.competitorBusinesses,
+                    citation_sources: profile.citationSources,
+                    seo_score: profile.seoScore,
+                    optimization_tasks: profile.optimizationTasks,
+                    metadata: profile.metadata,
+                    created_at: profile.createdAt,
+                    updated_at: profile.updatedAt
+                  },
+                  error: null 
+                }
+              }
+            })
+          }),
+          insert: (data: any) => ({
+            select: () => ({
+              single: async () => {
+                const profile: LocalSEOProfile = {
+                  id: `profile_${Date.now()}`,
+                  userId: data.user_id,
+                  businessName: data.business_name,
+                  businessCategory: data.business_category,
+                  businessAddress: data.business_address,
+                  businessPhone: data.business_phone,
+                  businessWebsite: data.business_website,
+                  googleBusinessProfileId: data.google_business_profile_id,
+                  businessHours: data.business_hours,
+                  servicesOffered: data.services_offered,
+                  serviceAreas: data.service_areas,
+                  photos: data.photos || [],
+                  reviews: data.reviews || { rating: 0, count: 0, recentReviews: [], averageResponseTime: 0, responseRate: 0 },
+                  localKeywords: data.local_keywords || [],
+                  competitorBusinesses: data.competitor_businesses || [],
+                  citationSources: data.citation_sources || [],
+                  seoScore: data.seo_score || 0,
+                  optimizationTasks: data.optimization_tasks || [],
+                  metadata: data.metadata || {},
+                  createdAt: data.created_at || new Date().toISOString(),
+                  updatedAt: data.updated_at || new Date().toISOString()
+                }
+                inMemoryProfiles.set(profile.id, profile)
+                return {
+                  data: {
+                    id: profile.id,
+                    user_id: profile.userId,
+                    business_name: profile.businessName,
+                    business_category: profile.businessCategory,
+                    business_address: profile.businessAddress,
+                    business_phone: profile.businessPhone,
+                    business_website: profile.businessWebsite,
+                    google_business_profile_id: profile.googleBusinessProfileId,
+                    business_hours: profile.businessHours,
+                    services_offered: profile.servicesOffered,
+                    service_areas: profile.serviceAreas,
+                    photos: profile.photos,
+                    reviews: profile.reviews,
+                    local_keywords: profile.localKeywords,
+                    competitor_businesses: profile.competitorBusinesses,
+                    citation_sources: profile.citationSources,
+                    seo_score: profile.seoScore,
+                    optimization_tasks: profile.optimizationTasks,
+                    metadata: profile.metadata,
+                    created_at: profile.createdAt,
+                    updated_at: profile.updatedAt
+                  },
+                  error: null
+                }
+              }
+            })
+          }),
+          update: (data: any) => ({
+            eq: (field: string, value: string) => ({
+              select: () => ({
+                single: async () => {
+                  const existing = Array.from(inMemoryProfiles.values()).find(p => p.id === value)
+                  if (!existing) {
+                    return { data: null, error: { message: 'Profile not found' } }
+                  }
+                  const updated = {
+                    ...existing,
+                    ...Object.fromEntries(
+                      Object.entries(data).map(([k, v]) => [
+                        k,
+                        k === 'business_name' ? data.business_name :
+                        k === 'business_category' ? data.business_category :
+                        k === 'user_id' ? data.user_id :
+                        v
+                      ])
+                    ),
+                    updatedAt: new Date().toISOString()
+                  }
+                  inMemoryProfiles.set(existing.id, updated as LocalSEOProfile)
+                  return {
+                    data: {
+                      id: updated.id,
+                      user_id: updated.userId,
+                      business_name: updated.businessName,
+                      business_category: updated.businessCategory,
+                      business_address: updated.businessAddress,
+                      business_phone: updated.businessPhone,
+                      business_website: updated.businessWebsite,
+                      google_business_profile_id: updated.googleBusinessProfileId,
+                      business_hours: updated.businessHours,
+                      services_offered: updated.servicesOffered,
+                      service_areas: updated.serviceAreas,
+                      photos: updated.photos,
+                      reviews: updated.reviews,
+                      local_keywords: updated.localKeywords,
+                      competitor_businesses: updated.competitorBusinesses,
+                      citation_sources: updated.citationSources,
+                      seo_score: updated.seoScore,
+                      optimization_tasks: updated.optimizationTasks,
+                      metadata: updated.metadata,
+                      created_at: updated.createdAt,
+                      updated_at: updated.updatedAt
+                    },
+                    error: null
+                  }
+                }
+              })
+            })
+          })
+        }
+      }
+      throwNotImplemented(`table: ${table}`)
+    }
+  }
+}
 
 export interface LocalSEOProfile {
   id: string

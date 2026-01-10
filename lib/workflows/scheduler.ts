@@ -24,6 +24,44 @@ export interface WorkflowSchedule {
 // In-memory schedule storage (temporary until Drizzle migration)
 const scheduleStore = new Map<string, WorkflowSchedule>()
 
+// Sorted array for efficient due schedule retrieval - O(k) instead of O(n)
+// Sorted by nextRunAt ascending (earliest first)
+let sortedSchedules: WorkflowSchedule[] = []
+
+/**
+ * Insert a schedule into the sorted array maintaining order
+ */
+function insertSortedSchedule(schedule: WorkflowSchedule): void {
+  if (!schedule.nextRunAt) return
+
+  // Binary search for insertion point
+  let left = 0
+  let right = sortedSchedules.length
+
+  while (left < right) {
+    const mid = Math.floor((left + right) / 2)
+    const midTime = sortedSchedules[mid].nextRunAt?.getTime() || Infinity
+
+    if (midTime < schedule.nextRunAt.getTime()) {
+      left = mid + 1
+    } else {
+      right = mid
+    }
+  }
+
+  sortedSchedules.splice(left, 0, schedule)
+}
+
+/**
+ * Remove a schedule from the sorted array
+ */
+function removeSortedSchedule(scheduleId: string): void {
+  const index = sortedSchedules.findIndex(s => s.id === scheduleId)
+  if (index !== -1) {
+    sortedSchedules.splice(index, 1)
+  }
+}
+
 export class WorkflowScheduler {
   private userId: string | null = null
 
@@ -59,22 +97,33 @@ export class WorkflowScheduler {
     }
 
     scheduleStore.set(id, schedule)
+
+    // Insert into sorted array for efficient retrieval
+    insertSortedSchedule(schedule)
+
     return schedule
   }
 
   /**
    * Get schedules due for execution
-   * TODO: Implement with Drizzle
+   * Optimized: Uses sorted array for O(k) retrieval where k = due schedules
    */
   async getDueSchedules(): Promise<WorkflowSchedule[]> {
     const now = new Date()
     const due: WorkflowSchedule[] = []
 
-    scheduleStore.forEach((schedule) => {
-      if (schedule.enabled && schedule.nextRunAt && schedule.nextRunAt <= now) {
+    // Iterate sorted array - since sorted by nextRunAt, we can stop early
+    for (const schedule of sortedSchedules) {
+      // If this schedule is not due yet, no later ones will be either
+      if (!schedule.nextRunAt || schedule.nextRunAt > now) {
+        break
+      }
+
+      // Only include enabled schedules
+      if (schedule.enabled) {
         due.push(schedule)
       }
-    })
+    }
 
     return due
   }
@@ -87,10 +136,18 @@ export class WorkflowScheduler {
     const schedule = scheduleStore.get(scheduleId)
     if (!schedule) return
 
+    // Remove from sorted array before updating
+    removeSortedSchedule(scheduleId)
+
     const nextRunAt = this.calculateNextRun(schedule.scheduleType, schedule.scheduleConfig)
     schedule.lastRunAt = new Date()
     schedule.nextRunAt = nextRunAt || undefined
     schedule.runCount += 1
+
+    // Re-insert into sorted array with new nextRunAt
+    if (schedule.nextRunAt) {
+      insertSortedSchedule(schedule)
+    }
   }
 
   /**

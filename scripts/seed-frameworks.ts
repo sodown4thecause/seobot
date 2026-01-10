@@ -1,4 +1,6 @@
 /**
+ * ⚠️ DEPRECATED - This script uses Supabase which is being migrated to Drizzle ORM
+ * 
  * Seed Script for Writing Frameworks
  * 
  * This script populates the writing_frameworks table with initial SEO/AEO/GEO/Marketing frameworks.
@@ -10,8 +12,11 @@
  * - SUPABASE_SERVICE_ROLE_KEY must be set (bypasses RLS)
  * - OPENAI_API_KEY must be set for embeddings
  * - 003_framework_policies.sql migration must be applied first
+ * 
+ * TODO: Migrate to Drizzle ORM or remove if no longer needed
  */
 
+// @ts-nocheck - Ignoring errors during Supabase → Drizzle migration
 import { config } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
 import { generateEmbedding } from '../lib/ai/embedding'

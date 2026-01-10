@@ -1,15 +1,13 @@
 /**
  * Tutorial Milestone Service
  * Handles milestone tracking, badge awards, and achievement system
- * 
- * TODO: Migrate to Drizzle ORM once milestone tables are created
- * Currently uses in-memory storage after Supabase removal
+ *
+ * Uses Drizzle ORM for persistent storage via userProgress table
  */
 
 import type { TutorialMilestone } from './types'
-
-// In-memory storage for user progress (temporary until Drizzle migration)
-const userProgressStore = new Map<string, { badges: Badge[]; milestones: string[]; points: number }>()
+import { db, userProgress } from '@/lib/db'
+import { eq, and } from 'drizzle-orm'
 
 export interface Milestone {
   id: string
@@ -231,18 +229,10 @@ export class MilestoneService {
         )
 
         if (requirementMet) {
-          // Award badge
+          // Award badge (saves to database immediately)
           const badge = await this.awardBadge(userId, milestone)
           newlyEarned.push(badge)
-          progress.completedMilestones.push(milestone.id)
-          progress.earnedBadges.push(badge)
-          progress.totalPoints += milestone.reward.points || 0
         }
-      }
-
-      // Update user progress
-      if (newlyEarned.length > 0) {
-        await this.updateUserProgress(userId, progress)
       }
 
       return newlyEarned
@@ -308,7 +298,7 @@ export class MilestoneService {
 
   /**
    * Award a badge to a user
-   * TODO: Implement with Drizzle
+   * Saves to database using userProgress table
    */
   private async awardBadge(userId: string, milestone: Milestone): Promise<Badge> {
     const badge: Badge = {
@@ -321,27 +311,65 @@ export class MilestoneService {
       earnedAt: new Date(),
     }
 
-    // Save to in-memory store (temporary)
-    if (!userProgressStore.has(userId)) {
-      userProgressStore.set(userId, { badges: [], milestones: [], points: 0 })
+    try {
+      // Save badge to database
+      await db.insert(userProgress).values({
+        userId,
+        category: 'milestone_badge',
+        itemKey: milestone.id,
+        metadata: {
+          badge: badge.name,
+          badgeIcon: badge.icon,
+          description: badge.description,
+          rarity: badge.rarity,
+          points: milestone.reward.points || 0,
+          unlocks: milestone.reward.unlocks || [],
+        },
+      })
+    } catch (error) {
+      console.error('[MilestoneService] Failed to save badge:', error)
+      throw error
     }
-    const progress = userProgressStore.get(userId)!
-    progress.badges.push(badge)
-    progress.milestones.push(milestone.id)
-    progress.points += milestone.reward.points || 0
 
     return badge
   }
 
   /**
-   * Get user's milestone progress
-   * TODO: Implement with Drizzle
+   * Get user's milestone progress from database
    */
   async getUserProgress(userId: string): Promise<UserMilestoneProgress> {
     try {
-      const stored = userProgressStore.get(userId)
-      const earnedBadges = stored?.badges || []
-      const totalPoints = stored?.points || 0
+      // Query all milestone badges for this user
+      const badges = await db
+        .select()
+        .from(userProgress)
+        .where(and(
+          eq(userProgress.userId, userId),
+          eq(userProgress.category, 'milestone_badge')
+        ))
+
+      // Convert database records to Badge objects
+      const earnedBadges: Badge[] = badges.map(record => {
+        const metadata = record.metadata as Record<string, unknown>
+        return {
+          id: record.itemKey,
+          name: (metadata?.badge as string) || '',
+          description: (metadata?.description as string) || '',
+          icon: (metadata?.badgeIcon as string) || '',
+          category: 'milestone',
+          rarity: (metadata?.rarity as Badge['rarity']) || 'common',
+          earnedAt: record.completedAt,
+        }
+      })
+
+      // Calculate total points from all badges
+      const totalPoints = badges.reduce((sum, record) => {
+        const metadata = record.metadata as Record<string, unknown>
+        return sum + ((metadata?.points as number) || 0)
+      }, 0)
+
+      // Get completed milestone IDs
+      const completedMilestones = badges.map(record => record.itemKey)
 
       // Calculate level (every 100 points = 1 level)
       const level = Math.floor(totalPoints / 100) + 1
@@ -350,13 +378,13 @@ export class MilestoneService {
       return {
         userId,
         earnedBadges,
-        completedMilestones: stored?.milestones || [],
+        completedMilestones,
         totalPoints,
         level,
         nextLevelPoints,
       }
     } catch (error) {
-      console.error('Failed to get user progress:', error)
+      console.error('[MilestoneService] Failed to get user progress:', error)
       return {
         userId,
         earnedBadges: [],
@@ -383,40 +411,112 @@ export class MilestoneService {
     return progress.earnedBadges
   }
 
-  // Helper methods - stubbed until Drizzle migration
+  // Helper methods - Drizzle ORM implementations
   private async getCompletedTutorials(userId: string): Promise<string[]> {
-    // TODO: Implement with Drizzle
-    return []
+    try {
+      const { tutorialProgressService } = await import('./progress-service')
+
+      // Get all completed tutorials from the progress service
+      const completedTutorials = await tutorialProgressService.getCompletedTutorials()
+
+      return completedTutorials
+    } catch (error) {
+      console.error('Failed to get completed tutorials:', error)
+      return []
+    }
   }
 
   private async getCompletedSteps(userId: string): Promise<string[]> {
-    // TODO: Implement with Drizzle
-    return []
+    try {
+      const { db, userProgress } = await import('@/lib/db')
+      const { eq, and } = await import('drizzle-orm')
+
+      // Query all completed steps for this user
+      const steps = await db
+        .select()
+        .from(userProgress)
+        .where(and(
+          eq(userProgress.userId, userId),
+          eq(userProgress.category, 'tutorial_step')
+        ))
+
+      // Return step IDs (itemKey format is "tutorialId:stepId")
+      return steps.map(step => step.itemKey)
+    } catch (error) {
+      console.error('Failed to get completed steps:', error)
+      return []
+    }
   }
 
   private async getPerfectQuizzes(userId: string, minScore: number): Promise<string[]> {
-    // TODO: Implement with Drizzle
-    return []
+    try {
+      const { db, userProgress } = await import('@/lib/db')
+      const { eq, and } = await import('drizzle-orm')
+
+      // Query tutorial steps that have quiz scores >= minScore
+      const steps = await db
+        .select()
+        .from(userProgress)
+        .where(and(
+          eq(userProgress.userId, userId),
+          eq(userProgress.category, 'tutorial_step')
+        ))
+
+      // Filter by quiz score and extract quiz IDs
+      const perfectQuizzes = steps
+        .filter(step => {
+          const metadata = step.metadata as Record<string, unknown>
+          const quizScore = metadata?.quizScore as number | undefined
+          return quizScore !== undefined && quizScore >= minScore
+        })
+        .map(step => {
+          // Return the step ID (which represents the quiz)
+          const metadata = step.metadata as Record<string, unknown>
+          return `${metadata?.tutorialId}:${metadata?.stepId}`
+        })
+
+      return perfectQuizzes
+    } catch (error) {
+      console.error('Failed to get perfect quizzes:', error)
+      return []
+    }
   }
 
   private async getCompletedWorkflows(userId: string): Promise<string[]> {
-    // TODO: Implement with Drizzle
-    return []
+    try {
+      const { workflowPersistence } = await import('@/lib/workflows/persistence')
+
+      // Get all workflow executions for this user
+      const executions = await workflowPersistence.getUserExecutions(userId)
+
+      // Filter for completed workflows and return unique workflow IDs
+      const completedWorkflowIds = executions
+        .filter(execution => execution.status === 'completed')
+        .map(execution => execution.workflowId)
+
+      // Return unique workflow IDs using Array.from
+      return Array.from(new Set(completedWorkflowIds))
+    } catch (error) {
+      console.error('Failed to get completed workflows:', error)
+      return []
+    }
   }
 
   private async getCompletedActions(userId: string): Promise<string[]> {
-    // TODO: Implement with Drizzle
-    return []
+    try {
+      const { sessionMemory } = await import('@/lib/proactive/session-memory')
+
+      // Get all completed tasks (workflow actions) for this user
+      const completedTasks = await sessionMemory.getCompletedTasks(userId)
+
+      // Return task keys (which represent action IDs)
+      return completedTasks.map(task => task.taskKey)
+    } catch (error) {
+      console.error('Failed to get completed actions:', error)
+      return []
+    }
   }
 
-  private async updateUserProgress(userId: string, progress: UserMilestoneProgress): Promise<void> {
-    // TODO: Implement with Drizzle
-    userProgressStore.set(userId, {
-      badges: progress.earnedBadges,
-      milestones: progress.completedMilestones,
-      points: progress.totalPoints,
-    })
-  }
 
   private calculateRarity(milestone: Milestone): Badge['rarity'] {
     const points = milestone.reward.points || 0

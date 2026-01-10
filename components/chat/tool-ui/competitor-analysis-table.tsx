@@ -23,8 +23,67 @@ interface CompetitorData {
     organic_traffic?: number
 }
 
+interface ToolInvocationResult {
+    status?: string
+    errorMessage?: string
+    error?: string
+    competitors?: CompetitorData[]
+    tasks?: Array<{ result?: CompetitorData[] }>
+    items?: CompetitorData[]
+    [key: string]: unknown
+}
+
+interface ToolInvocation {
+    state: string
+    result?: ToolInvocationResult | CompetitorData[] | string
+    args?: {
+        domain?: string
+        yourDomain?: string
+    }
+}
+
 interface CompetitorAnalysisTableProps {
-    toolInvocation: any
+    toolInvocation: ToolInvocation
+}
+
+/**
+ * Normalizes a domain string to ensure it produces a valid HTTPS URL.
+ * 
+ * - Strips any existing protocol (http://, https://, etc.)
+ * - Trims whitespace
+ * - Removes invalid characters
+ * - Prepends "https://" to the cleaned domain
+ * 
+ * @param domain - The raw domain string to normalize
+ * @returns A properly formatted URL string starting with "https://"
+ * 
+ * @example
+ * normalizeDomain("http://example.com")     // "https://example.com"
+ * normalizeDomain("https://example.com")    // "https://example.com"
+ * normalizeDomain("  example.com  ")        // "https://example.com"
+ * normalizeDomain("example.com/path")       // "https://example.com/path"
+ */
+function normalizeDomain(domain: string | undefined | null): string {
+    if (!domain) {
+        return '#' // Fallback for empty/undefined domains
+    }
+
+    // Trim whitespace
+    let cleaned = domain.trim()
+
+    // Strip any existing protocol (http://, https://, ftp://, etc.)
+    cleaned = cleaned.replace(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//, '')
+
+    // Remove any leading slashes that might remain
+    cleaned = cleaned.replace(/^\/+/, '')
+
+    // If still empty after cleaning, return fallback
+    if (!cleaned) {
+        return '#'
+    }
+
+    // Prepend https:// to the cleaned domain
+    return `https://${cleaned}`
 }
 
 export function CompetitorAnalysisTable({ toolInvocation }: CompetitorAnalysisTableProps) {
@@ -63,10 +122,10 @@ export function CompetitorAnalysisTable({ toolInvocation }: CompetitorAnalysisTa
         )
     }
 
-    if (!result || result.status === 'error') {
+    if (!result || (result as ToolInvocationResult).status === 'error') {
         return (
             <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm">
-                Error loading competitor data: {result?.errorMessage || result?.error || 'Unknown error'}
+                Error loading competitor data: {(result as ToolInvocationResult)?.errorMessage || (result as ToolInvocationResult)?.error || 'Unknown error'}
             </div>
         )
     }
@@ -78,20 +137,32 @@ export function CompetitorAnalysisTable({ toolInvocation }: CompetitorAnalysisTa
     // Try different data structures
     if (Array.isArray(result)) {
         competitors = result
-    } else if (result.competitors) {
-        competitors = result.competitors
-    } else if (result.tasks?.[0]?.result) {
-        competitors = result.tasks[0].result
     } else if (typeof result === 'string') {
         try {
-            competitors = JSON.parse(result)
-        } catch {
-            // Not JSON, show raw result
-            return (
-                <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm whitespace-pre-wrap">
-                    {result}
-                </div>
-            )
+            const parsed = JSON.parse(result as string)
+            if (Array.isArray(parsed)) {
+                competitors = parsed
+            } else {
+                console.error('[CompetitorAnalysisTable] Parsed JSON is not an array:', parsed)
+            }
+        } catch (parseError) {
+            console.error('[CompetitorAnalysisTable] Failed to parse result as JSON:', parseError, 'Raw result:', result)
+        }
+    } else {
+        const res = result as ToolInvocationResult
+        if (res.competitors) {
+            if (Array.isArray(res.competitors)) {
+                competitors = res.competitors
+            } else {
+                console.error('[CompetitorAnalysisTable] result.competitors is not an array:', res.competitors)
+            }
+        } else if (res.tasks?.[0]?.result) {
+            const taskResult = res.tasks[0]!.result
+            if (Array.isArray(taskResult)) {
+                competitors = taskResult
+            } else {
+                console.error('[CompetitorAnalysisTable] result.tasks[0].result is not an array:', taskResult)
+            }
         }
     }
 
@@ -165,7 +236,7 @@ export function CompetitorAnalysisTable({ toolInvocation }: CompetitorAnalysisTa
                                                 {comp.domain}
                                             </span>
                                             <a
-                                                href={`https://${comp.domain}`}
+                                                href={normalizeDomain(comp.domain)}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="text-zinc-600 hover:text-white transition-colors"

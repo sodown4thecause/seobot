@@ -613,6 +613,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   useEffect(() => {
     if (!conversationId || status !== 'ready' || lastMessageRole !== 'assistant') return
 
+    // Cancellation flag to prevent stale updates
+    let cancelled = false
+
     fetchRoadmap()
 
     const lastContent = lastAssistantMessage ? getMessageText(lastAssistantMessage) : ''
@@ -635,15 +638,24 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     const fetchSuggestions = async () => {
       try {
         const res = await fetch(`/api/suggestions?conversationId=${conversationId}`)
-        if (res.ok) {
+        if (res.ok && !cancelled) {
           const data = await res.json()
-          setProactiveSuggestions(data.suggestions || [])
+          if (!cancelled) {
+            setProactiveSuggestions(data.suggestions || [])
+          }
         }
       } catch (err) {
-        console.warn('[Chat] Failed to fetch suggestions:', err)
+        if (!cancelled) {
+          console.warn('[Chat] Failed to fetch suggestions:', err)
+        }
       }
     }
     fetchSuggestions()
+
+    // Cleanup: set cancellation flag to prevent stale updates
+    return () => {
+      cancelled = true
+    }
   }, [conversationId, status, lastMessageRole, lastAssistantMessage, fetchRoadmap, setFocus, focus])
 
   // Artifact Synchronization
@@ -1034,7 +1046,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           <ConversationScrollButton />
         </Conversation>
 
-        <div className="p-4 border-t border-zinc-900 bg-zinc-950">
+        <div className="p-4">
           <div className="max-w-3xl mx-auto">
             <ProactiveSuggestions suggestions={proactiveSuggestions} onSuggestionClick={(p) => handleSendMessage({ text: p })} isLoading={isLoading} />
             <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />

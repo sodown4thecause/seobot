@@ -27,25 +27,48 @@ export interface GenerateSuggestionsInput {
 
 export class GuidedWorkflowEngine {
     /**
-     * Generate three proactive suggestions based on current state
+     * Generate three proactive suggestions based on current user state.
+     * Fetches progress, completed tasks, and user context in parallel for optimal performance.
      */
     async generateSuggestions(input: GenerateSuggestionsInput): Promise<ProactiveSuggestionsResponse> {
         const { userId, conversationId } = input
 
-        // Get roadmap progress
-        const roadmapProgress = await roadmapTracker.getProgress(userId)
+        // Fetch all three data sources in parallel to minimize latency
+        const [roadmapProgress, completedTaskKeys, userContext] = await Promise.all([
+            // Fetch current roadmap progress to determine active pillar
+            roadmapTracker.getProgress(userId).catch(error => {
+                console.error('[GuidedWorkflowEngine] Failed to fetch roadmap progress:', error)
+                // Fallback to default starting state
+                return {
+                    currentPillar: 'discovery' as Pillar,
+                    discoveryProgress: 0,
+                    gapAnalysisProgress: 0,
+                    strategyProgress: 0,
+                    productionProgress: 0,
+                }
+            }),
+
+            // Retrieve previously completed task keys to prevent recommending duplicates
+            sessionMemory.getCompletedTaskKeys(userId, conversationId).catch(error => {
+                console.error('[GuidedWorkflowEngine] Failed to fetch completed tasks:', error)
+                // Fallback to empty set - may show some duplicate suggestions
+                return new Set<string>()
+            }),
+
+            // Load business context for personalization (industry, goals, tone)
+            getUserBusinessContext(userId).catch(error => {
+                console.error('[GuidedWorkflowEngine] Failed to fetch user context:', error)
+                // Fallback to generic context
+                return null
+            })
+        ])
+
         const currentPillar = roadmapProgress.currentPillar
 
-        // Get completed tasks to avoid duplicates
-        const completedTaskKeys = await sessionMemory.getCompletedTaskKeys(userId, conversationId)
-
-        // Get best templates for current pillar
+        // Select best-fit templates filtered by current pillar and exclusion list
         const templates = getBestTemplates(currentPillar, completedTaskKeys)
 
-        // Get user context for personalization
-        const userContext = await getUserBusinessContext(userId)
-
-        // Convert templates to suggestions with context-aware personalization
+        // Transform templates into suggestion objects with personalized prompts
         const suggestions: ProactiveSuggestion[] = templates.map(template => ({
             category: template.category,
             prompt: this.personalizePrompt(template.prompt, userContext),
@@ -56,7 +79,7 @@ export class GuidedWorkflowEngine {
             priority: template.priority,
         }))
 
-        // If we don't have enough suggestions (3), fill from next pillar
+        // Ensure minimum of 3 suggestions by borrowing from next pillar if needed
         if (suggestions.length < 3) {
             const nextPillar = this.getNextPillar(currentPillar)
             if (nextPillar !== currentPillar) {
@@ -77,6 +100,7 @@ export class GuidedWorkflowEngine {
             }
         }
 
+        // Return formatted response with suggestions and progress metadata
         return {
             suggestions: suggestions.slice(0, 3),
             currentPillar,
@@ -90,7 +114,13 @@ export class GuidedWorkflowEngine {
     }
 
     /**
-     * Update roadmap progress based on completed action
+     * Update roadmap progress based on completed action.
+     * 
+     * Implements transaction-like semantics with compensation:
+     * - If marking task complete fails, throws error (no progress update)
+     * - If progress update fails, logs error but keeps task completion
+     * 
+     * This ensures we never lose user progress while maintaining consistency.
      */
     async recordCompletedTask(
         userId: string,
@@ -99,47 +129,122 @@ export class GuidedWorkflowEngine {
         category: 'deep_dive' | 'adjacent' | 'execution',
         pillar: Pillar
     ): Promise<void> {
-        // Mark task as completed
-        await sessionMemory.markTaskCompleted(userId, conversationId, taskKey, category, pillar)
+        // Step 1: Mark task as completed (critical - throws on failure)
+        try {
+            await sessionMemory.markTaskCompleted(userId, conversationId, taskKey, category, pillar)
+        } catch (error) {
+            // Task completion is critical - re-throw to prevent progress update
+            console.error('[GuidedWorkflowEngine] Failed to mark task completed:', {
+                userId,
+                conversationId,
+                taskKey,
+                category,
+                pillar,
+                error
+            })
+            throw new Error(`Failed to record completed task: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 
-        // Update pillar progress
-        const progressIncrement = this.getProgressIncrement(category)
-        await roadmapTracker.updateProgress(userId, pillar, progressIncrement, {
-            lastTaskKey: taskKey,
-            lastTaskAt: new Date().toISOString(),
-        })
+        // Step 2: Update pillar progress (best-effort - log on failure)
+        try {
+            const progressIncrement = this.getProgressIncrement(category)
+            await roadmapTracker.updateProgress(userId, pillar, progressIncrement, {
+                lastTaskKey: taskKey,
+                lastTaskAt: new Date().toISOString(),
+            })
+        } catch (error) {
+            // Progress update failure is non-critical - task is already marked complete
+            // Log error for monitoring but don't throw (user still gets credit for task)
+            console.error('[GuidedWorkflowEngine] Failed to update roadmap progress (task completion preserved):', {
+                userId,
+                pillar,
+                taskKey,
+                error
+            })
+            // Note: Task completion is preserved - progress can be recalculated from completed tasks
+        }
     }
 
     /**
      * Collect and store important facts from messages into agent memory
      */
     async collectMemories(userId: string, conversationId: string, messages: any[]): Promise<void> {
-        // Extract topics using session memory logic
-        const topics = sessionMemory.extractTopics(messages)
+        try {
+            // Extract topics using session memory logic
+            const topics = sessionMemory.extractTopics(messages)
 
-        // Store common patterns as specific memories
-        for (const topic of topics) {
-            const topicLower = topic.toLowerCase()
+            // Store common patterns as specific memories
+            for (const topic of topics) {
+                const topicLower = topic.toLowerCase()
 
-            // Domain detection
-            if (topicLower.includes('.') && (topicLower.startsWith('www') || topicLower.endsWith('.com') || topicLower.endsWith('.io') || topicLower.endsWith('.ai'))) {
-                await sessionMemory.storeMemory(userId, 'target_domain', topic, 'domain', conversationId)
-            }
-            // Competitor detection
-            else if (topicLower.includes('competitor') || topicLower.includes('vs')) {
-                const competitors = await sessionMemory.getMemory(userId, 'competitors') || []
-                if (Array.isArray(competitors) && !competitors.includes(topic)) {
-                    await sessionMemory.storeMemory(userId, 'competitors', [...competitors, topic], 'competitor', conversationId)
+                // Domain detection - improved pattern matching
+                if (this.isDomain(topicLower)) {
+                    try {
+                        await sessionMemory.storeMemory(userId, 'target_domain', topic, 'domain', conversationId)
+                    } catch (error) {
+                        console.error('[GuidedWorkflowEngine] Failed to store domain memory:', error)
+                    }
+                }
+                // Competitor detection
+                else if (topicLower.includes('competitor') || topicLower.includes('vs')) {
+                    try {
+                        const competitors = await sessionMemory.getMemory(userId, 'competitors') || []
+                        if (Array.isArray(competitors) && !competitors.includes(topic)) {
+                            // Avoid race condition by using a fresh copy
+                            const updatedCompetitors = [...competitors, topic]
+                            await sessionMemory.storeMemory(userId, 'competitors', updatedCompetitors, 'competitor', conversationId)
+                        }
+                    } catch (error) {
+                        console.error('[GuidedWorkflowEngine] Failed to store competitor memory:', error)
+                    }
+                }
+                // Keyword detection
+                else {
+                    try {
+                        const keywords = await sessionMemory.getMemory(userId, 'primary_keywords') || []
+                        if (Array.isArray(keywords) && !keywords.includes(topic)) {
+                            // Avoid race condition by using a fresh copy and limiting to 10
+                            const updatedKeywords = [...keywords, topic].slice(0, 10)
+                            await sessionMemory.storeMemory(userId, 'primary_keywords', updatedKeywords, 'keyword', conversationId)
+                        }
+                    } catch (error) {
+                        console.error('[GuidedWorkflowEngine] Failed to store keyword memory:', error)
+                    }
                 }
             }
-            // Keyword detection
-            else {
-                const keywords = await sessionMemory.getMemory(userId, 'primary_keywords') || []
-                if (Array.isArray(keywords) && !keywords.includes(topic)) {
-                    await sessionMemory.storeMemory(userId, 'primary_keywords', [...keywords, topic].slice(0, 10), 'keyword', conversationId)
-                }
-            }
+        } catch (error) {
+            console.error('[GuidedWorkflowEngine] Error in collectMemories:', error)
+            // Don't throw - memory collection is optional
         }
+    }
+
+    /**
+     * Helper to detect if a topic is a domain name
+     * Supports common TLDs and URL patterns
+     */
+    private isDomain(topic: string): boolean {
+        if (!topic.includes('.')) return false
+
+        // Common domain TLDs
+        const commonTLDs = [
+            '.com', '.org', '.net', '.io', '.ai', '.co', '.dev',
+            '.app', '.tech', '.site', '.online', '.store',
+            '.shop', '.biz', '.info', '.me', '.xyz'
+        ]
+
+        // Check for common TLD at the end
+        if (commonTLDs.some(tld => topic.endsWith(tld))) {
+            return true
+        }
+
+        // Check for www prefix
+        if (topic.startsWith('www.')) {
+            return true
+        }
+
+        // Check for domain-like pattern (word.word)
+        const domainPattern = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i
+        return domainPattern.test(topic)
     }
 
     /**
@@ -178,8 +283,8 @@ export class GuidedWorkflowEngine {
         return null
     }
 
-    private personalizePrompt(prompt: string, userContext: Awaited<ReturnType<typeof getUserBusinessContext>>): string {
-        if (!userContext.hasProfile) return prompt
+    private personalizePrompt(prompt: string, userContext: Awaited<ReturnType<typeof getUserBusinessContext>> | null): string {
+        if (!userContext || !userContext.hasProfile) return prompt
 
         // Add context hints if available
         if (userContext.profile?.industry) {

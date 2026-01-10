@@ -15,7 +15,6 @@ import {
     index,
     vector,
     real,
-    primaryKey,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 

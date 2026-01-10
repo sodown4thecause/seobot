@@ -7,17 +7,40 @@ const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
-const createChainableStub = (): any => {
-  const stub: any = () => stub
-  stub.from = stub; stub.select = stub; stub.insert = stub; stub.update = stub; stub.delete = stub
-  stub.eq = stub; stub.neq = stub; stub.gt = stub; stub.gte = stub; stub.lt = stub; stub.lte = stub
-  stub.order = stub; stub.limit = stub; stub.single = stub; stub.maybeSingle = stub
-  stub.then = (resolve: any) => resolve({ data: [], error: null })
-  return stub
+// TODO: Complete Drizzle ORM migration for schema markup tables
+// The schema_markup_templates and generated_schema_markup tables need to be:
+// 1. Added to lib/db/schema.ts
+// 2. Migrated using drizzle-kit generate && drizzle-kit push
+// 3. This service updated to use the db client from lib/db/index.ts
+//
+// Environment guard: Set SCHEMA_MARKUP_ENABLED=true to enable stub (dev only).
+// Production will always throw to prevent silent failures.
+
+const FEATURE_FLAG = process.env.SCHEMA_MARKUP_ENABLED === 'true'
+
+const throwMigrationError = (operation: string): never => {
+  throw new Error(
+    `[SchemaMarkup] FATAL: Database client not implemented. ` +
+    `Attempted operation: ${operation}. ` +
+    `Schema markup feature is disabled until Drizzle ORM migration is complete. ` +
+    `See lib/schema/schema-markup-service.ts for implementation details.`
+  )
 }
-const supabase = createChainableStub()
-const createAdminClient = () => supabase
+
+const supabase = FEATURE_FLAG
+  ? {
+    from: (table: string) => {
+      const stub: any = () => throwMigrationError(`query ${table}`)
+      stub.select = stub
+      stub.insert = stub
+      stub.update = stub
+      stub.delete = stub
+      stub.eq = stub
+      stub.then = () => throwMigrationError(`execute on ${table}`)
+      return stub
+    }
+  }
+  : { from: (_table: string) => throwMigrationError('DB client access (feature disabled)') }
 
 export interface SchemaMarkupTemplate {
   id: string

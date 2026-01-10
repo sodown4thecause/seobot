@@ -29,6 +29,32 @@ const CATEGORY_STYLES = {
         text: 'text-zinc-400 group-hover:text-zinc-200',
         label: 'Execution',
     },
+} as const
+
+// Default fallback style for unknown categories
+const DEFAULT_STYLE = {
+    bg: 'bg-zinc-900/30 hover:bg-zinc-800/50',
+    border: 'border-zinc-800 hover:border-zinc-700',
+    text: 'text-zinc-400 group-hover:text-zinc-200',
+    label: 'Unknown',
+} as const
+
+type CategoryStyle = {
+    bg: string
+    border: string
+    text: string
+    label: string
+}
+
+/**
+ * Safely retrieves category styles with fallback for unknown categories
+ */
+function getCategoryStyle(category: string): CategoryStyle {
+    if (category in CATEGORY_STYLES) {
+        return CATEGORY_STYLES[category as keyof typeof CATEGORY_STYLES] as CategoryStyle
+    }
+    console.warn(`[ProactiveSuggestions] Unknown category "${category}", using default style`)
+    return DEFAULT_STYLE as CategoryStyle
 }
 
 export function ProactiveSuggestions({
@@ -52,7 +78,7 @@ export function ProactiveSuggestions({
 
             <div className="grid gap-2">
                 {suggestions.map((suggestion, index) => {
-                    const style = CATEGORY_STYLES[suggestion.category]
+                    const style = getCategoryStyle(suggestion.category)
 
                     return (
                         <button
@@ -122,7 +148,7 @@ export function ProactiveSuggestionsCompact({
     return (
         <div className={cn('flex flex-wrap gap-2 mt-3', className)}>
             {suggestions.map((suggestion, index) => {
-                const style = CATEGORY_STYLES[suggestion.category]
+                const style = getCategoryStyle(suggestion.category)
 
                 return (
                     <button

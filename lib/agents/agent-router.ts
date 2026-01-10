@@ -150,12 +150,12 @@ export class AgentRouter {
 
     // Content agent takes priority if explicit content creation patterns are found
     const hasExplicitContentIntent = this.hasExplicitContentIntent(messageLower)
-    
+
     if (hasExplicitContentIntent || (contentMatches.length > 0 && contentMatches.length >= seoMatches.length)) {
-      const confidence = hasExplicitContentIntent 
-        ? 0.95 
+      const confidence = hasExplicitContentIntent
+        ? 0.95
         : this.calculateConfidence(contentMatches.length, 0.8, 0.95)
-      
+
       return {
         agent: 'content',
         confidence,
@@ -207,7 +207,7 @@ export class AgentRouter {
    */
   private static matchKeywords(message: string, keywords: string[]): string[] {
     const matched: string[] = []
-    
+
     for (const keyword of keywords) {
       // For multi-word phrases, use simple includes
       if (keyword.includes(' ')) {
@@ -222,7 +222,7 @@ export class AgentRouter {
         }
       }
     }
-    
+
     return matched
   }
 
@@ -235,16 +235,17 @@ export class AgentRouter {
 
   /**
    * Check for explicit content creation patterns (high-confidence signals)
+   * Uses word boundaries to avoid false positives
    */
   private static hasExplicitContentIntent(message: string): boolean {
     const explicitPatterns = [
-      /write\s+(a|an|me|us)\s+/i,
-      /create\s+(a|an|me|us)\s+/i,
-      /generate\s+(a|an|me|us)\s+/i,
-      /draft\s+(a|an|me|us)\s+/i,
-      /blog\s*(post|article)?\s*(about|on|for)/i,
-      /article\s*(about|on|for)/i,
-      /content\s*(about|on|for)/i,
+      /\bwrite\s+(a|an|me)\s+/i,
+      /\bcreate\s+(a|an|me)\s+/i,
+      /\bgenerate\s+(a|an|me)\s+/i,
+      /\bdraft\s+(a|an|me)\s+/i,
+      /\bblog\s*(post|article)?\s*(about|on|for)\b/i,
+      /\barticle\s*(about|on|for)\b/i,
+      /\bcontent\s*(about|on|for)\b/i,
     ]
     return explicitPatterns.some(pattern => pattern.test(message))
   }

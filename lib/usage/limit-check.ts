@@ -6,8 +6,8 @@
  */
 
 import { db } from '@/lib/db'
-import { aiUsageEvents, userUsageLimits, type Json } from '@/lib/db/schema'
-import { eq, and, gte, lte, sql } from 'drizzle-orm'
+import { userUsageLimits, type Json } from '@/lib/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { BETA_LIMITS } from '@/lib/config/beta-limits'
 import { getClientIp, blockIp } from '@/lib/auth/ip-block-check'
 import { NextRequest } from 'next/server'

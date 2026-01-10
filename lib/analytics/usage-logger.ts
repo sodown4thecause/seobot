@@ -83,12 +83,15 @@ export function extractUsageFromResult(result: any): {
   completionTokens: number
   toolCalls: number
 } {
+  // Compute tool calls once to avoid redundant iteration
+  const toolCalls = result.steps?.reduce((sum: number, step: any) => sum + (step.toolCalls?.length || 0), 0) || 0
+
   // AI SDK 6 format
   if (result.usage) {
     return {
       promptTokens: result.usage.promptTokens || 0,
       completionTokens: result.usage.completionTokens || 0,
-      toolCalls: result.steps?.reduce((sum: number, step: any) => sum + (step.toolCalls?.length || 0), 0) || 0,
+      toolCalls,
     }
   }
 
@@ -97,7 +100,7 @@ export function extractUsageFromResult(result: any): {
     return {
       promptTokens: result.response.usage.promptTokens || 0,
       completionTokens: result.response.usage.completionTokens || 0,
-      toolCalls: result.steps?.reduce((sum: number, step: any) => sum + (step.toolCalls?.length || 0), 0) || 0,
+      toolCalls,
     }
   }
 

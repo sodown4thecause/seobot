@@ -31,7 +31,7 @@ export default function DashboardLayout({
             <Sidebar
               collapsed={sidebarCollapsed}
               onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-              currentPath={pathname}
+              currentPath={pathname ?? ''}
             />
 
             {/* Main Content Area */}

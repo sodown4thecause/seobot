@@ -18,6 +18,7 @@ import { EVALUATION_SCHEMAS } from '@/lib/observability/evaluation-schemas'
 import { createIdGenerator } from 'ai'
 import { startActiveObservation, updateActiveTrace } from '@langfuse/tracing'
 import { storeAndLearn } from '@/lib/ai/learning-storage'
+import { AbortError } from '@/lib/errors/types'
 
 export interface ProgressUpdate {
   phase: string
@@ -35,6 +36,7 @@ export interface RAGWriterParams {
   userId?: string
   competitorUrls?: string[]
   onProgress?: (update: ProgressUpdate) => void | Promise<void>
+  onProgressError?: (error: Error, update: ProgressUpdate) => void | Promise<void>
   abortSignal?: AbortSignal
   searchIntent?: string
 }
@@ -122,10 +124,21 @@ export class RAGWriterOrchestrator {
     details?: string
   ) {
     if (params.onProgress) {
+      const update: ProgressUpdate = { phase, status, message, details }
       try {
-        await params.onProgress({ phase, status, message, details })
+        await params.onProgress(update)
       } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error))
         console.warn('[RAG Writer Orchestrator] Progress callback error:', error)
+        
+        // Notify caller of callback error so they can handle it
+        if (params.onProgressError) {
+          try {
+            await params.onProgressError(err, update)
+          } catch (handlerError) {
+            console.error('[RAG Writer Orchestrator] Progress error handler failed:', handlerError)
+          }
+        }
       }
     }
   }
@@ -138,9 +151,7 @@ export class RAGWriterOrchestrator {
 
     // Check abort signal immediately
     if (params.abortSignal?.aborted) {
-      const error = new Error('Content generation aborted by client')
-      error.name = 'AbortError'
-      throw error
+      throw new AbortError('Content generation aborted by client')
     }
 
     const database = db
@@ -201,15 +212,13 @@ export class RAGWriterOrchestrator {
         },
       });
 
-      try {
-        // Helper function to check abort signal
-        const checkAborted = () => {
-          if (params.abortSignal?.aborted) {
-            const error = new Error('Content generation aborted by client')
-            error.name = 'AbortError'
-            throw error
+        try {
+          // Helper function to check abort signal
+          const checkAborted = () => {
+            if (params.abortSignal?.aborted) {
+              throw new AbortError('Content generation aborted by client')
+            }
           }
-        }
 
         // Step 0.5: Fetch user's business context for personalized content
         checkAborted()
@@ -864,32 +873,114 @@ export class RAGWriterOrchestrator {
   }
 
   /**
+   * Type guard to check if a value is a plain object (not null, array, Date, RegExp, etc.)
+   * 
+   * @param value - The value to check
+   * @returns true if the value is a plain object, false otherwise
+   */
+  private isPlainObject(value: unknown): value is Record<string, unknown> {
+    if (value === null || value === undefined) {
+      return false
+    }
+    
+    if (typeof value !== 'object') {
+      return false
+    }
+    
+    // Exclude arrays, Date, RegExp, and other special objects
+    if (
+      Array.isArray(value) ||
+      value instanceof Date ||
+      value instanceof RegExp
+    ) {
+      return false
+    }
+    
+    return true
+  }
+
+  /**
    * Deep merge utility for nested objects
+   * 
+   * **Behavior:**
+   * - Plain objects: Recursively merged (nested keys preserved)
+   * - Arrays: Replaced entirely (not concatenated/merged)
+   * - Primitives: Source value replaces target value
+   * - Date objects: Cloned to new Date instance
+   * - RegExp: Cloned to new RegExp instance
+   * - null: Treated as a value (replaces target)
+   * - undefined: Ignored (target value preserved)
+   * 
+   * **Use case:** Merging JSONB metadata from database where new values
+   * should override old values, but unaffected nested keys should be preserved.
+   * 
+   * @example
+   * deepMerge(
+   *   { a: 1, b: { c: 2, d: 3 } },
+   *   { b: { c: 99 } }
+   * )
+   * // Result: { a: 1, b: { c: 99, d: 3 } }
    */
   private deepMerge<T extends Record<string, unknown>>(
     target: T,
     source: Partial<T>
   ): T {
     const result = { ...target } as T
+
     for (const key in source) {
       const sourceVal = source[key]
       const targetVal = target[key]
+
+      // Skip undefined values (preserve target)
+      if (sourceVal === undefined) {
+        continue
+      }
+
+      // Handle Date objects - clone to avoid reference sharing
+      if (sourceVal instanceof Date) {
+        result[key] = new Date(sourceVal.getTime()) as T[Extract<keyof T, string>]
+        continue
+      }
+
+      // Handle RegExp objects - clone to avoid reference sharing
+      if (sourceVal instanceof RegExp) {
+        result[key] = new RegExp(sourceVal.source, sourceVal.flags) as T[Extract<keyof T, string>]
+        continue
+      }
+
+      // Handle null explicitly (replaces target)
+      if (sourceVal === null) {
+        result[key] = null as T[Extract<keyof T, string>]
+        continue
+      }
+
+      // Handle arrays (replace entirely, don't merge)
+      if (Array.isArray(sourceVal)) {
+        result[key] = sourceVal as T[Extract<keyof T, string>]
+        continue
+      }
+
+      // Recursively merge plain objects
       if (
-        sourceVal &&
         typeof sourceVal === 'object' &&
-        !Array.isArray(sourceVal) &&
-        targetVal &&
+        sourceVal !== null &&
+        targetVal !== null &&
         typeof targetVal === 'object' &&
-        !Array.isArray(targetVal)
+        !Array.isArray(targetVal) &&
+        !(targetVal instanceof Date) &&
+        !(targetVal instanceof RegExp)
       ) {
         result[key] = this.deepMerge(
           targetVal as Record<string, unknown>,
           sourceVal as Record<string, unknown>
         ) as T[Extract<keyof T, string>]
-      } else if (sourceVal !== undefined) {
-        result[key] = sourceVal as T[Extract<keyof T, string>]
+        continue
       }
+
+      // Default: replace with source value (primitives, functions, etc.)
+      result[key] = sourceVal as T[Extract<keyof T, string>]
     }
+
     return result
   }
 
@@ -908,7 +999,32 @@ export class RAGWriterOrchestrator {
       .where(eq(content.id, contentId))
       .limit(1)
 
-    const existingMeta = (existing[0]?.metadata as Record<string, unknown>) || {}
+    const rawExistingMeta = existing[0]?.metadata
+    
+    // Ensure both existingMeta and newMetadata are plain objects before merging
+    // If either is not a plain object, handle gracefully
+    let existingMeta: Record<string, unknown>
+    
+    if (this.isPlainObject(rawExistingMeta)) {
+      existingMeta = rawExistingMeta
+    } else {
+      // If existing metadata is not a plain object (null, array, primitive, etc.)
+      // start with an empty object to avoid corruption
+      console.warn('[RAGWriter] Existing metadata is not a plain object, starting fresh:', {
+        contentId,
+        type: rawExistingMeta === null ? 'null' : Array.isArray(rawExistingMeta) ? 'array' : typeof rawExistingMeta
+      })
+      existingMeta = {}
+    }
+    
+    if (!this.isPlainObject(newMetadata)) {
+      // If new metadata is not a plain object, log error and skip merge
+      console.error('[RAGWriter] New metadata is not a plain object, skipping merge:', {
+        contentId,
+        type: newMetadata === null ? 'null' : Array.isArray(newMetadata) ? 'array' : typeof newMetadata
+      })
+      return
+    }
 
     // Deep merge: new values override old, preserves unaffected nested keys
     const merged = this.deepMerge(existingMeta, newMetadata)

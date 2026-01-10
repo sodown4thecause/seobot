@@ -3,7 +3,6 @@
  * Records and analyzes workflow performance
  */
 
-import { db } from '@/lib/db'
 import { sql } from 'drizzle-orm'
 
 export interface WorkflowAnalytics {
@@ -20,7 +19,23 @@ export interface WorkflowAnalytics {
 }
 
 export class WorkflowAnalyticsService {
-  private db = db
+  private _db: any = null
+
+  /**
+   * Lazy-load database client to avoid server-side blocking
+   */
+  private async getDb() {
+    if (!this._db) {
+      try {
+        const { db } = await import('@/lib/db')
+        this._db = db
+      } catch (error) {
+        console.warn('[WorkflowAnalytics] Database client not available:', error)
+        return null
+      }
+    }
+    return this._db
+  }
 
   /**
    * Record workflow execution (simplified version for engine.ts)
@@ -63,8 +78,14 @@ export class WorkflowAnalyticsService {
    */
   async recordExecution(analytics: WorkflowAnalytics): Promise<void> {
     try {
+      const db = await this.getDb()
+      if (!db) {
+        console.warn('[WorkflowAnalytics] Skipping analytics - database not available')
+        return
+      }
+
       // Direct SQL insert for workflow analytics
-      await this.db.execute(sql`
+      await db.execute(sql`
         INSERT INTO workflow_analytics (
           workflow_id,
           execution_id,
@@ -106,7 +127,17 @@ export class WorkflowAnalyticsService {
     averageStepsCompleted: number
   }> {
     try {
-      const result = await this.db.execute(sql`
+      const db = await this.getDb()
+      if (!db) {
+        return {
+          averageDuration: 0,
+          successRate: 0,
+          totalExecutions: 0,
+          averageStepsCompleted: 0
+        }
+      }
+
+      const result = await db.execute(sql`
         SELECT
           AVG(duration_ms)::float as avg_duration,
           AVG(steps_completed)::float as avg_steps,

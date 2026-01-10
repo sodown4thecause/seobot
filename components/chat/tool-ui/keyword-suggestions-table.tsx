@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart3, TrendingUp, DollarSign, Activity, Target } from "lucide-react"
+import { TrendingUp, DollarSign, Activity, Target } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface KeywordData {
@@ -26,7 +26,7 @@ interface KeywordSuggestionsTableProps {
 }
 
 export function KeywordSuggestionsTable({ toolInvocation }: KeywordSuggestionsTableProps) {
-  const { result, state, args } = toolInvocation
+  const { result, state } = toolInvocation
   const isExecuting = state === 'call' || state === 'executing'
 
   if (isExecuting) {
@@ -129,7 +129,7 @@ export function KeywordSuggestionsTable({ toolInvocation }: KeywordSuggestionsTa
                     {kw.keyword}
                   </TableCell>
                   <TableCell className="text-right text-zinc-400 font-mono text-xs">
-                    {kw.volume.toLocaleString()}
+                    {typeof kw.volume === 'number' ? kw.volume.toLocaleString() : '-'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-col items-end gap-1.5">
@@ -155,7 +155,7 @@ export function KeywordSuggestionsTable({ toolInvocation }: KeywordSuggestionsTa
                     </div>
                   </TableCell>
                   <TableCell className="text-right text-zinc-400 font-mono text-xs">
-                    ${kw.cpc.toFixed(2)}
+                    {typeof kw.cpc === 'number' ? `$${kw.cpc.toFixed(2)}` : '-'}
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant="outline" className="bg-zinc-800/50 text-zinc-400 border-zinc-700 hover:border-purple-500/30 text-[10px] tracking-wide">

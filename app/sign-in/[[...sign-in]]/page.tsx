@@ -24,7 +24,7 @@ export default function SignInPage() {
 
                 <div className="flex items-center justify-center">
                     <SignIn
-                        afterSignInUrl="/dashboard"
+                        fallbackRedirectUrl="/dashboard"
                         appearance={{
                             elements: {
                                 rootBox: 'w-full',

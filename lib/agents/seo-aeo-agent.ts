@@ -74,16 +74,18 @@ export class SEOAEOAgent {
     // Retrieve relevant SEO/AEO knowledge from RAG
     let knowledgeContext = ''
     try {
+      // Allow caller to specify document limit, default to 20 for better context
+      const maxDocs = params.researchData?.maxDocs ?? 20
       const seoKnowledge = await retrieveAgentDocuments(
         `${params.topic} ${params.keywords.join(' ')}`,
         'seo_aeo',
-        5
+        maxDocs
       )
       if (seoKnowledge && seoKnowledge.length > 0) {
         knowledgeContext = seoKnowledge
           .map(doc => `### ${doc.title}\n${doc.content}`)
           .join('\n\n')
-        console.log(`[SEO/AEO Agent] ✓ Retrieved ${seoKnowledge.length} knowledge documents`)
+        console.log(`[SEO/AEO Agent] ✓ Retrieved ${seoKnowledge.length} knowledge documents (limit: ${params.researchData?.maxDocs ?? 20})`)
       }
     } catch (error) {
       console.error('[SEO/AEO Agent] Error retrieving knowledge:', error)
@@ -138,12 +140,15 @@ Format as JSON.`
     const timeoutMs = 90000
     const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
+    // Track whether we added the abort listener (for defensive cleanup)
+    let listenerAdded = false
     const callerAbortListener = () => controller.abort()
     if (params.abortSignal) {
       if (params.abortSignal.aborted) {
         controller.abort()
       } else {
         params.abortSignal.addEventListener('abort', callerAbortListener, { once: true })
+        listenerAdded = true
       }
     }
 
@@ -236,7 +241,8 @@ Format as JSON.`
       return fallbackStrategy
     } finally {
       clearTimeout(timeout)
-      if (params.abortSignal) {
+      // Only remove listener if it was actually added
+      if (listenerAdded && params.abortSignal) {
         params.abortSignal.removeEventListener('abort', callerAbortListener)
       }
     }

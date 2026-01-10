@@ -210,7 +210,8 @@ CREATE TABLE "user_progress" (
 	"category" text NOT NULL,
 	"item_key" text NOT NULL,
 	"completed_at" timestamp DEFAULT now() NOT NULL,
-	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL
+	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	CONSTRAINT "user_progress_user_id_category_item_key_unique" UNIQUE("user_id", "category", "item_key")
 );
 --> statement-breakpoint
 CREATE TABLE "writing_frameworks" (

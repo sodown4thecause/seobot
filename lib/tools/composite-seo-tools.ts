@@ -17,9 +17,12 @@ async function safeExecute(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params: any,
   ctx?: { abortSignal?: AbortSignal }
-): Promise<string | null> {
+): Promise<string> {
   try {
-    if (!toolFn?.execute) return null
+    if (!toolFn?.execute) {
+      console.warn('[CompositeSEOTools] Tool function or execute method not found')
+      return ''
+    }
     const result = await toolFn.execute(params, { 
       abortSignal: ctx?.abortSignal ?? new AbortController().signal,
       toolCallId: 'composite-tool-call',
@@ -27,10 +30,12 @@ async function safeExecute(
     })
     return result
   } catch (error) {
+    // Re-throw AbortError to allow caller to handle cancellation
     if (error instanceof Error && error.name === 'AbortError') {
       throw error
     }
-    return null
+    // Re-throw all other errors to enable proper error handling and debugging
+    throw error
   }
 }
 

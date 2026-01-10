@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, ExternalLink, Award, Share2, Info } from "lucide-react"
+import { Search, ExternalLink, Award } from "lucide-react"
 
 interface SERPResult {
     rank_group?: number

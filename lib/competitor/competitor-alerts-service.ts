@@ -8,16 +8,57 @@ const google = createGoogleGenerativeAI({
 })
 
 // TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
-// Stub database client - all operations return empty/mock data until Drizzle migration
-const createChainableStub = (): any => {
-  const stub: any = () => stub
-  stub.from = stub; stub.select = stub; stub.insert = stub; stub.update = stub; stub.delete = stub
-  stub.eq = stub; stub.neq = stub; stub.gt = stub; stub.gte = stub; stub.lt = stub; stub.lte = stub
-  stub.order = stub; stub.limit = stub; stub.single = stub; stub.maybeSingle = stub
-  stub.then = (resolve: any) => resolve({ data: [], error: null })
-  return stub
+/**
+ * ⚠️ ALERT/EVENT FEATURES DISABLED ⚠️
+ *
+ * This module uses a stub database client that throws fatal errors on any operation
+ * to prevent silent data loss. This affects core functionality including:
+ * - Creating/reading/updating/deleting competitor alerts
+ * - Tracking alert events and history
+ * - Notification triggers and scheduling
+ *
+ * Environment guard: Set COMPETITOR_ALERTS_ENABLED=true to enable stub (dev only).
+ * Production will always throw to prevent silent failures.
+ */
+
+const FEATURE_FLAG = process.env.COMPETITOR_ALERTS_ENABLED === 'true'
+
+const throwFatalError = (operation: string): never => {
+  throw new Error(
+    `[CompetitorAlerts] FATAL: Database client not implemented. ` +
+    `Attempted operation: ${operation}. ` +
+    `Alert/event features are disabled until Drizzle ORM migration is complete. ` +
+    `See lib/competitor/competitor-alerts-service.ts for implementation details.`
+  )
 }
-const supabase = createChainableStub()
+
+interface StubQueryBuilder {
+  select: (cols?: string) => StubQueryBuilder
+  insert: (values: any) => StubQueryBuilder
+  update: (values: any) => StubQueryBuilder
+  delete: () => StubQueryBuilder
+  eq: (column: string, value: any) => StubQueryBuilder
+  order: (column: string, options?: { ascending?: boolean }) => StubQueryBuilder
+  limit: (n: number) => StubQueryBuilder
+  single: () => Promise<{ data: any; error: any }>
+  then: (resolve: (value: { data: any; error: any }) => void) => void
+}
+
+const createStubQueryBuilder = (table: string): StubQueryBuilder => ({
+  select: () => throwFatalError(`select from ${table}`),
+  insert: () => throwFatalError(`insert into ${table}`),
+  update: () => throwFatalError(`update ${table}`),
+  delete: () => throwFatalError(`delete from ${table}`),
+  eq: () => throwFatalError(`eq on ${table}`),
+  order: () => throwFatalError(`order on ${table}`),
+  limit: () => throwFatalError(`limit on ${table}`),
+  single: () => throwFatalError(`single on ${table}`),
+  then: () => throwFatalError(`then on ${table}`),
+})
+
+const supabase = FEATURE_FLAG
+  ? { from: (table: string) => createStubQueryBuilder(table) }
+  : { from: (_table: string) => throwFatalError('DB client access (feature disabled)') }
 
 export interface CompetitorAlert {
   id: string

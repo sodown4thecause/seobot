@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/clerk'
 import { db } from '@/lib/db'
 import { writingFrameworks, chatMessages } from '@/lib/db/schema'
-import { eq, desc, gte } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { cacheGet, cacheSet, CACHE_PREFIXES, CACHE_TTL } from '@/lib/redis/client'
 
 export const runtime = 'edge'

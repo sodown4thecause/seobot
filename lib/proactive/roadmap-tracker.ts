@@ -104,6 +104,11 @@ export class RoadmapTracker {
      * Get the next logical pillar based on current progress
      */
     getNextPillar(progress: RoadmapProgress): Pillar {
+        const currentIndex = PILLAR_ORDER.indexOf(progress.currentPillar)
+        // Return next pillar if available, otherwise return current (already at end)
+        if (currentIndex >= 0 && currentIndex < PILLAR_ORDER.length - 1) {
+            return PILLAR_ORDER[currentIndex + 1]
+        }
         return progress.currentPillar
     }
 

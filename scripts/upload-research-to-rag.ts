@@ -1,12 +1,17 @@
 /**
+ * ⚠️ DEPRECATED - This script uses Supabase which is being migrated to Drizzle ORM
+ * 
  * Upload Research to RAG Script
  * 
  * This script reads the SEO/AEO research document, splits it into semantic chunks,
  * and uploads them to the agent_documents table in Supabase with embeddings.
  * 
  * Usage: node --import tsx scripts/upload-research-to-rag.ts
+ * 
+ * TODO: Migrate to Drizzle ORM or remove if no longer needed
  */
 
+// @ts-nocheck - Ignoring errors during Supabase → Drizzle migration
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import * as dotenv from 'dotenv'

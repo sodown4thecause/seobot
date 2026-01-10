@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useReducer, useEffect, useMemo, ReactNode } from 'react'
 import { useUser } from '@clerk/nextjs'
 import {
   UserMode,
@@ -15,6 +15,18 @@ import {
 // TODO: Implement user_mode_configs table in schema
 // Tables needed: user_mode_configs
 // Table schema: id, user_id, current_mode, preferences, customizations, onboarding_completed, created_at, updated_at
+
+// Precompute mode-to-transitions map for O(1) lookups
+const modeTransitionsMap: Record<UserModeLevel, ModeTransition[]> = MODE_TRANSITIONS.reduce(
+  (acc, transition) => {
+    if (!acc[transition.from]) {
+      acc[transition.from] = []
+    }
+    acc[transition.from].push(transition)
+    return acc
+  },
+  {} as Record<UserModeLevel, ModeTransition[]>
+)
 
 // State interface
 interface UserModeState {
@@ -177,7 +189,7 @@ export function UserModeProvider({ children }: { children: ReactNode }) {
   // Update available transitions when mode changes
   useEffect(() => {
     if (state.currentMode) {
-      const transitions = MODE_TRANSITIONS.filter(t => t.from === state.currentMode!.level)
+      const transitions = modeTransitionsMap[state.currentMode!.level] || []
       dispatch({ type: 'SET_AVAILABLE_TRANSITIONS', payload: transitions })
     }
   }, [state.currentMode?.level])

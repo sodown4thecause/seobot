@@ -263,7 +263,7 @@ export function getTemplatesForPillar(pillar: Pillar): PromptTemplate[] {
         case 'production':
             return PRODUCTION_TEMPLATES
         default:
-            return DISCOVERY_TEMPLATES
+            throw new Error(`Invalid pillar value: "${pillar}". Expected one of: discovery, gap_analysis, strategy, production`)
     }
 }
 

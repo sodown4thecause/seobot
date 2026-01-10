@@ -14,9 +14,6 @@ vi.mock('@/lib/api/n8n', () => ({
   callN8nWebhook: vi.fn(),
 }))
 
-// Mock the webhook URL for testing
-const mockN8nWebhookUrl = 'https://zuded9wg.rcld.app/webhook/domain';
-
 // Mock Firecrawl
 vi.mock('@/lib/mcp/firecrawl', () => ({
   firecrawlClient: {

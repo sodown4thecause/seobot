@@ -76,7 +76,7 @@ export class SuccessMetricsService {
     action: string,
     metadata?: Record<string, any>
   ): Promise<void> {
-    console.log(`[Metrics] User engagement: ${userId} - ${action}`)
+    console.log(`[Metrics] User engagement: ${userId} - ${action}${metadata ? ' - ' + JSON.stringify(metadata) : ''}`)
   }
 
   /**

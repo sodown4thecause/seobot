@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Link2, ExternalLink, Globe, ShieldCheck, ShieldAlert } from "lucide-react"
+import { Link2, ExternalLink, Globe } from "lucide-react"
 
 interface BacklinkData {
     // Original expected fields
@@ -32,7 +32,7 @@ interface BacklinksTableProps {
 }
 
 export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
-    const { result, state, args } = toolInvocation
+    const { result, state } = toolInvocation
     const isExecuting = state === 'call' || state === 'executing'
 
     if (isExecuting) {
@@ -134,7 +134,7 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {backlinks.slice(0, 15).map((link, idx) => {
+                            {backlinks.map((link, idx) => {
                                 const sourceUrl = getSourceUrl(link)
                                 const anchorText = getAnchorText(link)
                                 const targetUrl = getTargetUrl(link)
@@ -191,10 +191,10 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
                         </TableBody>
                     </Table>
                 </div>
-                {backlinks.length > 15 && (
+                {backlinks.length > 0 && (
                     <div className="p-3 bg-zinc-900/20 border-t border-zinc-800/50 text-center">
                         <p className="text-xs text-zinc-500">
-                            Showing top 15 of {backlinks.length} discovered backlinks.
+                            Showing all {backlinks.length} discovered backlinks.
                         </p>
                     </div>
                 )}

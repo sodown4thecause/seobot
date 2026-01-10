@@ -23,7 +23,47 @@ export interface ConversationMessage {
     createdAt?: Date
 }
 
+const VALID_MESSAGE_ROLES = ['user', 'assistant', 'system'] as const
+type ValidMessageRole = typeof VALID_MESSAGE_ROLES[number]
+
 const DEFAULT_WINDOW_SIZE = 10
+
+/**
+ * Type guard to check if a string is a valid message role
+ */
+function isValidMessageRole(role: string): role is ValidMessageRole {
+    return VALID_MESSAGE_ROLES.includes(role as ValidMessageRole)
+}
+
+/**
+ * Validates and safely converts data to JSON-compatible format
+ * Prevents type assertion errors and ensures data can be stored in JSONB columns
+ */
+function safeJsonify(data: unknown): Json {
+    if (data === null || data === undefined) {
+        return {} as Json
+    }
+
+    // Check if it's already a valid JSON type
+    if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
+        return data as Json
+    }
+
+    // For objects and arrays, ensure they're serializable
+    if (typeof data === 'object') {
+        try {
+            // Test if it's JSON-serializable
+            JSON.stringify(data)
+            return data as Json
+        } catch (err) {
+            console.warn('[SessionMemory] Data is not JSON-serializable, returning empty object:', err)
+            return {} as Json
+        }
+    }
+
+    // Fallback for any other type
+    return {} as Json
+}
 
 export class SessionMemory {
     private windowSize: number
@@ -36,18 +76,39 @@ export class SessionMemory {
      * Get recent messages from a conversation (sliding window)
      */
     async getRecentMessages(conversationId: string): Promise<ConversationMessage[]> {
-        const result = await db
-            .select()
-            .from(messages)
-            .where(eq(messages.conversationId, conversationId))
-            .orderBy(desc(messages.createdAt))
-            .limit(this.windowSize)
+        try {
+            const result = await db
+                .select()
+                .from(messages)
+                .where(eq(messages.conversationId, conversationId))
+                .orderBy(desc(messages.createdAt))
+                .limit(this.windowSize)
 
-        return result.reverse().map(msg => ({
-            role: msg.role as 'user' | 'assistant' | 'system',
-            content: msg.content,
-            createdAt: msg.createdAt,
-        }))
+            // Validate and filter messages by role
+            const validMessages: ConversationMessage[] = []
+            for (const msg of result) {
+                // Skip if role is not in valid set or content is missing
+                if (!isValidMessageRole(msg.role) || !msg.content) {
+                    console.warn(`[SessionMemory] Skipping message with invalid role or missing content:`, {
+                        conversationId,
+                        role: msg.role,
+                        createdAt: msg.createdAt
+                    })
+                    continue
+                }
+                validMessages.push({
+                    role: msg.role,
+                    content: msg.content,
+                    createdAt: msg.createdAt,
+                })
+            }
+
+            return validMessages
+        } catch (error) {
+            console.error('[SessionMemory] Failed to fetch recent messages:', error)
+            // Return empty array to allow graceful degradation
+            return []
+        }
     }
 
     /**
@@ -93,14 +154,36 @@ export class SessionMemory {
         pillar: Pillar,
         metadata?: Record<string, unknown>
     ): Promise<void> {
-        await db.insert(completedTasks).values({
-            userId,
-            conversationId,
-            taskKey,
-            taskType,
-            pillar,
-            metadata: (metadata || {}) as Json,
-        })
+        try {
+            // Check if task is already completed to prevent duplicates
+            const existing = await db
+                .select()
+                .from(completedTasks)
+                .where(and(
+                    eq(completedTasks.userId, userId),
+                    eq(completedTasks.conversationId, conversationId),
+                    eq(completedTasks.taskKey, taskKey)
+                ))
+                .limit(1)
+
+            if (existing.length > 0) {
+                console.log(`[SessionMemory] Task "${taskKey}" already completed, skipping duplicate`)
+                return
+            }
+
+            await db.insert(completedTasks).values({
+                userId,
+                conversationId,
+                taskKey,
+                taskType,
+                pillar,
+                metadata: safeJsonify(metadata || {}),
+            })
+        } catch (error) {
+            console.error('[SessionMemory] Failed to mark task as completed:', error)
+            // Re-throw to allow caller to handle critical failures
+            throw new Error(`Failed to mark task completed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
     }
 
     /**
@@ -113,29 +196,40 @@ export class SessionMemory {
         category: string = 'general',
         conversationId?: string
     ): Promise<void> {
-        const existing = await db
-            .select()
-            .from(agentMemory)
-            .where(and(eq(agentMemory.userId, userId), eq(agentMemory.key, key)))
-            .limit(1)
+        try {
+            // Check if a record with this userId and key already exists
+            const existing = await db
+                .select()
+                .from(agentMemory)
+                .where(and(eq(agentMemory.userId, userId), eq(agentMemory.key, key)))
+                .limit(1)
 
-        if (existing.length > 0) {
-            await db.update(agentMemory)
-                .set({
-                    value: value as Json,
+            const safeValue = safeJsonify(value)
+
+            if (existing.length > 0) {
+                // Update existing record with new value and timestamp
+                await db.update(agentMemory)
+                    .set({
+                        value: safeValue,
+                        category,
+                        conversationId,
+                        updatedAt: new Date()
+                    })
+                    .where(eq(agentMemory.id, existing[0].id))
+            } else {
+                // Insert new memory record
+                await db.insert(agentMemory).values({
+                    userId,
+                    key,
+                    value: safeValue,
                     category,
                     conversationId,
-                    updatedAt: new Date()
                 })
-                .where(eq(agentMemory.id, existing[0].id))
-        } else {
-            await db.insert(agentMemory).values({
-                userId,
-                key,
-                value: value as Json,
-                category,
-                conversationId,
-            })
+            }
+        } catch (error) {
+            console.error('[SessionMemory] Failed to store memory:', error)
+            // Re-throw to allow caller to handle critical failures
+            throw new Error(`Failed to store memory: ${error instanceof Error ? error.message : 'Unknown error'}`)
         }
     }
 
