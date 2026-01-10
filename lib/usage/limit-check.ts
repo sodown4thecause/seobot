@@ -1,9 +1,13 @@
 /**
  * Credit Limit Checker
  * Enforces monthly credit limits for beta users
+ * 
+ * Migrated from Supabase to Drizzle ORM with Neon
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { userUsageLimits, type Json } from '@/lib/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { BETA_LIMITS } from '@/lib/config/beta-limits'
 import { getClientIp, blockIp } from '@/lib/auth/ip-block-check'
 import { NextRequest } from 'next/server'
@@ -38,14 +42,12 @@ export async function checkCreditLimit(
   }
 
   try {
-    const supabase = await createClient()
-
     // Get user's credit limit and pause status
-    const { data: limits, error: limitsError } = await supabase
-      .from('user_usage_limits')
-      .select('monthly_credit_limit_usd, is_unlimited, is_paused, pause_until, pause_reason')
-      .eq('user_id', userId)
-      .single()
+    const [limits] = await db
+      .select()
+      .from(userUsageLimits)
+      .where(eq(userUsageLimits.userId, userId))
+      .limit(1)
 
     // If no limits record exists, create one with default $1 for beta
     let monthlyLimit: number = BETA_LIMITS.MAX_SPEND_USD
@@ -54,32 +56,31 @@ export async function checkCreditLimit(
     let pauseUntil: Date | undefined
     let pauseReason: string | undefined
 
-    if (limitsError && limitsError.code === 'PGRST116') {
+    if (!limits) {
       // No record exists - create default with beta limit
-      const { data: newLimit } = await supabase
-        .from('user_usage_limits')
-        .insert({
-          user_id: userId,
-          monthly_credit_limit_usd: BETA_LIMITS.MAX_SPEND_USD,
-          is_unlimited: false,
-          is_paused: false,
+      const [newLimit] = await db
+        .insert(userUsageLimits)
+        .values({
+          userId,
+          monthlyCreditLimitUsd: BETA_LIMITS.MAX_SPEND_USD,
+          isUnlimited: false,
+          isPaused: false,
         })
-        .select()
-        .single()
+        .returning()
 
       if (newLimit) {
-        monthlyLimit = Number(newLimit.monthly_credit_limit_usd)
-        isUnlimited = newLimit.is_unlimited
-        isPaused = newLimit.is_paused || false
-        pauseUntil = newLimit.pause_until ? new Date(newLimit.pause_until) : undefined
-        pauseReason = newLimit.pause_reason || undefined
+        monthlyLimit = Number(newLimit.monthlyCreditLimitUsd)
+        isUnlimited = newLimit.isUnlimited
+        isPaused = newLimit.isPaused || false
+        pauseUntil = newLimit.pauseUntil ? new Date(newLimit.pauseUntil) : undefined
+        pauseReason = newLimit.pauseReason || undefined
       }
-    } else if (limits) {
-      monthlyLimit = Number(limits.monthly_credit_limit_usd)
-      isUnlimited = limits.is_unlimited
-      isPaused = limits.is_paused || false
-      pauseUntil = limits.pause_until ? new Date(limits.pause_until) : undefined
-      pauseReason = limits.pause_reason || undefined
+    } else {
+      monthlyLimit = Number(limits.monthlyCreditLimitUsd)
+      isUnlimited = limits.isUnlimited
+      isPaused = limits.isPaused || false
+      pauseUntil = limits.pauseUntil ? new Date(limits.pauseUntil) : undefined
+      pauseReason = limits.pauseReason || undefined
     }
 
     // Check if pause has expired
@@ -87,14 +88,15 @@ export async function checkCreditLimit(
       const now = new Date()
       if (now >= pauseUntil) {
         // Pause expired, clear it
-        await supabase
-          .from('user_usage_limits')
-          .update({
-            is_paused: false,
-            pause_until: null,
-            pause_reason: null,
+        await db
+          .update(userUsageLimits)
+          .set({
+            isPaused: false,
+            pauseUntil: null,
+            pauseReason: null,
+            updatedAt: new Date(),
           })
-          .eq('user_id', userId)
+          .where(eq(userUsageLimits.userId, userId))
         isPaused = false
         pauseUntil = undefined
         pauseReason = undefined
@@ -128,22 +130,16 @@ export async function checkCreditLimit(
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
-    // Sum costs from ai_usage_events for current month
-    const { data: usage, error: usageError } = await supabase
-      .from('ai_usage_events')
-      .select('metadata')
-      .eq('user_id', userId)
-      .gte('created_at', startOfMonth.toISOString())
-      .lte('created_at', endOfMonth.toISOString())
+    // Sum costs from ai_usage_events for current month using raw SQL for JSONB access
+    const result = await db.execute(sql`
+      SELECT COALESCE(SUM((metadata->>'cost_usd')::float), 0) as total_cost
+      FROM ai_usage_events
+      WHERE user_id = ${userId}
+        AND created_at >= ${startOfMonth.toISOString()}::timestamp
+        AND created_at <= ${endOfMonth.toISOString()}::timestamp
+    `)
 
-    let currentSpend = 0
-    if (!usageError && usage) {
-      currentSpend = usage.reduce((sum: number, event: any) => {
-        const cost = event.metadata?.cost_usd || 0
-        return sum + Number(cost)
-      }, 0)
-    }
-
+    const currentSpend = Number((result.rows[0] as any)?.total_cost || 0)
     const remaining = monthlyLimit - currentSpend
     const allowed = remaining > 0
 
@@ -187,25 +183,20 @@ export async function checkCreditLimit(
  */
 export async function pauseUserAccount(userId: string, req: NextRequest): Promise<void> {
   try {
-    const supabase = await createClient()
     const now = new Date()
-    const pauseUntil = new Date(now.getTime() + BETA_LIMITS.PAUSE_DURATION_DAYS * 24 * 60 * 60 * 1000)
+    const pauseUntilDate = new Date(now.getTime() + BETA_LIMITS.PAUSE_DURATION_DAYS * 24 * 60 * 60 * 1000)
 
     // Update user_usage_limits to pause account
-    const { error: pauseError } = await supabase
-      .from('user_usage_limits')
-      .update({
-        is_paused: true,
-        paused_at: now.toISOString(),
-        pause_reason: BETA_LIMITS.UPGRADE_MESSAGE,
-        pause_until: pauseUntil.toISOString(),
+    await db
+      .update(userUsageLimits)
+      .set({
+        isPaused: true,
+        pausedAt: now,
+        pauseReason: BETA_LIMITS.UPGRADE_MESSAGE,
+        pauseUntil: pauseUntilDate,
+        updatedAt: now,
       })
-      .eq('user_id', userId)
-
-    if (pauseError) {
-      console.error('[Limit Check] Error pausing account:', pauseError)
-      return
-    }
+      .where(eq(userUsageLimits.userId, userId))
 
     // Block the user's IP address
     const ipAddress = getClientIp(req)
@@ -217,7 +208,7 @@ export async function pauseUserAccount(userId: string, req: NextRequest): Promis
       )
     }
 
-    console.log(`[Limit Check] ✓ Paused account for user ${userId} until ${pauseUntil.toISOString()}`)
+    console.log(`[Limit Check] ✓ Paused account for user ${userId} until ${pauseUntilDate.toISOString()}`)
   } catch (error) {
     console.error('[Limit Check] Error pausing user account:', error)
     // Don't throw - pause failure shouldn't break the request flow

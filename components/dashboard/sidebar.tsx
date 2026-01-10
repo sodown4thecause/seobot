@@ -59,6 +59,13 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
   const { state, actions } = useAgent()
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isCreating, setIsCreating] = React.useState(false)
+  const [isMounted, setIsMounted] = React.useState(false)
+
+  // Prevent hydration mismatch for timestamps
+  React.useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const filteredConversations = React.useMemo(() => {
     if (!searchQuery.trim()) return state.conversations
     const query = searchQuery.toLowerCase()
@@ -111,11 +118,11 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
     >
       {/* Header */}
       <div className="p-4 pb-2 flex items-center gap-3">
-        <div className="w-8 h-8 relative flex-shrink-0">
-          <Logo className="w-full h-full" />
+        <div className="w-8 h-8 bg-white flex items-center justify-center text-black font-black italic text-sm flex-shrink-0">
+          FI
         </div>
         {!collapsed && (
-          <span className="font-semibold text-xl text-white tracking-tight">Flow Intent</span>
+          <span className="font-bold text-xl tracking-tighter text-white uppercase italic">Flow Intent</span>
         )}
       </div>
 
@@ -214,7 +221,8 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
                 const isActive = state.activeConversation?.id === conversation.id
                 const isPinned = conversation.status === 'pinned'
                 const subtitle = conversation.lastMessage?.content || 'No messages yet'
-                const timestamp = conversation.updatedAt
+                // Only compute relative time on client to prevent hydration mismatch
+                const timestamp = isMounted && conversation.updatedAt
                   ? safeFormatDistanceToNow(new Date(conversation.updatedAt))
                   : ''
 

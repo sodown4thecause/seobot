@@ -35,7 +35,7 @@ describe('Link Building Campaign - Prospect Discovery', () => {
   describe('Competitor Backlink Analysis Integration', () => {
     it('should fetch competitor backlinks via n8n webhook', async () => {
       const { callN8nWebhook } = await import('@/lib/api/n8n')
-      
+
       const mockBacklinks = {
         domain: 'competitor.com',
         backlinks: [
@@ -75,7 +75,7 @@ describe('Link Building Campaign - Prospect Discovery', () => {
 
     it('should handle API errors gracefully', async () => {
       const { callN8nWebhook } = await import('@/lib/api/n8n')
-      
+
       vi.mocked(callN8nWebhook).mockResolvedValue({
         success: false,
         error: 'API rate limit exceeded',
@@ -112,9 +112,9 @@ describe('Link Building Campaign - Prospect Discovery', () => {
 
     it('should analyze multiple competitors in parallel', async () => {
       const { callN8nWebhook } = await import('@/lib/api/n8n')
-      
+
       const competitors = ['competitor1.com', 'competitor2.com', 'competitor3.com']
-      
+
       vi.mocked(callN8nWebhook).mockImplementation(async (endpoint, data) => {
         return {
           success: true,
@@ -140,7 +140,7 @@ describe('Link Building Campaign - Prospect Discovery', () => {
   describe('Contact Information Extraction', () => {
     it('should extract email addresses from scraped pages', async () => {
       const { firecrawlClient } = await import('@/lib/mcp/firecrawl')
-      
+
       const mockExtraction = {
         contacts: {
           emails: ['contact@example.com', 'editor@example.com'],
@@ -175,7 +175,7 @@ describe('Link Building Campaign - Prospect Discovery', () => {
 
     it('should handle pages with no contact information', async () => {
       const { firecrawlClient } = await import('@/lib/mcp/firecrawl')
-      
+
       vi.mocked(firecrawlClient.extract).mockResolvedValue({
         success: true,
         data: {
@@ -198,7 +198,7 @@ describe('Link Building Campaign - Prospect Discovery', () => {
 
     it('should extract author information from blog posts', async () => {
       const { firecrawlClient } = await import('@/lib/mcp/firecrawl')
-      
+
       const mockAuthorInfo = {
         author: {
           name: 'John Doe',
@@ -375,7 +375,7 @@ describe('Link Building Campaign - Prospect Discovery', () => {
   describe('Content Intersection Analysis', () => {
     it('should identify pages linking to competitors but not target', async () => {
       const { pageIntersection } = await import('@/lib/api/dataforseo-service')
-      
+
       const mockIntersection = {
         targets: ['competitor1.com', 'competitor2.com'],
         pages: [
@@ -407,7 +407,7 @@ describe('Link Building Campaign - Prospect Discovery', () => {
       expect(result.success).toBe(true)
       expect(result.data.pages).toBeInstanceOf(Array)
       expect(result.data.pages.length).toBeGreaterThan(0)
-      
+
       // All pages should link to competitors but not target
       result.data.pages.forEach((page: any) => {
         expect(page.links_to.length).toBeGreaterThan(0)

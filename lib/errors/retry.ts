@@ -77,6 +77,10 @@ export async function withAgentRetry<T>(
     } catch (error) {
       lastError = error
 
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error
+      }
+
       // Check if error is retryable
       if (!isRetryable(error)) {
         // For non-retryable errors, wrap in ProviderError if we have metadata
@@ -106,20 +110,22 @@ export async function withAgentRetry<T>(
       // Calculate delay with exponential backoff
       const delayMs = Math.min(initialDelay! * Math.pow(factor!, attempt), maxDelay!)
 
-      // Log retry attempt
-      const errorMetadata = getErrorMetadata(error)
-      console.warn(
-        `[AgentRetry] Attempt ${attempt + 1}/${retries + 1} failed for ${agent || 'agent'}`,
-        {
-          requestId,
-          agent,
-          provider,
-          error: errorMetadata.message,
-          code: errorMetadata.code,
-          retryable: errorMetadata.retryable,
-          delayMs,
-        }
-      )
+      // Log retry attempt (only in non-production environments)
+      if (process.env.NODE_ENV !== 'production') {
+        const errorMetadata = getErrorMetadata(error)
+        console.warn(
+          `[AgentRetry] Attempt ${attempt + 1}/${retries + 1} failed for ${agent || 'agent'}`,
+          {
+            requestId,
+            agent,
+            provider,
+            error: errorMetadata.message,
+            code: errorMetadata.code,
+            retryable: errorMetadata.retryable,
+            delayMs,
+          }
+        )
+      }
 
       // Call onRetry callback if provided
       if (onRetry && error instanceof Error) {

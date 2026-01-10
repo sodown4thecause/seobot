@@ -4,8 +4,8 @@
 
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
-import { generateText } from 'ai'
-import { serverEnv } from '@/lib/config/env'
+import { generateObject } from 'ai'
+import { z } from 'zod'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
 import { retrieveAgentDocuments } from '@/lib/ai/content-rag'
 
@@ -17,6 +17,7 @@ export interface SEOAEOParams {
   userId?: string // For usage logging
   langfuseTraceId?: string // For grouping spans under a parent trace
   sessionId?: string // For Langfuse session tracking
+  abortSignal?: AbortSignal // Optional: signal to abort strategy generation
   // Business context for personalized strategies
   businessContext?: {
     websiteUrl?: string
@@ -28,12 +29,40 @@ export interface SEOAEOParams {
 }
 
 
-export interface SEOAEOResult {
-  contentStructure: any
-  keywordPlacement: any
-  citationStrategy: any
-  platformOptimizations: any
-}
+// Zod schema for structured SEO/AEO strategy output
+const SEOAEOStrategySchema = z.object({
+  contentStructure: z.object({
+    structure: z.string().describe('Recommended heading hierarchy (e.g., H1 > H2 > H3)'),
+    sections: z.array(z.string()).describe('List of recommended sections'),
+    wordCount: z.number().optional().describe('Recommended minimum word count'),
+    format: z.string().optional().describe('Content format recommendations'),
+  }),
+  keywordPlacement: z.object({
+    primary: z.union([z.string(), z.array(z.string())]).describe('Primary keyword placement strategy'),
+    secondary: z.union([z.string(), z.array(z.string())]).describe('Secondary keyword placement'),
+    density: z.string().optional().describe('Recommended keyword density'),
+    semanticVariations: z.array(z.string()).optional().describe('Semantic keyword variations to include'),
+  }),
+  citationStrategy: z.object({
+    format: z.string().describe('Citation format recommendation'),
+    sources: z.string().describe('Types of sources to cite'),
+    authority: z.string().optional().describe('Authority signals to include'),
+  }),
+  platformOptimizations: z.object({
+    chatgpt: z.string().describe('ChatGPT optimization tips'),
+    perplexity: z.string().describe('Perplexity optimization tips'),
+    claude: z.string().optional().describe('Claude optimization tips'),
+    google: z.string().optional().describe('Google Search optimization tips'),
+  }),
+  schemaMarkup: z.array(z.string()).optional().describe('Recommended schema.org types'),
+  agentExperience: z.object({
+    structuredData: z.string().optional(),
+    actionableSteps: z.string().optional(),
+    toolIntegration: z.string().optional(),
+  }).optional().describe('Agent Experience (AX) recommendations'),
+})
+
+export type SEOAEOResult = z.infer<typeof SEOAEOStrategySchema>
 
 export class SEOAEOAgent {
   /**
@@ -45,16 +74,18 @@ export class SEOAEOAgent {
     // Retrieve relevant SEO/AEO knowledge from RAG
     let knowledgeContext = ''
     try {
+      // Allow caller to specify document limit, default to 20 for better context
+      const maxDocs = params.researchData?.maxDocs ?? 20
       const seoKnowledge = await retrieveAgentDocuments(
         `${params.topic} ${params.keywords.join(' ')}`,
         'seo_aeo',
-        5
+        maxDocs
       )
       if (seoKnowledge && seoKnowledge.length > 0) {
         knowledgeContext = seoKnowledge
           .map(doc => `### ${doc.title}\n${doc.content}`)
           .join('\n\n')
-        console.log(`[SEO/AEO Agent] ✓ Retrieved ${seoKnowledge.length} knowledge documents`)
+        console.log(`[SEO/AEO Agent] ✓ Retrieved ${seoKnowledge.length} knowledge documents (limit: ${params.researchData?.maxDocs ?? 20})`)
       }
     } catch (error) {
       console.error('[SEO/AEO Agent] Error retrieving knowledge:', error)
@@ -104,22 +135,33 @@ ${params.businessContext?.industry ? `8. Industry-specific recommendations for $
 Format as JSON.`
 
 
-    try {
-      console.log('[SEO/AEO Agent] Starting SEO strategy creation with timeout...')
+    // Create abort controller with cleanup
+    const controller = new AbortController()
+    const timeoutMs = 90000
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
-      const controller = new AbortController()
-      const timeoutMs = 90000
-      const timeout = setTimeout(() => {
+    // Track whether we added the abort listener (for defensive cleanup)
+    let listenerAdded = false
+    const callerAbortListener = () => controller.abort()
+    if (params.abortSignal) {
+      if (params.abortSignal.aborted) {
         controller.abort()
-      }, timeoutMs)
+      } else {
+        params.abortSignal.addEventListener('abort', callerAbortListener, { once: true })
+        listenerAdded = true
+      }
+    }
 
-      const { text, usage } = await generateText({
-        // Use Gemini 2.5 Flash for better tool orchestration and faster responses
+    try {
+      console.log('[SEO/AEO Agent] Starting SEO strategy creation with generateObject...')
+
+      const { object: strategy, usage } = await generateObject({
         model: vercelGateway.languageModel('google/gemini-2.5-flash' as GatewayModelId),
+        schema: SEOAEOStrategySchema,
         prompt,
         temperature: 0.4,
-        maxRetries: 3, // AI SDK 6: Add retries for transient failures
-        abortSignal: controller.signal, // AI SDK 6: Use abortSignal instead of signal
+        maxRetries: 3,
+        abortSignal: controller.signal,
         experimental_telemetry: createTelemetryConfig('seo-aeo', {
           userId: params.userId,
           sessionId: params.sessionId,
@@ -137,7 +179,7 @@ Format as JSON.`
       // Log usage
       if (params.userId) {
         try {
-          const { logAIUsage } = await import('@/lib/analytics/usage-logger');
+          const { logAIUsage } = await import('@/lib/analytics/usage-logger')
           await logAIUsage({
             userId: params.userId,
             agentType: 'seo_aeo',
@@ -149,38 +191,30 @@ Format as JSON.`
               keywords: params.keywords,
               hasKnowledgeContext: !!knowledgeContext,
             },
-          });
+          })
         } catch (error) {
-          console.error('[SEO/AEO Agent] Error logging usage:', error);
+          console.error('[SEO/AEO Agent] Error logging usage:', error)
         }
       }
 
-      clearTimeout(timeout)
-      console.log('[SEO/AEO Agent] ✓ Strategy generation completed')
-
-      // Try to parse as JSON, fallback to structured object
-      let strategy: SEOAEOResult
-      try {
-        strategy = JSON.parse(text)
-      } catch {
-        strategy = {
-          contentStructure: { structure: 'H1 > H2 > H3', sections: ['intro', 'main', 'conclusion'] },
-          keywordPlacement: { primary: 'title and first paragraph', secondary: 'headers and body' },
-          citationStrategy: { format: 'inline links', sources: 'authoritative sites' },
-          platformOptimizations: { chatgpt: 'clear headings', perplexity: 'cite sources' },
-        }
-      }
-
-      console.log('[SEO/AEO Agent] ✓ Strategy created successfully')
+      console.log('[SEO/AEO Agent] ✓ Strategy created successfully with structured output')
       return strategy
-    } catch (error: any) {
-      if (error?.name === 'AbortError') {
-        console.error('[SEO/AEO Agent] Strategy creation aborted due to timeout')
+    } catch (error: unknown) {
+      const errorName = error instanceof Error ? error.name : 'Unknown'
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      if (errorName === 'AbortError') {
+        if (params.abortSignal?.aborted) {
+          console.error('[SEO/AEO Agent] Strategy creation aborted by caller')
+          throw error
+        }
+        console.error('[SEO/AEO Agent] Strategy creation aborted (timeout)')
       } else {
-        console.error('[SEO/AEO Agent] Strategy creation failed:', error)
+        console.error('[SEO/AEO Agent] Strategy creation failed:', errorMessage)
       }
 
-      const fallbackStrategy = {
+      // Type-safe fallback strategy
+      const fallbackStrategy: SEOAEOResult = {
         contentStructure: {
           structure: 'Introduction > Key Points > Tools Overview > Conclusion',
           sections: ['intro', 'tools-overview', 'comparison', 'conclusion'],
@@ -205,6 +239,12 @@ Format as JSON.`
 
       console.log('[SEO/AEO Agent] ✓ Using fallback strategy due to error')
       return fallbackStrategy
+    } finally {
+      clearTimeout(timeout)
+      // Only remove listener if it was actually added
+      if (listenerAdded && params.abortSignal) {
+        params.abortSignal.removeEventListener('abort', callerAbortListener)
+      }
     }
   }
 }

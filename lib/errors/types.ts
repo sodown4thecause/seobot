@@ -223,9 +223,44 @@ export class NotFoundError extends AppError {
 }
 
 /**
+ * Abort error
+ * Thrown when an operation is cancelled by the user or system
+ */
+export class AbortError extends AppError {
+  constructor(
+    message: string = 'Operation was aborted',
+    options?: {
+      requestId?: string
+      details?: Record<string, unknown>
+    }
+  ) {
+    super(message, 'ABORTED', 499, options)
+  }
+}
+
+/**
+ * Check if an error is an abort error (either custom or DOM AbortError)
+ */
+export function isAbortError(error: unknown): boolean {
+  if (error instanceof AbortError) {
+    return true
+  }
+  // Handle standard DOM AbortError for compatibility
+  if (error instanceof Error && error.name === 'AbortError') {
+    return true
+  }
+  return false
+}
+
+/**
  * Check if an error is retryable
  */
 export function isRetryable(error: unknown): boolean {
+  // Abort errors are never retryable
+  if (isAbortError(error)) {
+    return false
+  }
+
   if (error instanceof ProviderError) {
     return error.retryable
   }
@@ -249,8 +284,8 @@ export function isRetryable(error: unknown): boolean {
     return statusCode >= 500 || statusCode === 429
   }
 
-  // Default to retrying unknown errors (might be transient)
-  return true
+  // Unknown errors without statusCode are not retryable
+  return false
 }
 
 /**

@@ -69,6 +69,7 @@ export class SEOAEOSyntaxAgent {
         system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.4,
+        ...(params.abortSignal ? { abortSignal: params.abortSignal } : {}),
         experimental_telemetry: createTelemetryConfig('seo-aeo-syntax', {
           userId: params.userId,
           sessionId: params.sessionId,

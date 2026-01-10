@@ -2,14 +2,63 @@ import { generateObject } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { createAdminClient } from '@/lib/supabase/server'
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Use singleton admin client for Supabase operations
-const supabase = await createAdminClient()
+// TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
+/**
+ * ⚠️ ALERT/EVENT FEATURES DISABLED ⚠️
+ *
+ * This module uses a stub database client that throws fatal errors on any operation
+ * to prevent silent data loss. This affects core functionality including:
+ * - Creating/reading/updating/deleting competitor alerts
+ * - Tracking alert events and history
+ * - Notification triggers and scheduling
+ *
+ * Environment guard: Set COMPETITOR_ALERTS_ENABLED=true to enable stub (dev only).
+ * Production will always throw to prevent silent failures.
+ */
+
+const FEATURE_FLAG = process.env.COMPETITOR_ALERTS_ENABLED === 'true'
+
+const throwFatalError = (operation: string): never => {
+  throw new Error(
+    `[CompetitorAlerts] FATAL: Database client not implemented. ` +
+    `Attempted operation: ${operation}. ` +
+    `Alert/event features are disabled until Drizzle ORM migration is complete. ` +
+    `See lib/competitor/competitor-alerts-service.ts for implementation details.`
+  )
+}
+
+interface StubQueryBuilder {
+  select: (cols?: string) => StubQueryBuilder
+  insert: (values: any) => StubQueryBuilder
+  update: (values: any) => StubQueryBuilder
+  delete: () => StubQueryBuilder
+  eq: (column: string, value: any) => StubQueryBuilder
+  order: (column: string, options?: { ascending?: boolean }) => StubQueryBuilder
+  limit: (n: number) => StubQueryBuilder
+  single: () => Promise<{ data: any; error: any }>
+  then: (resolve: (value: { data: any; error: any }) => void) => void
+}
+
+const createStubQueryBuilder = (table: string): StubQueryBuilder => ({
+  select: () => throwFatalError(`select from ${table}`),
+  insert: () => throwFatalError(`insert into ${table}`),
+  update: () => throwFatalError(`update ${table}`),
+  delete: () => throwFatalError(`delete from ${table}`),
+  eq: () => throwFatalError(`eq on ${table}`),
+  order: () => throwFatalError(`order on ${table}`),
+  limit: () => throwFatalError(`limit on ${table}`),
+  single: () => throwFatalError(`single on ${table}`),
+  then: () => throwFatalError(`then on ${table}`),
+})
+
+const supabase = FEATURE_FLAG
+  ? { from: (table: string) => createStubQueryBuilder(table) }
+  : { from: (_table: string) => throwFatalError('DB client access (feature disabled)') }
 
 export interface CompetitorAlert {
   id: string

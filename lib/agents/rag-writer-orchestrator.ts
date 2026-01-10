@@ -18,6 +18,7 @@ import { EVALUATION_SCHEMAS } from '@/lib/observability/evaluation-schemas'
 import { createIdGenerator } from 'ai'
 import { startActiveObservation, updateActiveTrace } from '@langfuse/tracing'
 import { storeAndLearn } from '@/lib/ai/learning-storage'
+import { AbortError } from '@/lib/errors/types'
 
 export interface ProgressUpdate {
   phase: string
@@ -35,38 +36,62 @@ export interface RAGWriterParams {
   userId?: string
   competitorUrls?: string[]
   onProgress?: (update: ProgressUpdate) => void | Promise<void>
+  onProgressError?: (error: Error, update: ProgressUpdate) => void | Promise<void>
   abortSignal?: AbortSignal
   searchIntent?: string
+}
+
+export interface QualityScores {
+  dataforseo: number
+  eeat: number
+  depth: number
+  factual: number
+  frase: number
+  aeo?: number
+  overall: number
+}
+
+export interface QAReport {
+  eeat_score: number
+  depth_score: number
+  factual_score: number
+  improvement_instructions?: string[]
+  strengths?: string[]
+  weaknesses?: string[]
+  expertise_signals?: string[]
+  trust_indicators?: string[]
+}
+
+export interface FraseOptimization {
+  score: number
+  contentBrief: Record<string, unknown>
+  recommendations: {
+    optimizationTips?: string[]
+    missingTopics?: string[]
+    missingQuestions?: string[]
+    suggestedTopics?: string[]
+  }
+  searchIntent?: string
+}
+
+export interface ContentMetadata {
+  researchSummary?: string
+  citations?: Array<{ url: string; title?: string }>
+  metaTitle?: string
+  metaDescription?: string
+  slug?: string
+  directAnswer?: string
 }
 
 export interface RAGWriterResult {
   content: string
   contentId?: string
   contentVersionId?: string
-  qualityScores: {
-    dataforseo: number
-    eeat: number
-    depth: number
-    factual: number
-    frase: number
-    overall: number
-  }
+  qualityScores: QualityScores
   revisionCount: number
-  qaReport: any
-  fraseOptimization?: {
-    score: number
-    contentBrief: any
-    recommendations: any
-    searchIntent?: string
-  }
-  metadata: {
-    researchSummary?: string
-    citations?: Array<{ url: string; title?: string }>
-    metaTitle?: string
-    metaDescription?: string
-    slug?: string
-    directAnswer?: string
-  }
+  qaReport: QAReport
+  fraseOptimization?: FraseOptimization
+  metadata: ContentMetadata
 }
 
 export class RAGWriterOrchestrator {
@@ -99,7 +124,22 @@ export class RAGWriterOrchestrator {
     details?: string
   ) {
     if (params.onProgress) {
-      await params.onProgress({ phase, status, message, details })
+      const update: ProgressUpdate = { phase, status, message, details }
+      try {
+        await params.onProgress(update)
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error))
+        console.warn('[RAG Writer Orchestrator] Progress callback error:', error)
+        
+        // Notify caller of callback error so they can handle it
+        if (params.onProgressError) {
+          try {
+            await params.onProgressError(err, update)
+          } catch (handlerError) {
+            console.error('[RAG Writer Orchestrator] Progress error handler failed:', handlerError)
+          }
+        }
+      }
     }
   }
 
@@ -111,7 +151,7 @@ export class RAGWriterOrchestrator {
 
     // Check abort signal immediately
     if (params.abortSignal?.aborted) {
-      throw new Error('Content generation aborted by client')
+      throw new AbortError('Content generation aborted by client')
     }
 
     const database = db
@@ -172,13 +212,13 @@ export class RAGWriterOrchestrator {
         },
       });
 
-      try {
-        // Helper function to check abort signal
-        const checkAborted = () => {
-          if (params.abortSignal?.aborted) {
-            throw new Error('Content generation aborted by client')
+        try {
+          // Helper function to check abort signal
+          const checkAborted = () => {
+            if (params.abortSignal?.aborted) {
+              throw new AbortError('Content generation aborted by client')
+            }
           }
-        }
 
         // Step 0.5: Fetch user's business context for personalized content
         checkAborted()
@@ -228,6 +268,7 @@ export class RAGWriterOrchestrator {
           userId: params.userId,
           langfuseTraceId: traceId, // Link to parent trace
           sessionId, // Link to session
+          abortSignal: params.abortSignal,
         })
         await this.emitProgress(params, 'research', 'completed', 'Research complete', `Found ${researchResult.competitorSnippets?.length || 0} competitors`)
 
@@ -258,6 +299,7 @@ export class RAGWriterOrchestrator {
             country: 'us',
             userId: params.userId,
             contentType: params.type,
+            abortSignal: params.abortSignal,
           })
 
           // Create a comprehensive content brief from Frase results
@@ -305,6 +347,7 @@ export class RAGWriterOrchestrator {
           industry: businessContext.profile?.industry,
           // Citation enforcement - only cite from verified sources
           allowedCitations: researchResult.citations,
+          abortSignal: params.abortSignal,
         })
         await this.emitProgress(params, 'writing', 'completed', 'Initial draft complete', `${currentDraft.content.split(/\s+/).length} words written`)
 
@@ -352,6 +395,7 @@ export class RAGWriterOrchestrator {
             userId: params.userId,
             langfuseTraceId: traceId, // Link to parent trace
             sessionId, // Link to session
+            abortSignal: params.abortSignal,
           })
 
           // Use optimized content for subsequent phases
@@ -396,6 +440,7 @@ export class RAGWriterOrchestrator {
             targetKeyword: params.keywords[0] || params.topic,
             contentUrl: params.competitorUrls?.[0], // Pass a URL if available for on-page analysis
             userId: params.userId,
+            abortSignal: params.abortSignal,
           })
 
           // Step 4: EEAT QA Review
@@ -420,6 +465,7 @@ export class RAGWriterOrchestrator {
             userId: params.userId,
             langfuseTraceId: traceId, // Link to parent trace
             sessionId, // Link to session
+            abortSignal: params.abortSignal,
           })
 
           // Step 4.5: Frase Content Analysis (evaluate against SERP)
@@ -436,6 +482,7 @@ export class RAGWriterOrchestrator {
               country: 'us',
               userId: params.userId,
               contentType: params.type,
+              abortSignal: params.abortSignal,
             })
 
             fraseScore = fraseContentAnalysis.optimizationScore
@@ -470,6 +517,7 @@ export class RAGWriterOrchestrator {
             qaResult.qaReport.eeat_score,
             qaResult.qaReport.depth_score,
             qaResult.qaReport.factual_score,
+            aeoScore,
             fraseScore
           )
 
@@ -659,6 +707,7 @@ export class RAGWriterOrchestrator {
             industry: businessContext.profile?.industry,
             // Citation enforcement - only cite from verified sources
             allowedCitations: researchResult.citations,
+            abortSignal: params.abortSignal,
           })
 
           currentDraft = revisedDraft
@@ -694,6 +743,8 @@ export class RAGWriterOrchestrator {
                 `DataForSEO: ${finalScores.dataforseo}`,
                 `Depth: ${finalScores.depth}`,
                 `Factual: ${finalScores.factual}`,
+                `AEO: ${finalScores.aeo}`,
+                `Frase: ${finalScores.frase}`,
                 `Revisions: ${revisionRound}`,
               ],
               successful: isSuccessful,
@@ -796,16 +847,18 @@ export class RAGWriterOrchestrator {
     eeat: number,
     depth: number,
     factual: number,
+    aeo: number,
     frase: number = 50
   ): number {
     const weights = QUALITY_THRESHOLDS.SCORING_WEIGHTS
     // Adjust weights to accommodate Frase (reduce others proportionally by 15%)
     // Original weights: dataforseo: 25%, eeat: 40%, depth: 20%, factual: 15%
     const adjustedWeights = {
-      dataforseo: weights.dataforseo * 0.85, // 21.25% (was 25%)
-      eeat: weights.eeat * 0.85, // 34% (was 40%)
-      depth: weights.depth * 0.85, // 17% (was 20%)
+      dataforseo: weights.dataforseo * 0.85, // 17% (was 20%)
+      eeat: weights.eeat * 0.85, // 29.75% (was 35%)
+      depth: weights.depth * 0.85, // 12.75% (was 15%)
       factual: weights.factual * 0.85, // 12.75% (was 15%)
+      aeo: weights.aeo * 0.85,
       frase: 0.15, // 15% - Frase SEO/AEO optimization score
     }
 
@@ -814,17 +867,130 @@ export class RAGWriterOrchestrator {
       eeat * adjustedWeights.eeat +
       depth * adjustedWeights.depth +
       factual * adjustedWeights.factual +
+      aeo * adjustedWeights.aeo +
       frase * adjustedWeights.frase
     )
   }
 
   /**
+   * Type guard to check if a value is a plain object (not null, array, Date, RegExp, etc.)
+   * 
+   * @param value - The value to check
+   * @returns true if the value is a plain object, false otherwise
+   */
+  private isPlainObject(value: unknown): value is Record<string, unknown> {
+    if (value === null || value === undefined) {
+      return false
+    }
+    
+    if (typeof value !== 'object') {
+      return false
+    }
+    
+    // Exclude arrays, Date, RegExp, and other special objects
+    if (
+      Array.isArray(value) ||
+      value instanceof Date ||
+      value instanceof RegExp
+    ) {
+      return false
+    }
+    
+    return true
+  }
+
+  /**
+   * Deep merge utility for nested objects
+   * 
+   * **Behavior:**
+   * - Plain objects: Recursively merged (nested keys preserved)
+   * - Arrays: Replaced entirely (not concatenated/merged)
+   * - Primitives: Source value replaces target value
+   * - Date objects: Cloned to new Date instance
+   * - RegExp: Cloned to new RegExp instance
+   * - null: Treated as a value (replaces target)
+   * - undefined: Ignored (target value preserved)
+   * 
+   * **Use case:** Merging JSONB metadata from database where new values
+   * should override old values, but unaffected nested keys should be preserved.
+   * 
+   * @example
+   * deepMerge(
+   *   { a: 1, b: { c: 2, d: 3 } },
+   *   { b: { c: 99 } }
+   * )
+   * // Result: { a: 1, b: { c: 99, d: 3 } }
+   */
+  private deepMerge<T extends Record<string, unknown>>(
+    target: T,
+    source: Partial<T>
+  ): T {
+    const result = { ...target } as T
+
+    for (const key in source) {
+      const sourceVal = source[key]
+      const targetVal = target[key]
+
+      // Skip undefined values (preserve target)
+      if (sourceVal === undefined) {
+        continue
+      }
+
+      // Handle Date objects - clone to avoid reference sharing
+      if (sourceVal instanceof Date) {
+        result[key] = new Date(sourceVal.getTime()) as T[Extract<keyof T, string>]
+        continue
+      }
+
+      // Handle RegExp objects - clone to avoid reference sharing
+      if (sourceVal instanceof RegExp) {
+        result[key] = new RegExp(sourceVal.source, sourceVal.flags) as T[Extract<keyof T, string>]
+        continue
+      }
+
+      // Handle null explicitly (replaces target)
+      if (sourceVal === null) {
+        result[key] = null as T[Extract<keyof T, string>]
+        continue
+      }
+
+      // Handle arrays (replace entirely, don't merge)
+      if (Array.isArray(sourceVal)) {
+        result[key] = sourceVal as T[Extract<keyof T, string>]
+        continue
+      }
+
+      // Recursively merge plain objects
+      if (
+        typeof sourceVal === 'object' &&
+        sourceVal !== null &&
+        targetVal !== null &&
+        typeof targetVal === 'object' &&
+        !Array.isArray(targetVal) &&
+        !(targetVal instanceof Date) &&
+        !(targetVal instanceof RegExp)
+      ) {
+        result[key] = this.deepMerge(
+          targetVal as Record<string, unknown>,
+          sourceVal as Record<string, unknown>
+        ) as T[Extract<keyof T, string>]
+        continue
+      }
+
+      // Default: replace with source value (primitives, functions, etc.)
+      result[key] = sourceVal as T[Extract<keyof T, string>]
+    }
+
+    return result
+  }
+
+  /**
    * Merge new metadata with existing, preserving previous data
-   * Prevents metadata overwrites that clobber qualityScores/qaReport
+   * Uses deep merge to properly handle nested objects like langwatchEvaluations
    */
   private async mergeContentMetadata(
     contentId: string,
-    newMetadata: Record<string, any>
+    newMetadata: Record<string, unknown>
   ): Promise<void> {
     // Fetch existing metadata
     const existing = await db
@@ -833,22 +999,37 @@ export class RAGWriterOrchestrator {
       .where(eq(content.id, contentId))
       .limit(1)
 
-    const existingMeta = (existing[0]?.metadata as Record<string, any>) || {}
-
-    // Deep merge: new values override old, but preserves unaffected keys
-    const merged = {
-      ...existingMeta,
-      ...newMetadata,
-      // Preserve important objects that should be updated, not replaced
-      qualityScores: newMetadata.qualityScores || existingMeta.qualityScores,
-      qaReport: newMetadata.qaReport || existingMeta.qaReport,
-      langwatchEvaluations: {
-        ...existingMeta.langwatchEvaluations,
-        ...newMetadata.langwatchEvaluations,
-      },
+    const rawExistingMeta = existing[0]?.metadata
+    
+    // Ensure both existingMeta and newMetadata are plain objects before merging
+    // If either is not a plain object, handle gracefully
+    let existingMeta: Record<string, unknown>
+    
+    if (this.isPlainObject(rawExistingMeta)) {
+      existingMeta = rawExistingMeta
+    } else {
+      // If existing metadata is not a plain object (null, array, primitive, etc.)
+      // start with an empty object to avoid corruption
+      console.warn('[RAGWriter] Existing metadata is not a plain object, starting fresh:', {
+        contentId,
+        type: rawExistingMeta === null ? 'null' : Array.isArray(rawExistingMeta) ? 'array' : typeof rawExistingMeta
+      })
+      existingMeta = {}
+    }
+    
+    if (!this.isPlainObject(newMetadata)) {
+      // If new metadata is not a plain object, log error and skip merge
+      console.error('[RAGWriter] New metadata is not a plain object, skipping merge:', {
+        contentId,
+        type: newMetadata === null ? 'null' : Array.isArray(newMetadata) ? 'array' : typeof newMetadata
+      })
+      return
     }
 
-    await db.update(content).set({ metadata: merged }).where(eq(content.id, contentId))
+    // Deep merge: new values override old, preserves unaffected nested keys
+    const merged = this.deepMerge(existingMeta, newMetadata)
+
+    await db.update(content).set({ metadata: merged as unknown as typeof content.metadata }).where(eq(content.id, contentId))
   }
 
   /**

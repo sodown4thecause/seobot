@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useReducer, useEffect, useMemo, ReactNode } from 'react'
 import { useUser } from '@clerk/nextjs'
 import {
   UserMode,
@@ -15,6 +15,18 @@ import {
 // TODO: Implement user_mode_configs table in schema
 // Tables needed: user_mode_configs
 // Table schema: id, user_id, current_mode, preferences, customizations, onboarding_completed, created_at, updated_at
+
+// Precompute mode-to-transitions map for O(1) lookups
+const modeTransitionsMap: Record<UserModeLevel, ModeTransition[]> = MODE_TRANSITIONS.reduce(
+  (acc, transition) => {
+    if (!acc[transition.from]) {
+      acc[transition.from] = []
+    }
+    acc[transition.from].push(transition)
+    return acc
+  },
+  {} as Record<UserModeLevel, ModeTransition[]>
+)
 
 // State interface
 interface UserModeState {
@@ -150,18 +162,25 @@ export function UserModeProvider({ children }: { children: ReactNode }) {
 
   // Initialize user mode on mount
   useEffect(() => {
-    // Check if user has saved mode preference in localStorage
-    const savedMode = localStorage.getItem('user_mode_preference') as UserModeLevel | null
+    try {
+      // Check if user has saved mode preference in localStorage
+      const savedMode = localStorage.getItem('user_mode_preference') as UserModeLevel | null
 
-    if (savedMode && ['beginner', 'practitioner', 'agency'].includes(savedMode)) {
-      // Use saved mode preference
-      const configWithSavedMode: UserModeConfig = {
-        ...createDefaultConfig('guest'),
-        currentMode: savedMode,
+      if (savedMode && ['beginner', 'practitioner', 'agency'].includes(savedMode)) {
+        // Use saved mode preference
+        const configWithSavedMode: UserModeConfig = {
+          ...createDefaultConfig('guest'),
+          currentMode: savedMode,
+        }
+        dispatch({ type: 'SET_MODE_CONFIG', payload: configWithSavedMode })
+      } else {
+        // No saved preference, use default beginner mode
+        const defaultConfig = createDefaultConfig('guest')
+        dispatch({ type: 'SET_MODE_CONFIG', payload: defaultConfig })
       }
-      dispatch({ type: 'SET_MODE_CONFIG', payload: configWithSavedMode })
-    } else {
-      // No saved preference, use default beginner mode
+    } catch (error) {
+      console.error('[UserModeProvider] Error initializing user mode:', error)
+      // Fallback to default config if anything fails
       const defaultConfig = createDefaultConfig('guest')
       dispatch({ type: 'SET_MODE_CONFIG', payload: defaultConfig })
     }
@@ -170,7 +189,7 @@ export function UserModeProvider({ children }: { children: ReactNode }) {
   // Update available transitions when mode changes
   useEffect(() => {
     if (state.currentMode) {
-      const transitions = MODE_TRANSITIONS.filter(t => t.from === state.currentMode!.level)
+      const transitions = modeTransitionsMap[state.currentMode!.level] || []
       dispatch({ type: 'SET_AVAILABLE_TRANSITIONS', payload: transitions })
     }
   }, [state.currentMode?.level])

@@ -237,11 +237,11 @@ export class IntentToolRouter {
             .join('\n')
 
         try {
-            // Use generateText with JSON output since generateObject doesn't work with deepseek-reasoner
-            const { generateText } = await import('ai')
-            const { text } = await generateText({
-                model: vercelGateway.languageModel('deepseek/deepseek-v3.2' as GatewayModelId),
-                prompt: `You are an SEO/AEO intent classifier. Analyze the user query and return a JSON object.
+            // Use generateObject with schema for type-safe intent classification
+            const { object: result } = await generateObject({
+                model: vercelGateway.languageModel('moonshotai/kimi-k2' as GatewayModelId),
+                schema: IntentClassificationSchema,
+                prompt: `You are an SEO/AEO intent classifier. Analyze the user query and classify their intent.
 
 USER QUERY: "${query}"
 
@@ -257,31 +257,8 @@ EXAMPLES:
 - "content ideas with keywords" → primaryIntent: "keyword_research", recommendedAgent: "seo-aeo"
 - "write a blog post about SEO" → primaryIntent: "content_optimization", recommendedAgent: "content"
 
-Return ONLY a valid JSON object (no markdown, no explanation):
-{
-  "primaryIntent": "keyword_research",
-  "secondaryIntents": [],
-  "recommendedAgent": "seo-aeo",
-  "confidence": 0.9,
-  "reasoning": "Query asks for content ideas with keywords"
-}`,
+Classify this query with appropriate intent, agent recommendation, and confidence level.`,
             })
-
-            // Parse JSON from response
-            const jsonMatch = text.match(/\{[\s\S]*\}/)
-            if (!jsonMatch) {
-                throw new Error('No JSON found in response')
-            }
-
-            const parsed = JSON.parse(jsonMatch[0])
-            const result: IntentClassification = {
-                primaryIntent: parsed.primaryIntent || 'general',
-                secondaryIntents: parsed.secondaryIntents || [],
-                recommendedAgent: parsed.recommendedAgent || 'general',
-                confidence: parsed.confidence || 0.7,
-                reasoning: parsed.reasoning || 'Parsed from LLM response',
-                extractedEntities: parsed.extractedEntities,
-            }
 
             console.log('[Intent Router] Classified intent:', {
                 query: query.substring(0, 50),

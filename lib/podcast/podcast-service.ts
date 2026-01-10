@@ -2,13 +2,107 @@ import { generateObject, generateText } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { createAdminClient } from '@/lib/supabase/server'
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Supabase admin client will be initialized in functions
+// TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
+// In-memory store for development/testing only - NOT for production use
+const inMemoryTranscriptions = new Map<string, PodcastTranscription>()
+
+function createAdminClient() {
+  return {
+    from: (table: string) => {
+      if (table === 'podcast_transcriptions') {
+        return {
+          select: (columns: string | string[] = '*') => ({
+            eq: (field: string, value: string) => ({
+              single: async () => {
+                const transcription = Array.from(inMemoryTranscriptions.values()).find(t => t.id === value)
+                if (!transcription) {
+                  return { data: null, error: { message: 'Podcast transcription not found' } }
+                }
+                return {
+                  data: {
+                    id: transcription.id,
+                    user_id: transcription.userId,
+                    audio_url: transcription.audioUrl,
+                    podcast_title: transcription.podcastTitle,
+                    podcast_description: transcription.podcastDescription,
+                    episode_number: transcription.episodeNumber,
+                    duration: transcription.duration,
+                    transcript: transcription.transcript,
+                    summary: transcription.summary,
+                    key_topics: transcription.keyTopics,
+                    guest_speakers: transcription.guestSpeakers,
+                    seo_optimized_content: transcription.seoOptimizedContent,
+                    target_keywords: transcription.targetKeywords,
+                    content_repurposing: transcription.contentRepurposing,
+                    metadata: transcription.metadata,
+                    created_at: transcription.createdAt,
+                    updated_at: transcription.updatedAt
+                  },
+                  error: null
+                }
+              }
+            })
+          }),
+          insert: (data: any) => ({
+            select: () => ({
+              single: async () => {
+                const transcription: PodcastTranscription = {
+                  id: `podcast_${Date.now()}`,
+                  userId: data.user_id,
+                  audioUrl: data.audio_url,
+                  podcastTitle: data.podcast_title,
+                  podcastDescription: data.podcast_description,
+                  episodeNumber: data.episode_number,
+                  duration: data.duration,
+                  transcript: data.transcript,
+                  summary: data.summary,
+                  keyTopics: data.key_topics || [],
+                  guestSpeakers: data.guest_speakers || [],
+                  seoOptimizedContent: data.seo_optimized_content,
+                  targetKeywords: data.target_keywords || [],
+                  contentRepurposing: data.content_repurposing,
+                  metadata: data.metadata || {},
+                  createdAt: data.created_at || new Date().toISOString(),
+                  updatedAt: data.updated_at || new Date().toISOString()
+                }
+                inMemoryTranscriptions.set(transcription.id, transcription)
+                return {
+                  data: {
+                    id: transcription.id,
+                    user_id: transcription.userId,
+                    audio_url: transcription.audioUrl,
+                    podcast_title: transcription.podcastTitle,
+                    podcast_description: transcription.podcastDescription,
+                    episode_number: transcription.episodeNumber,
+                    duration: transcription.duration,
+                    transcript: transcription.transcript,
+                    summary: transcription.summary,
+                    key_topics: transcription.keyTopics,
+                    guest_speakers: transcription.guestSpeakers,
+                    seo_optimized_content: transcription.seoOptimizedContent,
+                    target_keywords: transcription.targetKeywords,
+                    content_repurposing: transcription.contentRepurposing,
+                    metadata: transcription.metadata,
+                    created_at: transcription.createdAt,
+                    updated_at: transcription.updatedAt
+                  },
+                  error: null
+                }
+              }
+            })
+          })
+        }
+      }
+      console.error(`[Podcast Service] Database operation 'from: ${table}' called - Service not implemented. Migrate to Drizzle ORM.`)
+      throw new Error(`Podcast Service table '${table}' not available. Please migrate to Drizzle ORM.`)
+    }
+  }
+}
 
 export interface PodcastTranscription {
   id: string

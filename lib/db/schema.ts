@@ -4,7 +4,18 @@
  * Migrated from Supabase - all 13 tables with pgvector support
  */
 
-import { pgTable, text, timestamp, jsonb, integer, real, uuid, vector, boolean, primaryKey } from 'drizzle-orm/pg-core'
+import {
+    pgTable,
+    text,
+    timestamp,
+    uuid,
+    integer,
+    jsonb,
+    boolean,
+    index,
+    vector,
+    real,
+} from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
 // ============================================================================
@@ -265,6 +276,62 @@ export const contentLearnings = pgTable('content_learnings', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+/**
+ * Agent Memory - Persistent key-value store for agent context
+ * Stores domain-specific facts, user preferences, and learned behaviors
+ */
+export const agentMemory = pgTable('agent_memory', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    conversationId: text('conversation_id'),
+    key: text('key').notNull(),
+    value: jsonb('value').$type<Json>().notNull(),
+    category: text('category').default('general').notNull(), // e.g., 'domain', 'competitor', 'user_preference'
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        userKeyIdx: index('user_key_idx').on(table.userId, table.key),
+    }
+})
+
+// ============================================================================
+// USAGE & LIMITS TABLES
+// ============================================================================
+
+/**
+ * AI Usage Events - Tracks all AI API calls with cost estimation
+ */
+export const aiUsageEvents = pgTable('ai_usage_events', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id'),
+    conversationId: uuid('conversation_id'),
+    messageId: uuid('message_id'),
+    agentType: text('agent_type'),
+    model: text('model').notNull(),
+    promptTokens: integer('prompt_tokens').default(0),
+    completionTokens: integer('completion_tokens').default(0),
+    toolCalls: integer('tool_calls').default(0),
+    metadata: jsonb('metadata').$type<Json>().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+/**
+ * User Usage Limits - Monthly credit limits for beta users
+ */
+export const userUsageLimits = pgTable('user_usage_limits', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull().unique(),
+    monthlyCreditLimitUsd: real('monthly_credit_limit_usd').default(1.0).notNull(),
+    isUnlimited: boolean('is_unlimited').default(false).notNull(),
+    isPaused: boolean('is_paused').default(false).notNull(),
+    pausedAt: timestamp('paused_at'),
+    pauseReason: text('pause_reason'),
+    pauseUntil: timestamp('pause_until'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // ============================================================================
 // AUDIT & ANALYTICS TABLES
 // ============================================================================
@@ -317,6 +384,50 @@ export const blockedIps = pgTable('blocked_ips', {
 })
 
 // ============================================================================
+// PROACTIVE CONSULTANT TABLES
+// ============================================================================
+
+/**
+ * User Roadmap Progress - Tracks progress through SEO/AEO pillars
+ * Four pillars: Discovery, Gap Analysis, Strategy, Production
+ */
+export const userRoadmapProgress = pgTable('user_roadmap_progress', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull().unique(),
+    // Discovery pillar: Keyword research and intent mapping
+    discoveryProgress: integer('discovery_progress').default(0).notNull(),
+    discoveryMetadata: jsonb('discovery_metadata').$type<Json>().default({}),
+    // Gap Analysis pillar: Zero-Click opportunities and AEO weaknesses
+    gapAnalysisProgress: integer('gap_analysis_progress').default(0).notNull(),
+    gapAnalysisMetadata: jsonb('gap_analysis_metadata').$type<Json>().default({}),
+    // Strategy pillar: Link building and topical authority mapping
+    strategyProgress: integer('strategy_progress').default(0).notNull(),
+    strategyMetadata: jsonb('strategy_metadata').$type<Json>().default({}),
+    // Production pillar: RAG-enhanced content writing
+    productionProgress: integer('production_progress').default(0).notNull(),
+    productionMetadata: jsonb('production_metadata').$type<Json>().default({}),
+    // Current active pillar
+    currentPillar: text('current_pillar').default('discovery').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+/**
+ * Completed Tasks - Session memory for suggestion deduplication
+ * Prevents repeated suggestions for already-completed tasks
+ */
+export const completedTasks = pgTable('completed_tasks', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    conversationId: uuid('conversation_id').references(() => conversations.id, { onDelete: 'cascade' }),
+    taskType: text('task_type').notNull(), // 'deep_dive' | 'adjacent' | 'execution'
+    taskKey: text('task_key').notNull(), // e.g., 'keyword_research_intent_analysis'
+    pillar: text('pillar').notNull(), // 'discovery' | 'gap_analysis' | 'strategy' | 'production'
+    metadata: jsonb('metadata').$type<Json>().default({}),
+    completedAt: timestamp('completed_at').defaultNow().notNull(),
+})
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
@@ -364,3 +475,18 @@ export type NewAgentDocument = typeof agentDocuments.$inferInsert
 
 export type ContentLearning = typeof contentLearnings.$inferSelect
 export type NewContentLearning = typeof contentLearnings.$inferInsert
+
+export type AIUsageEvent = typeof aiUsageEvents.$inferSelect
+export type NewAIUsageEvent = typeof aiUsageEvents.$inferInsert
+
+export type UserUsageLimit = typeof userUsageLimits.$inferSelect
+export type NewUserUsageLimit = typeof userUsageLimits.$inferInsert
+
+export type UserRoadmapProgress = typeof userRoadmapProgress.$inferSelect
+export type NewUserRoadmapProgress = typeof userRoadmapProgress.$inferInsert
+
+export type CompletedTask = typeof completedTasks.$inferSelect
+export type NewCompletedTask = typeof completedTasks.$inferInsert
+
+export type AgentMemory = typeof agentMemory.$inferSelect
+export type NewAgentMemory = typeof agentMemory.$inferInsert

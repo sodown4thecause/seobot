@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect, useState, useRef } from 'react'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { useAgent } from '@/components/providers/agent-provider'
 import { useUserMode } from '@/components/providers/user-mode-provider'
@@ -22,8 +22,16 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState<string>('')
   const [workflowMessage, setWorkflowMessage] = useState<string | undefined>()
 
+  // Refs to track fetch state and cleanup
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   // Check if user has a business profile (first-time user detection)
   useEffect(() => {
+    // Cleanup function to abort any in-flight requests
+    let controller = new AbortController()
+    let timeoutId: NodeJS.Timeout | null = null
+
     async function checkUserProfile() {
       try {
         // Wait for Clerk to load user data
@@ -45,7 +53,15 @@ export default function DashboardPage() {
         }
 
         // Check if user has a business profile using API route (Drizzle runs server-side)
-        const response = await fetch('/api/user/profile')
+        // Add timeout to prevent infinite hanging
+        timeoutId = setTimeout(() => {
+          controller.abort()
+          console.warn('[Dashboard] Profile fetch timeout')
+        }, 5000) //5 second timeout
+
+        const response = await fetch('/api/user/profile', {
+          signal: controller.signal
+        })
 
         if (response.ok) {
           const data = await response.json()
@@ -68,14 +84,32 @@ export default function DashboardPage() {
           setInitialMessage('Failed to load profile. Please refresh or contact support.')
         }
       } catch (error) {
-        console.error('[Dashboard] Error checking user profile:', error)
-        // Don't trigger onboarding on errors
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('[Dashboard] Profile fetch timed out')
+          setInitialMessage('Loading timed out. Please refresh page.')
+        } else {
+          console.error('[Dashboard] Error checking user profile:', error)
+          // Don't trigger onboarding on errors
+        }
       } finally {
         setIsLoading(false)
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
       }
     }
 
     checkUserProfile()
+
+    // Cleanup function: abort controller and clear timeout on unmount or dependency change
+    return () => {
+      if (controller) {
+        controller.abort()
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
   }, [user, isLoaded])
 
   const handleWorkflowSelect = (workflowId: string) => {
@@ -108,7 +142,7 @@ export default function DashboardPage() {
 
   if (!isLoaded || isLoading || userModeState.isLoading) {
     return (
-      <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center bg-[#1a1a1a]">
+      <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading...</div>
       </div>
     )
@@ -117,7 +151,7 @@ export default function DashboardPage() {
   // Dashboard always shows all NextPhase features now
 
   return (
-    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col bg-[#1a1a1a]">
+    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

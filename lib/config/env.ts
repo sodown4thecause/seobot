@@ -9,34 +9,8 @@ import { z } from 'zod'
 
 // Server-side environment schema
 const serverEnvSchema = z.object({
-  // Supabase (DEPRECATED - now using Clerk + Drizzle, but kept optional for backward compatibility)
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url({
-    message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL',
-  }).optional(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z
-    .string()
-    .min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
-    .refine(
-      (val) => val.startsWith('ey') || val.startsWith('sb-'),
-      {
-        message: 'NEXT_PUBLIC_SUPABASE_ANON_KEY should start with "ey" or "sb-"',
-      }
-    )
-    .optional(),
-  SUPABASE_SERVICE_ROLE_KEY: z
-    .string()
-    .min(1, 'SUPABASE_SERVICE_ROLE_KEY is required')
-    .refine(
-      (val) => val.startsWith('ey') || val.startsWith('sb-'),
-      {
-        message: 'SUPABASE_SERVICE_ROLE_KEY should start with "ey" or "sb-"',
-      }
-    )
-    .optional(),
-  // Supabase Connection Pooling (optional - defaults to direct connection)
-  // Use transaction mode pooler URL (port 6543) for connection pooling
-  // Format: https://<project-ref>.supabase.co (pooler automatically uses port 6543)
-  SUPABASE_POOLER_URL: z.string().url().optional(),
+  // Database (Neon PostgreSQL)
+  DATABASE_URL: z.string().url().optional(),
 
   // AI Provider Keys (Optional if using Gateway)
   OPENAI_API_KEY: z.string().min(1).optional(),

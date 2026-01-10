@@ -2,14 +2,95 @@ import { generateObject, generateText } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { createAdminClient } from '@/lib/supabase/server'
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Use singleton admin client for Supabase operations
-const supabase: any = await createAdminClient()
+// TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
+// In-memory store for development/testing only - NOT for production use
+const inMemoryVideoSEO = new Map<string, VideoSEOData>()
+
+function createAdminClient() {
+  return {
+    from: (table: string) => {
+      if (table === 'video_seo_analysis') {
+        return {
+          insert: (data: any) => ({
+            select: () => ({
+              single: async () => {
+                const seoData: VideoSEOData = {
+                  id: `video_seo_${Date.now()}`,
+                  userId: data.user_id,
+                  videoUrl: data.video_url,
+                  videoTitle: data.video_title,
+                  videoDescription: data.video_description,
+                  tags: data.tags || [],
+                  thumbnailUrl: data.thumbnail_url,
+                  duration: data.duration,
+                  transcript: data.transcript,
+                  seoScore: data.seo_score || 0,
+                  optimizationSuggestions: data.optimization_suggestions || [],
+                  targetKeywords: data.target_keywords || [],
+                  competitorAnalysis: data.competitor_analysis || {
+                    topVideos: [],
+                    averageViews: 0,
+                    averageEngagement: 0,
+                    commonKeywords: [],
+                    contentGaps: [],
+                    thumbnailAnalysis: {
+                      colorSchemes: [],
+                      textOverlays: false,
+                      faceDetection: false,
+                      emotionalAppeal: 'neutral',
+                      readabilityScore: 0,
+                      recommendations: []
+                    }
+                  },
+                  metadata: data.metadata || {
+                    platform: 'youtube',
+                    videoId: '',
+                    category: '',
+                    language: 'en',
+                    ageRestriction: false,
+                    commentsEnabled: true,
+                    monetization: false
+                  },
+                  createdAt: data.created_at || new Date().toISOString(),
+                  updatedAt: data.updated_at || new Date().toISOString()
+                }
+                inMemoryVideoSEO.set(seoData.id, seoData)
+                return {
+                  data: {
+                    id: seoData.id,
+                    user_id: seoData.userId,
+                    video_url: seoData.videoUrl,
+                    video_title: seoData.videoTitle,
+                    video_description: seoData.videoDescription,
+                    tags: seoData.tags,
+                    thumbnail_url: seoData.thumbnailUrl,
+                    duration: seoData.duration,
+                    transcript: seoData.transcript,
+                    seo_score: seoData.seoScore,
+                    optimization_suggestions: seoData.optimizationSuggestions,
+                    target_keywords: seoData.targetKeywords,
+                    competitor_analysis: seoData.competitorAnalysis,
+                    metadata: seoData.metadata,
+                    created_at: seoData.createdAt,
+                    updated_at: seoData.updatedAt
+                  },
+                  error: null
+                }
+              }
+            })
+          })
+        }
+      }
+      console.error(`[Video SEO Service] Database operation 'from: ${table}' called - Service not implemented. Migrate to Drizzle ORM.`)
+      throw new Error(`Video SEO Service table '${table}' not available. Please migrate to Drizzle ORM.`)
+    }
+  }
+}
 
 export interface VideoSEOData {
   id: string
@@ -116,7 +197,8 @@ export async function analyzeVideoSEO(params: {
     )
 
     // Store analysis results
-    const { data, error } = await supabase
+    const adminClient = createAdminClient()
+    const { data, error } = await adminClient
       .from('video_seo_analysis')
       .insert({
         user_id: params.userId,

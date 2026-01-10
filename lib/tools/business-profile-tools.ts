@@ -3,11 +3,19 @@
  * 
  * AI SDK tools for managing user business profiles during onboarding
  * and throughout the application lifecycle.
+ * 
+ * Migrated from Supabase to Drizzle ORM with Clerk auth
  */
 
 import { tool } from 'ai'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/clerk'
+import {
+    getBusinessProfile,
+    upsertBusinessProfile,
+    getBrandVoice,
+    upsertBrandVoice,
+} from '@/lib/db/queries'
 
 /**
  * Business Profile Schema
@@ -48,69 +56,26 @@ export const upsertBusinessProfileTool = tool({
     inputSchema: businessProfileSchema,
     execute: async (params) => {
         try {
-            const supabase = await createClient()
-
-            // Get current user
-            const { data: { user }, error: authError } = await supabase.auth.getUser()
-            if (authError || !user) {
+            // Get current user from Clerk
+            const user = await getCurrentUser()
+            if (!user) {
                 return {
                     success: false,
                     error: 'User not authenticated. Please log in to save your profile.',
                 }
             }
 
-            // Prepare the data
-            const profileData: Record<string, any> = {
-                user_id: user.id,
-                updated_at: new Date().toISOString(),
-            }
+            // Prepare the data for Drizzle
+            const profileData: Record<string, any> = {}
 
-            if (params.website_url) profileData.website_url = params.website_url
+            if (params.website_url) profileData.websiteUrl = params.website_url
             if (params.industry) profileData.industry = params.industry
             if (params.location) profileData.locations = params.location
             if (params.goals) profileData.goals = params.goals
-            if (params.content_frequency) profileData.content_frequency = params.content_frequency
+            if (params.content_frequency) profileData.contentFrequency = params.content_frequency
 
-            // Upsert the profile (insert or update)
-            const { data, error } = await supabase
-                .from('business_profiles')
-                .upsert(profileData, {
-                    onConflict: 'user_id',
-                    ignoreDuplicates: false,
-                })
-                .select()
-                .single()
-
-            if (error) {
-                console.error('[Business Profile Tool] Upsert error:', error)
-
-                // If upsert fails due to no existing row, try insert
-                if (error.code === 'PGRST116') {
-                    const { data: insertData, error: insertError } = await supabase
-                        .from('business_profiles')
-                        .insert(profileData)
-                        .select()
-                        .single()
-
-                    if (insertError) {
-                        return {
-                            success: false,
-                            error: `Failed to save profile: ${insertError.message}`,
-                        }
-                    }
-
-                    return {
-                        success: true,
-                        message: 'Business profile created successfully!',
-                        profile: insertData,
-                    }
-                }
-
-                return {
-                    success: false,
-                    error: `Failed to save profile: ${error.message}`,
-                }
-            }
+            // Upsert the profile using Drizzle query
+            const data = await upsertBusinessProfile(user.id, profileData)
 
             return {
                 success: true,
@@ -136,56 +101,26 @@ export const upsertBrandVoiceTool = tool({
     inputSchema: brandVoiceSchema,
     execute: async (params) => {
         try {
-            const supabase = await createClient()
-
-            const { data: { user }, error: authError } = await supabase.auth.getUser()
-            if (authError || !user) {
+            // Get current user from Clerk
+            const user = await getCurrentUser()
+            if (!user) {
                 return {
                     success: false,
                     error: 'User not authenticated.',
                 }
             }
 
+            // Prepare voice data for Drizzle
             const voiceData = {
-                user_id: user.id,
                 tone: params.tone,
                 style: params.style,
                 personality: params.personality || [],
-                sample_phrases: params.sample_phrases || [],
+                samplePhrases: params.sample_phrases || [],
                 source: params.source || 'manual',
-                updated_at: new Date().toISOString(),
             }
 
-            const { data, error } = await supabase
-                .from('brand_voices')
-                .upsert(voiceData, {
-                    onConflict: 'user_id',
-                    ignoreDuplicates: false,
-                })
-                .select()
-                .single()
-
-            if (error) {
-                // Try insert if upsert fails
-                const { data: insertData, error: insertError } = await supabase
-                    .from('brand_voices')
-                    .insert(voiceData)
-                    .select()
-                    .single()
-
-                if (insertError) {
-                    return {
-                        success: false,
-                        error: `Failed to save brand voice: ${insertError.message}`,
-                    }
-                }
-
-                return {
-                    success: true,
-                    message: 'Brand voice created successfully!',
-                    brandVoice: insertData,
-                }
-            }
+            // Upsert using Drizzle query
+            const data = await upsertBrandVoice(user.id, voiceData)
 
             return {
                 success: true,
@@ -211,10 +146,9 @@ export const getBusinessProfileTool = tool({
     inputSchema: z.object({}),
     execute: async () => {
         try {
-            const supabase = await createClient()
-
-            const { data: { user }, error: authError } = await supabase.auth.getUser()
-            if (authError || !user) {
+            // Get current user from Clerk
+            const user = await getCurrentUser()
+            if (!user) {
                 return {
                     success: false,
                     error: 'User not authenticated.',
@@ -222,25 +156,17 @@ export const getBusinessProfileTool = tool({
                 }
             }
 
-            // Fetch business profile
-            const { data: profile, error: profileError } = await supabase
-                .from('business_profiles')
-                .select('*')
-                .eq('user_id', user.id)
-                .single()
-
-            // Fetch brand voice
-            const { data: brandVoice, error: voiceError } = await supabase
-                .from('brand_voices')
-                .select('*')
-                .eq('user_id', user.id)
-                .single()
+            // Fetch business profile and brand voice using Drizzle queries
+            const [profile, brandVoice] = await Promise.all([
+                getBusinessProfile(user.id),
+                getBrandVoice(user.id),
+            ])
 
             const hasProfile = !!profile || !!brandVoice
             const isComplete = !!(
-                profile?.website_url &&
+                profile?.websiteUrl &&
                 profile?.industry &&
-                profile?.goals?.length > 0 &&
+                (profile?.goals as any)?.length > 0 &&
                 brandVoice?.tone
             )
 
@@ -299,16 +225,13 @@ export async function getUserBusinessContext(userId: string): Promise<{
     brandVoice: any
 }> {
     try {
-        const supabase = await createClient()
-
-        const [profileResult, voiceResult] = await Promise.all([
-            supabase.from('business_profiles').select('*').eq('user_id', userId).single(),
-            supabase.from('brand_voices').select('*').eq('user_id', userId).single(),
+        // Fetch using Drizzle queries
+        const [profile, brandVoice] = await Promise.all([
+            getBusinessProfile(userId),
+            getBrandVoice(userId),
         ])
 
-        const profile = profileResult.data
-        const brandVoice = voiceResult.data
-        const hasProfile = !!profile?.website_url
+        const hasProfile = !!profile?.websiteUrl
 
         if (!hasProfile) {
             return {
@@ -321,26 +244,27 @@ export async function getUserBusinessContext(userId: string): Promise<{
 
         // Build context string for prompts
         const contextParts: string[] = []
+        const locations = profile?.locations as any
 
-        if (profile?.website_url) {
-            contextParts.push(`Website: ${profile.website_url}`)
+        if (profile?.websiteUrl) {
+            contextParts.push(`Website: ${profile.websiteUrl}`)
         }
         if (profile?.industry) {
             contextParts.push(`Industry: ${profile.industry}`)
         }
-        if (profile?.locations?.country) {
-            const loc = [profile.locations.city, profile.locations.region, profile.locations.country]
+        if (locations?.country) {
+            const loc = [locations.city, locations.region, locations.country]
                 .filter(Boolean).join(', ')
             contextParts.push(`Target Location: ${loc}`)
         }
-        if (profile?.goals?.length) {
-            contextParts.push(`Business Goals: ${profile.goals.join(', ')}`)
+        if ((profile?.goals as any)?.length) {
+            contextParts.push(`Business Goals: ${(profile.goals as string[]).join(', ')}`)
         }
         if (brandVoice?.tone) {
             contextParts.push(`Brand Voice: ${brandVoice.tone}, ${brandVoice.style}`)
         }
-        if (brandVoice?.personality?.length) {
-            contextParts.push(`Brand Personality: ${brandVoice.personality.join(', ')}`)
+        if ((brandVoice?.personality as any)?.length) {
+            contextParts.push(`Brand Personality: ${(brandVoice?.personality as string[])?.join(', ')}`)
         }
 
         return {

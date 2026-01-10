@@ -73,10 +73,11 @@ export class ContentWriterAgent {
         return withAgentRetry(
           async () => {
             const { text, usage } = await generateText({
-              model: vercelGateway.languageModel('deepseek/deepseek-chat-v3-0324' as GatewayModelId),
+              model: vercelGateway.languageModel('moonshotai/kimi-k2' as GatewayModelId),
               system: this.buildSystemPrompt(guidance),
               prompt: prompt,
               temperature: 0.7,
+              abortSignal: params.abortSignal,
               experimental_telemetry: createTelemetryConfig(
                 params.revisionRound ? 'content-writer-revision' : 'content-writer',
                 {
@@ -90,8 +91,8 @@ export class ContentWriterAgent {
                   revisionRound: params.revisionRound,
                   hasImprovementInstructions: !!params.improvementInstructions,
                   learningsApplied: this.countLearnings(guidance),
-                  provider: 'deepseek',
-                  model: 'deepseek-chat-v3-0324',
+                  provider: 'moonshotai',
+                  model: 'kimi-k2',
                 }
               ),
             })
@@ -129,7 +130,7 @@ export class ContentWriterAgent {
           {
             retries: 2,
             agent: 'content-writer',
-            provider: 'deepseek',
+            provider: 'moonshotai',
             onRetry: (error, attempt, delay) => {
               console.warn(
                 `[Content Writer] Retry attempt ${attempt} after ${delay}ms:`,
@@ -140,7 +141,7 @@ export class ContentWriterAgent {
         )
       },
       {
-        provider: 'deepseek',
+        provider: 'moonshotai',
         userId: params.userId,
         metadata: {
           contentType: params.type,
@@ -153,7 +154,7 @@ export class ContentWriterAgent {
       if (!(error instanceof ProviderError)) {
         throw new ProviderError(
           error instanceof Error ? error.message : 'Content generation failed',
-          'deepseek',
+          'moonshotai',
           {
             agent: 'content-writer',
             cause: error instanceof Error ? error : undefined,

@@ -15,18 +15,27 @@ async function safeExecute(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toolFn: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  params: any
-): Promise<string | null> {
+  params: any,
+  ctx?: { abortSignal?: AbortSignal }
+): Promise<string> {
   try {
-    if (!toolFn?.execute) return null
+    if (!toolFn?.execute) {
+      console.warn('[CompositeSEOTools] Tool function or execute method not found')
+      return ''
+    }
     const result = await toolFn.execute(params, { 
-      abortSignal: new AbortController().signal,
+      abortSignal: ctx?.abortSignal ?? new AbortController().signal,
       toolCallId: 'composite-tool-call',
       messages: []
     })
     return result
-  } catch {
-    return null
+  } catch (error) {
+    // Re-throw AbortError to allow caller to handle cancellation
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error
+    }
+    // Re-throw all other errors to enable proper error handling and debugging
+    throw error
   }
 }
 
@@ -43,7 +52,10 @@ export const keywordIntelligenceTool = tool({
     includeHistorical: z.boolean().default(true).describe('Include historical trend analysis'),
     includeAISearch: z.boolean().default(true).describe('Include AI search volume (ChatGPT, Perplexity)'),
   }),
-  execute: async ({ keyword, location, language, includeHistorical, includeAISearch }) => {
+  execute: async (
+    { keyword, location, language, includeHistorical, includeAISearch },
+    ctx?: { abortSignal?: AbortSignal }
+  ) => {
     try {
       // Parallel API calls for performance
       const [
@@ -59,14 +71,14 @@ export const keywordIntelligenceTool = tool({
           keywords: [keyword],
           location_name: location,
           language_code: language,
-        }),
+        }, ctx),
 
         // Keyword difficulty
         safeExecute(mcpDataforseoTools.dataforseo_labs_bulk_keyword_difficulty, {
           keywords: [keyword],
           location_name: location,
           language_code: language,
-        }),
+        }, ctx),
 
         // SERP analysis
         safeExecute(mcpDataforseoTools.serp_organic_live_advanced, {
@@ -74,12 +86,12 @@ export const keywordIntelligenceTool = tool({
           location_name: location,
           language_code: language,
           device: 'desktop',
-        }),
+        }, ctx),
 
         // Search intent
         safeExecute(mcpDataforseoTools.dataforseo_labs_search_intent, {
           keywords: [keyword],
-        }),
+        }, ctx),
 
         // Historical (conditional)
         includeHistorical
@@ -87,7 +99,7 @@ export const keywordIntelligenceTool = tool({
               keywords: [keyword],
               location_name: location,
               language_code: language,
-            })
+            }, ctx)
           : Promise.resolve(null),
 
         // AI search (conditional)
@@ -96,7 +108,7 @@ export const keywordIntelligenceTool = tool({
               keywords: [keyword],
               location_name: location,
               language_code: language,
-            })
+            }, ctx)
           : Promise.resolve(null),
       ])
 
@@ -137,7 +149,9 @@ export const keywordIntelligenceTool = tool({
         const aiVolumes = await aiSearchOptimizer.analyzeAISearchVolume(
           [keyword],
           location,
-          language
+          language,
+          undefined,
+          ctx?.abortSignal
         )
         if (aiVolumes.keywords.length > 0) {
           aiAnalysis = aiVolumes.keywords[0]

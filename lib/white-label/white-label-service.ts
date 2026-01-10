@@ -2,14 +2,45 @@ import { generateObject, generateText } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { createAdminClient } from '@/lib/supabase/server'
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// Use singleton admin client for Supabase operations
-const supabase: any = await createAdminClient()
+// TODO: Complete Drizzle ORM migration for white-label tables
+// The white_label_settings and client_portals tables need to be:
+// 1. Added to lib/db/schema.ts
+// 2. Migrated using drizzle-kit generate && drizzle-kit push
+// 3. This service updated to use the db client from lib/db/index.ts
+//
+// Environment guard: Set WHITE_LABEL_ENABLED=true to enable stub (dev only).
+// Production will always throw to prevent silent failures.
+
+const FEATURE_FLAG = process.env.WHITE_LABEL_ENABLED === 'true'
+
+const throwMigrationError = (operation: string): never => {
+  throw new Error(
+    `[WhiteLabel] FATAL: Database client not implemented. ` +
+    `Attempted operation: ${operation}. ` +
+    `White label feature is disabled until Drizzle ORM migration is complete. ` +
+    `See lib/white-label/white-label-service.ts for implementation details.`
+  )
+}
+
+const supabase = FEATURE_FLAG
+  ? {
+    from: (table: string) => {
+      const stub: any = () => throwMigrationError(`query ${table}`)
+      stub.select = stub
+      stub.insert = stub
+      stub.update = stub
+      stub.delete = stub
+      stub.eq = stub
+      stub.then = () => throwMigrationError(`execute on ${table}`)
+      return stub
+    }
+  }
+  : { from: (_table: string) => throwMigrationError('DB client access (feature disabled)') }
 
 export interface WhiteLabelSettings {
   id: string

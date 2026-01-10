@@ -42,11 +42,11 @@ const agentConfig = {
 
 export default function AgentKnowledgeBasePage() {
   const params = useParams()
-  const agentId = params.agentId as string
-  const agent = agentConfig[agentId as keyof typeof agentConfig]
+  const agentId = params?.agentId as string | undefined
+  const agent = agentId ? agentConfig[agentId as keyof typeof agentConfig] : undefined
   const [refreshKey, setRefreshKey] = useState(0)
 
-  if (!agent) {
+  if (!agentId || !agent) {
     return (
       <div className="flex-1 p-8">
         <div className="text-center">

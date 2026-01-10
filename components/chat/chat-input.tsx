@@ -46,7 +46,7 @@ export function ChatInput({
 
   return (
     <div className={cn("w-full", className)}>
-      <div className="relative flex items-center bg-[#2f2f2f] rounded-xl border border-zinc-700/30">
+      <div className="relative flex items-center bg-zinc-900/50 rounded-xl border border-zinc-700/50">
         {/* Action buttons - image generate and web search */}
         <div className="flex items-center gap-1 pl-2">
           {onImageGenerate && (

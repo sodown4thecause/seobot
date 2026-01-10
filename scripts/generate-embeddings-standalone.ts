@@ -1,9 +1,14 @@
 /**
+ * ⚠️ DEPRECATED - This script uses Supabase which is being migrated to Drizzle ORM
+ * 
  * Standalone script to generate embeddings for all agent_documents
  * This version uses direct Supabase admin client and AI SDK
  * Run: npx tsx scripts/generate-embeddings-standalone.ts
+ * 
+ * TODO: Migrate to Drizzle ORM or remove if no longer needed
  */
 
+// @ts-nocheck - Ignoring errors during Supabase → Drizzle migration
 import { createClient } from '@supabase/supabase-js'
 import { embed } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
