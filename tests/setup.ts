@@ -85,3 +85,8 @@ vi.mock('@/lib/workflows/analytics', () => ({
   analytics: mockAnalytics,
   WorkflowAnalyticsService: vi.fn(() => mockAnalytics),
 }))
+
+// Mock onboarding prompts (used by intent-classifier via runtime require)
+vi.mock('@/lib/onboarding/prompts', () => ({
+  buildOnboardingSystemPrompt: vi.fn(() => 'Mocked onboarding system prompt'),
+}))
