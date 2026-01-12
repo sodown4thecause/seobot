@@ -19,6 +19,7 @@ import { createIdGenerator } from 'ai'
 import { startActiveObservation, updateActiveTrace } from '@langfuse/tracing'
 import { storeAndLearn } from '@/lib/ai/learning-storage'
 import { AbortError } from '@/lib/errors/types'
+import { checkAborted } from '@/lib/agents/utils/abort-handler'
 
 export interface ProgressUpdate {
   phase: string
@@ -213,15 +214,11 @@ export class RAGWriterOrchestrator {
       });
 
         try {
-          // Helper function to check abort signal
-          const checkAborted = () => {
-            if (params.abortSignal?.aborted) {
-              throw new AbortError('Content generation aborted by client')
-            }
-          }
+          // Abort signal reference for cleaner code
+          const abortSignal = params.abortSignal
 
         // Step 0.5: Fetch user's business context for personalized content
-        checkAborted()
+        checkAborted(abortSignal, 'before user context fetch')
         let businessContext: { brandVoice?: any; profile?: any; context?: string } = {}
         if (params.userId) {
           try {
@@ -242,7 +239,7 @@ export class RAGWriterOrchestrator {
 
         // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
         console.log('[Orchestrator] Phase 1: Research')
-        checkAborted()
+        checkAborted(abortSignal, 'before research phase')
         await this.emitProgress(params, 'research', 'in_progress', 'Researching topic and analyzing competitors...', 'Using Perplexity AI, RAG, and DataForSEO')
         const researchTraceId = this.traceIdGenerator()
 
@@ -315,7 +312,7 @@ export class RAGWriterOrchestrator {
 
         // Step 2: Initial Draft
         console.log('[Orchestrator] Phase 2: Initial Draft')
-        checkAborted()
+        checkAborted(abortSignal, 'before initial draft')
         await this.emitProgress(params, 'writing', 'in_progress', 'Writing initial draft...', `Target: ${params.wordCount || 2000} words`)
         const writerTraceId = this.traceIdGenerator()
         await this.langWatch.logTrace({
@@ -431,7 +428,7 @@ export class RAGWriterOrchestrator {
 
         while (revisionRound <= QUALITY_THRESHOLDS.MAX_REVISION_ROUNDS) {
           console.log(`[Orchestrator] Phase 3-5: Scoring + QA + Frase (Round ${revisionRound + 1})`)
-          checkAborted()
+          checkAborted(abortSignal, `before scoring round ${revisionRound + 1}`)
           await this.emitProgress(params, 'scoring', 'in_progress', `Analyzing content quality (Round ${revisionRound + 1})...`, 'Running DataForSEO scoring')
 
           // Step 3: DataForSEO Scoring

@@ -7,6 +7,7 @@ import { searchWithPerplexity, type PerplexitySearchResult } from '@/lib/externa
 import { retrieveAgentDocuments } from '@/lib/ai/content-rag'
 import { mcpDataforseoTools } from '@/lib/mcp/dataforseo/index'
 import { mcpFirecrawlTools } from '@/lib/mcp/firecrawl/index'
+import { checkAborted } from '@/lib/agents/utils/abort-handler'
 
 // Helper to execute MCP tools (they only need args, not the full AI SDK context)
 // The execute function can return string | AsyncIterable<string> | PromiseLike<string>
@@ -90,11 +91,16 @@ export class EnhancedResearchAgent {
    */
   async research(params: EnhancedResearchParams): Promise<EnhancedResearchResult> {
     console.log('[Enhanced Research] Researching:', params.topic)
+    const { abortSignal } = params
 
     try {
+      // Check abort before starting
+      checkAborted(abortSignal, 'before research start')
+
       // Step 1: Detect search intent using DataForSEO
       let searchIntent: EnhancedResearchResult['searchIntent'] | undefined
       try {
+        checkAborted(abortSignal, 'before search intent detection')
         const intentResult = await executeTool(mcpDataforseoTools.dataforseo_labs_search_intent, {
           keywords: [params.targetKeyword],
           language_code: params.languageCode || 'en',
@@ -120,6 +126,7 @@ export class EnhancedResearchAgent {
       // Step 2: Get SERP data for competitor analysis
       let serpData: EnhancedResearchResult['serpData'] | undefined
       try {
+        checkAborted(abortSignal, 'before SERP analysis')
         const serpResult = await executeTool(mcpDataforseoTools.serp_organic_live_advanced, {
           keyword: params.targetKeyword,
           language_code: params.languageCode || 'en',
@@ -152,6 +159,7 @@ export class EnhancedResearchAgent {
       // Step 2.5: Scrape top competitor pages with Firecrawl for detailed analysis
       let competitorContent: Array<{ url: string; markdown: string; wordCount: number; headings: string[] }> = []
       if (serpData && serpData.topResults.length > 0) {
+        checkAborted(abortSignal, 'before Firecrawl competitor scraping')
         console.log('[Enhanced Research] Scraping top 3 competitors with Firecrawl...')
         const topUrls = serpData.topResults.slice(0, 3).map(r => r.url)
 
@@ -187,6 +195,7 @@ export class EnhancedResearchAgent {
       }
 
       // Step 3: Perplexity web research
+      checkAborted(abortSignal, 'before Perplexity research')
       const perplexityQuery = this.buildPerplexityQuery(params, searchIntent)
       const perplexityResult = await searchWithPerplexity({
         query: perplexityQuery,
@@ -196,6 +205,7 @@ export class EnhancedResearchAgent {
       })
 
       // Step 4: Retrieve RAG context from Supabase agent_documents
+      checkAborted(abortSignal, 'before RAG retrieval')
       const ragDocs = await retrieveAgentDocuments(
         `${params.topic} ${params.targetKeyword}`,
         'content_writer',
@@ -203,6 +213,7 @@ export class EnhancedResearchAgent {
       )
 
       // Step 5: Extract competitor snippets (combine SERP + Perplexity citations)
+      checkAborted(abortSignal, 'before combining research')
       const competitorSnippets = this.extractCompetitorSnippets(
         perplexityResult.citations,
         params.competitorUrls,
