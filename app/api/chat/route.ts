@@ -1,8 +1,8 @@
 import {
   streamText,
-  convertToCoreMessages,
+  convertToModelMessages,
   tool,
-  CoreMessage,
+  type ModelMessage,
   stepCountIs,
   createIdGenerator,
   type UIMessage,
@@ -585,22 +585,22 @@ ${result.qaReport?.improvement_instructions && result.qaReport.improvement_instr
 
     const serverMessageIdGenerator = createIdGenerator({ prefix: 'msg', size: 16 });
 
-    // Convert Message[] from useChat to CoreMessage[] for streamText
-    // convertToCoreMessages handles the conversion properly, preserving parts and toolInvocations
-    let coreMessages: CoreMessage[];
+    // Convert Message[] from useChat to ModelMessage[] for streamText
+    // AI SDK 6: convertToModelMessages (renamed from convertToCoreMessages)
+    let modelMessages: ModelMessage[];
     try {
-      coreMessages = convertToCoreMessages(incomingMessages);
-      console.log('[Chat API] Converted to CoreMessage[], count:', coreMessages.length);
+      modelMessages = convertToModelMessages(incomingMessages);
+      console.log('[Chat API] Converted to ModelMessage[], count:', modelMessages.length);
     } catch (err) {
-      console.error('[Chat API] convertToCoreMessages failed:', err);
+      console.error('[Chat API] convertToModelMessages failed:', err);
       // Fallback: try again with type assertion (AI SDK 6 compatibility)
-      coreMessages = convertToCoreMessages(incomingMessages as any);
+      modelMessages = convertToModelMessages(incomingMessages as unknown as UIMessage[]);
     }
 
     // Use AI SDK 6 with stopWhen conditions for tool loop control
     const resultOrPromise = streamText({
       model: vercelGateway.languageModel(CHAT_MODEL_ID),
-      messages: coreMessages,
+      messages: modelMessages,
       system: systemPrompt,
       tools: validatedTools,
       toolChoice: 'auto',

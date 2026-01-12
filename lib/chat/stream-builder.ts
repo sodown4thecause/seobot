@@ -8,7 +8,7 @@
 import {
   streamText,
   tool,
-  CoreMessage,
+  type ModelMessage,
   stepCountIs,
   createIdGenerator,
   type UIMessage,
@@ -25,7 +25,7 @@ import type { Tool } from 'ai'
 const CHAT_MODEL_ID = 'moonshotai/kimi-k2'
 
 export interface StreamOptions {
-  coreMessages: CoreMessage[]
+  modelMessages: ModelMessage[]
   systemPrompt: string
   tools: Record<string, Tool>
   userId?: string
@@ -213,7 +213,7 @@ export function getCoreTools(userId?: string): Record<string, Tool> {
  */
 export async function buildStreamResponse(options: StreamOptions): Promise<Response> {
   const {
-    coreMessages,
+    modelMessages,
     systemPrompt,
     tools,
     userId,
@@ -239,7 +239,7 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
 
   const result = streamText({
     model: vercelGateway.languageModel(CHAT_MODEL_ID),
-    messages: coreMessages,
+    messages: modelMessages,
     system: systemPrompt,
     tools: allTools,
     toolChoice: 'auto',

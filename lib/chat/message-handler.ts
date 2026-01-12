@@ -4,7 +4,7 @@
  * Handles message extraction, conversion, and validation for the chat API.
  */
 
-import { convertToCoreMessages, type CoreMessage, type UIMessage } from 'ai'
+import { convertToModelMessages, type ModelMessage, type UIMessage } from 'ai'
 
 export interface ChatContext {
   page?: string
@@ -53,20 +53,20 @@ export function extractLastUserMessageContent(messages: UIMessage[]): string {
 }
 
 /**
- * Convert UIMessage[] from useChat to CoreMessage[] for streamText.
- * Handles the conversion properly, preserving parts and toolInvocations.
+ * Convert UIMessage[] from useChat to ModelMessage[] for streamText.
+ * AI SDK 6: Uses convertToModelMessages (renamed from convertToCoreMessages).
  */
-export function convertToCore(messages: UIMessage[]): CoreMessage[] {
+export function convertToModelFormat(messages: UIMessage[]): ModelMessage[] {
   console.log('[Message Handler] Incoming messages count:', messages.length)
 
   try {
-    const coreMessages = convertToCoreMessages(messages)
-    console.log('[Message Handler] Converted to CoreMessage[], count:', coreMessages.length)
-    return coreMessages
+    const modelMessages = convertToModelMessages(messages)
+    console.log('[Message Handler] Converted to ModelMessage[], count:', modelMessages.length)
+    return modelMessages
   } catch (err) {
-    console.error('[Message Handler] convertToCoreMessages failed:', err)
+    console.error('[Message Handler] convertToModelMessages failed:', err)
     // Fallback: try again with type assertion (AI SDK 6 compatibility)
-    return convertToCoreMessages(messages as unknown as UIMessage[])
+    return convertToModelMessages(messages as unknown as UIMessage[])
   }
 }
 
