@@ -190,36 +190,195 @@ export class WorkflowAnalyticsService {
   /**
    * Get all tool metrics
    */
-  getAllToolMetrics() {
-    return []
+  async getAllToolMetrics() {
+    try {
+      const db = await this.getDb()
+      
+      const result = await db.execute(sql`
+        SELECT 
+          tool_name,
+          COUNT(*) as execution_count,
+          AVG(duration_ms) as avg_duration,
+          MIN(duration_ms) as min_duration,
+          MAX(duration_ms) as max_duration,
+          SUM(CASE WHEN success THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as success_rate,
+          SUM(CASE WHEN cached THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as cache_hit_rate
+        FROM tool_executions
+        GROUP BY tool_name
+        ORDER BY execution_count DESC
+      `)
+      
+      return result.rows.map((row: any) => ({
+        toolName: row.tool_name,
+        executionCount: Number(row.execution_count),
+        avgDuration: Number(row.avg_duration) || 0,
+        minDuration: Number(row.min_duration) || 0,
+        maxDuration: Number(row.max_duration) || 0,
+        successRate: Number(row.success_rate) || 0,
+        cacheHitRate: Number(row.cache_hit_rate) || 0
+      }))
+    } catch (error) {
+      console.error('Failed to get tool metrics:', error)
+      return []
+    }
   }
 
   /**
    * Get top performing tools
    */
-  getTopPerformingTools(_limit: number = 10) {
-    return []
+  async getTopPerformingTools(limit: number = 10) {
+    try {
+      const db = await this.getDb()
+      
+      const result = await db.execute(sql`
+        SELECT 
+          tool_name,
+          COUNT(*) as execution_count,
+          AVG(duration_ms) as avg_duration,
+          SUM(CASE WHEN success THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as success_rate
+        FROM tool_executions
+        GROUP BY tool_name
+        HAVING COUNT(*) >= 5
+        ORDER BY 
+          (SUM(CASE WHEN success THEN 1 ELSE 0 END)::float / COUNT(*)) DESC,
+          AVG(duration_ms) ASC
+        LIMIT ${limit}
+      `)
+      
+      return result.rows.map((row: any) => ({
+        toolName: row.tool_name,
+        executionCount: Number(row.execution_count),
+        avgDuration: Number(row.avg_duration) || 0,
+        successRate: Number(row.success_rate) || 0
+      }))
+    } catch (error) {
+      console.error('Failed to get top performing tools:', error)
+      return []
+    }
   }
 
   /**
    * Get slowest tools
    */
-  getSlowestTools(_limit: number = 10) {
-    return []
+  async getSlowestTools(limit: number = 10) {
+    try {
+      const db = await this.getDb()
+      
+      const result = await db.execute(sql`
+        SELECT 
+          tool_name,
+          COUNT(*) as execution_count,
+          AVG(duration_ms) as avg_duration,
+          MAX(duration_ms) as max_duration
+        FROM tool_executions
+        WHERE success = true
+        GROUP BY tool_name
+        HAVING COUNT(*) >= 3
+        ORDER BY AVG(duration_ms) DESC
+        LIMIT ${limit}
+      `)
+      
+      return result.rows.map((row: any) => ({
+        toolName: row.tool_name,
+        executionCount: Number(row.execution_count),
+        avgDuration: Number(row.avg_duration) || 0,
+        maxDuration: Number(row.max_duration) || 0
+      }))
+    } catch (error) {
+      console.error('Failed to get slowest tools:', error)
+      return []
+    }
   }
 
   /**
    * Get best cached tools
    */
-  getBestCachedTools(_limit: number = 10) {
-    return []
+  async getBestCachedTools(limit: number = 10) {
+    try {
+      const db = await this.getDb()
+      
+      const result = await db.execute(sql`
+        SELECT 
+          tool_name,
+          COUNT(*) as execution_count,
+          SUM(CASE WHEN cached THEN 1 ELSE 0 END) as cache_hits,
+          SUM(CASE WHEN cached THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as cache_hit_rate,
+          AVG(CASE WHEN cached THEN duration_ms END) as avg_cached_duration,
+          AVG(CASE WHEN NOT cached THEN duration_ms END) as avg_uncached_duration
+        FROM tool_executions
+        GROUP BY tool_name
+        HAVING 
+          COUNT(*) >= 10 
+          AND SUM(CASE WHEN cached THEN 1 ELSE 0 END) > 0
+        ORDER BY cache_hit_rate DESC
+        LIMIT ${limit}
+      `)
+      
+      return result.rows.map((row: any) => ({
+        toolName: row.tool_name,
+        executionCount: Number(row.execution_count),
+        cacheHits: Number(row.cache_hits),
+        cacheHitRate: Number(row.cache_hit_rate) || 0,
+        avgCachedDuration: Number(row.avg_cached_duration) || 0,
+        avgUncachedDuration: Number(row.avg_uncached_duration) || 0,
+        speedup: row.avg_uncached_duration && row.avg_cached_duration 
+          ? Number(row.avg_uncached_duration) / Number(row.avg_cached_duration)
+          : 1
+      }))
+    } catch (error) {
+      console.error('Failed to get best cached tools:', error)
+      return []
+    }
   }
 
   /**
    * Get metrics for a specific tool
    */
-  getToolMetrics(_toolName: string) {
-    return null
+  async getToolMetrics(toolName: string) {
+    try {
+      const db = await this.getDb()
+      
+      const result = await db.execute(sql`
+        SELECT 
+          COUNT(*) as execution_count,
+          AVG(duration_ms) as avg_duration,
+          MIN(duration_ms) as min_duration,
+          MAX(duration_ms) as max_duration,
+          PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_ms) as median_duration,
+          PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms) as p95_duration,
+          SUM(CASE WHEN success THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as success_rate,
+          SUM(CASE WHEN cached THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as cache_hit_rate,
+          AVG(CASE WHEN cached THEN duration_ms END) as avg_cached_duration,
+          AVG(CASE WHEN NOT cached THEN duration_ms END) as avg_uncached_duration
+        FROM tool_executions
+        WHERE tool_name = ${toolName}
+      `)
+      
+      if (result.rows.length === 0) {
+        return null
+      }
+      
+      const row = result.rows[0] as any
+      return {
+        toolName,
+        executionCount: Number(row.execution_count),
+        avgDuration: Number(row.avg_duration) || 0,
+        minDuration: Number(row.min_duration) || 0,
+        maxDuration: Number(row.max_duration) || 0,
+        medianDuration: Number(row.median_duration) || 0,
+        p95Duration: Number(row.p95_duration) || 0,
+        successRate: Number(row.success_rate) || 0,
+        cacheHitRate: Number(row.cache_hit_rate) || 0,
+        avgCachedDuration: Number(row.avg_cached_duration) || 0,
+        avgUncachedDuration: Number(row.avg_uncached_duration) || 0,
+        cacheSpeedup: row.avg_uncached_duration && row.avg_cached_duration
+          ? Number(row.avg_uncached_duration) / Number(row.avg_cached_duration)
+          : 1
+      }
+    } catch (error) {
+      console.error(`Failed to get metrics for tool ${toolName}:`, error)
+      return null
+    }
   }
 }
 

@@ -329,9 +329,30 @@ export const bulkTrafficEstimatorTool = tool({
       const totalTraffic = trafficData.reduce((sum: number, item: TrafficItem) => sum + item.totalTraffic, 0)
       const totalOrganicTraffic = trafficData.reduce((sum: number, item: TrafficItem) => sum + item.organicTraffic, 0)
       const avgTrafficPerPage = trafficData.length > 0 ? totalTraffic / trafficData.length : 0
-      const topPerformers = trafficData
-        .sort((a: TrafficItem, b: TrafficItem) => b.totalTraffic - a.totalTraffic)
-        .slice(0, 10)
+      
+      // Efficiently find top 10 performers without sorting entire array
+      const topPerformers: TrafficItem[] = []
+      for (const item of trafficData) {
+        // If we don't have 10 items yet, add it
+        if (topPerformers.length < 10) {
+          topPerformers.push(item)
+          // Sort only when we reach 10 items
+          if (topPerformers.length === 10) {
+            topPerformers.sort((a, b) => b.totalTraffic - a.totalTraffic)
+          }
+        } else {
+          // If current item has more traffic than the lowest in top 10, replace it
+          if (item.totalTraffic > topPerformers[9].totalTraffic) {
+            topPerformers[9] = item
+            // Re-sort to maintain order (only 10 items)
+            topPerformers.sort((a, b) => b.totalTraffic - a.totalTraffic)
+          }
+        }
+      }
+      // Final sort if we have less than 10 items
+      if (topPerformers.length < 10) {
+        topPerformers.sort((a, b) => b.totalTraffic - a.totalTraffic)
+      }
 
       return {
         targets: trafficData,

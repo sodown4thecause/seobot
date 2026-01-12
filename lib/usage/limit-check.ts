@@ -146,10 +146,29 @@ export async function checkCreditLimit(
     // If limit exceeded and not already paused, pause the account
     if (!allowed && !isPaused && req) {
       await pauseUserAccount(userId, req)
-      // Update local state to reflect pause
-      isPaused = true
-      pauseUntil = new Date(now.getTime() + BETA_LIMITS.PAUSE_DURATION_DAYS * 24 * 60 * 60 * 1000)
-      pauseReason = BETA_LIMITS.UPGRADE_MESSAGE
+      
+      // Fetch actual pause values from database to ensure consistency
+      const [updatedLimits] = await db
+        .select({
+          isPaused: userUsageLimits.isPaused,
+          pauseUntil: userUsageLimits.pauseUntil,
+          pauseReason: userUsageLimits.pauseReason,
+        })
+        .from(userUsageLimits)
+        .where(eq(userUsageLimits.userId, userId))
+        .limit(1)
+      
+      // Update local state with actual database values
+      if (updatedLimits) {
+        isPaused = updatedLimits.isPaused || false
+        pauseUntil = updatedLimits.pauseUntil || undefined
+        pauseReason = updatedLimits.pauseReason || BETA_LIMITS.UPGRADE_MESSAGE
+      } else {
+        // Fallback to expected values if fetch fails
+        isPaused = true
+        pauseUntil = new Date(now.getTime() + BETA_LIMITS.PAUSE_DURATION_DAYS * 24 * 60 * 60 * 1000)
+        pauseReason = BETA_LIMITS.UPGRADE_MESSAGE
+      }
     }
 
     // Calculate reset date (first day of next month)

@@ -71,6 +71,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@sanity/image-url": "^1.2.0",
+    "@sanity/table": "^2.0.1",
     "@sanity/vision": "^4.22.0",
     "@stackframe/stack": "^2.8.56",
     "@tanstack/react-query": "^5.90.5",

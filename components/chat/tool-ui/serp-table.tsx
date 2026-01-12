@@ -12,6 +12,21 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Search, ExternalLink, Award } from "lucide-react"
 
+/**
+ * Safely extracts hostname from a URL string
+ * @param url - URL string to parse
+ * @returns hostname on success, fallback string on failure
+ */
+function getHostname(url: string): string {
+    try {
+        return new URL(url).hostname
+    } catch {
+        // Fallback: try to extract hostname-like string or return original
+        const match = url.match(/^(?:https?:\/\/)?([^\/]+)/i)
+        return match?.[1] || url
+    }
+}
+
 interface SERPResult {
     rank_group?: number
     rank_absolute?: number
@@ -121,7 +136,7 @@ export function SERPTable({ toolInvocation }: SERPTableProps) {
                                                 </a>
                                             </div>
                                             <div className="text-[11px] text-zinc-500 flex items-center gap-1.5 overflow-hidden">
-                                                <span className="text-emerald-500/80 shrink-0">{new URL(item.url).hostname}</span>
+                                                <span className="text-emerald-500/80 shrink-0">{getHostname(item.url)}</span>
                                                 <span className="text-zinc-700 shrink-0">›</span>
                                                 <span className="truncate">{item.breadcrumb || item.url.split('/').slice(3).join(' › ')}</span>
                                             </div>

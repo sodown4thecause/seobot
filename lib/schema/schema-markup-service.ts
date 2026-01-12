@@ -27,20 +27,36 @@ const throwMigrationError = (operation: string): never => {
   )
 }
 
+// Type-safe stub interface matching Supabase query builder pattern
+interface QueryStub {
+  select: (columns?: string) => QueryStub
+  insert: (data: unknown) => QueryStub
+  update: (data: unknown) => QueryStub
+  delete: () => QueryStub
+  eq: (column: string, value: unknown) => QueryStub
+  single: () => QueryStub
+  maybeSingle: () => QueryStub
+  order: (column: string, options?: { ascending?: boolean }) => QueryStub
+  limit: (count: number) => QueryStub
+  [key: string]: unknown
+}
+
+const createQueryStub = (table: string): QueryStub => {
+  return new Proxy({} as QueryStub, {
+    get(_target, prop: string) {
+      // Return a function that throws error for any method call
+      return (..._args: unknown[]) => {
+        throwMigrationError(`${prop}() on table ${table}`)
+      }
+    }
+  })
+}
+
 const supabase = FEATURE_FLAG
   ? {
-    from: (table: string) => {
-      const stub: any = () => throwMigrationError(`query ${table}`)
-      stub.select = stub
-      stub.insert = stub
-      stub.update = stub
-      stub.delete = stub
-      stub.eq = stub
-      stub.then = () => throwMigrationError(`execute on ${table}`)
-      return stub
-    }
+    from: (table: string): QueryStub => createQueryStub(table)
   }
-  : { from: (_table: string) => throwMigrationError('DB client access (feature disabled)') }
+  : { from: (table: string) => throwMigrationError(`DB client access on ${table} (feature disabled)`) }
 
 export interface SchemaMarkupTemplate {
   id: string
@@ -153,18 +169,18 @@ export async function generateSchemaMarkup(params: SchemaGenerationRequest, user
     if (error) throw error
 
     return {
-      id: data.id,
-      userId: data.user_id,
-      contentId: data.content_id,
-      schemaType: data.schema_type,
-      schemaData: data.schema_data,
-      templateId: data.template_id,
-      validationStatus: data.validation_status,
-      validationErrors: data.validation_errors,
-      implementationStatus: data.implementation_status,
-      searchConsoleImpact: data.search_console_impact,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+      id: (data as any).id,
+      userId: (data as any).user_id,
+      contentId: (data as any).content_id,
+      schemaType: (data as any).schema_type,
+      schemaData: (data as any).schema_data,
+      templateId: (data as any).template_id,
+      validationStatus: (data as any).validation_status,
+      validationErrors: (data as any).validation_errors,
+      implementationStatus: (data as any).implementation_status,
+      searchConsoleImpact: (data as any).search_console_impact,
+      createdAt: (data as any).created_at,
+      updatedAt: (data as any).updated_at
     }
   } catch (error) {
     console.error('Failed to generate schema markup:', error)
@@ -303,17 +319,17 @@ export async function createSchemaTemplate(params: {
     if (error) throw error
 
     return {
-      id: data.id,
-      userId: data.user_id,
-      templateName: data.template_name,
-      schemaType: data.schema_type,
-      templateContent: data.template_content,
-      isDefault: data.is_default,
-      isActive: data.is_active,
-      isPublic: data.is_public,
-      usageCount: data.usage_count,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+      id: (data as any).id,
+      userId: (data as any).user_id,
+      templateName: (data as any).template_name,
+      schemaType: (data as any).schema_type,
+      templateContent: (data as any).template_content,
+      isDefault: (data as any).is_default,
+      isActive: (data as any).is_active,
+      isPublic: (data as any).is_public,
+      usageCount: (data as any).usage_count,
+      createdAt: (data as any).created_at,
+      updatedAt: (data as any).updated_at
     }
   } catch (error) {
     console.error('Failed to create schema template:', error)
@@ -330,7 +346,7 @@ export async function getSchemaTemplates(
   includePublic: boolean = true
 ): Promise<SchemaMarkupTemplate[]> {
   try {
-    let query = supabase
+    let query: any = supabase
       .from('schema_markup_templates')
       .select('*')
       .eq('is_active', true)
@@ -349,7 +365,8 @@ export async function getSchemaTemplates(
 
     if (error) throw error
 
-    return data.map((template: any) => ({
+    // Limit processing to 100 templates to prevent high memory/CPU usage
+    return data.slice(0, 100).map((template: any) => ({
       id: template.id,
       userId: template.user_id,
       templateName: template.template_name,
@@ -387,7 +404,7 @@ export async function generateSchemaFromTemplate(
     if (templateError || !template) throw templateError || new Error('Template not found')
 
     // Use AI to fill the template with content data
-    const filledSchema = await fillTemplateWithData(template.template_content, contentData)
+    const filledSchema = await fillTemplateWithData((template as any).template_content, contentData)
 
     // Validate the filled schema
     const validation = await validateSchemaMarkup(filledSchema)
@@ -397,7 +414,7 @@ export async function generateSchemaFromTemplate(
       .from('generated_schema_markup')
       .insert({
         user_id: userId,
-        schema_type: template.schema_type,
+        schema_type: (template as any).schema_type,
         schema_data: filledSchema,
         template_id: templateId,
         validation_status: validation.isValid ? 'valid' : 'invalid',
@@ -421,22 +438,22 @@ export async function generateSchemaFromTemplate(
     // Increment template usage count
     await supabase
       .from('schema_markup_templates')
-      .update({ usage_count: template.usage_count + 1 })
+      .update({ usage_count: ((template as any).usage_count || 0) + 1 })
       .eq('id', templateId)
 
     return {
-      id: data.id,
-      userId: data.user_id,
-      contentId: data.content_id,
-      schemaType: data.schema_type,
-      schemaData: data.schema_data,
-      templateId: data.template_id,
-      validationStatus: data.validation_status,
-      validationErrors: data.validation_errors,
-      implementationStatus: data.implementation_status,
-      searchConsoleImpact: data.search_console_impact,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+      id: (data as any).id,
+      userId: (data as any).user_id,
+      contentId: (data as any).content_id,
+      schemaType: (data as any).schema_type,
+      schemaData: (data as any).schema_data,
+      templateId: (data as any).template_id,
+      validationStatus: (data as any).validation_status,
+      validationErrors: (data as any).validation_errors,
+      implementationStatus: (data as any).implementation_status,
+      searchConsoleImpact: (data as any).search_console_impact,
+      createdAt: (data as any).created_at,
+      updatedAt: (data as any).updated_at
     }
   } catch (error) {
     console.error('Failed to generate schema from template:', error)
@@ -502,7 +519,7 @@ export async function getGeneratedSchemas(
 
     if (error) throw error
 
-    return data.map((schema: any) => ({
+    return (data as any[]).map((schema: any) => ({
       id: schema.id,
       userId: schema.user_id,
       contentId: schema.content_id,
@@ -541,11 +558,11 @@ export async function generateImplementationCode(
 
     switch (format) {
       case 'json-ld':
-        return generateJSONLD(schema.schema_data)
+        return generateJSONLD((schema as any).schema_data)
       case 'microdata':
-        return generateMicrodata(schema.schema_data, schema.schema_type)
+        return generateMicrodata((schema as any).schema_data, (schema as any).schema_type)
       case 'rdfa':
-        return generateRDFA(schema.schema_data, schema.schema_type)
+        return generateRDFA((schema as any).schema_data, (schema as any).schema_type)
       default:
         throw new Error('Unsupported format')
     }

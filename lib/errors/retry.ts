@@ -63,9 +63,9 @@ export async function withAgentRetry<T>(
     onRetry,
   } = options
 
-  const initialDelay = backoff.initial ?? DEFAULT_OPTIONS.backoff.initial
-  const factor = backoff.factor ?? DEFAULT_OPTIONS.backoff.factor
-  const maxDelay = backoff.max ?? DEFAULT_OPTIONS.backoff.max
+  const initialDelay = (backoff?.initial ?? DEFAULT_OPTIONS.backoff.initial) as number
+  const factor = (backoff?.factor ?? DEFAULT_OPTIONS.backoff.factor) as number
+  const maxDelay = (backoff?.max ?? DEFAULT_OPTIONS.backoff.max) as number
 
   const requestId = nanoid()
 
@@ -108,7 +108,7 @@ export async function withAgentRetry<T>(
       }
 
       // Calculate delay with exponential backoff
-      const delayMs = Math.min(initialDelay! * Math.pow(factor!, attempt), maxDelay!)
+      const delayMs = Math.min(initialDelay * Math.pow(factor, attempt), maxDelay)
 
       // Log retry attempt (only in non-production environments)
       if (process.env.NODE_ENV !== 'production') {

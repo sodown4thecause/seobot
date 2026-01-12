@@ -192,7 +192,7 @@ export function UserModeProvider({ children }: { children: ReactNode }) {
       const transitions = modeTransitionsMap[state.currentMode!.level] || []
       dispatch({ type: 'SET_AVAILABLE_TRANSITIONS', payload: transitions })
     }
-  }, [state.currentMode?.level])
+  }, [state.currentMode])
 
   // Context actions
   const actions: UserModeContextType['actions'] = {

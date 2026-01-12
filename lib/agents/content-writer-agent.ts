@@ -63,6 +63,15 @@ export class ContentWriterAgent {
       params.keywords
     )
 
+    // Validate guidance was successfully retrieved
+    if (!guidance) {
+      throw new ProviderError(
+        'Failed to retrieve content guidance from RAG system',
+        'content-writer',
+        { retryable: true }
+      )
+    }
+
     // Build the writing prompt
     const prompt = this.buildPrompt(params)
 

@@ -2,7 +2,7 @@
 
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage as Message } from 'ai'
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { useAIState } from '@/lib/context/ai-state-context'
 import { AgentHandoffCard } from './agent-handoff-card'
 import { Send, Sparkles, Copy, Check } from 'lucide-react'
@@ -103,7 +103,7 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     }
   }
 
-  const addToast = (type: ToastMessage['type'], message: string) => {
+  const addToast = useCallback((type: ToastMessage['type'], message: string) => {
     const id = Math.random().toString(36).substring(7)
     setToasts(prev => [...prev, { id, type, message }])
     
@@ -113,9 +113,9 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     }, 5000)
     
     toastTimeoutsRef.current.set(id, timeoutId)
-  }
+  }, [])
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id))
     
     // Clear the timeout if it exists
@@ -124,7 +124,7 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
       clearTimeout(timeoutId)
       toastTimeoutsRef.current.delete(id)
     }
-  }
+  }, [])
 
   useEffect(() => {
     // Refresh roadmap and detect intent on completion

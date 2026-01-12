@@ -873,8 +873,15 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     parts.filter((p: any) => p?.type === 'file' && p?.mediaType?.startsWith('image/') && p?.url)
       .forEach((p: any) => imageSources.push({ src: p.url, alt: p.name || 'Generated image' }))
 
-    const uniqueImages = Array.from(new Set(imageSources.map(i => i.src)))
-      .map(src => imageSources.find(i => i.src === src)!)
+    // Single-pass deduplication using Set - O(n) instead of O(n^2)
+    const uniqueImages: { src: string; alt?: string }[] = []
+    const seenSrcs = new Set<string>()
+    for (const img of imageSources) {
+      if (!seenSrcs.has(img.src)) {
+        seenSrcs.add(img.src)
+        uniqueImages.push(img)
+      }
+    }
 
     return (
       <>

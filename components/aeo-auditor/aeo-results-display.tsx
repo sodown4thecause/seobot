@@ -94,12 +94,16 @@ export function AEOResultsDisplay({ report, brandName, onReset, sessionId, tools
             <Users className="w-4 h-4 text-zinc-500" /> Competitor Intelligence
           </div>
           <div className="space-y-2">
-            {perception?.competitors?.slice(0, 3).map((comp, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-white/[0.03] text-[10px] font-mono uppercase tracking-widest">
-                <span className="text-zinc-500">{comp.domain}</span>
-                <span className="text-white italic">DETECTION: ACTIVE</span>
-              </div>
-            ))}
+            {perception?.competitors && perception.competitors.length > 0 ? (
+              perception.competitors.slice(0, 3).map((comp, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-white/[0.03] text-[10px] font-mono uppercase tracking-widest">
+                  <span className="text-zinc-500">{comp.domain}</span>
+                  <span className="text-white italic">DETECTION: ACTIVE</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest italic">Competitor analysis requires domain URL data</p>
+            )}
           </div>
         </div>
         <div className="bg-black p-8 space-y-4">
@@ -122,10 +126,7 @@ export function AEOResultsDisplay({ report, brandName, onReset, sessionId, tools
               <p className="text-[10px] font-mono text-zinc-600 mt-1 uppercase tracking-tight">ANALYZED VIA {(toolsUsed?.length || 7)} FEDERATION ENDPOINTS</p>
             </div>
           </div>
-          <div className="text-right">
-            <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest block">REPORT VALUE</span>
-            <span className="text-2xl font-black italic text-white">${(apiCost || 0.75).toFixed(2)} USD</span>
-          </div>
+
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           {(toolsUsed || ['GPT-4-SONAR', 'FIRE-CRAWL-RECON', 'KG-ENTITIES', 'SEARCH-CONSULTANT-AI']).map((tool, i) => (

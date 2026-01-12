@@ -127,9 +127,21 @@ export async function POST(request: NextRequest) {
             apiCost: `$${apiCost.toFixed(2)}`,
         })
 
+        // Merge perception data into the report for frontend display
+        const reportWithPerception = {
+            ...judgeResult.report,
+            perception: {
+                perplexitySummary: perceptionResult.perception.perplexityInsight?.summary,
+                perplexitySources: perceptionResult.perception.perplexityInsight?.sources,
+                competitors: perceptionResult.perception.competitors,
+                domainMetrics: perceptionResult.perception.domainMetrics,
+                apiCosts: perceptionResult.perception.apiCosts,
+            },
+        }
+
         return NextResponse.json({
             success: true,
-            report: judgeResult.report,
+            report: reportWithPerception,
             toolsUsed: TOOLS_USED,
             apiCost,
             processingTimeMs,

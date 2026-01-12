@@ -2,9 +2,20 @@
  * Workflow Scheduler
  * Handles scheduling and automation of workflows
  * 
+ * ⚠️ CRITICAL: TEMPORARY FILE-BASED PERSISTENCE ⚠️
+ * This implementation uses file-based persistence as a temporary solution.
+ * Schedules are persisted to disk to survive restarts, but this is NOT production-ready.
+ * 
+ * PRODUCTION WARNING:
+ * - File-based storage is not suitable for multi-instance deployments
+ * - No transaction support or concurrent write protection
+ * - Limited scalability and no query optimization
+ * 
  * TODO: Migrate to Drizzle ORM once scheduled_workflows table is created
- * Currently stubbed after Supabase removal
  */
+
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
 
 export type ScheduleType = 'once' | 'daily' | 'weekly' | 'monthly' | 'cron'
 
@@ -21,12 +32,94 @@ export interface WorkflowSchedule {
   runCount: number
 }
 
-// In-memory schedule storage (temporary until Drizzle migration)
+// Persistence configuration
+const PERSISTENCE_DIR = path.join(process.cwd(), '.tmp', 'schedules')
+const PERSISTENCE_FILE = path.join(PERSISTENCE_DIR, 'schedules.json')
+const ENABLE_PERSISTENCE = process.env.NODE_ENV === 'development' || process.env.ENABLE_SCHEDULE_PERSISTENCE === 'true'
+
+// In-memory schedule storage (persisted to disk for restart recovery)
 const scheduleStore = new Map<string, WorkflowSchedule>()
 
 // Sorted array for efficient due schedule retrieval - O(k) instead of O(n)
 // Sorted by nextRunAt ascending (earliest first)
 let sortedSchedules: WorkflowSchedule[] = []
+
+// Initialization flag to track if persistence has been loaded
+let isInitialized = false
+
+/**
+ * Serialize and persist schedules to disk
+ */
+async function persistSchedules(): Promise<void> {
+  if (!ENABLE_PERSISTENCE) return
+
+  try {
+    // Ensure directory exists
+    await fs.mkdir(PERSISTENCE_DIR, { recursive: true })
+
+    // Convert Map to serializable array with ISO date strings
+    const schedules = Array.from(scheduleStore.values()).map(schedule => ({
+      ...schedule,
+      lastRunAt: schedule.lastRunAt?.toISOString(),
+      nextRunAt: schedule.nextRunAt?.toISOString()
+    }))
+
+    await fs.writeFile(PERSISTENCE_FILE, JSON.stringify(schedules, null, 2), 'utf-8')
+  } catch (error) {
+    console.error('[Scheduler] Failed to persist schedules:', error)
+  }
+}
+
+/**
+ * Load and deserialize schedules from disk on initialization
+ */
+async function loadPersistedSchedules(): Promise<void> {
+  if (!ENABLE_PERSISTENCE) {
+    console.warn(
+      '⚠️ [Scheduler] PERSISTENCE DISABLED: Schedules will NOT survive restarts. ' +
+      'Set NODE_ENV=development or ENABLE_SCHEDULE_PERSISTENCE=true to enable file-based persistence. ' +
+      'TODO: Migrate to Drizzle ORM for production-ready persistence.'
+    )
+    isInitialized = true
+    return
+  }
+
+  try {
+    const data = await fs.readFile(PERSISTENCE_FILE, 'utf-8')
+    const schedules: WorkflowSchedule[] = JSON.parse(data)
+
+    // Restore schedules to memory store
+    scheduleStore.clear()
+    sortedSchedules = []
+
+    for (const schedule of schedules) {
+      // Convert ISO strings back to Date objects
+      const restored: WorkflowSchedule = {
+        ...schedule,
+        lastRunAt: schedule.lastRunAt ? new Date(schedule.lastRunAt) : undefined,
+        nextRunAt: schedule.nextRunAt ? new Date(schedule.nextRunAt) : undefined
+      }
+
+      scheduleStore.set(restored.id, restored)
+
+      // Rebuild sorted array
+      if (restored.nextRunAt) {
+        insertSortedSchedule(restored)
+      }
+    }
+
+    console.log(`[Scheduler] Restored ${schedules.length} schedule(s) from persistent storage`)
+    isInitialized = true
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      // File doesn't exist yet - first run
+      console.log('[Scheduler] No existing schedules found, starting fresh')
+    } else {
+      console.error('[Scheduler] Failed to load persisted schedules:', error)
+    }
+    isInitialized = true
+  }
+}
 
 /**
  * Insert a schedule into the sorted array maintaining order
@@ -65,6 +158,29 @@ function removeSortedSchedule(scheduleId: string): void {
 export class WorkflowScheduler {
   private userId: string | null = null
 
+  constructor() {
+    // Initialize persistence on first instantiation
+    this.initialize()
+  }
+
+  /**
+   * Initialize scheduler and load persisted schedules
+   */
+  private async initialize(): Promise<void> {
+    if (!isInitialized) {
+      await loadPersistedSchedules()
+    }
+  }
+
+  /**
+   * Ensure scheduler is initialized before operations
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (!isInitialized) {
+      await this.initialize()
+    }
+  }
+
   setUserId(userId: string) {
     this.userId = userId
   }
@@ -80,6 +196,7 @@ export class WorkflowScheduler {
     workflowParams: Record<string, any> = {}
   ): Promise<WorkflowSchedule> {
     if (!this.userId) throw new Error('User not authenticated')
+    await this.ensureInitialized()
 
     const nextRunAt = this.calculateNextRun(scheduleType, scheduleConfig)
     const id = crypto.randomUUID()
@@ -101,6 +218,9 @@ export class WorkflowScheduler {
     // Insert into sorted array for efficient retrieval
     insertSortedSchedule(schedule)
 
+    // Persist changes to disk
+    await persistSchedules()
+
     return schedule
   }
 
@@ -109,6 +229,8 @@ export class WorkflowScheduler {
    * Optimized: Uses sorted array for O(k) retrieval where k = due schedules
    */
   async getDueSchedules(): Promise<WorkflowSchedule[]> {
+    await this.ensureInitialized()
+    
     const now = new Date()
     const due: WorkflowSchedule[] = []
 
@@ -133,6 +255,8 @@ export class WorkflowScheduler {
    * TODO: Implement with Drizzle
    */
   async markScheduleExecuted(scheduleId: string): Promise<void> {
+    await this.ensureInitialized()
+    
     const schedule = scheduleStore.get(scheduleId)
     if (!schedule) return
 
@@ -148,6 +272,9 @@ export class WorkflowScheduler {
     if (schedule.nextRunAt) {
       insertSortedSchedule(schedule)
     }
+
+    // Persist changes to disk
+    await persistSchedules()
   }
 
   /**
@@ -155,7 +282,25 @@ export class WorkflowScheduler {
    * TODO: Implement with Drizzle
    */
   async getSchedule(scheduleId: string): Promise<WorkflowSchedule | null> {
+    await this.ensureInitialized()
     return scheduleStore.get(scheduleId) || null
+  }
+
+  /**
+   * Delete a schedule
+   */
+  async deleteSchedule(scheduleId: string): Promise<void> {
+    await this.ensureInitialized()
+    
+    const schedule = scheduleStore.get(scheduleId)
+    if (!schedule) return
+
+    // Remove from both stores
+    scheduleStore.delete(scheduleId)
+    removeSortedSchedule(scheduleId)
+
+    // Persist changes to disk
+    await persistSchedules()
   }
 
   /**

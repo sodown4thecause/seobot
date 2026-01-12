@@ -83,10 +83,38 @@ export async function GET(req: NextRequest) {
     // Get date ranges
     const monthAgo = getDateDaysAgo(30)
 
-    // Overview stats (simplified - these tables may not exist yet)
+    // Get user stats from database using Drizzle
+    let userStats
+    try {
+      const messageCount = await db
+        .select({ count: chatMessages.id })
+        .from(chatMessages)
+        .where(eq(chatMessages.userId, user.id))
+      
+      userStats = {
+        totalMessages: messageCount?.length || 0,
+      }
+    } catch (userStatsError) {
+      console.error('[Analytics] Failed to fetch user stats:', userStatsError)
+      return NextResponse.json(
+        { error: 'Failed to fetch user statistics' },
+        { status: 500 }
+      )
+    }
+
+    // Check if userStats query succeeded
+    if (!userStats) {
+      console.error('[Analytics] User stats query returned no data')
+      return NextResponse.json(
+        { error: 'Failed to retrieve user statistics' },
+        { status: 500 }
+      )
+    }
+
+    // Overview stats - only construct if userStats is present
     const overview = {
       totalUsers: 1,
-      totalMessages: 0,
+      totalMessages: userStats.totalMessages,
       totalContentGenerated: 0,
       totalExports: 0,
       activeUsersToday: 1,

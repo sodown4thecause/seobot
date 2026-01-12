@@ -28,9 +28,62 @@ interface ToolInvocationResult {
     errorMessage?: string
     error?: string
     competitors?: CompetitorData[]
-    tasks?: Array<{ result?: CompetitorData[] }>
     items?: CompetitorData[]
+    tasks?: Array<{ result?: CompetitorData[] | unknown }>
     [key: string]: unknown
+}
+
+/**
+ * Centralized function to extract competitors from various result shapes
+ * Handles: direct array, stringified array, result.competitors, result.items, result.tasks[0].result
+ */
+function extractCompetitors(result: unknown): CompetitorData[] {
+    // Case 1: Result is already an array
+    if (Array.isArray(result)) {
+        return result
+    }
+
+    // Case 2: Result is a stringified JSON array
+    if (typeof result === 'string') {
+        try {
+            const parsed = JSON.parse(result)
+            if (Array.isArray(parsed)) {
+                return parsed
+            }
+            console.error('[CompetitorAnalysisTable] Parsed JSON is not an array:', parsed)
+        } catch (parseError) {
+            console.error('[CompetitorAnalysisTable] Failed to parse result as JSON:', parseError, 'Raw result:', result)
+        }
+        return []
+    }
+
+    // Case 3: Result is an object with nested data
+    if (result && typeof result === 'object') {
+        const res = result as ToolInvocationResult
+
+        // Check result.competitors
+        if (Array.isArray(res.competitors)) {
+            return res.competitors
+        }
+
+        // Check result.items (alternative field name)
+        if (Array.isArray(res.items)) {
+            return res.items
+        }
+
+        // Check result.tasks[0].result (DataForSEO nested structure)
+        if (res.tasks?.[0]?.result) {
+            const taskResult = res.tasks[0].result
+            if (Array.isArray(taskResult)) {
+                return taskResult
+            }
+            console.error('[CompetitorAnalysisTable] result.tasks[0].result is not an array:', taskResult)
+        }
+
+        console.error('[CompetitorAnalysisTable] No valid competitor data found in object:', res)
+    }
+
+    return []
 }
 
 interface ToolInvocation {
@@ -131,40 +184,8 @@ export function CompetitorAnalysisTable({ toolInvocation }: CompetitorAnalysisTa
     }
 
     // Handle various result structures from DataForSEO
-    let competitors: CompetitorData[] = []
-    let yourDomain = args?.domain || args?.yourDomain || 'Your Domain'
-
-    // Try different data structures
-    if (Array.isArray(result)) {
-        competitors = result
-    } else if (typeof result === 'string') {
-        try {
-            const parsed = JSON.parse(result as string)
-            if (Array.isArray(parsed)) {
-                competitors = parsed
-            } else {
-                console.error('[CompetitorAnalysisTable] Parsed JSON is not an array:', parsed)
-            }
-        } catch (parseError) {
-            console.error('[CompetitorAnalysisTable] Failed to parse result as JSON:', parseError, 'Raw result:', result)
-        }
-    } else {
-        const res = result as ToolInvocationResult
-        if (res.competitors) {
-            if (Array.isArray(res.competitors)) {
-                competitors = res.competitors
-            } else {
-                console.error('[CompetitorAnalysisTable] result.competitors is not an array:', res.competitors)
-            }
-        } else if (res.tasks?.[0]?.result) {
-            const taskResult = res.tasks[0]!.result
-            if (Array.isArray(taskResult)) {
-                competitors = taskResult
-            } else {
-                console.error('[CompetitorAnalysisTable] result.tasks[0].result is not an array:', taskResult)
-            }
-        }
-    }
+    const competitors = extractCompetitors(result)
+    const yourDomain = args?.domain || args?.yourDomain || 'Your Domain'
 
     if (!Array.isArray(competitors) || competitors.length === 0) {
         return (

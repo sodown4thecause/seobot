@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
     Table,
     TableBody,
@@ -10,7 +11,39 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Link2, ExternalLink, Globe } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Link2, ExternalLink, Globe, ChevronLeft, ChevronRight } from "lucide-react"
+
+/**
+ * Sanitize anchor text by stripping angle brackets to prevent XSS
+ */
+function sanitizeAnchorText(text: string | null): string {
+    if (!text) return ''
+    return text.replace(/[<>]/g, '')
+}
+
+/**
+ * Sanitize URL by encoding potentially dangerous characters
+ */
+function sanitizeUrl(url: string | null): string {
+    if (!url) return ''
+    try {
+        // Use encodeURI but preserve protocol and domain structure
+        const parsed = new URL(url)
+        return parsed.toString()
+    } catch {
+        // If URL parsing fails, strip angle brackets as fallback
+        return url.replace(/[<>]/g, '')
+    }
+}
+
+/**
+ * Sanitize display text by stripping angle brackets
+ */
+function sanitizeDisplayText(text: string | null | undefined): string {
+    if (!text) return ''
+    return text.replace(/[<>]/g, '')
+}
 
 interface BacklinkData {
     // Original expected fields
@@ -90,6 +123,14 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
         )
     }
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1)
+    const itemsPerPage = 50
+    const totalPages = Math.ceil(backlinks.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    const paginatedBacklinks = backlinks.slice(startIndex, endIndex)
+
     // Helper to get source URL from either field name
     const getSourceUrl = (link: BacklinkData) => link.sourceUrl || link.url || null
     // Helper to get anchor text from either field name
@@ -134,23 +175,30 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {backlinks.map((link, idx) => {
+                            {paginatedBacklinks.map((link, idx) => {
                                 const sourceUrl = getSourceUrl(link)
                                 const anchorText = getAnchorText(link)
                                 const targetUrl = getTargetUrl(link)
                                 const refDomain = getReferringDomain(link)
+
+                                // Sanitize all user-controlled fields to prevent XSS
+                                const sanitizedSourceUrl = sanitizeUrl(sourceUrl)
+                                const sanitizedAnchorText = sanitizeAnchorText(anchorText)
+                                const sanitizedTargetUrl = sanitizeUrl(targetUrl)
+                                const sanitizedRefDomain = sanitizeDisplayText(refDomain)
+                                const displaySource = sanitizedSourceUrl || sanitizedRefDomain || 'Unknown source'
 
                                 return (
                                     <TableRow key={idx} className="border-zinc-800/30 hover:bg-zinc-800/20 transition-colors group">
                                         <TableCell className="py-4">
                                             <div className="flex flex-col gap-1.5">
                                                 <div className="flex items-center gap-2 group/link">
-                                                    <span className="text-sm font-medium text-zinc-200 truncate max-w-[300px]" title={sourceUrl || refDomain || 'Unknown'}>
-                                                        {sourceUrl || refDomain || 'Unknown source'}
+                                                    <span className="text-sm font-medium text-zinc-200 truncate max-w-[300px]" title={displaySource}>
+                                                        {displaySource}
                                                     </span>
-                                                    {sourceUrl && (
+                                                    {sanitizedSourceUrl && (
                                                         <a
-                                                            href={sourceUrl}
+                                                            href={sanitizedSourceUrl}
                                                             target="_blank"
                                                             rel="noreferrer"
                                                             className="text-zinc-600 hover:text-indigo-400 transition-colors"
@@ -159,10 +207,10 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
                                                         </a>
                                                     )}
                                                 </div>
-                                                {anchorText && (
+                                                {sanitizedAnchorText && (
                                                     <div className="flex items-center gap-2 text-[11px] text-zinc-500 italic bg-zinc-900/50 w-fit px-2 py-0.5 rounded border border-zinc-800/50">
                                                         <span className="text-[10px] uppercase tracking-wider text-zinc-600 font-bold not-italic">Anchor:</span>
-                                                        "{anchorText}"
+                                                        "{sanitizedAnchorText}"
                                                     </div>
                                                 )}
                                             </div>
@@ -175,13 +223,13 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
                                                     : "bg-zinc-800 text-zinc-400 border-zinc-700 text-[10px]"
                                                 }
                                             >
-                                                {link.type || 'link'}
+                                                {sanitizeDisplayText(link.type) || 'link'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
                                             <div className="flex flex-col items-end gap-1">
                                                 <span className="text-[11px] text-zinc-500 truncate max-w-[150px]">
-                                                    {targetUrl?.split('/').pop() || 'Homepage'}
+                                                    {sanitizedTargetUrl ? sanitizeDisplayText(sanitizedTargetUrl.split('/').pop()) : 'Homepage'}
                                                 </span>
                                             </div>
                                         </TableCell>
@@ -192,10 +240,37 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
                     </Table>
                 </div>
                 {backlinks.length > 0 && (
-                    <div className="p-3 bg-zinc-900/20 border-t border-zinc-800/50 text-center">
-                        <p className="text-xs text-zinc-500">
-                            Showing all {backlinks.length} discovered backlinks.
-                        </p>
+                    <div className="p-3 bg-zinc-900/20 border-t border-zinc-800/50">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs text-zinc-500">
+                                Showing {startIndex + 1}-{Math.min(endIndex, backlinks.length)} of {backlinks.length} backlinks
+                            </p>
+                            {totalPages > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="h-7 px-2 bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </Button>
+                                    <span className="text-xs text-zinc-500 min-w-[80px] text-center">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="h-7 px-2 bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </CardContent>

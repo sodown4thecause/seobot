@@ -41,7 +41,10 @@ interface StubQueryBuilder {
   order: (column: string, options?: { ascending?: boolean }) => StubQueryBuilder
   limit: (n: number) => StubQueryBuilder
   single: () => Promise<{ data: any; error: any }>
-  then: (resolve: (value: { data: any; error: any }) => void) => void
+  then: (
+    onfulfilled?: (value: { data: any; error: any }) => any,
+    onrejected?: (reason: any) => any
+  ) => any
 }
 
 const createStubQueryBuilder = (table: string): StubQueryBuilder => ({
@@ -53,7 +56,9 @@ const createStubQueryBuilder = (table: string): StubQueryBuilder => ({
   order: () => throwFatalError(`order on ${table}`),
   limit: () => throwFatalError(`limit on ${table}`),
   single: () => throwFatalError(`single on ${table}`),
-  then: () => throwFatalError(`then on ${table}`),
+  // biome-ignore lint/suspicious/noThenProperty: Matches Supabase query builder semantics for await
+  then: (_onfulfilled?: (value: { data: any; error: any }) => any, _onrejected?: (reason: any) => any) => 
+    throwFatalError(`then on ${table}`),
 })
 
 const supabase = FEATURE_FLAG
@@ -305,40 +310,67 @@ export async function monitorCompetitors(userId: string): Promise<{
  * Check competitor changes for a specific alert
  */
 async function checkCompetitorChanges(alert: CompetitorAlert): Promise<CompetitorAlertEvent[]> {
-  const events: CompetitorAlertEvent[] = []
-
   try {
-    for (const domain of alert.competitorDomains) {
+    // Build all check promises for parallel execution
+    const checkPromises = alert.competitorDomains.flatMap((domain) => {
+      const domainChecks: Promise<CompetitorAlertEvent[]>[] = []
+
       // Check for new content
       if (alert.alertTypes.includes('new_content')) {
-        const contentEvents = await checkForNewContent(domain, alert.targetKeywords)
-        events.push(...contentEvents)
+        domainChecks.push(
+          checkForNewContent(domain, alert.targetKeywords).catch((error) => {
+            console.warn(`[Alerts] New content check failed for ${domain}:`, error)
+            return []
+          })
+        )
       }
 
       // Check for ranking changes
       if (alert.alertTypes.includes('ranking_changes')) {
-        const rankingEvents = await checkRankingChanges(domain, alert.targetKeywords)
-        events.push(...rankingEvents)
+        domainChecks.push(
+          checkRankingChanges(domain, alert.targetKeywords).catch((error) => {
+            console.warn(`[Alerts] Ranking check failed for ${domain}:`, error)
+            return []
+          })
+        )
       }
 
       // Check for backlink changes
       if (alert.alertTypes.includes('backlinks')) {
-        const backlinkEvents = await checkBacklinkChanges(domain)
-        events.push(...backlinkEvents)
+        domainChecks.push(
+          checkBacklinkChanges(domain).catch((error) => {
+            console.warn(`[Alerts] Backlink check failed for ${domain}:`, error)
+            return []
+          })
+        )
       }
 
       // Check for price changes
       if (alert.alertTypes.includes('price_changes')) {
-        const priceEvents = await checkPriceChanges(domain)
-        events.push(...priceEvents)
+        domainChecks.push(
+          checkPriceChanges(domain).catch((error) => {
+            console.warn(`[Alerts] Price check failed for ${domain}:`, error)
+            return []
+          })
+        )
       }
 
       // Check for social media activity
       if (alert.alertTypes.includes('social_media_activity')) {
-        const socialEvents = await checkSocialMediaActivity(domain)
-        events.push(...socialEvents)
+        domainChecks.push(
+          checkSocialMediaActivity(domain).catch((error) => {
+            console.warn(`[Alerts] Social media check failed for ${domain}:`, error)
+            return []
+          })
+        )
       }
-    }
+
+      return domainChecks
+    })
+
+    // Execute all checks in parallel and flatten results
+    const results = await Promise.all(checkPromises)
+    const events = results.flat()
 
     // Store events in database
     if (events.length > 0) {

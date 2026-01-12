@@ -5,15 +5,36 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1767160870515,
+      "when": 1735246816359,
       "tag": "0000_damp_famine",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1735331749423,
+      "tag": "0001_initial_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1736394698307,
+      "tag": "0002_neon_pgvector_rag",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "7",
-      "when": 1767160870516,
+      "when": 1736399361910,
       "tag": "0003_add_new_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1736416298307,
+      "tag": "0004_add_vector_indexes",
       "breakpoints": true
     }
   ]

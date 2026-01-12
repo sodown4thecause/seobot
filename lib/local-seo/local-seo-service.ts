@@ -7,9 +7,29 @@ const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
+/**
+ * Environment flag to enable in-memory stub for development/testing ONLY.
+ * 
+ * PRODUCTION WARNING: The in-memory stub must NEVER be enabled in production.
+ * Set ALLOW_IN_MEMORY_LOCAL_SEO=true ONLY in development/test environments.
+ * 
+ * TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
+ */
+const ALLOW_IN_MEMORY_STUB = 
+  process.env.NODE_ENV === 'development' || 
+  process.env.ALLOW_IN_MEMORY_LOCAL_SEO === 'true'
+
 // In-memory store for development/testing only - NOT for production use
-const inMemoryProfiles = new Map<string, LocalSEOProfile>()
+const inMemoryProfiles = ALLOW_IN_MEMORY_STUB ? new Map<string, LocalSEOProfile>() : null
+
+// Fail fast on module load if in production without proper implementation
+if (!ALLOW_IN_MEMORY_STUB) {
+  console.warn(
+    '[Local SEO Service] In-memory stub is DISABLED. ' +
+    'Production environments must migrate to Drizzle ORM. ' +
+    'For dev/test, set NODE_ENV=development or ALLOW_IN_MEMORY_LOCAL_SEO=true'
+  )
+}
 
 function throwNotImplemented(method: string): never {
   console.error(`[Local SEO Service] Database operation '${method}' called - Service not implemented. Migrate to Drizzle ORM.`)
@@ -17,6 +37,11 @@ function throwNotImplemented(method: string): never {
 }
 
 function createAdminClient() {
+  // Fail fast if stub is disabled (production environment)
+  if (!ALLOW_IN_MEMORY_STUB || !inMemoryProfiles) {
+    throwNotImplemented('createAdminClient - in-memory stub disabled in production')
+  }
+  
   return {
     from: (table: string) => {
       if (table === 'local_seo_profiles') {

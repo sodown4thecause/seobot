@@ -30,6 +30,7 @@ export function Navbar() {
                 {/* Center Navigation */}
                 <div className="hidden lg:flex items-center gap-1">
                     {[
+                        { label: 'Dashboard', href: '/dashboard' },
                         { label: 'Features', href: '#features' },
                         { label: 'Pricing', href: '/prices' },
                         { label: 'Guides', href: '/guides' },

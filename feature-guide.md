@@ -36,7 +36,6 @@ The heart of the platform is an intelligent chat interface that serves as your S
 ### Key Features
 
 - **Natural Language Commands**: Simply describe what you want to accomplish in plain English
-- **Voice Input Support**: Speak your queries using the built-in voice input feature
 - **Contextual Memory**: The AI remembers your business context, previous conversations, and preferences
 - **Real-time Tool Execution**: Watch as the AI performs research, analysis, and content generation in real-time
 - **Artifact System**: View generated content, reports, and visualizations in a dedicated artifact panel
@@ -152,14 +151,14 @@ The content generation system uses a Research-Augmented Generation (RAG) approac
    - SERP analysis for target keywords
 
 2. **Content Generation**:
-   - AI-powered writing with Gemini 2.0
+   - AI-powered writing with Gemini 3.0
    - Style matching to your brand voice
    - SEO optimization built-in
 
 3. **Quality Assurance Loop**:
    - DataForSEO scoring for SEO compliance
    - EEAT evaluation for quality signals
-   - Frase-style optimization scoring
+   - Frase optimization scoring
    - AEO compliance checking
    - Iterative refinement until quality thresholds met
 
@@ -413,7 +412,7 @@ Agents can automatically hand off to specialists:
 
 ### Agent Memory & RAG
 
-- **Framework Knowledge**: Pre-loaded SEO frameworks and best practices
+- **Framework Knowledge**: Pre-loaded SEO/AEO frameworks and best practices from recent case studies, white papers and industry news
 - **Document Library**: Upload your own reference documents
 - **Conversation History**: Context from previous interactions
 
@@ -470,24 +469,6 @@ The system maintains your:
 
 ---
 
-## CMS Integrations
-
-Publish content directly to your website.
-
-### Supported Platforms
-
-- **WordPress**: Full integration for publishing
-- **Sanity**: Headless CMS integration for blog management
-
-### Integration Features
-
-- One-click publishing
-- Draft and schedule support
-- Media upload handling
-- Meta field synchronization
-
----
-
 ## Local SEO
 
 Tools for businesses targeting local customers.
@@ -521,7 +502,7 @@ Powered by industry-leading APIs.
 | Service | Purpose |
 |---------|---------|
 | **DataForSEO** | SEO data, SERP analysis, backlinks |
-| **Google AI (Gemini)** | Primary AI model for chat and content |
+| **Google AI (Gemini 3.0)** | Primary AI model for chat and content |
 | **Perplexity AI** | Real-time web research |
 | **Jina AI** | Content extraction and reranking |
 | **Firecrawl** | Web scraping and crawling |
@@ -530,7 +511,7 @@ Powered by industry-leading APIs.
 
 ### AI Model Support
 
-- Gemini 2.0 Flash (primary)
+- Gemini 3.0 Flash (primary)
 - Perplexity Sonar (research)
 - Gateway-based model routing
 

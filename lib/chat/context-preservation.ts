@@ -22,26 +22,29 @@ export interface ChatContext {
 const locks = new Map<string, Promise<void>>()
 
 async function withMutex<T>(userId: string, fn: () => Promise<T>): Promise<T> {
-  let unlock: () => void
+  // Lock chaining: read existing lock or use resolved promise
+  const existingLock = locks.get(userId) || Promise.resolve()
   
-  while (true) {
-    const existingLock = locks.get(userId)
-    if (!existingLock) {
-      break
-    }
-    await existingLock
-  }
-
+  // Create new lock promise+resolver immediately
+  let unlock: () => void
   const lockPromise = new Promise<void>(resolve => {
     unlock = resolve
   })
+  
+  // Set lock immediately to prevent races
   locks.set(userId, lockPromise)
-
+  
   try {
+    // Wait for previous lock to release before running fn
+    await existingLock
     return await fn()
   } finally {
-    locks.delete(userId)
+    // Release lock first
     unlock!()
+    // Only remove if this is still the current lock (avoid removing newer locks)
+    if (locks.get(userId) === lockPromise) {
+      locks.delete(userId)
+    }
   }
 }
 

@@ -83,10 +83,23 @@ export class GuidedWorkflowEngine {
         if (suggestions.length < 3) {
             const nextPillar = this.getNextPillar(currentPillar)
             if (nextPillar !== currentPillar) {
+                // Get templates from next pillar
                 const additionalTemplates = getBestTemplates(nextPillar, completedTaskKeys)
-                    .slice(0, 3 - suggestions.length)
 
-                for (const template of additionalTemplates) {
+                // Track existing categories and taskKeys to avoid duplicates
+                const existingCategories = new Set(suggestions.map(s => s.category))
+                const existingTaskKeys = new Set(suggestions.map(s => s.taskKey))
+
+                // Filter out templates with duplicate categories or taskKeys
+                const filteredTemplates = additionalTemplates.filter(template => 
+                    !existingCategories.has(template.category) && 
+                    !existingTaskKeys.has(template.taskKey)
+                )
+
+                // Add filtered templates until we reach 3 suggestions or run out of templates
+                for (const template of filteredTemplates) {
+                    if (suggestions.length >= 3) break
+
                     suggestions.push({
                         category: template.category,
                         prompt: this.personalizePrompt(template.prompt, userContext),
@@ -96,6 +109,10 @@ export class GuidedWorkflowEngine {
                         icon: this.getCategoryIcon(template.category),
                         priority: template.priority,
                     })
+
+                    // Update tracking sets
+                    existingCategories.add(template.category)
+                    existingTaskKeys.add(template.taskKey)
                 }
             }
         }
