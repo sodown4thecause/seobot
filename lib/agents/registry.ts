@@ -1,6 +1,8 @@
 // Agent Registry for Multi-Agent SEO Platform
 // Defines agent configurations, capabilities, and tool access
 
+import { AGENT_IDS } from './constants'
+
 export interface AgentToolConfig {
   name: string
   description: string
@@ -333,7 +335,7 @@ export const AVAILABLE_TOOLS: Record<string, AgentToolConfig> = {
 
 // SEO/AEO Manager Agent Configuration
 const seoManagerConfig: AgentConfig = {
-  id: 'seo_manager',
+  id: AGENT_IDS.SEO_AEO,
   name: 'SEO/AEO Manager',
   description: 'Specialized in SEO, AEO (Answer Engine Optimization), keyword strategy, and AI platform visibility',
   personality: {

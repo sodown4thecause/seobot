@@ -4,7 +4,9 @@
  * Enhanced with comprehensive keyword detection, word boundary matching, and tool assignments
  */
 
-export type AgentType = 'onboarding' | 'seo-aeo' | 'content' | 'general'
+import { AGENT_IDS, type AgentId } from './constants'
+
+export type AgentType = AgentId
 
 export interface AgentRoutingResult {
   agent: AgentType
@@ -125,7 +127,7 @@ export class AgentRouter {
     // 1. ONBOARDING AGENT - Handle setup and configuration
     if (context?.page === 'onboarding') {
       return {
-        agent: 'onboarding',
+        agent: AGENT_IDS.ONBOARDING,
         confidence: 0.98,
         reasoning: 'User is in onboarding flow',
         tools: [...ONBOARDING_TOOLS],
@@ -135,7 +137,7 @@ export class AgentRouter {
     const onboardingMatches = this.matchKeywords(messageLower, this.getOnboardingKeywords())
     if (onboardingMatches.length > 0) {
       return {
-        agent: 'onboarding',
+        agent: AGENT_IDS.ONBOARDING,
         confidence: this.calculateConfidence(onboardingMatches.length, 0.85, 0.98),
         reasoning: `Onboarding query detected: ${onboardingMatches.slice(0, 3).join(', ')}`,
         tools: [...ONBOARDING_TOOLS],
@@ -157,7 +159,7 @@ export class AgentRouter {
         : this.calculateConfidence(contentMatches.length, 0.8, 0.95)
 
       return {
-        agent: 'content',
+        agent: AGENT_IDS.CONTENT,
         confidence,
         reasoning: hasExplicitContentIntent
           ? 'Explicit content creation request detected'
@@ -170,7 +172,7 @@ export class AgentRouter {
     // 3. SEO/AEO AGENT - Handle analytics, technical SEO, competitor analysis
     if (seoMatches.length > 0) {
       return {
-        agent: 'seo-aeo',
+        agent: AGENT_IDS.SEO_AEO,
         confidence: this.calculateConfidence(seoMatches.length, 0.8, 0.95),
         reasoning: `SEO analytics query: ${seoMatches.slice(0, 3).join(', ')}`,
         tools: [...SEO_TOOLS],
@@ -180,7 +182,7 @@ export class AgentRouter {
 
     // 4. GENERAL AGENT - Handle general queries, simple questions
     return {
-      agent: 'general',
+      agent: AGENT_IDS.GENERAL,
       confidence: 0.7,
       reasoning: 'General query - no specialized agent keywords detected',
       tools: [...GENERAL_TOOLS],

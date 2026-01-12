@@ -6,7 +6,7 @@
 import { searchWithPerplexity, type PerplexitySearchResult } from '@/lib/external-apis/perplexity'
 import { retrieveAgentDocuments } from '@/lib/ai/content-rag'
 import { mcpDataforseoTools } from '@/lib/mcp/dataforseo/index'
-import { mcpFirecrawlTools } from '@/mcps/mcp.firecrawl.dev/fc-9b271ecf3a944c3faf93489565547fc8/v2/mcp/index'
+import { mcpFirecrawlTools } from '@/lib/mcp/firecrawl/index'
 
 // Helper to execute MCP tools (they only need args, not the full AI SDK context)
 // The execute function can return string | AsyncIterable<string> | PromiseLike<string>

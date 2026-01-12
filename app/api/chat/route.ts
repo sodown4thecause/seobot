@@ -63,6 +63,9 @@ interface ChatContext {
     currentStep?: number;
     data?: OnboardingData;
   };
+  agentId?: string;
+  agentType?: string;
+  conversationId?: string;
   [key: string]: unknown;
 }
 
@@ -96,7 +99,7 @@ const handler = async (req: Request) => {
     }));
 
     const { messages: incomingMessages, chatId, context } = body;
-    const agentId = (context as any)?.agentId || 'general';
+    const agentId = context?.agentId || 'general';
 
     // Extract onboarding context for system prompt building
     const onboardingContext = context?.onboarding;
@@ -135,8 +138,8 @@ const handler = async (req: Request) => {
     //   }
     // }
 
-    const requestedConversationId = chatId || (context as any)?.conversationId;
-    const resolvedAgentType = agentId || (context as any)?.agentType || 'general';
+    const requestedConversationId = chatId || context?.conversationId;
+    const resolvedAgentType = agentId || context?.agentType || 'general';
 
     let conversationRecord: Awaited<ReturnType<typeof ensureConversationForUser>> | null = null;
 
