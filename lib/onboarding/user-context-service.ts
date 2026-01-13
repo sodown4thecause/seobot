@@ -6,7 +6,7 @@
  */
 
 import { db } from '@/lib/db'
-import { businessProfiles, brandVoices } from '@/lib/db/schema'
+import { businessProfiles, brandVoices, userModeConfigs } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 export interface UserBusinessContext {
@@ -30,24 +30,29 @@ export interface UserBusinessContext {
         personality?: string[]
         samplePhrases?: string[]
     } | null
+    preferences?: {
+        language?: string
+    }
 }
 
 /**
  * Fetch user's complete business context from Neon
  * 
  * This is the primary function for getting user context to inject into agent prompts.
- * It fetches both business profile and brand voice data.
+ * It fetches business profile, brand voice, and user preferences.
  */
 export async function getUserBusinessContext(userId: string): Promise<UserBusinessContext> {
     try {
-        // Fetch business profile and brand voice in parallel
-        const [profileResult, voiceResult] = await Promise.all([
+        // Fetch business profile, brand voice, and user mode configs in parallel
+        const [profileResult, voiceResult, configResult] = await Promise.all([
             db.select().from(businessProfiles).where(eq(businessProfiles.userId, userId)).limit(1),
             db.select().from(brandVoices).where(eq(brandVoices.userId, userId)).limit(1),
+            db.select().from(userModeConfigs).where(eq(userModeConfigs.userId, userId)).limit(1),
         ])
 
         const profile = profileResult[0] || null
         const voice = voiceResult[0] || null
+        const config = configResult[0] || null
 
         const hasProfile = !!profile?.websiteUrl
         const hasBrandVoice = !!voice?.tone
@@ -60,6 +65,7 @@ export async function getUserBusinessContext(userId: string): Promise<UserBusine
                 context: '',
                 profile: null,
                 brandVoice: null,
+                preferences: {},
             }
         }
 
@@ -100,6 +106,16 @@ export async function getUserBusinessContext(userId: string): Promise<UserBusine
             }
         }
 
+        // Extract preferences
+        const preferences: { language?: string } = {}
+        if (config && config.preferences) {
+             const prefs = config.preferences as Record<string, any>
+             if (prefs.language) {
+                 preferences.language = prefs.language
+                 contextParts.push(`Language Preference: ${prefs.language}`)
+             }
+        }
+
         return {
             hasProfile: true,
             isOnboarded,
@@ -117,6 +133,7 @@ export async function getUserBusinessContext(userId: string): Promise<UserBusine
                 personality: (voice.personality as string[]) || [],
                 samplePhrases: voice.samplePhrases || [],
             } : null,
+            preferences,
         }
     } catch (error) {
         console.error('[User Context Service] Error fetching user context:', error)
@@ -126,6 +143,7 @@ export async function getUserBusinessContext(userId: string): Promise<UserBusine
             context: '',
             profile: null,
             brandVoice: null,
+            preferences: {},
         }
     }
 }
