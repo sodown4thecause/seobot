@@ -14,6 +14,18 @@
 				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
 				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
 			}
+		},
+		"Ref": {
+			"command": "npx",
+			"args": ["-y", "ref-tools-mcp@latest"],
+			"env": {
+				"REF_API_KEY": "ref-57210845759dab8bb7f6"
+			}
+		},
+		"neon": {
+			"command": "npx",
+			"args": ["-y", "@neondatabase/mcp-server-neon", "start", "napi_h48bgcfaflgfege888kcr7bsw9ulp4xbu7034jahibtgf765x0vcwco58u8zub1v"],
+			"enabled": true
 		}
 	}
 }
