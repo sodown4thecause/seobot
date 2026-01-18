@@ -25,6 +25,31 @@ import { sql } from 'drizzle-orm'
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 // ============================================================================
+// USERS TABLE (Clerk Sync)
+// ============================================================================
+
+/**
+ * Users - Synced from Clerk via webhooks
+ * This table mirrors Clerk user data for local queries and foreign key relationships
+ */
+export const users = pgTable('users', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    clerkId: text('clerk_id').notNull().unique(),
+    email: text('email').notNull(),
+    firstName: text('first_name'),
+    lastName: text('last_name'),
+    imageUrl: text('image_url'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at'),
+}, (table) => {
+    return {
+        clerkIdIdx: index('idx_users_clerk_id').on(table.clerkId),
+        emailIdx: index('idx_users_email').on(table.email),
+    }
+})
+
+// ============================================================================
 // CORE BUSINESS TABLES
 // ============================================================================
 
@@ -430,6 +455,9 @@ export const completedTasks = pgTable('completed_tasks', {
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
+
+export type User = typeof users.$inferSelect
+export type NewUser = typeof users.$inferInsert
 
 export type BusinessProfile = typeof businessProfiles.$inferSelect
 export type NewBusinessProfile = typeof businessProfiles.$inferInsert

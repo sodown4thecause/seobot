@@ -1,6 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 
+const isDev = process.env.NODE_ENV === 'development'
+
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -26,8 +28,18 @@ const isPublicRoute = createRouteMatcher([
 ])
 
 export default clerkMiddleware(async (auth, request) => {
-  const { userId } = await auth()
   const url = request.nextUrl
+
+  // DEV MODE: Skip all auth checks but still allow ClerkProvider to work
+  if (isDev) {
+    // Just handle basic redirects, no auth
+    if (url.pathname === '/chat') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+    return NextResponse.next()
+  }
+
+  const { userId } = await auth()
 
   // Redirect /chat to /dashboard (fix broken redirect)
   if (url.pathname === '/chat') {
