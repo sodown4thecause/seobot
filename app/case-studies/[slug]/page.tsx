@@ -1,6 +1,5 @@
 import { PortableText, type SanityDocument } from "next-sanity";
-import imageUrlBuilder from "@sanity/image-url";
-import type { SanityImageSource } from "@sanity/image-url/lib/types/types";
+import imageUrlBuilder, { type SanityImageSource } from "@sanity/image-url";
 import { client } from "@/sanity/lib/client";
 import Link from "next/link";
 import { Navbar } from '@/components/navbar';
