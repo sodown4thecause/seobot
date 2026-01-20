@@ -1,0 +1,38 @@
+{
+  "mcpServers": {
+    "dataforseo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "dataforseo-mcp-server"
+      ],
+      "env": {
+        "DATAFORSEO_USERNAME": "liam@leadspeed.co",
+        "DATAFORSEO_PASSWORD": "f63f04a30d4b5272",
+        "DATAFORSEO_SIMPLE_FILTER": "true"
+      },
+      "disabled": false
+    },
+    "firecrawl": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "firecrawl-mcp"
+      ],
+      "env": {
+        "FIRECRAWL_API_KEY": "fc-f1a78435c00b4fb18ab91d42588a1ce6"
+      },
+      "disabled": true
+    },
+    "mcp-server-neon": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.neon.tech/sse"
+      ],
+      "env": {},
+      "disabled": true
+    }
+  }
+}
