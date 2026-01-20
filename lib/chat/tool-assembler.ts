@@ -16,6 +16,8 @@ import { loadToolsForAgent, loadToolsForIntents } from '@/lib/ai/tool-schema-val
 import { fixAllMCPTools } from '@/lib/mcp/schema-fixer'
 import { getContentQualityTools } from '@/lib/ai/content-quality-tools'
 import { getEnhancedContentQualityTools } from '@/lib/ai/content-quality-enhancements'
+import { getAEOTools } from '@/lib/ai/aeo-tools'
+import { getAEOPlatformTools } from '@/lib/ai/aeo-platform-tools'
 import { searchWithPerplexity } from '@/lib/external-apis/perplexity'
 import { researchAgentTool, competitorAgentTool, frameworkRagTool } from '@/lib/agents/tools'
 import { onboardingTools } from '@/lib/onboarding/tools'
@@ -184,7 +186,9 @@ function normalizeBacklinksResponse(domain: string, data: unknown) {
       normalizeUrlHostname(sourceUrl) ??
       null
 
-    return { sourceUrl, targetUrl, anchorText, referringDomain, raw: item }
+    const type = item?.dofollow === true ? 'dofollow' : (typeof item?.type === 'string' ? item?.type : 'nofollow')
+
+    return { sourceUrl, targetUrl, anchorText, referringDomain, type }
   }
 
   const extractBacklinksArray = (payload: unknown): Record<string, unknown>[] => {
@@ -281,7 +285,7 @@ function normalizeBacklinksResponse(domain: string, data: unknown) {
     backlinksCount,
     referringDomainsCount,
     exampleBacklinks,
-    ...(data && typeof data === 'object' ? data : { raw: data }),
+    ...(data && typeof data === 'object' ? data : {}),
   }
 }
 
@@ -378,6 +382,9 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
 
     // N8N Backlinks - Only for SEO/AEO agent
     ...(agent === 'seo-aeo' ? { n8n_backlinks: createBacklinksTool() } : {}),
+
+    // AEO Tools - Only for SEO/AEO agent (citation analysis, EEAT detection, platform optimization)
+    ...(agent === 'seo-aeo' ? { ...getAEOTools(), ...getAEOPlatformTools() } : {}),
 
     // MCP Tools - Use intent-based filtering for SEO/AEO, otherwise load by agent type
     ...(intentTools && intentTools.length > 0
