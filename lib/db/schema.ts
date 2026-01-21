@@ -16,6 +16,7 @@ import {
     vector,
     real,
 } from 'drizzle-orm/pg-core'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { sql } from 'drizzle-orm'
 
 // ============================================================================
@@ -42,10 +43,16 @@ export const users = pgTable('users', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),
+    // Subscription fields
+    subscriptionStatus: text('subscription_status').default('inactive'),
+    polarCustomerId: text('polar_customer_id'),
+    polarSubscriptionId: text('polar_subscription_id'),
+    currentPeriodEnd: timestamp('current_period_end'),
 }, (table) => {
     return {
         clerkIdIdx: index('idx_users_clerk_id').on(table.clerkId),
         emailIdx: index('idx_users_email').on(table.email),
+        polarSubIdx: index('idx_users_polar_sub_id').on(table.polarSubscriptionId),
     }
 })
 
