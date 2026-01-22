@@ -1,38 +1,63 @@
 {
   "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    },
+    "deepwiki": {
+      "url": "https://mcp.deepwiki.com/mcp"
+    },
     "dataforseo": {
       "command": "npx",
-      "args": [
-        "-y",
-        "dataforseo-mcp-server"
-      ],
+      "args": ["-y", "dataforseo-mcp-server"],
       "env": {
-        "DATAFORSEO_USERNAME": "liam@leadspeed.co",
-        "DATAFORSEO_PASSWORD": "f63f04a30d4b5272",
+        "DATAFORSEO_USERNAME": "${DATAFORSEO_USERNAME}",
+        "DATAFORSEO_PASSWORD": "${DATAFORSEO_PASSWORD}",
         "DATAFORSEO_SIMPLE_FILTER": "true"
-      },
-      "disabled": false
+      }
     },
     "firecrawl": {
       "command": "npx",
-      "args": [
-        "-y",
-        "firecrawl-mcp"
-      ],
+      "args": ["-y", "firecrawl-mcp"],
+      "enabled": true,
       "env": {
-        "FIRECRAWL_API_KEY": "fc-f1a78435c00b4fb18ab91d42588a1ce6"
-      },
-      "disabled": true
+        "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
+      }
     },
-    "mcp-server-neon": {
+    "exa": {
       "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcp.neon.tech/sse"
-      ],
-      "env": {},
-      "disabled": true
+      "args": ["-y", "exa-mcp-server"],
+      "enabled": true,
+      "env": {
+        "EXA_API_KEY": "${EXA_API_KEY}"
+      }
+    },
+    "perplexity": {
+      "command": "npx",
+      "args": ["-y", "@perplexity-ai/mcp-server"],
+      "enabled": true,
+      "env": {
+        "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
+      }
+    },
+    "Sanity": {
+      "url": "https://mcp.sanity.io",
+      "headers": {
+        "Authorization": "Bearer ${SANITY_MCP_TOKEN}"
+      }
+    },
+    "Ref": {
+      "command": "npx",
+      "args": ["-y", "ref-tools-mcp@latest"],
+      "enabled": true,
+      "env": {
+        "REF_API_KEY": "${REF_API_KEY}"
+      }
+    },
+    "neon": {
+      "command": "npx",
+      "args": ["-y", "@neondatabase/mcp-server-neon", "start", "${NEON_API_KEY}"],
+      "enabled": true
     }
   }
 }

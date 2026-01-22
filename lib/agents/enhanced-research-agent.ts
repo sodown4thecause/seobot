@@ -12,6 +12,7 @@ import { checkAborted } from '@/lib/agents/utils/abort-handler'
 // Helper to execute MCP tools (they only need args, not the full AI SDK context)
 // The execute function can return string | AsyncIterable<string> | PromiseLike<string>
 const executeTool = async <T>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tool: { execute?: (args: T, ctx?: any) => string | AsyncIterable<string> | PromiseLike<string> },
   args: T
 ): Promise<string> => {
@@ -112,7 +113,7 @@ export class EnhancedResearchAgent {
           searchIntent = {
             intent: keywordData.main_intent || 'informational',
             probability: keywordData.main_intent_probability || 0,
-            alternativeIntents: keywordData.other_intents?.map((alt: any) => ({
+            alternativeIntents: keywordData.other_intents?.map((alt: { intent: string; probability?: number }) => ({
               intent: alt.intent,
               probability: alt.probability || 0,
             })),
@@ -141,13 +142,16 @@ export class EnhancedResearchAgent {
         if (serpParsed && serpParsed.tasks && serpParsed.tasks[0]?.result) {
           const results = serpParsed.tasks[0].result[0]?.items || []
           serpData = {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             topResults: results.slice(0, 10).map((item: any, idx: number) => ({
               title: item.title || '',
               url: item.url || '',
               snippet: item.snippet || '',
               position: idx + 1,
             })),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             peopleAlsoAsk: serpParsed.tasks[0].result[0]?.people_also_ask?.map((paa: any) => paa.question) || [],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             relatedSearches: serpParsed.tasks[0].result[0]?.related_searches?.map((rs: any) => rs.keyword) || [],
           }
           console.log('[Enhanced Research] SERP data retrieved:', serpData.topResults.length, 'top results')
@@ -332,6 +336,7 @@ Focus on information valuable for creating SEO/AEO optimized content.`
 
   private combineResearch(
     perplexityAnswer: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ragDocs: any[],
     competitorSnippets: Array<{ url: string; title: string; snippet?: string }>,
     searchIntent?: EnhancedResearchResult['searchIntent'],

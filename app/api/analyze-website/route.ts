@@ -1,11 +1,11 @@
 import { requireUserId } from '@/lib/auth/clerk'
 import { db, businessProfiles } from '@/lib/db'
-import { eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { extractCleanText } from '@/lib/api/jina-service'
-import { serverEnv } from '@/lib/config/env'
+// import { serverEnv } from '@/lib/config/env'
 // import { GoogleGenerativeAI } from '@google/generative-ai' // Removed, using gateway
-import { z } from 'zod'
+// import { z } from 'zod'
 
 export const runtime = 'edge'
 

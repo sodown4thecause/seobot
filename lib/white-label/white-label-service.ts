@@ -402,7 +402,7 @@ function sanitizeCustomCSS(css: string): string {
   }
   
   // Remove dangerous sequences
-  let sanitized = css
+  const sanitized = css
     .replace(/<\/style>/gi, '') // Remove closing style tags
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove script blocks
     .replace(/<[^>]*>/g, '') // Remove all HTML tags

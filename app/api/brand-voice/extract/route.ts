@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     }
 
     // Analyze with Gemini AI via Gateway
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const postsText = posts.slice(0, 50).map((p: any) => p.text).join('\n\n---\n\n')
     const prompt = `Analyze these social media posts and extract the brand voice characteristics.
     

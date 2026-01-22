@@ -31,6 +31,7 @@ export interface ContentGenerationResult {
     iterations: number
     learningsApplied: number
     researchSummary?: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     seoStrategy?: any
   }
   suggestions: string[]

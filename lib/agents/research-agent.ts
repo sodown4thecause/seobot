@@ -4,9 +4,9 @@
 
 import { perplexity } from '@ai-sdk/perplexity'
 import { generateText } from 'ai'
-import { serverEnv } from '@/lib/config/env'
 import { withAgentRetry } from '@/lib/errors/retry'
 import { ProviderError } from '@/lib/errors/types'
+
 import { logAgentExecution } from '@/lib/errors/logger'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
 

@@ -16,10 +16,10 @@ export const runtime = 'edge'
 const analytics = {
   getSummaryStats: () => ({ totalRequests: 0, avgResponseTime: 0, cacheHitRate: 0 }),
   getAllToolMetrics: () => ({ tools: [], totalMetrics: {} }),
-  getTopPerformingTools: (limit: number) => [],
-  getSlowestTools: (limit: number) => [],
-  getBestCachedTools: (limit: number) => [],
-  getToolMetrics: (name: string) => null,
+  getTopPerformingTools: (_limit: number) => [],
+  getSlowestTools: (_limit: number) => [],
+  getBestCachedTools: (_limit: number) => [],
+  getToolMetrics: (_name: string) => null,
   getWorkflowMetrics: (id: string) => ({ workflowId: id, toolMetrics: new Map() }),
 }
 
@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') || 'summary'
     const limit = parseInt(searchParams.get('limit') || '10', 10)
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let data: any
 
     switch (type) {

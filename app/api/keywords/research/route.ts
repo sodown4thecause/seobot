@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     }
 
     // Check rate limit (after getting user for better identification)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rateLimitResponse = await rateLimitMiddleware(req as any, 'KEYWORDS', user.id)
     if (rateLimitResponse) {
       return rateLimitResponse

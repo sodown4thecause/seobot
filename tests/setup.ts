@@ -3,7 +3,16 @@
  * Configures mocks and test environment
  */
 
-import { vi } from 'vitest'
+import { beforeEach, vi } from 'vitest'
+import * as dbMock from './mocks/db'
+
+// Mock DB to avoid real network calls in unit tests
+vi.mock('@/lib/db', () => dbMock)
+
+// Reset in-memory DB between tests
+beforeEach(() => {
+  dbMock.__resetDb()
+})
 
 // Mock environment variables - set all required vars before any imports
 process.env.UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || 'https://test-redis.upstash.io'
@@ -17,9 +26,17 @@ process.env.PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY || 'pplx-test-ke
 process.env.JINA_API_KEY = process.env.JINA_API_KEY || 'jina-test-key'
 process.env.GOOGLE_GENERATIVE_AI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || 'test-gemini-key'
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'sk-test-key'
+process.env.DATABASE_URL =
+  process.env.DATABASE_URL || 'postgres://test:test@localhost:5432/testdb'
 
 // Mock Next.js server components
 vi.mock('server-only', () => ({}))
+
+// Mock Clerk server SDK (avoids server-only crashes in unit tests)
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn(async () => ({ userId: null })),
+  currentUser: vi.fn(async () => ({ id: 'test-user-id' })),
+}))
 
 // Mock env config to bypass validation in tests
 vi.mock('@/lib/config/env', () => ({
@@ -72,6 +89,7 @@ vi.mock('@/lib/analytics/api-tracker', () => ({
 const mockAnalytics = {
   recordExecution: vi.fn().mockResolvedValue(undefined),
   recordWorkflowExecution: vi.fn(),
+  recordToolExecution: vi.fn(),
   getWorkflowMetrics: vi.fn().mockResolvedValue({
     averageDuration: 0,
     successRate: 100,
@@ -82,7 +100,8 @@ const mockAnalytics = {
 
 vi.mock('@/lib/workflows/analytics', () => ({
   workflowAnalytics: mockAnalytics,
-  analytics: mockAnalytics,
+  analytics: vi.fn(() => mockAnalytics),
+  getWorkflowAnalytics: vi.fn(() => mockAnalytics),
   WorkflowAnalyticsService: vi.fn(() => mockAnalytics),
 }))
 

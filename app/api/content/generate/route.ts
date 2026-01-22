@@ -1,6 +1,6 @@
 import { streamText } from 'ai';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
-import { z } from 'zod';
+// import { z } from 'zod';
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit';
 import { getUserId } from '@/lib/auth/clerk';
 import { handleApiError } from '@/lib/errors/handlers';
@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     const userId = await getUserId();
 
     // Check rate limit for content generation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rateLimitResponse = await rateLimitMiddleware(req as any, 'CONTENT_GENERATION', userId || undefined);
     if (rateLimitResponse) {
       return rateLimitResponse;

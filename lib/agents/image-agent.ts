@@ -3,10 +3,10 @@
  * Generates relevant images for content using Google Gemini Flash Image
  */
 
-import { Buffer } from 'node:buffer';
 import { generateImageWithGemini } from '@/lib/ai/image-generation';
 
 export interface ImageGenerationParams {
+
   prompt: string;
   aspectRatio?: "1:1" | "16:9" | "9:16";
 }

@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
       prompt: body.prompt,
       timestamp: Date.now(),
     })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Image generation error:', error)
     return NextResponse.json(

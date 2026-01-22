@@ -85,6 +85,7 @@ async function getLLMMentions(
   url?: string
 ): Promise<{
   count: number
+  byPlatform: { google: number; chatGpt: number; perplexity: number }
   totalVolume: number
   mentions: Array<{ source: string; context: string; question?: string }>
 }> {
@@ -93,25 +94,28 @@ async function getLLMMentions(
     const domain = url ? extractDomain(url) : undefined
     console.log('[Perception] LLM Mentions: Fetching for', { brandName, domain })
 
-    const [searchResponse, aggregatedResponse] = await Promise.all([
-      llmMentionsSearch({ brandName, limit: 20, platform: 'google' }),
-      llmMentionsAggregated({ brandName, domain, platform: 'google' }),
-    ])
+    const [googleSearchResponse, googleAggregatedResponse, chatGptAggregatedResponse, perplexityAggregatedResponse] =
+      await Promise.all([
+        llmMentionsSearch({ brandName, limit: 20, platform: 'google' }),
+        llmMentionsAggregated({ brandName, domain, platform: 'google' }),
+        llmMentionsAggregated({ brandName, domain, platform: 'chat_gpt' }),
+        llmMentionsAggregated({ brandName, domain, platform: 'perplexity' }),
+      ])
 
     // Log raw responses for debugging
     console.log('[Perception] LLM Search Response:', {
-      success: searchResponse.success,
-      tasksCount: searchResponse.success ? searchResponse.data?.tasks?.length ?? 0 : 0,
-      resultCount: searchResponse.success ? searchResponse.data?.tasks?.[0]?.result?.length ?? 0 : 0,
+      success: googleSearchResponse.success,
+      tasksCount: googleSearchResponse.success ? googleSearchResponse.data?.tasks?.length ?? 0 : 0,
+      resultCount: googleSearchResponse.success ? googleSearchResponse.data?.tasks?.[0]?.result?.length ?? 0 : 0,
     })
     console.log('[Perception] LLM Aggregated Response:', {
-      success: aggregatedResponse.success,
-      tasksCount: aggregatedResponse.success ? aggregatedResponse.data?.tasks?.length ?? 0 : 0,
-      resultCount: aggregatedResponse.success ? aggregatedResponse.data?.tasks?.[0]?.result?.length ?? 0 : 0,
+      success: googleAggregatedResponse.success,
+      tasksCount: googleAggregatedResponse.success ? googleAggregatedResponse.data?.tasks?.length ?? 0 : 0,
+      resultCount: googleAggregatedResponse.success ? googleAggregatedResponse.data?.tasks?.[0]?.result?.length ?? 0 : 0,
     })
 
     // Extract search results for detailed mentions
-    const searchResult = searchResponse.success ? searchResponse.data?.tasks?.[0]?.result?.[0] : null
+    const searchResult = googleSearchResponse.success ? googleSearchResponse.data?.tasks?.[0]?.result?.[0] : null
     const mentions = (searchResult?.items ?? []).map((item) => ({
       source: item.sources?.[0]?.domain ?? 'AI Response',
       context: item.answer?.slice(0, 500) ?? '',
@@ -119,27 +123,36 @@ async function getLLMMentions(
     }))
 
     // Extract aggregated metrics for total count
-    const aggResult = aggregatedResponse.success
-      ? aggregatedResponse.data?.tasks?.[0]?.result?.[0]
+    const googleAggResult = googleAggregatedResponse.success ? googleAggregatedResponse.data?.tasks?.[0]?.result?.[0] : null
+    const chatGptAggResult = chatGptAggregatedResponse.success ? chatGptAggregatedResponse.data?.tasks?.[0]?.result?.[0] : null
+    const perplexityAggResult = perplexityAggregatedResponse.success
+      ? perplexityAggregatedResponse.data?.tasks?.[0]?.result?.[0]
       : null
-    const totalCount = aggResult?.total_count ?? searchResult?.total_count ?? searchResult?.items_count ?? mentions.length
-    const totalVolume = aggResult?.total_ai_search_volume ?? 0
+
+    const googleCount =
+      googleAggResult?.total_count ?? searchResult?.total_count ?? searchResult?.items_count ?? mentions.length
+    const chatGptCount = chatGptAggResult?.total_count ?? 0
+    const perplexityCount = perplexityAggResult?.total_count ?? 0
+    const totalCount = googleCount + chatGptCount + perplexityCount
+    const totalVolume = googleAggResult?.total_ai_search_volume ?? 0
 
     console.log('[Perception] LLM Mentions Result:', {
       searchItemsReturned: searchResult?.items_count ?? 0,
       totalCount,
+      byPlatform: { googleCount, chatGptCount, perplexityCount },
       totalVolume,
       sampleMentions: mentions.slice(0, 2).map((m) => ({ source: m.source, question: m.question })),
     })
 
     return {
       count: totalCount,
+      byPlatform: { google: googleCount, chatGpt: chatGptCount, perplexity: perplexityCount },
       totalVolume,
       mentions,
     }
   } catch (error) {
     console.error('[Perception] LLM Mentions error:', error)
-    return { count: 0, totalVolume: 0, mentions: [] }
+    return { count: 0, byPlatform: { google: 0, chatGpt: 0, perplexity: 0 }, totalVolume: 0, mentions: [] }
   }
 }
 
@@ -511,6 +524,7 @@ export async function runPerceptionService(params: {
 
     const perception: AIPerception = {
       llmMentionsCount: llmMentions.count,
+      llmMentionsByPlatform: llmMentions.byPlatform,
       llmMentions: llmMentions.mentions.map((m) => ({
         source: m.source,
         context: m.context,

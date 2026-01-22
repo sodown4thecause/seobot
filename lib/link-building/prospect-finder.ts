@@ -22,7 +22,33 @@ import type {
   LinkOpportunityType
 } from './types'
 
+interface DomainIntersectionItem {
+  domain?: string;
+  target?: string;
+  url?: string;
+  intersections?: number;
+  domain_rank?: number;
+  metrics?: {
+    organic?: {
+      count?: number;
+    };
+  };
+}
+
+interface ContentAnalysisItem {
+  url?: string;
+  title?: string;
+  description?: string;
+  snippet?: string;
+  content_info?: {
+    snippet?: string;
+  };
+  domain_rank?: number;
+  date_published?: string;
+}
+
 export class LinkProspectFinder {
+
   private defaultMinDomainRank = 30
   private defaultMaxResults = 100
 
@@ -131,20 +157,25 @@ export class LinkProspectFinder {
       
       // Transform and filter results
       const opportunities: IntersectionOpportunity[] = results
-        .filter((item: any) => {
+        .filter((item: unknown) => {
+          const typedItem = item as DomainIntersectionItem
           // Filter out low-quality domains
-          const dr = item.domain_rank || item.metrics?.organic?.count || 0
+          const dr = typedItem.domain_rank || typedItem.metrics?.organic?.count || 0
           return dr >= minDomainRank
         })
-        .map((item: any) => ({
-          domain: item.domain || item.target || '',
-          url: item.url || `https://${item.domain || item.target}`,
-          linksToCompetitors: item.intersections || competitorDomains.length,
-          competitorDomains: competitorDomains,
-          domainAuthority: item.domain_rank || item.metrics?.organic?.count || 0,
-          relevanceScore: this.calculateRelevanceScore(item)
-        }))
+        .map((item: unknown) => {
+          const typedItem = item as DomainIntersectionItem
+          return {
+            domain: typedItem.domain || typedItem.target || '',
+            url: typedItem.url || `https://${typedItem.domain || typedItem.target}`,
+            linksToCompetitors: typedItem.intersections || competitorDomains.length,
+            competitorDomains: competitorDomains,
+            domainAuthority: typedItem.domain_rank || typedItem.metrics?.organic?.count || 0,
+            relevanceScore: this.calculateRelevanceScore(typedItem)
+          }
+        })
         .filter((opp: IntersectionOpportunity) => opp.domain && opp.domain !== yourDomain)
+
         .sort((a: IntersectionOpportunity, b: IntersectionOpportunity) => 
           b.linksToCompetitors - a.linksToCompetitors
         )
@@ -180,20 +211,25 @@ export class LinkProspectFinder {
       
       // Filter for mentions without links
       const mentions: UnlinkedMention[] = results
-        .filter((item: any) => {
-          const domain = this.extractDomain(item.url || '')
+        .filter((item: unknown) => {
+          const typedItem = item as ContentAnalysisItem
+          const domain = this.extractDomain(typedItem.url || '')
           return !excludeDomains.some(excluded => domain.includes(excluded))
         })
-        .map((item: any) => ({
-          domain: this.extractDomain(item.url || ''),
-          url: item.url || '',
-          title: item.title || '',
-          snippet: item.description || item.snippet || '',
-          mentionContext: item.content_info?.snippet || '',
-          domainAuthority: item.domain_rank || 30,
-          publishedDate: item.date_published
-        }))
+        .map((item: unknown) => {
+          const typedItem = item as ContentAnalysisItem
+          return {
+            domain: this.extractDomain(typedItem.url || ''),
+            url: typedItem.url || '',
+            title: typedItem.title || '',
+            snippet: typedItem.description || typedItem.snippet || '',
+            mentionContext: typedItem.content_info?.snippet || '',
+            domainAuthority: typedItem.domain_rank || 30,
+            publishedDate: typedItem.date_published
+          }
+        })
         .filter((mention: UnlinkedMention) => mention.domain)
+
 
       return mentions
     } catch (error) {
@@ -368,7 +404,7 @@ export class LinkProspectFinder {
     }
   }
 
-  private calculateRelevanceScore(item: any): number {
+  private calculateRelevanceScore(item: DomainIntersectionItem): number {
     let score = 50 // Base score
 
     // Boost for higher intersections
@@ -383,6 +419,7 @@ export class LinkProspectFinder {
 
     return Math.min(score, 100)
   }
+
 
   private consolidateProspects(results: Partial<LinkProspectResults>): LinkProspect[] {
     const prospects: LinkProspect[] = []

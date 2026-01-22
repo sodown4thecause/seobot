@@ -70,7 +70,7 @@ export function createOrchestratorTool(userId?: string) {
         console.log('[Stream Builder] Orchestrator completed successfully')
         console.log(`[Stream Builder] Quality Scores - Overall: ${result.qualityScores.overall}, EEAT: ${result.qualityScores.eeat}`)
 
-        let contentResult = result.content || "Content generation completed but no content was returned."
+        const contentResult = result.content || "Content generation completed but no content was returned."
 
         const scoreSummary = `
 ## Quality Scores

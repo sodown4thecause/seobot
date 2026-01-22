@@ -8,7 +8,6 @@ import { generateObject } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import { z } from 'zod'
 import type { GatewayModelId } from '@ai-sdk/gateway'
-import { serverEnv } from '@/lib/config/env'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
 
 const QA_REPORT_SCHEMA = z.object({
@@ -30,6 +29,7 @@ export type QAReport = z.infer<typeof QA_REPORT_SCHEMA>
 
 export interface EEATQAParams {
   draft: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dataforseoSummary: any
   competitors: Array<{
     url: string
@@ -110,7 +110,7 @@ export class EEATQAAgent {
       const systemPrompt = this.buildSystemPrompt(objectiveMetrics)
       const userPrompt = this.buildReviewPrompt(params, objectiveMetrics)
 
-      const { object: qaReport, usage } = await generateObject({
+      const { object: qaReport, usage: _usage } = await generateObject({
         model: vercelGateway.languageModel('google/gemini-2.5-pro-preview-06-05' as GatewayModelId),
         schema: QA_REPORT_SCHEMA,
         system: systemPrompt,

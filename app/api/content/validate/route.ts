@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth/clerk'
-import { validateContentForSEO, checkPlagiarism } from '@/lib/external-apis/winston-ai'
+import { validateContentForSEO } from '@/lib/external-apis/winston-ai'
 
 export const runtime = 'edge'
 

@@ -140,9 +140,10 @@ function extractMetadata(markdown: string): {
   publishedDate?: string
   wordCount?: number
 } {
-  const metadata: any = {}
+  const metadata: Record<string, string | number> = {}
 
   // Extract title (usually first # heading)
+
   const titleMatch = markdown.match(/^#\s+(.+)$/m)
   if (titleMatch) {
     metadata.title = titleMatch[1].trim()
@@ -171,8 +172,15 @@ function extractMetadata(markdown: string): {
   const words = cleanText.trim().split(/\s+/)
   metadata.wordCount = words.length
 
-  return metadata
+  return metadata as {
+    title?: string
+    description?: string
+    author?: string
+    publishedDate?: string
+    wordCount?: number
+  }
 }
+
 
 /**
  * Remove metadata frontmatter from markdown

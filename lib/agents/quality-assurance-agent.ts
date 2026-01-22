@@ -54,7 +54,9 @@ export class QualityAssuranceAgent {
     let iterations = 0
     let bestScore = 100
     let bestContent = currentContent
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
     let lastAnalysis: any = null
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let rytrImproved = false
     let rytrAttempted = false
 
@@ -105,6 +107,7 @@ export class QualityAssuranceAgent {
           } else {
             console.log(`[QA Agent] ✓ Humanization successful using: ${result.provider}`)
             currentContent = result.content
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             rytrImproved = true // Keep this flag for analytics (even if not Rytr)
             if (!rytrAttempted) {
               rytrAttempted = true

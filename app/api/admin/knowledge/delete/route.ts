@@ -5,7 +5,7 @@ export const runtime = 'edge'
 
 export async function DELETE(request: NextRequest) {
   try {
-    const userId = await requireUserId()
+    const _userId = await requireUserId()
 
     const { documentId, tableName } = await request.json()
 

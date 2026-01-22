@@ -131,6 +131,8 @@ export async function POST(request: NextRequest) {
         const reportWithPerception = {
             ...judgeResult.report,
             perception: {
+                llmMentionsCount: perceptionResult.perception.llmMentionsCount,
+                llmMentionsByPlatform: perceptionResult.perception.llmMentionsByPlatform,
                 perplexitySummary: perceptionResult.perception.perplexityInsight?.summary,
                 perplexitySources: perceptionResult.perception.perplexityInsight?.sources,
                 competitors: perceptionResult.perception.competitors,

@@ -63,9 +63,11 @@ export class SEOAEOSyntaxAgent {
     const userPrompt = this.buildUserPrompt(params)
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { object: result, usage } = await generateObject({
         model: vercelGateway.languageModel('google/gemini-2.5-flash' as GatewayModelId),
         schema: SEO_AEO_SYNTAX_SCHEMA,
+
         system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.4,

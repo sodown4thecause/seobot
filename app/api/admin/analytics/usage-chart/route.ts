@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { format, subDays } from 'date-fns'
+import { subDays } from 'date-fns'
 import { requireUserId } from '@/lib/auth/clerk'
 
 export const runtime = 'edge'
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await requireUserId()
+    const _userId = await requireUserId()
 
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'week'
 
     const days = period === 'day' ? 1 : period === 'week' ? 7 : 30
-    const startDate = subDays(new Date(), days)
+    const _startDate = subDays(new Date(), days)
 
     // TODO: Implement api_usage_logs table in schema
     // const logs = await db

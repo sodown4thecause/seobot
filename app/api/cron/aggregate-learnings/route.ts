@@ -37,6 +37,7 @@ export async function GET(req: Request) {
     const summary = results.map((r, i) => ({
       type: contentTypes[i],
       status: r.status,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       count: r.status === 'fulfilled' ? (r.value as any).practicesCount : 0,
     }));
     

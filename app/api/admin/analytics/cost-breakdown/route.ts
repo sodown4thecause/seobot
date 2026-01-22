@@ -9,13 +9,13 @@ export const runtime = 'edge'
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await requireUserId()
+    const _userId = await requireUserId()
 
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'week'
 
     const days = period === 'day' ? 1 : period === 'week' ? 7 : 30
-    const startDate = subDays(new Date(), days)
+    const _startDate = subDays(new Date(), days)
 
     // TODO: Implement api_usage_logs table in schema
     // Table needs: user_id, service, cost_usd, created_at
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     //     )
     //   )
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const logs: any[] = []
 
     // Group by service

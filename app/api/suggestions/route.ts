@@ -6,6 +6,7 @@ import { logError } from '@/lib/errors/logger'
 
 // In-memory cache for conversation lookups to reduce redundant DB calls
 interface CacheEntry {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: any
     expiresAt: number
 }
@@ -17,6 +18,7 @@ function getCacheKey(userId: string, conversationId: string): string {
     return `${userId}:${conversationId}`
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getCachedConversation(userId: string, conversationId: string): any | null {
     const key = getCacheKey(userId, conversationId)
     const entry = conversationCache.get(key)
@@ -32,6 +34,7 @@ function getCachedConversation(userId: string, conversationId: string): any | nu
     return entry.data
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function setCachedConversation(userId: string, conversationId: string, data: any): void {
     const key = getCacheKey(userId, conversationId)
     conversationCache.set(key, {

@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       params: Object.keys(params),
     })
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let result: any
 
     switch (action) {
@@ -116,7 +117,8 @@ export async function POST(req: NextRequest) {
 
     console.log('[Rytr API] Success:', {
       action,
-      resultKeys: Object.keys(result),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      resultKeys: Object.keys(result as any),
     })
 
     return NextResponse.json({

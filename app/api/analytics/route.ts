@@ -12,7 +12,7 @@ import { getCurrentUser } from '@/lib/auth/clerk'
 import { db } from '@/lib/db'
 import { writingFrameworks, chatMessages } from '@/lib/db/schema'
 import { eq, desc } from 'drizzle-orm'
-import { cacheGet, cacheSet, CACHE_PREFIXES, CACHE_TTL } from '@/lib/redis/client'
+import { cacheGet, cacheSet, CACHE_PREFIXES } from '@/lib/redis/client'
 
 export const runtime = 'edge'
 
@@ -63,7 +63,7 @@ function getDateDaysAgo(days: number): string {
   return getDateString(date)
 }
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     // Get current user from Clerk
     const user = await getCurrentUser()
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get date ranges
-    const monthAgo = getDateDaysAgo(30)
+    const _monthAgo = getDateDaysAgo(30)
 
     // Get user stats from database using Drizzle
     let userStats
@@ -161,6 +161,7 @@ export async function GET(req: NextRequest) {
       .where(eq(chatMessages.userId, user.id))
 
     const featureCounts = new Map<string, number>()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     featureUsage?.forEach((msg: any) => {
       const features = msg.metadata?.features || []
       features.forEach((feature: string) => {
@@ -205,6 +206,6 @@ export async function GET(req: NextRequest) {
 /**
  * Get current user's rate limit status
  */
-export async function OPTIONS(req: NextRequest) {
+export async function OPTIONS(_req: NextRequest) {
   return NextResponse.json({ message: 'Analytics API' })
 }

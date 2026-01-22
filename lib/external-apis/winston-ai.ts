@@ -32,6 +32,20 @@ export interface WinstonPlagiarismResult {
   }
 }
 
+interface WinstonSource {
+  url: string
+  title: string
+  match_percentage: number
+  snippet: string
+}
+
+interface WinstonApiResponse {
+  plagiarism_score: number
+  sources: WinstonSource[]
+  ai_score?: number
+}
+
+
 export interface WinstonCheckOptions {
   text: string
   language?: string // Default: 'en'
@@ -73,13 +87,13 @@ export async function checkPlagiarism(
       throw new Error(`Winston AI API error: ${response.status} - ${error}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as WinstonApiResponse
 
     // Transform API response to our interface
     return {
       score: data.plagiarism_score || 0,
       isPlagiarized: (data.plagiarism_score || 0) > 20, // >20% considered plagiarized
-      sources: (data.sources || []).map((source: any) => ({
+      sources: (data.sources || []).map((source) => ({
         url: source.url,
         title: source.title || source.url,
         matchPercentage: source.match_percentage || 0,
@@ -90,6 +104,7 @@ export async function checkPlagiarism(
         isAiGenerated: (data.ai_score || 0) > 80, // >80% considered AI-generated
       } : undefined,
     }
+
   } catch (error) {
     console.error('[Winston AI] Plagiarism check failed:', error)
     throw error

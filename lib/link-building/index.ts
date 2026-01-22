@@ -38,8 +38,11 @@ import { LinkProspectFinder } from './prospect-finder'
 import { OutreachEmailGenerator, outreachEmailGenerator } from './outreach-generator'
 
 // Default export with convenience instances
-export default {
+const linkBuilding = {
   LinkProspectFinder,
   OutreachEmailGenerator,
   outreachEmailGenerator
 }
+
+export default linkBuilding
+

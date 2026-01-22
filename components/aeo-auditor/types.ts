@@ -9,6 +9,12 @@ export interface CompetitorData {
 }
 
 export interface PerceptionData {
+  llmMentionsCount?: number
+  llmMentionsByPlatform?: {
+    google: number
+    chatGpt: number
+    perplexity: number
+  }
   perplexitySummary?: string
   perplexitySources?: string[]
   competitors?: CompetitorData[]

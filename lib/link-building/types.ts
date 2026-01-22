@@ -206,28 +206,6 @@ export interface EmailPersonalization {
   previousSubject?: string
 }
 
-export interface OutreachEmailParams {
-  prospectInfo: {
-    siteUrl: string
-    siteName: string
-    contactName?: string
-    recentContent?: string[]
-    siteTopics?: string[]
-  }
-  opportunityType: OutreachEmailType
-  yourAsset: {
-    url: string
-    title: string
-    description?: string
-    uniqueValue?: string
-  }
-  brandVoice?: {
-    tone: 'professional' | 'friendly' | 'casual'
-    companyName: string
-    senderName: string
-    senderTitle?: string
-  }
-}
 
 export interface LinkCampaign {
   id: string

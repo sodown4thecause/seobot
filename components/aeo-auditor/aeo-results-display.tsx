@@ -87,6 +87,42 @@ export function AEOResultsDisplay({ report, brandName, onReset, sessionId, tools
         })}
       </div>
 
+      {/* AI visibility snapshot */}
+      {perception?.llmMentionsByPlatform && (
+        <div className="border border-white/10 bg-black p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Bot className="w-5 h-5 text-white" />
+              <h4 className="text-sm font-mono font-bold uppercase tracking-[0.3em] text-white">AI Mentions (AEO)</h4>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+              <Globe className="w-3.5 h-3.5" />
+              US / EN
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { label: 'Google AI', value: perception.llmMentionsByPlatform.google },
+              { label: 'ChatGPT', value: perception.llmMentionsByPlatform.chatGpt },
+              { label: 'Perplexity', value: perception.llmMentionsByPlatform.perplexity },
+            ].map((item) => (
+              <div key={item.label} className="border border-white/10 bg-white/5 p-6">
+                <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.3em] mb-2">{item.label}</div>
+                <div className="text-4xl font-black text-white tracking-tighter">{item.value}</div>
+                <div className="text-xs text-zinc-500 mt-2">mentions (DataForSEO proxy)</div>
+              </div>
+            ))}
+          </div>
+
+          {typeof perception.llmMentionsCount === 'number' && (
+            <div className="mt-6 text-[10px] font-mono uppercase tracking-widest text-zinc-600">
+              Total mentions (sum): {perception.llmMentionsCount}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Competitive Intelligence */}
       <div className="grid md:grid-cols-2 gap-px bg-white/10">
         <div className="bg-black p-8 space-y-4">

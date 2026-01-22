@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { 
   performContentGapAnalysis, 
   getContentGapSummary,
-  type ContentGapAnalysis 
 } from '@/lib/services/dataforseo/content-gap-analysis'
 
 export async function POST(request: NextRequest) {

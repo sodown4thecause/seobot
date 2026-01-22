@@ -1,4 +1,4 @@
-import { ActionTemplate, ActionCategory, ActionDifficulty } from '@/types/actions'
+import { ActionTemplate } from '@/types/actions'
 
 /**
  * Action Templates Library

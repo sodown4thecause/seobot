@@ -79,16 +79,25 @@ interface FrameworkRawRow {
     similarity: string | number
 }
 
-interface BrandVoiceRawRow {
+interface AgentDocumentRawRow {
     id: string
-    user_id: string | null
-    tone: string | null
-    style: string | null
-    personality: string | null
-    sample_phrases: string | null
-    source: string | null
+    agent_type: string
+    title: string
+    content: string
+    metadata: unknown
     similarity: string | number
 }
+
+interface ContentLearningRawRow {
+    id: string
+    user_id: string | null
+    content_type: string
+    topic: string
+    ai_detection_score: number | null
+    techniques_used: string[] | null
+    similarity: string | number
+}
+
 
 // ============================================================================
 // VECTOR SEARCH FUNCTIONS
@@ -194,13 +203,13 @@ export async function searchAgentDocuments(
             LIMIT ${limit}
         `)
 
-        return (results.rows as any[]).map(row => ({
+        return (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
             id: row.id,
             agentType: row.agent_type,
             title: row.title,
             content: row.content,
             metadata: row.metadata,
-            similarity: parseFloat(row.similarity),
+            similarity: parseFloat(String(row.similarity)),
         }))
     } catch (error) {
         console.error('[Vector Search] Agent documents search failed:', error)
@@ -249,14 +258,14 @@ export async function searchContentLearnings(
             LIMIT ${limit}
         `)
 
-        return (results.rows as any[]).map(row => ({
+        return (results.rows as unknown as ContentLearningRawRow[]).map(row => ({
             id: row.id,
             userId: row.user_id,
             contentType: row.content_type,
             topic: row.topic,
             aiDetectionScore: row.ai_detection_score,
             techniquesUsed: row.techniques_used,
-            similarity: parseFloat(row.similarity),
+            similarity: parseFloat(String(row.similarity)),
         }))
     } catch (error) {
         console.error('[Vector Search] Content learnings search failed:', error)
@@ -521,7 +530,7 @@ export async function getDocumentsWithoutEmbeddings(
         LIMIT ${limit}
     `)
 
-    return (results.rows as any[]).map(row => ({
+    return (results.rows as unknown as { id: string; content: string }[]).map(row => ({
         id: row.id,
         content: row.content,
     }))

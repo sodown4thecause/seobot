@@ -7,9 +7,10 @@
  * - Provider-specific fallbacks
  */
 
-import { AppError, ProviderError, isRetryable } from './types'
+import { isRetryable } from './types'
 import { cacheGet } from '@/lib/redis/client'
 import { dataForSEOCache } from '@/lib/utils/cache'
+
 
 export interface FallbackStrategy {
   useCache: boolean
@@ -69,9 +70,10 @@ const FALLBACK_STRATEGIES: Record<string, FallbackStrategy> = {
 export async function attemptGracefulDegradation<T>(
   provider: string,
   operation: string,
-  params: Record<string, any>,
+  params: Record<string, unknown>,
   error: unknown
 ): Promise<DegradationResult<T>> {
+
   const strategy = FALLBACK_STRATEGIES[provider.toLowerCase()] || {
     useCache: true,
     usePartialResults: false,
@@ -132,8 +134,9 @@ export async function attemptGracefulDegradation<T>(
 async function tryCacheFallback<T>(
   provider: string,
   operation: string,
-  params: Record<string, any>
+  params: Record<string, unknown>
 ): Promise<T | null> {
+
   try {
     // Generate cache key similar to how the original call would
     const cacheKey = generateCacheKey(provider, operation, params)
@@ -166,7 +169,7 @@ async function tryCacheFallback<T>(
 async function tryPartialResults<T>(
   provider: string,
   operation: string,
-  params: Record<string, any>,
+  _params: Record<string, unknown>,
   error: unknown
 ): Promise<T | null> {
   // For Firecrawl, check if we have partial crawl results
@@ -174,6 +177,7 @@ async function tryPartialResults<T>(
     // Check if error contains partial data
     if (error && typeof error === 'object' && 'partialData' in error) {
       console.log(`[GracefulDegradation] Using partial results for ${provider}:${operation}`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (error as any).partialData as T
     }
   }
@@ -182,6 +186,7 @@ async function tryPartialResults<T>(
   if (provider === 'jina' && operation.includes('extract')) {
     if (error && typeof error === 'object' && 'partialData' in error) {
       console.log(`[GracefulDegradation] Using partial extraction for ${provider}:${operation}`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (error as any).partialData as T
     }
   }
@@ -189,16 +194,18 @@ async function tryPartialResults<T>(
   return null
 }
 
+
 /**
  * Generate cache key for provider/operation/params
  */
-function generateCacheKey(provider: string, operation: string, params: Record<string, any>): string {
+function generateCacheKey(provider: string, operation: string, params: Record<string, unknown>): string {
   const sortedParams = Object.keys(params)
     .sort()
     .reduce((acc, key) => {
       acc[key] = params[key]
       return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, unknown>)
+
 
   const paramsString = JSON.stringify(sortedParams)
   return `${provider}:${operation}:${paramsString}`
@@ -244,8 +251,9 @@ export async function withGracefulDegradation<T>(
   provider: string,
   operation: string,
   apiCall: () => Promise<T>,
-  params: Record<string, any> = {}
+  params: Record<string, unknown> = {}
 ): Promise<DegradationResult<T>> {
+
   try {
     const result = await apiCall()
     return {

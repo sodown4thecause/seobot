@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Navbar } from '@/components/navbar'
 
 export const metadata: Metadata = {
   title: 'ChatGPT SEO: How to Optimize for ChatGPT Search | FlowIntent',
@@ -10,7 +11,9 @@ export const metadata: Metadata = {
 export default function ChatGPTSEOPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-      <div className="container mx-auto px-4 py-16 max-w-4xl">
+      <Navbar />
+
+      <div className="container mx-auto px-4 py-16 pt-32 max-w-4xl">
         <div className="mb-12">
           <Link href="/guides" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">
             ← Back to Guides

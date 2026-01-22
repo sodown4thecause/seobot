@@ -252,7 +252,7 @@ export async function relevantPages(params: {
 export async function llmMentionsSearch(params: {
   brandName: string
   limit?: number
-  platform?: 'google' | 'chat_gpt'
+  platform?: 'google' | 'chat_gpt' | 'perplexity'
   location_code?: number
   language_code?: string
 }) {
@@ -298,7 +298,7 @@ export async function llmMentionsSearch(params: {
 export async function llmMentionsAggregated(params: {
   brandName: string
   domain?: string
-  platform?: 'google' | 'chat_gpt'
+  platform?: 'google' | 'chat_gpt' | 'perplexity'
   location_code?: number
   language_code?: string
 }) {

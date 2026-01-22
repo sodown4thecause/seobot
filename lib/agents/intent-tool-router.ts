@@ -222,6 +222,83 @@ const IntentClassificationSchema = z.object({
 
 export type IntentClassification = z.infer<typeof IntentClassificationSchema>
 
+// Valid intent values for sanitization
+const VALID_INTENTS = [
+    'keyword_research',
+    'serp_analysis',
+    'competitor_analysis',
+    'domain_metrics',
+    'backlinks',
+    'content_optimization',
+    'youtube_seo',
+    'trends',
+    'technical_seo',
+    'web_scraping',
+    'ai_platforms',
+    'research',
+    'general',
+] as const
+
+/**
+ * Sanitize an intent string by removing common LLM artifacts
+ * Handles cases like ":backlinks", " backlinks", "backlinks:", etc.
+ */
+function sanitizeIntent(intent: string | undefined | null): IntentCategory {
+    if (!intent || typeof intent !== 'string') return 'general'
+    // Remove leading/trailing colons, spaces, quotes
+    const cleaned = intent.trim().replace(/^[:"\s]+|[:"\s]+$/g, '').toLowerCase()
+    // Check if it matches a valid intent
+    if (VALID_INTENTS.includes(cleaned as IntentCategory)) {
+        return cleaned as IntentCategory
+    }
+    return 'general'
+}
+
+/**
+ * Permissive schema for raw LLM output - allows string fields that may have formatting issues
+ */
+const RawIntentClassificationSchema = z.object({
+    primaryIntent: z.string().describe('The primary intent of the user query'),
+    secondaryIntents: z.array(z.string()).optional().describe('Additional intents that may be relevant (0-2)'),
+    recommendedAgent: z.string().optional().describe('Which agent should handle this'),
+    confidence: z.number().min(0).max(1).optional().describe('Confidence in the classification (0-1)'),
+    reasoning: z.string().optional().describe('Brief explanation of why this intent was selected'),
+    extractedEntities: z.object({
+        domains: z.array(z.string()).optional(),
+        keywords: z.array(z.string()).optional(),
+        location: z.string().optional(),
+    }).optional(),
+})
+
+/**
+ * Sanitize the raw LLM response and convert to proper IntentClassification
+ */
+function sanitizeClassificationResponse(raw: z.infer<typeof RawIntentClassificationSchema>): IntentClassification {
+    const primaryIntent = sanitizeIntent(raw.primaryIntent)
+    const secondaryIntents = (raw.secondaryIntents || [])
+        .map(i => sanitizeIntent(i))
+        .filter(i => i !== primaryIntent) // Remove duplicates of primary
+        .slice(0, 2) as IntentCategory[]
+
+    // Map recommended agent
+    let recommendedAgent: 'seo-aeo' | 'content' | 'general' = 'general'
+    const rawAgent = (raw.recommendedAgent || '').toLowerCase().trim()
+    if (rawAgent.includes('seo') || rawAgent.includes('aeo')) {
+        recommendedAgent = 'seo-aeo'
+    } else if (rawAgent.includes('content')) {
+        recommendedAgent = 'content'
+    }
+
+    return {
+        primaryIntent,
+        secondaryIntents,
+        recommendedAgent,
+        confidence: typeof raw.confidence === 'number' ? raw.confidence : 0.8,
+        reasoning: raw.reasoning || 'Classified based on query analysis',
+        extractedEntities: raw.extractedEntities,
+    }
+}
+
 // =============================================================================
 // INTENT ROUTER CLASS
 // =============================================================================
@@ -237,11 +314,14 @@ export class IntentToolRouter {
             .join('\n')
 
         try {
-            // Use generateObject with schema for type-safe intent classification
-            const { object: result } = await generateObject({
+            // Use generateObject with PERMISSIVE schema to allow for LLM formatting issues
+            // Then sanitize the result to handle cases like ":backlinks" instead of "backlinks"
+            const { object: rawResult } = await generateObject({
                 model: vercelGateway.languageModel('moonshotai/kimi-k2' as GatewayModelId),
-                schema: IntentClassificationSchema,
+                schema: RawIntentClassificationSchema,
                 prompt: `You are an SEO/AEO intent classifier. Analyze the user query and classify their intent.
+
+IMPORTANT: Return EXACT enum values without any prefixes like colons. For example, use "backlinks" NOT ":backlinks".
 
 USER QUERY: "${query}"
 
@@ -256,9 +336,13 @@ AGENT SELECTION RULES:
 EXAMPLES:
 - "content ideas with keywords" → primaryIntent: "keyword_research", recommendedAgent: "seo-aeo"
 - "write a blog post about SEO" → primaryIntent: "content_optimization", recommendedAgent: "content"
+- "analyze backlinks for competitor.com" → primaryIntent: "backlinks", recommendedAgent: "seo-aeo"
 
 Classify this query with appropriate intent, agent recommendation, and confidence level.`,
             })
+
+            // Sanitize the LLM response to handle common issues like ":backlinks" instead of "backlinks"
+            const result = sanitizeClassificationResponse(rawResult)
 
             console.log('[Intent Router] Classified intent:', {
                 query: query.substring(0, 50),

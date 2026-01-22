@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { serverEnv } from "@/lib/config/env";
 
 let connectionPromise: Promise<Client> | null = null;
 export async function getMcpClient(): Promise<Client> {
@@ -10,13 +11,30 @@ export async function getMcpClient(): Promise<Client> {
   return (connectionPromise = connectToMcp());
 }
 
+/**
+ * Create Basic Auth header using Web APIs (Edge runtime compatible)
+ */
+function createBasicAuth(username: string, password: string): string {
+  const preencoded = serverEnv.DATAFORSEO_BASIC_AUTH?.trim();
+  if (preencoded) {
+    return preencoded.startsWith('Basic ') ? preencoded : `Basic ${preencoded}`;
+  }
+
+  // Use Web API btoa instead of Buffer (Edge runtime compatible)
+  const credentials = `${username}:${password}`;
+  const encoded = btoa(credentials);
+  return `Basic ${encoded}`;
+}
+
 async function connectToMcp(): Promise<Client> {
+  const mcpUrl = (serverEnv.DATAFORSEO_MCP_URL || 'https://mcp.dataforseo.com/http').trim();
+
   const transport = new StreamableHTTPClientTransport(
-    new URL("https://mcp.dataforseo.com"),
+    new URL(mcpUrl),
     {
       requestInit: {
         headers: {
-          Authorization: "TODO: Replace with your actual value",
+          Authorization: createBasicAuth(serverEnv.DATAFORSEO_USERNAME, serverEnv.DATAFORSEO_PASSWORD),
         },
       },
     },

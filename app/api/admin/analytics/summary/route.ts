@@ -8,27 +8,27 @@ export const runtime = 'edge'
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await requireUserId()
+    const _userId = await requireUserId()
 
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'week'
 
     // Calculate date range
     const now = new Date()
-    let startDate: Date
+    let _startDate: Date
     
     switch (period) {
       case 'day':
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+        _startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
         break
       case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        _startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
         break
       case 'month':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        _startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
         break
       default:
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        _startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     }
 
     // TODO: Implement api_usage_logs table in schema
@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
     //     )
     //   )
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const logs: any[] = []
 
     // Calculate summary

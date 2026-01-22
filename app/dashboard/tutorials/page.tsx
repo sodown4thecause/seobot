@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { BookOpen, Clock, CheckCircle2, Play, Lock } from 'lucide-react'
 import { TutorialContainer } from '@/components/tutorials/tutorial-container'
-import { TUTORIAL_REGISTRY, getAvailableTutorials } from '@/lib/tutorials'
+import { TUTORIAL_REGISTRY } from '@/lib/tutorials'
 import type { Tutorial, TutorialProgress } from '@/lib/tutorials/types'
 
 export default function TutorialsPage() {
@@ -48,8 +48,6 @@ export default function TutorialsPage() {
       setIsLoading(false)
     }
   }
-
-  const availableTutorials = getAvailableTutorials(completedIds)
 
   const getTutorialProgress = (tutorialId: string): TutorialProgress | undefined => {
     return progressMap.get(tutorialId)

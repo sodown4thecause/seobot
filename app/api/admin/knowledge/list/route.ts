@@ -5,7 +5,7 @@ export const runtime = 'edge'
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await requireUserId()
+    const _userId = await requireUserId()
 
     const { searchParams } = new URL(request.url)
     const tableName = searchParams.get('tableName')

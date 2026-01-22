@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { getPostBySlug, getAllPostSlugs } from '@/lib/wordpress'
@@ -57,10 +58,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 {/* Featured Image */}
                 {post.featuredImage && (
                     <div className="relative h-[400px] overflow-hidden">
-                        <img
+                        <Image
                             src={post.featuredImage.sourceUrl}
                             alt={post.featuredImage.altText}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0c0c0e]/50 to-[#0c0c0e]" />
                     </div>
@@ -105,10 +107,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                         <div className="flex flex-wrap items-center gap-6 text-sm text-zinc-400 mb-8 pb-8 border-b border-white/[0.08]">
                             <div className="flex items-center gap-2">
                                 {post.author.avatar && (
-                                    <img
+                                    <Image
                                         src={post.author.avatar}
                                         alt={post.author.name}
-                                        className="w-10 h-10 rounded-full border border-white/[0.08]"
+                                        width={40}
+                                        height={40}
+                                        className="rounded-full border border-white/[0.08]"
                                     />
                                 )}
                                 <div className="flex items-center gap-2">

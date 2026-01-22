@@ -10,12 +10,9 @@ import {
   AppError,
   RateLimitError,
   ProviderError,
-  ValidationError,
-  AuthenticationError,
-  AuthorizationError,
-  NotFoundError,
   getErrorMetadata,
 } from './types'
+
 
 /**
  * Handle errors in API routes and return structured JSON responses

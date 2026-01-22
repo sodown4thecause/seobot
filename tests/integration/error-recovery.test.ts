@@ -327,7 +327,7 @@ describe('Error Recovery Integration Tests', () => {
   })
 
   describe('User Error Message Generation', () => {
-    it('should generate user-friendly error messages', () => {
+    it('should generate user-friendly error messages', async () => {
       const errors = [
         { message: 'Rate limit exceeded', expected: 'rate limit' },
         { message: 'Network timeout', expected: 'network' },
@@ -335,9 +335,9 @@ describe('Error Recovery Integration Tests', () => {
         { message: 'Invalid parameters', expected: 'validation' },
       ]
 
-      errors.forEach(({ message, expected }) => {
+      for (const { message } of errors) {
         const error = new Error(message)
-        const result = attemptGracefulDegradation(
+        const result = await attemptGracefulDegradation(
           'dataforseo',
           'test',
           {},
@@ -346,7 +346,7 @@ describe('Error Recovery Integration Tests', () => {
 
         // Error should be captured
         expect(result.error).toContain(message)
-      })
+      }
     })
 
     it('should provide actionable suggestions for common errors', async () => {

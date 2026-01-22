@@ -17,6 +17,7 @@ vi.mock('@/lib/workflows/persistence', () => ({
   workflowPersistence: {
     saveExecution: vi.fn(),
     loadExecution: vi.fn(),
+    resumeFromCheckpoint: vi.fn(),
   },
 }))
 

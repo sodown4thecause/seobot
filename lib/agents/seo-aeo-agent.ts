@@ -13,6 +13,7 @@ export interface SEOAEOParams {
   topic: string
   keywords: string[]
   targetPlatforms?: string[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   researchData?: any
   userId?: string // For usage logging
   langfuseTraceId?: string // For grouping spans under a parent trace

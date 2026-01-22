@@ -96,10 +96,43 @@ export function createBacklinksTool() {
     }),
     execute: async ({ domain }) => {
       try {
-        console.log('[Tool Assembler] Fetching backlinks for domain via n8n:', domain)
+        const normalizeTargetDomain = (input: string): string | null => {
+          const trimmed = input.trim()
+          if (!trimmed) return null
+
+          // If user pasted a full URL, extract the hostname.
+          const hasScheme = /^https?:\/\//i.test(trimmed)
+          const maybeUrl = hasScheme ? trimmed : `https://${trimmed}`
+          try {
+            const hostname = new URL(maybeUrl).hostname
+            return hostname || null
+          } catch {
+            // Fallback: allow bare domains without scheme (but reject obvious invalids)
+            const cleaned = trimmed
+              .replace(/^\s+|\s+$/g, '')
+              .replace(/^www\./i, '')
+            if (!cleaned || cleaned.includes(' ') || !cleaned.includes('.')) return null
+            return cleaned
+          }
+        }
+
+        const normalizedDomain = normalizeTargetDomain(domain)
+        if (!normalizedDomain) {
+          return {
+            status: 'error',
+            success: false,
+            domain,
+            errorMessage: 'Invalid domain. Please provide a domain like example.com',
+          }
+        }
+
+        console.log('[Tool Assembler] Fetching backlinks for domain via n8n:', {
+          input: domain,
+          normalized: normalizedDomain,
+        })
 
         const baseUrl = serverEnv.N8N_BACKLINKS_WEBHOOK_URL || 'https://zuded9wg.rcld.app/webhook/domain'
-        const webhookUrl = `${baseUrl}?domain=${encodeURIComponent(domain)}`
+        const webhookUrl = `${baseUrl}?domain=${encodeURIComponent(normalizedDomain)}`
 
         const response = await fetch(webhookUrl, {
           method: 'GET',
@@ -111,7 +144,9 @@ export function createBacklinksTool() {
           console.error('[Tool Assembler] N8N backlinks webhook error:', response.status, errorText)
           return {
             status: 'error',
+            success: false,
             errorMessage: `Failed to fetch backlinks: ${response.status} ${response.statusText}`,
+            error: errorText,
           }
         }
 
@@ -124,12 +159,13 @@ export function createBacklinksTool() {
           length: Array.isArray(data) ? data.length : undefined,
         })
 
-        return normalizeBacklinksResponse(domain, data)
+        return normalizeBacklinksResponse(normalizedDomain, data)
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Failed to fetch backlinks data'
         console.error('[Tool Assembler] N8N backlinks tool failed:', error)
         return {
           status: 'error',
+          success: false,
           domain,
           errorMessage: message,
         }
@@ -142,6 +178,28 @@ export function createBacklinksTool() {
  * Normalize backlinks response from various API formats.
  */
 function normalizeBacklinksResponse(domain: string, data: unknown) {
+  // DataForSEO-style responses can return HTTP 200 with an error in-body.
+  // Treat those as errors so the UI doesn't silently show "0 backlinks".
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    const topStatus = typeof obj.status_code === 'number' ? obj.status_code : undefined
+    const tasksError = typeof obj.tasks_error === 'number' ? obj.tasks_error : undefined
+    if ((topStatus && topStatus !== 20000) || (tasksError && tasksError > 0)) {
+      const firstTask = Array.isArray(obj.tasks) ? (obj.tasks[0] as Record<string, unknown> | undefined) : undefined
+      const taskMessage = typeof firstTask?.status_message === 'string' ? firstTask.status_message : undefined
+      const taskStatus = typeof firstTask?.status_code === 'number' ? firstTask.status_code : undefined
+
+      return {
+        status: 'error',
+        success: false,
+        domain,
+        errorMessage: taskMessage || 'Backlinks provider returned an error',
+        providerStatusCode: topStatus,
+        providerTaskStatusCode: taskStatus,
+      }
+    }
+  }
+
   const normalizeUrlHostname = (value: unknown): string | null => {
     if (typeof value !== 'string' || value.trim().length === 0) return null
     const raw = value.trim()
@@ -205,7 +263,7 @@ function normalizeBacklinksResponse(domain: string, data: unknown) {
       obj.result,
       obj.backlinkData,
     ]
-    
+
     for (const candidate of candidates) {
       if (Array.isArray(candidate)) return candidate
     }
@@ -230,10 +288,10 @@ function normalizeBacklinksResponse(domain: string, data: unknown) {
   const backlinks = backlinksRaw.map(normalizeBacklinkItem)
   const backlinksCount = backlinks.length
 
-  const dataObj = (data && typeof data === 'object' && !Array.isArray(data)) 
-    ? data as Record<string, unknown> 
+  const dataObj = (data && typeof data === 'object' && !Array.isArray(data))
+    ? data as Record<string, unknown>
     : null
-  
+
   let explicitRefDomainsCount: number | undefined = undefined
   if (dataObj) {
     if (typeof dataObj.referringDomainsCount === 'number') {
@@ -270,6 +328,7 @@ function normalizeBacklinksResponse(domain: string, data: unknown) {
   if (Array.isArray(data)) {
     return {
       status: 'success',
+      success: true,
       domain,
       backlinks,
       backlinksCount,
@@ -280,6 +339,7 @@ function normalizeBacklinksResponse(domain: string, data: unknown) {
 
   return {
     status: 'success',
+    success: true,
     domain,
     backlinks,
     backlinksCount,
@@ -380,8 +440,8 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
     // Agent specific tools
     ...(agent === 'content' ? { ...contentQualityTools, ...enhancedContentTools } : {}),
 
-    // N8N Backlinks - Only for SEO/AEO agent
-    ...(agent === 'seo-aeo' ? { n8n_backlinks: createBacklinksTool() } : {}),
+    // N8N Backlinks - Available for SEO/AEO agent OR when backlinks intent is detected
+    ...((agent === 'seo-aeo' || intentTools?.includes('n8n_backlinks')) ? { n8n_backlinks: createBacklinksTool() } : {}),
 
     // AEO Tools - Only for SEO/AEO agent (citation analysis, EEAT detection, platform optimization)
     ...(agent === 'seo-aeo' ? { ...getAEOTools(), ...getAEOPlatformTools() } : {}),

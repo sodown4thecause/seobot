@@ -103,6 +103,13 @@ export const DomainMetricsSchema = z.object({
 
 export const AIPerceptionSchema = z.object({
   llmMentionsCount: z.number().describe('Total mentions found in LLM results'),
+  llmMentionsByPlatform: z
+    .object({
+      google: z.number().describe('Mentions in Google AI Overviews / AI answers'),
+      chatGpt: z.number().describe('Mentions in ChatGPT answers (DataForSEO proxy)'),
+      perplexity: z.number().describe('Mentions in Perplexity answers (DataForSEO proxy)'),
+    })
+    .describe('Mentions broken down by platform'),
   llmMentions: z.array(LLMMentionSchema).describe('Individual mention details'),
   chatGPTSummary: z.string().describe('What ChatGPT says about the brand'),
   chatGPTRawResponse: z.string().optional(),

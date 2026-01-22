@@ -218,9 +218,16 @@ export function parsePerplexityCitations(answer: string, citations: PerplexityCi
   authorityLevel: 'high' | 'medium' | 'low'
   type: 'academic' | 'industry' | 'government' | 'news' | 'expert'
 }> {
-  const structuredCitations: any[] = []
+  const structuredCitations: Array<{
+    source: string
+    url: string
+    dataPoint: string
+    authorityLevel: 'high' | 'medium' | 'low'
+    type: 'academic' | 'industry' | 'government' | 'news' | 'expert'
+  }> = []
 
   // Split answer into sections (usually separated by numbers or bullets)
+
   const sections = answer.split(/\n\d+\.|•|-/).filter((s) => s.trim().length > 0)
 
   sections.forEach((section, index) => {

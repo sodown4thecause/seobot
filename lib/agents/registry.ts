@@ -50,7 +50,7 @@ export interface AgentConfig {
   updatedAt: Date
 }
 
-export interface AgentRegistry {
+export interface AgentRegistryInterface {
   agents: Map<string, AgentConfig>
   getAgent(id: string): AgentConfig | null
   getAgentsByCategory(category: string): AgentConfig[]
@@ -62,6 +62,7 @@ export interface AgentRegistry {
 export const AVAILABLE_TOOLS: Record<string, AgentToolConfig> = {
   // DataForSEO Tools
   keyword_search_volume: {
+
     name: 'keyword_search_volume',
     description: 'Get Google search volume, CPC, and competition for keywords',
     category: 'seo',
@@ -194,6 +195,7 @@ export const AVAILABLE_TOOLS: Record<string, AgentToolConfig> = {
     description: 'Crawl and extract clean content from web pages',
     category: 'research',
     priority: 'high',
+    mcpToolNames: ['read_url'],
   },
 
   // Content Tools

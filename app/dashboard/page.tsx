@@ -19,17 +19,17 @@ export default function DashboardPage() {
   const [isNewUser, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [initialMessage, setInitialMessage] = useState<string | undefined>()
-  const [userName, setUserName] = useState<string>('')
+  const [_userName, setUserName] = useState<string>('')
   const [workflowMessage, setWorkflowMessage] = useState<string | undefined>()
 
   // Refs to track fetch state and cleanup
-  const abortControllerRef = useRef<AbortController | null>(null)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const _abortControllerRef = useRef<AbortController | null>(null)
+  const _timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Check if user has a business profile (first-time user detection)
   useEffect(() => {
     // Cleanup function to abort any in-flight requests
-    let controller = new AbortController()
+    const controller = new AbortController()
     let timeoutId: NodeJS.Timeout | null = null
 
     async function checkUserProfile() {
@@ -112,7 +112,7 @@ export default function DashboardPage() {
     }
   }, [user, isLoaded])
 
-  const handleWorkflowSelect = (workflowId: string) => {
+  const _handleWorkflowSelect = (workflowId: string) => {
     const workflow = getWorkflowPrompt(workflowId)
     if (workflow) {
       // Set the workflow message which will be picked up by the chat

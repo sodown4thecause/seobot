@@ -7,8 +7,7 @@ import {
   ActionPriority,
   ActionCategory,
   ActionDifficulty,
-  TechnicalIssue,
-  LinkOpportunity
+  TechnicalIssue
 } from '@/types/actions'
 import { ACTION_TEMPLATES } from './templates'
 
@@ -164,7 +163,7 @@ export class ActionGenerator {
 
     // Content optimization for existing pages
     const lowPerformingContent = Object.entries(context.content.performance)
-      .filter(([_, score]) => score < 60)
+      .filter(([, score]) => score < 60)
       .slice(0, 3)
 
     if (lowPerformingContent.length > 0) {
@@ -264,6 +263,7 @@ export class ActionGenerator {
    */
   private createActionFromTemplate(
     templateId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     variables: Record<string, any>
   ): ActionItem {
     const template = this.templates.get(templateId)
@@ -409,6 +409,7 @@ export class ActionGenerator {
         ...action,
         score: this.calculateActionScore(action, config)
       }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .sort((a, b) => (b as any).score - (a as any).score)
       .slice(0, config.preferences.maxActionsPerCategory * 4) // Reasonable limit
   }
@@ -479,7 +480,7 @@ export class ActionGenerator {
   /**
    * Generate recommendations
    */
-  private generateRecommendations(actions: ActionItem[], config: ActionGeneratorConfig) {
+  private generateRecommendations(actions: ActionItem[], _config: ActionGeneratorConfig) {
     const startWith = actions
       .filter(action => action.priority === 'critical' || action.priority === 'high')
       .slice(0, 3)
@@ -504,18 +505,20 @@ export class ActionGenerator {
   }
 
   // Helper methods
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private substituteVariables(template: string, variables: Record<string, any>): string {
     return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
       return variables[key] || match
     })
   }
 
-  private calculateKeywordPriority(keywords: string[], context: SEOAnalysisContext): ActionPriority {
+  private calculateKeywordPriority(keywords: string[], _context: SEOAnalysisContext): ActionPriority {
     // Simple heuristic - could be more sophisticated
     return keywords.length > 10 ? 'high' : 'medium'
   }
 
-  private calculateImpactMetrics(category: ActionCategory, variables: any) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private calculateImpactMetrics(category: ActionCategory, _variables: any) {
     // Category-specific impact estimates
     const impacts = {
       content: { potentialTrafficGain: 25, timeToResults: '4-8 weeks' },

@@ -8,7 +8,7 @@ import { isAdmin } from '@/lib/auth/admin-check';
  * Admin endpoint to get system statistics
  * Protected with admin authentication
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Check admin authentication
     const userId = await requireUserId();

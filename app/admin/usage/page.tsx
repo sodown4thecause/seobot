@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DollarSign, Users, Activity, TrendingUp, AlertCircle } from 'lucide-react'
@@ -61,11 +61,7 @@ export default function AdminUsagePage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
 
-  useEffect(() => {
-    fetchUsageData()
-  }, [dateRange, selectedUserId, page])
-
-  const fetchUsageData = async () => {
+  const fetchUsageData = useCallback(async () => {
     setLoading(true)
     setError(null)
 
@@ -91,7 +87,11 @@ export default function AdminUsagePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [dateRange, selectedUserId, page])
+
+  useEffect(() => {
+    fetchUsageData()
+  }, [fetchUsageData])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

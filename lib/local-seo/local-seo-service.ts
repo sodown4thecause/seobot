@@ -36,7 +36,32 @@ function throwNotImplemented(method: string): never {
   throw new Error(`Local SEO Service database operation '${method}' not available. Please migrate to Drizzle ORM.`)
 }
 
+// Helper interfaces for database operations
+interface ProfileData {
+  user_id: string;
+  business_name: string;
+  business_category: string;
+  business_address: BusinessAddress;
+  business_phone: string;
+  business_website: string;
+  google_business_profile_id?: string;
+  business_hours: BusinessHours;
+  services_offered: string[];
+  service_areas: string[];
+  photos: string[];
+  reviews: BusinessReviews;
+  local_keywords: string[];
+  competitor_businesses: CompetitorBusiness[];
+  citation_sources: CitationSource[];
+  seo_score: number;
+  optimization_tasks: OptimizationTask[];
+  metadata: LocalSEOMetadata;
+  created_at: string;
+  updated_at: string;
+}
+
 function createAdminClient() {
+
   // Fail fast if stub is disabled (production environment)
   if (!ALLOW_IN_MEMORY_STUB || !inMemoryProfiles) {
     throwNotImplemented('createAdminClient - in-memory stub disabled in production')
@@ -82,31 +107,32 @@ function createAdminClient() {
               }
             })
           }),
-          insert: (data: any) => ({
+          insert: (data: unknown) => ({
             select: () => ({
               single: async () => {
+                const typedData = data as ProfileData
                 const profile: LocalSEOProfile = {
                   id: `profile_${Date.now()}`,
-                  userId: data.user_id,
-                  businessName: data.business_name,
-                  businessCategory: data.business_category,
-                  businessAddress: data.business_address,
-                  businessPhone: data.business_phone,
-                  businessWebsite: data.business_website,
-                  googleBusinessProfileId: data.google_business_profile_id,
-                  businessHours: data.business_hours,
-                  servicesOffered: data.services_offered,
-                  serviceAreas: data.service_areas,
-                  photos: data.photos || [],
-                  reviews: data.reviews || { rating: 0, count: 0, recentReviews: [], averageResponseTime: 0, responseRate: 0 },
-                  localKeywords: data.local_keywords || [],
-                  competitorBusinesses: data.competitor_businesses || [],
-                  citationSources: data.citation_sources || [],
-                  seoScore: data.seo_score || 0,
-                  optimizationTasks: data.optimization_tasks || [],
-                  metadata: data.metadata || {},
-                  createdAt: data.created_at || new Date().toISOString(),
-                  updatedAt: data.updated_at || new Date().toISOString()
+                  userId: typedData.user_id,
+                  businessName: typedData.business_name,
+                  businessCategory: typedData.business_category,
+                  businessAddress: typedData.business_address,
+                  businessPhone: typedData.business_phone,
+                  businessWebsite: typedData.business_website,
+                  googleBusinessProfileId: typedData.google_business_profile_id,
+                  businessHours: typedData.business_hours,
+                  servicesOffered: typedData.services_offered,
+                  serviceAreas: typedData.service_areas,
+                  photos: typedData.photos || [],
+                  reviews: typedData.reviews || { rating: 0, count: 0, recentReviews: [], averageResponseTime: 0, responseRate: 0 },
+                  localKeywords: typedData.local_keywords || [],
+                  competitorBusinesses: typedData.competitor_businesses || [],
+                  citationSources: typedData.citation_sources || [],
+                  seoScore: typedData.seo_score || 0,
+                  optimizationTasks: typedData.optimization_tasks || [],
+                  metadata: typedData.metadata || {},
+                  createdAt: typedData.created_at || new Date().toISOString(),
+                  updatedAt: typedData.updated_at || new Date().toISOString()
                 }
                 inMemoryProfiles.set(profile.id, profile)
                 return {
@@ -138,22 +164,24 @@ function createAdminClient() {
               }
             })
           }),
-          update: (data: any) => ({
-            eq: (field: string, value: string) => ({
+          update: (data: unknown) => ({
+            eq: (_field: string, value: string) => ({
               select: () => ({
                 single: async () => {
                   const existing = Array.from(inMemoryProfiles.values()).find(p => p.id === value)
                   if (!existing) {
                     return { data: null, error: { message: 'Profile not found' } }
                   }
+                  
+                  const typedData = data as Partial<ProfileData>
                   const updated = {
                     ...existing,
                     ...Object.fromEntries(
-                      Object.entries(data).map(([k, v]) => [
+                      Object.entries(typedData).map(([k, v]) => [
                         k,
-                        k === 'business_name' ? data.business_name :
-                        k === 'business_category' ? data.business_category :
-                        k === 'user_id' ? data.user_id :
+                        k === 'business_name' ? typedData.business_name :
+                        k === 'business_category' ? typedData.business_category :
+                        k === 'user_id' ? typedData.user_id :
                         v
                       ])
                     ),
@@ -190,6 +218,7 @@ function createAdminClient() {
               })
             })
           })
+
         }
       }
       throwNotImplemented(`table: ${table}`)
@@ -324,15 +353,17 @@ export async function upsertLocalSEOProfile(params: {
   localKeywords: string[]
   metadata: Partial<LocalSEOMetadata>
 }): Promise<LocalSEOProfile> {
-  const supabase: any = await createAdminClient()
+  const supabase = await createAdminClient()
   
   try {
     // Check if profile already exists
-    const { data: existing } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (supabase as any)
       .from('local_seo_profiles')
       .select('*')
       .eq('user_id', params.userId)
       .single()
+
 
     // Analyze competitors
     const competitorBusinesses = await analyzeLocalCompetitors(
@@ -411,7 +442,8 @@ export async function upsertLocalSEOProfile(params: {
     let result
     if (existing) {
       // Update existing profile
-      const { data, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from('local_seo_profiles')
         .update(profileData)
         .eq('id', existing.id)
@@ -422,7 +454,8 @@ export async function upsertLocalSEOProfile(params: {
       result = data
     } else {
       // Create new profile
-      const { data, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from('local_seo_profiles')
         .insert({
           ...profileData,
@@ -434,6 +467,7 @@ export async function upsertLocalSEOProfile(params: {
       if (error) throw error
       result = data
     }
+
 
     return {
       id: result.id,
@@ -468,9 +502,10 @@ export async function upsertLocalSEOProfile(params: {
  * Analyze local competitors
  */
 async function analyzeLocalCompetitors(
-  businessAddress: BusinessAddress,
-  businessCategory: string
+  _businessAddress: BusinessAddress,
+  _businessCategory: string
 ): Promise<CompetitorBusiness[]> {
+
   try {
     // In a real implementation, you would:
     // 1. Use Google Places API to find nearby businesses
@@ -517,10 +552,11 @@ async function analyzeLocalCompetitors(
  * Find citation opportunities
  */
 async function findCitationOpportunities(
-  businessName: string,
-  businessAddress: BusinessAddress,
-  businessCategory: string
+  _businessName: string,
+  _businessAddress: BusinessAddress,
+  _businessCategory: string
 ): Promise<CitationSource[]> {
+
   try {
     // In a real implementation, you would:
     // 1. Search major directories (Yelp, Yellow Pages, etc.)
@@ -622,12 +658,15 @@ Return as JSON array of tasks.`
     )
 
     const { object } = await generateObject({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       model: google('gemini-3-pro-preview') as any,
       prompt,
       schema: optimizationTaskSchema,
     })
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tasks = object as any[]
+
     
     // Add required fields and IDs
     return tasks.map((task, index) => ({
@@ -651,11 +690,13 @@ Return as JSON array of tasks.`
  * Calculate local SEO score
  */
 function calculateLocalSEOScore(params: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   businessInfo: any
   competitorAnalysis: CompetitorBusiness[]
   citationAnalysis: CitationSource[]
   optimizationTasks: OptimizationTask[]
 }): number {
+
   let score = 0
 
   // Business profile completeness (30 points)
@@ -697,14 +738,16 @@ function calculateLocalSEOScore(params: {
  * Get local SEO profile
  */
 export async function getLocalSEOProfile(userId: string): Promise<LocalSEOProfile | null> {
-  const supabase: any = await createAdminClient()
+  const supabase = await createAdminClient()
   
   try {
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
       .from('local_seo_profiles')
       .select('*')
       .eq('user_id', userId)
       .single()
+
 
     if (error || !data) return null
 
@@ -805,14 +848,17 @@ Return as JSON with three arrays: blogPosts, socialMediaPosts, landingPages.`
     })
 
     const { object } = await generateObject({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       model: google('gemini-3-pro-preview') as any,
       prompt,
       schema: contentIdeasSchema,
     })
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return object as any
   } catch (error) {
     console.error('Failed to generate local content ideas:', error)
+
     return {
       blogPosts: [],
       socialMediaPosts: [],
@@ -903,10 +949,11 @@ function determineCompetitionLevel(competitors: CompetitorBusiness[]): 'low' | '
   return 'high'
 }
 
-function estimateLocalSearchVolume(category: string, city: string): number {
+function estimateLocalSearchVolume(category: string, _city: string): number {
   // Mock estimation - in reality, you'd use keyword research tools
   const baseVolume = {
     'restaurant': 5000,
+
     'plumber': 2000,
     'dentist': 3000,
     'lawyer': 1500,

@@ -60,6 +60,7 @@ export class WorkflowEngine {
         if (stepResult?.status === 'failed') {
           console.error(`[Workflow] Step ${step.id} failed, stopping workflow`)
           this.execution.status = 'failed'
+          this.execution.errorMessage = stepResult.error || `Step ${step.id} failed`
           break
         }
       }
@@ -90,7 +91,7 @@ export class WorkflowEngine {
         }
       }
 
-      analytics.recordWorkflowExecution(
+      analytics().recordWorkflowExecution(
         this.workflow.id,
         workflowDuration,
         this.execution.status === 'completed',
@@ -325,7 +326,7 @@ export class WorkflowEngine {
         console.log(`[Workflow] Cache hit for ${toolName}`)
 
         // Record analytics for cache hit
-        analytics.recordToolExecution(toolName, duration, true, true)
+        analytics().recordToolExecution(toolName, duration, true, true)
 
         return {
           toolName,
@@ -383,7 +384,7 @@ export class WorkflowEngine {
       }
 
       // Record analytics
-      analytics.recordToolExecution(toolName, duration, true, false)
+      analytics().recordToolExecution(toolName, duration, true, false)
 
       return result
     } catch (error) {
@@ -391,7 +392,7 @@ export class WorkflowEngine {
       console.error(`[Workflow] Tool ${toolName} failed:`, error)
 
       // Record analytics for failure
-      analytics.recordToolExecution(toolName, duration, false, false)
+      analytics().recordToolExecution(toolName, duration, false, false)
 
       return {
         toolName,

@@ -33,8 +33,8 @@ async function testWebhook(url, label) {
       const errorText = await response.text();
       console.log(`❌ POST Error: ${errorText}`);
 
-      // If POST fails with 404, try GET
-      if (response.status === 404 && errorText.includes('GET request')) {
+      // If POST fails with 404, try GET as fallback
+      if (response.status === 404) {
         console.log('🔄 Trying GET request instead...');
         return await testGetRequest(url, testDomain);
       }

@@ -26,7 +26,7 @@ export async function retrieveAgentDocuments(
   topic: string,
   agentType: string = 'content_writer',
   limit: number = 3
-): Promise<any[]> {
+): Promise<unknown[]> {
   try {
     // Generate embedding for the topic using OpenAI
     const embedding = await generateEmbedding(topic)
@@ -44,6 +44,7 @@ export async function retrieveAgentDocuments(
     return []
   }
 }
+
 
 /**
  * Get content writing guidance from cross-user learnings and uploaded docs
@@ -93,11 +94,16 @@ const MAX_AGENT_DOC_CHARS = 800 // Increased from 320 to provide fuller context
 const MAX_BEST_PRACTICES = 5 // Increased from 3
 
 function formatGuidance(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   similarLearnings: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   bestPractices: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   agentDocs: any[] | undefined,
   keywords: string[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   crossUserInsights: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   highScores: any[],
 ): string {
   const parts: string[] = []
@@ -109,6 +115,7 @@ function formatGuidance(
     
     if (crossUserInsights.topTechniques.length > 0) {
       parts.push('\nTop performing techniques across all users:')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       crossUserInsights.topTechniques.slice(0, 5).forEach((technique: any, i: number) => {
         parts.push(`${i + 1}. ${technique.technique} (used ${technique.usage}x, avg score: ${technique.avgScore.toFixed(1)}%)`)
       })
@@ -175,6 +182,7 @@ function formatGuidance(
   if (highScores.length > 0) {
     parts.push('## Patterns Triggering AI Detectors')
     parts.push('These recent drafts were flagged above 90% AI likelihood. Do not mimic their tone or structure:')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     highScores.forEach((entry: any, index: number) => {
       parts.push(
         `\n${index + 1}. Topic: "${entry.topic}" – Score: ${entry.ai_detection_score.toFixed(
@@ -205,9 +213,10 @@ function summarizeDocContent(content: string, maxChars: number): string {
   return sentences.slice(0, maxChars).trimEnd() + '...'
 }
 
-function summarizeBestPractices(practices: any[], limit: number): string[] {
+function summarizeBestPractices(practices: unknown[], limit: number): string[] {
   if (!practices || practices.length === 0) return []
-  return practices.slice(0, limit).map((practice) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return practices.slice(0, limit).map((practice: any) => {
     const techniques = Array.isArray(practice.techniques)
       ? practice.techniques.slice(0, 3).join(', ')
       : practice.techniques

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/clerk'
 import { roadmapTracker } from '@/lib/proactive/roadmap-tracker'
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
     try {
         const user = await getCurrentUser()
         if (!user) {

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { APIUsageChart } from '@/components/admin/api-usage-chart'
 import { CostBreakdown } from '@/components/admin/cost-breakdown'
 import { ServiceMetrics } from '@/components/admin/service-metrics'
@@ -20,11 +20,7 @@ export default function APIAnalyticsPage() {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchSummary()
-  }, [period])
-
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       const response = await fetch(`/api/admin/analytics/summary?period=${period}`)
       if (!response.ok) throw new Error('Failed to fetch summary')
@@ -36,7 +32,11 @@ export default function APIAnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [period])
+
+  useEffect(() => {
+    fetchSummary()
+  }, [fetchSummary])
 
   return (
     <div className="flex-1 space-y-6 p-8">
@@ -47,6 +47,7 @@ export default function APIAnalyticsPage() {
             Monitor API usage and costs across all services
           </p>
         </div>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <Tabs value={period} onValueChange={(v) => setPeriod(v as any)} className="w-auto">
           <TabsList className="bg-white/10">
             <TabsTrigger value="day" className="data-[state=active]:bg-white data-[state=active]:text-black">

@@ -120,6 +120,7 @@ export class AgentRouter {
    */
   static routeQuery(
     message: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context?: { page?: string; onboarding?: any; conversationHistory?: string[] }
   ): AgentRoutingResult {
     const messageLower = message.toLowerCase()
@@ -471,6 +472,7 @@ export class AgentRouter {
   /**
    * Get system prompt for the selected agent
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static getAgentSystemPrompt(agent: AgentType, context?: any): string {
     switch (agent) {
       case 'onboarding':
@@ -485,7 +487,8 @@ export class AgentRouter {
     }
   }
 
-  private static getOnboardingSystemPrompt(context?: any): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private static getOnboardingSystemPrompt(_context?: any): string {
     return `You are a helpful SEO onboarding assistant. Guide users through setting up their SEO platform, connecting APIs, and understanding the available tools. Be encouraging and provide step-by-step instructions.
 
 IMPORTANT: Never use emojis in your responses. Keep all text professional and clean.

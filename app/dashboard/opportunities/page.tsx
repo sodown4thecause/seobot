@@ -1,9 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { TrendingUp, Search, Filter, Sparkles } from 'lucide-react'
+import { TrendingUp, Search, Sparkles } from 'lucide-react'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -140,7 +139,7 @@ export default function OpportunitiesPage() {
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     <h3 className="text-lg font-semibold text-foreground">
-                      "{opp.keyword}"
+                      &quot;{opp.keyword}&quot;
                     </h3>
                     <Badge variant={opp.priority === 'high' ? 'destructive' : 'secondary'}>
                       {opp.priority === 'high' ? 'High Priority' : 'Medium Priority'}

@@ -155,17 +155,20 @@ async function resolveToneId(tone: string) {
   return match?._id || fallback?._id || tone
 }
 
-function extractTextFromRytrItem(item: any): string {
+function extractTextFromRytrItem(item: unknown): string {
   if (!item) return ''
   if (typeof item === 'string') return item
-  if (typeof item.text === 'string') return item.text
-  if (typeof item.output === 'string') return item.output
-  if (typeof item.content === 'string') return item.content
+  
+  const typedItem = item as { text?: unknown; output?: unknown; content?: unknown }
+  
+  if (typeof typedItem.text === 'string') return typedItem.text
+  if (typeof typedItem.output === 'string') return typedItem.output
+  if (typeof typedItem.content === 'string') return typedItem.content
 
   // Sometimes text/output can be arrays of strings
-  if (Array.isArray(item.text)) return item.text.join('\n')
-  if (Array.isArray(item.output)) return item.output.join('\n')
-  if (Array.isArray(item.content)) return item.content.join('\n')
+  if (Array.isArray(typedItem.text)) return typedItem.text.join('\n')
+  if (Array.isArray(typedItem.output)) return typedItem.output.join('\n')
+  if (Array.isArray(typedItem.content)) return typedItem.content.join('\n')
 
   // Fallback: look for any string values inside object
   if (typeof item === 'object') {
@@ -180,6 +183,7 @@ function extractTextFromRytrItem(item: any): string {
 
   return ''
 }
+
 
 export type RytrTone = 
   | 'appreciative'
@@ -316,8 +320,9 @@ export async function generateContent(
         : []
 
     const normalizedVariations = dataItems
-      .map((item: any) => extractTextFromRytrItem(item))
+      .map((item: unknown) => extractTextFromRytrItem(item))
       .filter((text: string) => typeof text === 'string' && text.trim().length > 0)
+
 
     const mainText: string = normalizedVariations[0] || ''
 
@@ -445,12 +450,13 @@ export async function humanizeContent(options: {
   strategy?: 'improve' | 'expand' | 'rewrite'
   userId?: string
 }): Promise<{ content: string }> {
-  const { content, strategy = 'improve', userId } = options
+  const { content, strategy: _strategy = 'improve', userId } = options
   
   // For humanization we use Rytr's dedicated 'humanize' use case
   const result = await generateContent({
     useCase: 'humanize',
     input: content,
+
     tone: 'casual', // Using 'casual' instead of 'conversational' which isn't a valid RytrTone
     creativity: 'high', // Higher creativity for more human-like output
     userId,

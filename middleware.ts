@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/studio(.*)',         // Sanity Studio (has its own auth)
   '/api/webhooks(.*)',
   '/api/audit(.*)',      // AEO audit API (free lead magnet)
   '/api/analytics/audit(.*)', // Audit analytics tracking

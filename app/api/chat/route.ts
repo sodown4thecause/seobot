@@ -29,7 +29,6 @@ import {
   extractLastUserMessageContent,
   convertToModelFormat,
   type RequestBody,
-  type ChatContext,
 } from '@/lib/chat/message-handler'
 import { classifyUserIntent, buildAgentSystemPrompt } from '@/lib/chat/intent-classifier'
 import { assembleTools } from '@/lib/chat/tool-assembler'

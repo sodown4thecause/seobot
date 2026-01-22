@@ -9,28 +9,18 @@ export const metadata = {
 }
 
 async function BlogPosts() {
+    let posts;
+    let error;
+
     try {
-        const { posts } = await getPosts(12)
+        const result = await getPosts(12)
+        posts = result.posts
+    } catch (e) {
+        console.error('Error fetching blog posts:', e)
+        error = e;
+    }
 
-        if (!posts.nodes || posts.nodes.length === 0) {
-            return (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <BookOpen className="w-16 h-16 text-zinc-600 mb-4" />
-                    <h3 className="text-xl font-semibold text-white mb-2">No posts yet</h3>
-                    <p className="text-zinc-400">Check back soon for new content!</p>
-                </div>
-            )
-        }
-
-        return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {posts.nodes.map((post) => (
-                    <BlogCard key={post.id} post={post} />
-                ))}
-            </div>
-        )
-    } catch (error) {
-        console.error('Error fetching blog posts:', error)
+    if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
@@ -41,6 +31,24 @@ async function BlogPosts() {
             </div>
         )
     }
+
+    if (!posts?.nodes || posts.nodes.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+                <BookOpen className="w-16 h-16 text-zinc-600 mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No posts yet</h3>
+                <p className="text-zinc-400">Check back soon for new content!</p>
+            </div>
+        )
+    }
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {posts.nodes.map((post) => (
+                <BlogCard key={post.id} post={post} />
+            ))}
+        </div>
+    )
 }
 
 function LoadingPosts() {

@@ -6,7 +6,6 @@ import { generateText } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { getContentGuidance } from '@/lib/ai/content-rag'
-import { serverEnv } from '@/lib/config/env'
 import { withAgentRetry } from '@/lib/errors/retry'
 import { ProviderError } from '@/lib/errors/types'
 import { logAgentExecution } from '@/lib/errors/logger'
@@ -18,7 +17,9 @@ export interface ContentWriteParams {
   keywords: string[]
   tone?: string
   wordCount?: number
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   researchContext?: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   seoStrategy?: any
   fraseContentBrief?: string // Frase optimization guidance for SEO/AEO
   userId?: string
@@ -27,7 +28,9 @@ export interface ContentWriteParams {
   // Revision support
   previousDraft?: string
   improvementInstructions?: string[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dataforseoMetrics?: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   qaReport?: any
   revisionRound?: number
   // Allowed citations - writer must ONLY cite from this list
@@ -81,7 +84,7 @@ export class ContentWriterAgent {
       async () => {
         return withAgentRetry(
           async () => {
-            const { text, usage } = await generateText({
+            const { text, usage: _usage } = await generateText({
               model: vercelGateway.languageModel('moonshotai/kimi-k2' as GatewayModelId),
               system: this.buildSystemPrompt(guidance),
               prompt: prompt,

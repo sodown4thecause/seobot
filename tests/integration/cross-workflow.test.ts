@@ -16,6 +16,7 @@ vi.mock('@/lib/utils/cache', () => ({
   dataForSEOCache: {
     get: vi.fn(),
     set: vi.fn(),
+    delete: vi.fn(),
   },
 }))
 
@@ -118,6 +119,14 @@ describe('Cross-Workflow Integration Tests', () => {
     it('should invalidate cache when workflow reruns', async () => {
       const { dataForSEOCache } = await import('@/lib/utils/cache')
 
+      // Reset mocks for this test
+      vi.mocked(dataForSEOCache.get).mockReset()
+      vi.mocked(dataForSEOCache.set).mockReset()
+      vi.mocked(dataForSEOCache.delete).mockReset()
+
+      // After invalidation and recaching, get should return new value
+      vi.mocked(dataForSEOCache.get).mockReturnValue({ data: 'new' } as any)
+
       // First execution caches result
       dataForSEOCache.set('workflow:result:test', { data: 'old' })
 
@@ -127,6 +136,10 @@ describe('Cross-Workflow Integration Tests', () => {
 
       const result = dataForSEOCache.get('workflow:result:test')
       expect(result).toEqual({ data: 'new' })
+
+      // Verify the sequence of operations
+      expect(dataForSEOCache.set).toHaveBeenCalledTimes(2)
+      expect(dataForSEOCache.delete).toHaveBeenCalledWith('workflow:result:test')
     })
   })
 })

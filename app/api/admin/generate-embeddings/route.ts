@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 200))
         
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error(`[Embedding Generator] Error processing ${doc.title}:`, error)
         failCount++
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
       results
     })
     
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('[Embedding Generator] Fatal error:', error)
     return NextResponse.json({ 
@@ -124,6 +126,7 @@ export async function GET(req: NextRequest) {
       needsGeneration: withoutCount > 0
     })
     
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     return NextResponse.json({ 
       error: error.message 

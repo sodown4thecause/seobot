@@ -2,8 +2,6 @@ import { generateObject } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-import { db } from '@/lib/db'
-import { eq, desc, sql } from 'drizzle-orm'
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
@@ -93,7 +91,7 @@ export async function createABTest(params: {
       }))
     ]
 
-    const trafficSplit = variants.reduce((acc, variant) => {
+    const _trafficSplit = variants.reduce((acc, variant) => {
       acc[variant.id] = variant.weight
       return acc
     }, {} as Record<string, number>)
@@ -131,6 +129,7 @@ Requirements for variations:
 Return only the variations as a JSON array of strings, no explanations.`
 
     const { object } = await generateObject({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       model: google('gemini-3-pro-preview') as any,
       prompt,
       schema: z.array(z.string()),
@@ -146,7 +145,7 @@ Return only the variations as a JSON array of strings, no explanations.`
 /**
  * Start an A/B test
  */
-export async function startABTest(testId: string, userId: string): Promise<void> {
+export async function startABTest(_testId: string, _userId: string): Promise<void> {
   try {
     // TODO: Implement with Drizzle when ab_tests table is added
     throw new Error('AB testing tables not yet implemented in Drizzle schema')
@@ -160,10 +159,10 @@ export async function startABTest(testId: string, userId: string): Promise<void>
  * Record an impression for a specific variant
  */
 export async function recordImpression(
-  testId: string,
-  variantId: string,
-  userAgent?: string,
-  ipAddress?: string
+  _testId: string,
+  _variantId: string,
+  _userAgent?: string,
+  _ipAddress?: string
 ): Promise<void> {
   try {
     // TODO: Implement with Drizzle when ab_tests table is added
@@ -181,10 +180,10 @@ export async function recordImpression(
  * Record a click for a specific variant
  */
 export async function recordClick(
-  testId: string,
-  variantId: string,
-  userAgent?: string,
-  ipAddress?: string
+  _testId: string,
+  _variantId: string,
+  _userAgent?: string,
+  _ipAddress?: string
 ): Promise<void> {
   try {
     // TODO: Implement with Drizzle when ab_tests table is added
@@ -202,9 +201,9 @@ export async function recordClick(
  * Get a variant for a user based on traffic split
  */
 export async function getVariantForUser(
-  testId: string,
-  userId?: string,
-  sessionId?: string
+  _testId: string,
+  _userId?: string,
+  _sessionId?: string
 ): Promise<ABTestVariant | null> {
   try {
     // TODO: Implement with Drizzle when ab_tests table is added
@@ -218,7 +217,7 @@ export async function getVariantForUser(
 /**
  * Calculate statistical significance and insights
  */
-export async function calculateABTestInsights(testId: string): Promise<ABTestInsights> {
+export async function calculateABTestInsights(_testId: string): Promise<ABTestInsights> {
   try {
     // TODO: Implement with Drizzle when ab_tests table is added
     throw new Error('AB testing tables not yet implemented in Drizzle schema')
@@ -231,7 +230,7 @@ export async function calculateABTestInsights(testId: string): Promise<ABTestIns
 /**
  * Calculate statistical significance using chi-square test
  */
-function calculateStatisticalSignificance(
+function _calculateStatisticalSignificance(
   variantResults: Record<string, { impressions: number; clicks: number }>
 ): { isSignificant: boolean; confidenceLevel: number; effectSize: number } {
   const variants = Object.entries(variantResults)
@@ -276,10 +275,10 @@ function calculateStatisticalSignificance(
 /**
  * Calculate recommended test duration
  */
-function calculateRecommendedDuration(
+function _calculateRecommendedDuration(
   currentImpressions: number,
   currentCTR: number,
-  currentConfidence: number
+  _currentConfidence: number
 ): number {
   // Base calculation: need ~1000 conversions per variant for 95% confidence
   const requiredConversionsPerVariant = 1000
@@ -299,7 +298,7 @@ function calculateRecommendedDuration(
 /**
  * Calculate required sample size
  */
-function calculateSampleSize(baselineRate: number, minimumDetectableEffect: number, power: number): number {
+function _calculateSampleSize(baselineRate: number, minimumDetectableEffect: number, _power: number): number {
   // Simplified sample size calculation
   // In production, use proper statistical formulas
   const pooledRate = baselineRate + (minimumDetectableEffect / 2)
@@ -315,9 +314,9 @@ function calculateSampleSize(baselineRate: number, minimumDetectableEffect: numb
  * Get user's A/B tests
  */
 export async function getUserABTests(
-  userId: string,
-  status?: 'draft' | 'active' | 'paused' | 'completed',
-  limit: number = 20
+  _userId: string,
+  _status?: 'draft' | 'active' | 'paused' | 'completed',
+  _limit: number = 20
 ): Promise<ABTest[]> {
   try {
     // TODO: Implement with Drizzle when ab_tests table is added

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Navbar } from '@/components/navbar'
 
 export const metadata: Metadata = {
   title: 'AEO vs GEO: Understanding the Difference | FlowIntent',
@@ -10,13 +11,15 @@ export const metadata: Metadata = {
 export default function AEOvsGEOPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-      <div className="container mx-auto px-4 py-16 max-w-4xl">
+      <Navbar />
+
+      <div className="container mx-auto px-4 py-16 pt-32 max-w-4xl">
         <div className="mb-12">
           <Link href="/guides" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">
             ← Back to Guides
           </Link>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            AEO vs GEO: What's the Difference?
+            AEO vs GEO: What&apos;s the Difference?
           </h1>
           <p className="text-xl text-gray-400">
             Understanding Answer Engine Optimization and Generative Engine Optimization
@@ -25,7 +28,7 @@ export default function AEOvsGEOPage() {
 
         <div className="prose prose-invert prose-lg max-w-none">
           <p className="text-gray-300 leading-relaxed mb-8">
-            As AI transforms search, two optimization strategies have emerged: <strong>Answer Engine Optimization (AEO)</strong> and <strong>Generative Engine Optimization (GEO)</strong>. While they're often used interchangeably, they target different aspects of AI search and require distinct approaches.
+            As AI transforms search, two optimization strategies have emerged: <strong>Answer Engine Optimization (AEO)</strong> and <strong>Generative Engine Optimization (GEO)</strong>. While they&apos;re often used interchangeably, they target different aspects of AI search and require distinct approaches.
           </p>
 
           <h2 className="text-3xl font-bold mt-12 mb-4">Quick Comparison</h2>
@@ -72,17 +75,17 @@ export default function AEOvsGEOPage() {
           <ul className="text-gray-300 space-y-2 mb-6">
             <li><strong>Entity disambiguation:</strong> Make it crystal clear what your business is and how it differs from competitors</li>
             <li><strong>EEAT signals:</strong> Demonstrate expertise through author credentials, citations, and transparent sourcing</li>
-            <li><strong>Structured data:</strong> Use Schema.org markup to help AI understand your content's context</li>
+            <li><strong>Structured data:</strong> Use Schema.org markup to help AI understand your content&apos;s context</li>
             <li><strong>Citation-worthy content:</strong> Create authoritative, well-researched content that AI models trust</li>
-            <li><strong>Crawlability:</strong> Ensure AI bots can access and parse your content (don't block GPTBot, ClaudeBot, etc.)</li>
+            <li><strong>Crawlability:</strong> Ensure AI bots can access and parse your content (don&apos;t block GPTBot, ClaudeBot, etc.)</li>
           </ul>
 
           <h3 className="text-2xl font-bold mt-8 mb-3">When to Prioritize AEO:</h3>
           <ul className="text-gray-300 space-y-2 mb-8">
-            <li>You're building brand authority in a specific niche</li>
+            <li>You&apos;re building brand authority in a specific niche</li>
             <li>Your content is informational/educational rather than transactional</li>
             <li>Citation and attribution matter for credibility (e.g., B2B, healthcare, finance)</li>
-            <li>You want to be the "go-to" source AI recommends for specific topics</li>
+            <li>You want to be the &quot;go-to&quot; source AI recommends for specific topics</li>
           </ul>
 
           <h2 className="text-3xl font-bold mt-12 mb-4">Generative Engine Optimization (GEO)</h2>

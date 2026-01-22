@@ -3,7 +3,6 @@
  * Generates complete article image sets with hero, sections, infographics, and social variants
  */
 
-import { Buffer } from 'node:buffer'
 import { generateText, generateObject } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
@@ -21,11 +20,11 @@ import type {
   InfographicImage,
   SocialMediaVariants,
   ImageMetadata,
-  BrandVisualGuidelines,
   ImageType,
   ContentMood,
   GeneratedImageWithMetadata,
 } from '@/types/images'
+
 
 const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
@@ -159,9 +158,11 @@ Return as JSON.`
 
     try {
       const { object } = await generateObject({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         model: google('gemini-2.5-pro') as any,
         prompt: analysisPrompt,
         schema: analysisSchema,
+
         experimental_telemetry: createTelemetryConfig('content-image-analysis', {
           contentLength: content.length,
         }),
@@ -214,8 +215,8 @@ Return as JSON.`
     const headingRegex = /^(#{1,6})\s+(.+)$/gm
     const htmlHeadingRegex = /<(h[1-6])[^>]*>(.*?)<\/h[1-6]>/gi
 
-    let lastIndex = 0
-    let currentLevel = 1
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _currentLevel = 1
 
     // Process markdown headings
     let match
@@ -238,9 +239,8 @@ Return as JSON.`
         needsImage: false, // Will be determined later
         targetHeading: heading,
       })
-
-      lastIndex = endIndex
     }
+
 
     // If no markdown headings found, try HTML
     if (sections.length === 0) {
@@ -706,6 +706,7 @@ Return only the alt text, no quotes or explanations.`
 
       try {
         const result = await generateText({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           model: google('gemini-2.5-pro') as any,
           prompt,
           experimental_telemetry: createTelemetryConfig('image-alt-text-generation', {

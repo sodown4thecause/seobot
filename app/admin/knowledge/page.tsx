@@ -46,7 +46,7 @@ export default function KnowledgeBasePage() {
       <div>
         <h1 className="text-3xl font-bold text-white">Knowledge Base Management</h1>
         <p className="text-gray-400 mt-1">
-          Upload and manage documents for each agent's knowledge base
+          Upload and manage documents for each agent&apos;s knowledge base
         </p>
       </div>
 

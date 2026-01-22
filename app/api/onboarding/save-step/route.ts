@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth/clerk'
 import { db, businessProfiles } from '@/lib/db'
 import { eq } from 'drizzle-orm'
-import { type OnboardingData } from '@/lib/onboarding/state'
+// import { type OnboardingData } from '@/lib/onboarding/state'
 
 export const runtime = 'edge'
 
@@ -56,6 +56,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Save step error:', error)
     return NextResponse.json(

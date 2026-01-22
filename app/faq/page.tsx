@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Navbar } from '@/components/navbar'
 
 export const metadata: Metadata = {
   title: 'FAQ - Frequently Asked Questions | FlowIntent',
@@ -7,7 +8,36 @@ export const metadata: Metadata = {
 }
 
 export default function FAQPage() {
-  const faqs = [
+  type FaqLink = { label: string; href: string }
+  type FaqItem = { q: string; a: string; links?: FaqLink[] }
+  type FaqSection = { category: string; questions: FaqItem[] }
+
+  const faqs: FaqSection[] = [
+    {
+      category: 'LLM Mentions & Citations',
+      questions: [
+        {
+          q: 'What are “LLM mentions” and “citations”?',
+          a: 'A mention is when an AI assistant references your brand in its answer. A citation is when it links to your site as a source. Citations are ideal, but consistent mentions also build recall and preference.',
+        },
+        {
+          q: 'Why do LLM mentions matter for growth?',
+          a: 'AI answers are often zero-click. The “winner” is the brand named (and cited) in the response. Mentions influence trust, shortlist inclusion, and downstream conversions—even when users never visit a SERP.',
+        },
+        {
+          q: 'How do you measure mentions if there is no global counter?',
+          a: 'You run a repeatable set of prompts (by topic + intent), record who gets mentioned/cited, and track deltas over time. The goal is consistent improvement, not a perfect absolute number.',
+        },
+        {
+          q: 'Where can I learn the full strategy?',
+          a: 'Start with the guide, then run an AI Trust Audit to establish your baseline and prioritize fixes.',
+          links: [
+            { label: 'Read the guide', href: '/guides/llm-mentions' },
+            { label: 'Run an audit', href: '/audit' },
+          ],
+        },
+      ],
+    },
     {
       category: 'Answer Engine Optimization',
       questions: [
@@ -21,7 +51,7 @@ export default function FAQPage() {
         },
         {
           q: 'Why do I need AEO if I already do SEO?',
-          a: 'AI search engines like ChatGPT, Perplexity, and Google\'s AI Overviews are changing how people find information. Millions of searches now happen directly in AI chat interfaces. If you\'re not optimized for these platforms, you\'re invisible to a rapidly growing segment of searchers—even if you rank #1 on Google.',
+          a: 'AI answer engines (ChatGPT, Perplexity, Claude) and Google’s AI Overviews are changing how people discover information. More queries end in an on-platform answer instead of a click. If you’re not optimized for these systems, you’re invisible to a rapidly growing segment of demand—even if you rank #1 on Google.',
         },
       ],
     },
@@ -51,15 +81,15 @@ export default function FAQPage() {
       questions: [
         {
           q: 'How much does FlowIntent cost?',
-          a: 'We currently offer free beta access with usage limits ($1 in API usage per week). A Premium plan at $40/month is coming soon with higher limits, priority support, and advanced features. Enterprise plans with custom limits are also in development.',
+          a: 'We currently offer free beta access with usage limits ($1 in API usage per week). A Pro plan at $40/month is coming soon with higher limits, priority support, and more advanced features. Enterprise plans with custom limits are available on request.',
         },
         {
           q: 'What happens when I hit my beta usage limit?',
-          a: 'When you reach the $1 beta limit, your account is paused for 7 days. You can email support@flowintent.com to request an upgrade or early access to the Premium plan.',
+          a: 'When you reach the $1 beta limit, your account is paused for 7 days. You can email support@flowintent.com to request an upgrade or early access to Pro.',
         },
         {
           q: 'Can I upgrade from the free beta?',
-          a: 'Yes. Contact us at support@flowintent.com to discuss Premium or Enterprise options. We\'re granting early access to users who need higher limits.',
+          a: 'Yes. Contact us at support@flowintent.com to discuss Pro or Enterprise options. We’re granting early access to users who need higher limits.',
         },
       ],
     },
@@ -84,7 +114,9 @@ export default function FAQPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-      <div className="container mx-auto px-4 py-16 max-w-4xl">
+      <Navbar />
+
+      <div className="container mx-auto px-4 py-16 pt-32 max-w-4xl">
         <div className="mb-12 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Frequently Asked Questions
@@ -109,6 +141,19 @@ export default function FAQPage() {
                     <p className="text-gray-300 leading-relaxed">
                       {faq.a}
                     </p>
+                    {faq.links && faq.links.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        {faq.links.map((l) => (
+                          <Link
+                            key={l.href}
+                            href={l.href}
+                            className="text-sm text-blue-400 hover:text-blue-300 underline underline-offset-4"
+                          >
+                            {l.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

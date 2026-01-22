@@ -137,7 +137,7 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
         let detectedFocus = null
         if (text.includes('keyword') || text.includes('search volume')) detectedFocus = 'keyword_research'
         else if (text.includes('competitor') || text.includes('gap')) detectedFocus = 'gap_analysis'
-        else if (text.includes('backlink') || text.includes('authority')) detectedFocus = 'link_building'
+        // else if (text.includes('backlink') || text.includes('authority')) detectedFocus = 'link_building' // Disabled to prevent blocking graphic
         else if (text.includes('write') || text.includes('article')) detectedFocus = 'content_production'
 
         if (detectedFocus && detectedFocus !== focus) {

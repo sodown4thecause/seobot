@@ -382,7 +382,15 @@ export class WorkflowAnalyticsService {
   }
 }
 
-export const workflowAnalytics = new WorkflowAnalyticsService()
+// Lazy initialization to avoid server-side blocking
+let workflowAnalyticsInstance: WorkflowAnalyticsService | null = null
+
+export function getWorkflowAnalytics(): WorkflowAnalyticsService {
+  if (!workflowAnalyticsInstance) {
+    workflowAnalyticsInstance = new WorkflowAnalyticsService()
+  }
+  return workflowAnalyticsInstance
+}
 
 // Alias for backward compatibility with engine.ts import
-export const analytics = workflowAnalytics
+export const analytics = getWorkflowAnalytics

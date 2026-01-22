@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { DocumentUpload } from '@/components/admin/document-upload'
 import { DocumentList } from '@/components/admin/document-list'
@@ -90,7 +90,7 @@ export default function AgentKnowledgeBasePage() {
         <CardHeader>
           <CardTitle className="text-white">Upload Documents</CardTitle>
           <CardDescription className="text-gray-400">
-            Upload PDFs, Markdown files, or text documents to enhance this agent's knowledge
+            Upload PDFs, Markdown files, or text documents to enhance this agent&apos;s knowledge
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -107,7 +107,7 @@ export default function AgentKnowledgeBasePage() {
         <CardHeader>
           <CardTitle className="text-white">Uploaded Documents</CardTitle>
           <CardDescription className="text-gray-400">
-            Manage and delete documents from this agent's knowledge base
+            Manage and delete documents from this agent&apos;s knowledge base
           </CardDescription>
         </CardHeader>
         <CardContent>

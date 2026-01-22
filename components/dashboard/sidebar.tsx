@@ -39,6 +39,7 @@ const MAIN_NAV = [
   { name: 'Home', href: '/dashboard', icon: Home },
   { name: 'Workflows', href: '/dashboard/workflows', icon: Workflow },
   { name: 'SEO Tools', href: '/dashboard/seo-tools', icon: Search },
+  { name: 'Content Zone', href: '/dashboard/content/zone', icon: Edit3 },
   { name: 'Blog', href: '/dashboard/blog', icon: BookOpen },
   { name: 'Tutorials', href: '/dashboard/tutorials', icon: BookOpen },
   { name: 'Campaigns', href: '/dashboard/campaigns', icon: Target },

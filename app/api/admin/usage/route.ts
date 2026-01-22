@@ -18,12 +18,12 @@ export async function GET(req: NextRequest) {
     }
 
     const searchParams = req.nextUrl.searchParams
-    const targetUserId = searchParams.get('user_id')
-    const from = searchParams.get('from')
-    const to = searchParams.get('to')
+    const _targetUserId = searchParams.get('user_id')
+    const _from = searchParams.get('from')
+    const _to = searchParams.get('to')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = (page - 1) * limit
+    const _offset = (page - 1) * limit
 
     // TODO: Implement ai_usage_events table in schema
     // Table needs: id, user_id, model, prompt_tokens, completion_tokens, 

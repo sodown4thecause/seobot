@@ -6,12 +6,14 @@ export const runtime = 'edge'
 
 interface SaveLibraryItemRequest {
   content?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any
   imageUrl?: string
   title: string
   itemType: 'response' | 'image' | 'data' | 'component'
   conversationId?: string
   messageId?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: Record<string, any>
   tags?: string[]
 }

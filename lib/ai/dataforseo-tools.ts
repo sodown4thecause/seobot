@@ -25,6 +25,7 @@ import { compositeSEOTools } from '@/lib/tools/composite-seo-tools'
 // Function call handlers
 export async function handleDataForSEOFunctionCall(
   functionName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: Record<string, any>
 ): Promise<string> {
   try {
@@ -54,12 +55,14 @@ export async function handleDataForSEOFunctionCall(
             }
 
             // Filter out empty objects and check if we have valid data
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const validData = data.filter((item: any) => item && Object.keys(item).length > 0)
             if (validData.length === 0) {
               console.warn('[Tool] ai_keyword_search_volume: All items are empty objects', data)
               return []
             }
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return validData.map((item: any) => ({
               keyword: item.keyword,
               search_volume: item.search_volume ?? item.monthly_searches ?? null,
@@ -87,6 +90,7 @@ export async function handleDataForSEOFunctionCall(
         const items = result.data.tasks?.[0]?.result?.[0]?.items
         if (!items || items.length === 0) return 'No ChatGPT results found.'
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formatted = items.slice(0, 10).map((item: any) => ({
           type: item.type,
           title: item.title,
@@ -131,6 +135,7 @@ export async function handleDataForSEOFunctionCall(
             const data = result.data.tasks?.[0]?.result
             if (!data || data.length === 0) return []
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return data.map((item: any) => ({
               keyword: item.keyword,
               search_volume: item.search_volume,
@@ -158,6 +163,7 @@ export async function handleDataForSEOFunctionCall(
             const data = result.data.tasks?.[0]?.result
             if (!data || data.length === 0) return []
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return data.slice(0, 50).map((item: any) => ({
               keyword: item.keyword,
               search_volume: item.search_volume,
@@ -185,6 +191,7 @@ export async function handleDataForSEOFunctionCall(
             const data = result.data.tasks?.[0]?.result
             if (!data || data.length === 0) return []
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return data.map((item: any) => ({
               keyword: item.keyword,
               difficulty: item.keyword_difficulty,
@@ -208,6 +215,7 @@ export async function handleDataForSEOFunctionCall(
         const items = result.data.tasks?.[0]?.result?.[0]?.items
         if (!items || items.length === 0) return 'No SERP results found.'
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formatted = items.slice(0, 10).map((item: any) => ({
           position: item.rank_absolute,
           url: item.url,
@@ -230,6 +238,7 @@ export async function handleDataForSEOFunctionCall(
         const data = result.data.tasks?.[0]?.result
         if (!data || data.length === 0) return 'No ranking domains found.'
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formatted = data.slice(0, 20).map((item: any) => ({
           domain: item.domain,
           avg_position: item.avg_position,
@@ -248,6 +257,7 @@ export async function handleDataForSEOFunctionCall(
         const data = result.data.tasks?.[0]?.result
         if (!data || data.length === 0) return 'No competitors found.'
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formatted = data.slice(0, 10).map((item: any) => ({
           domain: item.domain,
           avg_position: item.avg_position,
@@ -268,6 +278,7 @@ export async function handleDataForSEOFunctionCall(
         const data = result.data.tasks?.[0]?.result
         if (!data || data.length === 0) return 'No keyword overlap found.'
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formatted = data.slice(0, 50).map((item: any) => ({
           keyword: item.keyword,
           search_volume: item.search_volume,
@@ -310,6 +321,7 @@ export async function handleDataForSEOFunctionCall(
         const data = result.data.tasks?.[0]?.result
         if (!data || data.length === 0) return 'No keywords found.'
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formatted = data.slice(0, args.limit || 100).map((item: any) => ({
           keyword: item.keyword_data?.keyword,
           position: item.ranked_serp_element?.serp_item?.rank_absolute,
@@ -331,6 +343,7 @@ export async function handleDataForSEOFunctionCall(
         const data = result.data.tasks?.[0]?.result
         if (!data || data.length === 0) return 'No pages found.'
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formatted = data.slice(0, args.limit || 100).map((item: any) => ({
           url: item.url,
           keywords: item.metrics?.organic?.count,
@@ -380,6 +393,7 @@ export async function handleDataForSEOFunctionCall(
       default:
         return `Unknown function: ${functionName}`
     }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     return `Error executing ${functionName}: ${error.message}`
   }

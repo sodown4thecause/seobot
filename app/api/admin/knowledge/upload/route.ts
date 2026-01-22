@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { OpenAI } from 'openai'
+// import { OpenAI } from 'openai'
 import { PDFParse } from 'pdf-parse'
-import { serverEnv } from '@/lib/config/env'
+// import { serverEnv } from '@/lib/config/env'
 import { requireUserId } from '@/lib/auth/clerk'
 // import { db } from '@/lib/db'
 // import knowledge tables when implemented
 
 export const runtime = 'nodejs' // Need Node.js runtime for file processing
 
-const openai = new OpenAI({
-  apiKey: serverEnv.OPENAI_API_KEY,
-})
+// const openai = new OpenAI({
+//   apiKey: serverEnv.OPENAI_API_KEY,
+// })
 
 // Helper to extract text from different file types
-async function extractText(file: File): Promise<string> {
+async function _extractText(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer())
 
   if (file.type === 'application/pdf') {
@@ -35,7 +35,7 @@ async function extractText(file: File): Promise<string> {
 }
 
 // Helper to get file type
-function getFileType(file: File): string {
+function _getFileType(file: File): string {
   if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) return 'pdf'
   if (file.type === 'text/markdown' || file.name.endsWith('.md') || file.name.endsWith('.markdown')) return 'markdown'
   if (file.name.endsWith('.docx')) return 'docx'
@@ -44,7 +44,7 @@ function getFileType(file: File): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await requireUserId()
+    const _userId = await requireUserId()
 
     const formData = await request.formData()
     const file = formData.get('file') as File

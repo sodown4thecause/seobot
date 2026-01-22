@@ -5,7 +5,8 @@
  * Can be extended to send logs to Axiom or other logging services.
  */
 
-import { getErrorMetadata, AppError } from './types'
+import { getErrorMetadata } from './types'
+
 
 export interface ErrorLogEntry {
   timestamp: string

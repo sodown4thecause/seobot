@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { PortableText, type SanityDocument } from "next-sanity";
 import imageUrlBuilder, { type SanityImageSource } from "@sanity/image-url";
 import { client } from "@/sanity/lib/client";
@@ -81,10 +82,11 @@ export default async function GuidePage({
 
                     {imageUrl && (
                         <div className="aspect-[16/9] relative rounded-3xl overflow-hidden mb-12 border border-white/10">
-                            <img
+                            <Image
                                 src={imageUrl}
                                 alt={guide.title}
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
                             />
                         </div>
                     )}

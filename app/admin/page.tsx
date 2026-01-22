@@ -71,7 +71,7 @@ export default function AdminOverviewPage() {
                 Manage Knowledge Bases
               </CardTitle>
               <CardDescription className="text-gray-400">
-                Upload and manage documents for each agent's knowledge base
+                Upload and manage documents for each agent&apos;s knowledge base
               </CardDescription>
             </CardHeader>
           </Card>

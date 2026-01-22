@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { ArrowRight, MessageSquare, Search, Brain, LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { Navbar } from '@/components/navbar'
 import { AEOAuditor } from '@/components/aeo-auditor'
 import { SymbolBackground } from '@/components/landing/symbol-background'
 
-const itemVariants: any = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
@@ -49,7 +49,7 @@ export default function LandingPage() {
                     SEO AGENTIC CLOUD / v2.0
                   </p>
                   <p className="text-2xl md:text-3xl text-zinc-300 font-light leading-tight uppercase tracking-tighter">
-                    We do the heavy lifting so you don't have to.
+                    Turn rankings into LLM mentions, citations, and revenue.
                   </p>
                 </div>
 
@@ -60,6 +60,9 @@ export default function LandingPage() {
                         Get Started
                         <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                       </Button>
+                    </Link>
+                    <Link href="/guides/llm-mentions" className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500 hover:text-white transition-colors">
+                      Read: Why LLM mentions matter →
                     </Link>
                   </div>
                 </div>
@@ -104,6 +107,64 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Proof / What you get */}
+      <section className="relative z-10 py-24 px-6 bg-white/[0.02] border-y border-white/5 backdrop-blur-sm">
+        <div className="container mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={itemVariants}
+            className="max-w-5xl mx-auto"
+          >
+            <div className="flex flex-col md:flex-row items-end justify-between gap-8 mb-10">
+              <div className="max-w-2xl">
+                <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-[0.4em] mb-3">OUTCOMES</p>
+                <h2 className="text-4xl md:text-6xl font-bold tracking-tight uppercase italic">
+                  Earn more <span className="text-zinc-500">mentions</span>.
+                </h2>
+              </div>
+              <div className="flex gap-4 flex-wrap">
+                <Link href="/prices">
+                  <Button size="lg" className="h-12 px-8 bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-wider border-2 border-white">
+                    View Pricing
+                  </Button>
+                </Link>
+                <Link href="/faq">
+                  <Button size="lg" variant="outline" className="h-12 px-8 rounded-none font-black uppercase tracking-wider border-2 border-white/20 text-white hover:bg-white/10">
+                    Read FAQ
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="bg-black/40 border border-white/10 p-8 rounded-none">
+                <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">AI Trust</p>
+                <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Spot hallucinations</h3>
+                <p className="text-zinc-400 leading-relaxed">
+                  See how ChatGPT/Perplexity describe you, where facts drift, and what pages to publish so models repeat the truth.
+                </p>
+              </div>
+              <div className="bg-black/40 border border-white/10 p-8 rounded-none">
+                <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Content</p>
+                <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Become cite-worthy</h3>
+                <p className="text-zinc-400 leading-relaxed">
+                  Generate “answer assets” (definitions, comparisons, checklists) with EEAT signals and retrieval-friendly structure.
+                </p>
+              </div>
+              <div className="bg-black/40 border border-white/10 p-8 rounded-none">
+                <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Monitoring</p>
+                <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Track mention deltas</h3>
+                <p className="text-zinc-400 leading-relaxed">
+                  Measure repeatable prompt sets over time so you can prove improvements week-over-week, not vibes.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="relative z-10 py-48 px-6 bg-gradient-to-b from-transparent to-zinc-900/50">
         <div className="container mx-auto text-center border-t border-white/10 pt-32">
@@ -115,6 +176,16 @@ export default function LandingPage() {
               Secure Your Position
             </Button>
           </Link>
+          <div className="mt-10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">
+            Prefer to learn first?{' '}
+            <Link href="/guides/llm-mentions" className="hover:text-white transition-colors">
+              Why LLM mentions matter
+            </Link>
+            {' '}·{' '}
+            <Link href="/guides" className="hover:text-white transition-colors">
+              Guides
+            </Link>
+          </div>
         </div>
       </section>
 

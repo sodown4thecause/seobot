@@ -2,7 +2,6 @@ import { tool, generateText } from 'ai';
 import { z } from 'zod';
 import { perplexity } from '@ai-sdk/perplexity';
 import { findRelevantFrameworks, formatFrameworksForPrompt, batchIncrementUsage } from '@/lib/ai/rag-service';
-import { serverEnv } from '@/lib/config/env';
 import { createTelemetryConfig } from '@/lib/observability/langfuse';
 
 /**

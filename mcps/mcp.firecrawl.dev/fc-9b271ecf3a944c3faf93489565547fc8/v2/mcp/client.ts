@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { serverEnv } from "@/lib/config/env";
 
 let connectionPromise: Promise<Client> | null = null;
 export async function getMcpClient(): Promise<Client> {
@@ -11,12 +12,20 @@ export async function getMcpClient(): Promise<Client> {
 }
 
 async function connectToMcp(): Promise<Client> {
+  const apiKey = serverEnv.FIRECRAWL_API_KEY;
+  if (!apiKey) {
+    throw new Error("FIRECRAWL_API_KEY is required");
+  }
+
+  // Construct MCP URL: https://mcp.firecrawl.dev/{FIRECRAWL_API_KEY}/v2/mcp
+  const mcpUrl = serverEnv.FIRECRAWL_MCP_URL || `https://mcp.firecrawl.dev/${apiKey}/v2/mcp`;
+
   const transport = new StreamableHTTPClientTransport(
-    new URL("https://mcp.firecrawl.dev"),
+    new URL(mcpUrl),
     {
       requestInit: {
         headers: {
-          Authorization: "TODO: Replace with your actual value",
+          Authorization: `Bearer ${apiKey}`,
         },
       },
     },

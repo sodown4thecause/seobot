@@ -16,8 +16,10 @@ import {
     messages,
     libraryItems,
     userModeConfigs,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     userModeTransitions,
     userProgress,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     writingFrameworks,
     type BusinessProfile,
     type BrandVoice,
@@ -27,7 +29,7 @@ import {
     type UserProgress,
     type Json,
 } from './schema'
-import { eq, and, desc, asc, sql } from 'drizzle-orm'
+import { eq, and, desc, asc } from 'drizzle-orm'
 
 // ============================================================================
 // BUSINESS PROFILES

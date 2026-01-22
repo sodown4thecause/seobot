@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     let body
     try {
         body = requestSchema.parse(await req.json())
-    } catch (error) {
+    } catch (_error) {
         return new Response(
             JSON.stringify({ error: 'Invalid request body' }),
             { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
     const writer = stream.writable.getWriter()
 
     // Helper to send SSE events
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sendEvent = async (event: string, data: any) => {
         const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
         await writer.write(encoder.encode(message))
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     // Create AbortController for client-disconnect handling
     const abortController = new AbortController()
-
+    
     // Wire request signal to abort controller
     req.signal.addEventListener('abort', () => {
         console.log('[Content Stream] Client disconnected, aborting generation')
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
                             status: 'error',
                             message: 'Content generation cancelled',
                         })
-                    } catch (sendError) {
+                    } catch (_sendError) {
                         console.debug('[Content Stream] Failed to send abort event (stream closed)')
                     }
                 } else {
@@ -134,7 +135,7 @@ export async function POST(req: NextRequest) {
                 // Always close the writer to prevent resource leaks
                 try {
                     await writer.close()
-                } catch (closeError) {
+                } catch (_closeError) {
                     // Writer already closed - this is fine
                     console.debug('[Content Stream] Writer already closed')
                 }

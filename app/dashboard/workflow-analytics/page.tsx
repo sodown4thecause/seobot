@@ -7,7 +7,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Activity, AlertCircle } from 'lucide-react'
+import { Activity } from 'lucide-react'
 
 export default function WorkflowAnalyticsPage() {
     return (

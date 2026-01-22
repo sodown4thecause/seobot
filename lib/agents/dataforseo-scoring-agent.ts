@@ -10,8 +10,10 @@ import { AbortError } from '@/lib/errors/types'
 // Helper to execute MCP tools (they only need args, not the full AI SDK context)
 // The execute function can return string | AsyncIterable<string> | PromiseLike<string>
 const executeTool = async <T>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tool: { execute?: (args: T, ctx?: any) => string | AsyncIterable<string> | PromiseLike<string> },
   args: T,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any = { toolCallId: 'agent-exec', messages: [] }
 ): Promise<string> => {
   if (!tool.execute) throw new Error('Tool does not have execute function')
@@ -40,6 +42,7 @@ export interface DataForSEOScoringParams {
 }
 
 export interface DataForSEOScoringResult {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dataforseoRaw: any
   dataforseoQualityScore: number // 0-100 normalized score
   metrics: {
@@ -89,6 +92,7 @@ export class DataForSEOScoringAgent {
       checkAborted()
 
       // Run three independent API calls in parallel for better latency
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let citationData: any = {}
       let phraseTrends: Array<{ phrase: string; trend: number }> = []
       let relatedKeywords: string[] = []
@@ -143,6 +147,7 @@ export class DataForSEOScoringAgent {
         checkAborted()
         const trendsParsed = typeof trendsResult === 'string' ? JSON.parse(trendsResult) : trendsResult
         if (trendsParsed && trendsParsed.tasks && trendsParsed.tasks[0]?.result) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           phraseTrends = (trendsParsed.tasks[0].result || []).slice(0, 10).map((item: any) => ({
             phrase: item.phrase || item.keyword || '',
             trend: item.trend || item.growth || 0,
@@ -157,6 +162,7 @@ export class DataForSEOScoringAgent {
         const relatedParsed = typeof relatedResult === 'string' ? JSON.parse(relatedResult) : relatedResult
         if (relatedParsed && relatedParsed.tasks && relatedParsed.tasks[0]?.result) {
           const items = relatedParsed.tasks[0].result[0]?.items || []
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           relatedKeywords = items.slice(0, 15).map((item: any) => item.keyword_data?.keyword || item.keyword || '')
           console.log('[DataForSEO Scoring] Related keywords retrieved:', relatedKeywords.length)
         }
@@ -385,6 +391,7 @@ export class DataForSEOScoringAgent {
    * Calculate accurate quality score with proper weighting
    */
   private calculateAccurateScore(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     citationData: any,
     contentMetrics: {
       wordCount: number
@@ -498,6 +505,7 @@ export class DataForSEOScoringAgent {
   /**
    * Extract citation quality metric
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private extractCitationQuality(data: any): number {
     if (!data || typeof data !== 'object') return 0
 

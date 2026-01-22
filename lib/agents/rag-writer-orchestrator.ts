@@ -219,6 +219,7 @@ export class RAGWriterOrchestrator {
 
         // Step 0.5: Fetch user's business context for personalized content
         checkAborted(abortSignal, 'before user context fetch')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let businessContext: { brandVoice?: any; profile?: any; context?: string } = {}
         if (params.userId) {
           try {
@@ -272,6 +273,7 @@ export class RAGWriterOrchestrator {
         // Step 1.5: Frase Content Brief Generation (SEO/AEO Optimization)
         console.log('[Orchestrator] Phase 1.5: Frase Content Brief')
         await this.emitProgress(params, 'frase-brief', 'in_progress', 'Generating SEO content brief...', 'Analyzing SERP with Frase.io')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let fraseOptimizationResult: any = null
         let fraseContentBrief = ''
 
@@ -421,8 +423,11 @@ export class RAGWriterOrchestrator {
         }
 
         // Step 3-5: Scoring, QA, and Revision Loop
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let finalScores: any = {}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let finalQAReport: any = {}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let finalFraseOptimization: any = null
         let bestDraft = currentDraft.content
 
@@ -467,6 +472,7 @@ export class RAGWriterOrchestrator {
 
           // Step 4.5: Frase Content Analysis (evaluate against SERP)
           await this.emitProgress(params, 'frase-analysis', 'in_progress', 'Analyzing SERP optimization...', 'Comparing against top-ranking content')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let fraseContentAnalysis: any = null
           let fraseScore = 70 // Fallback score if Frase fails (aligned with quality thresholds)
 
@@ -532,7 +538,9 @@ export class RAGWriterOrchestrator {
 
           // Evaluate content with LangWatch LLM-as-a-judge
           // Wrap in try-catch so evaluation failures don't break the main flow
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let eeatEvaluation: any = { passed: true, scores: {}, evaluationId: EVALUATION_SCHEMAS.EEAT }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let contentQualityEvaluation: any = { passed: true, scores: {}, evaluationId: EVALUATION_SCHEMAS.CONTENT_QUALITY }
 
           try {
@@ -1033,6 +1041,7 @@ export class RAGWriterOrchestrator {
    * Calculate AEO compliance score from syntax report
    * This enables the revision loop to use AEO as a quality gate
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private calculateAEOScore(syntaxReport: any): number {
     if (!syntaxReport) return 50 // Neutral fallback
 
@@ -1056,6 +1065,7 @@ export class RAGWriterOrchestrator {
   /**
    * Format Frase optimization result into a content brief for the writer
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private formatFraseContentBrief(fraseResult: any): string {
     if (!fraseResult) return ''
 
@@ -1069,6 +1079,7 @@ export class RAGWriterOrchestrator {
     // Topic Clusters
     if (fraseResult.contentBrief?.topicClusters?.length > 0) {
       brief.push('\n🎯 Key Topics to Cover (in order of importance):')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fraseResult.contentBrief.topicClusters.slice(0, 15).forEach((topic: any, idx: number) => {
         brief.push(`  ${idx + 1}. ${topic.topic} (importance: ${Math.round((topic.importance || 0) * 100)}%)`)
       })
@@ -1085,6 +1096,7 @@ export class RAGWriterOrchestrator {
     // Suggested Headings
     if (fraseResult.contentBrief?.headings?.length > 0) {
       brief.push('\n📑 Recommended Headings (based on SERP analysis):')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fraseResult.contentBrief.headings.slice(0, 8).forEach((h: any) => {
         brief.push(`  • ${h.heading}`)
       })
@@ -1092,6 +1104,7 @@ export class RAGWriterOrchestrator {
 
     // Key Terms
     if (fraseResult.contentBrief?.keyTerms?.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const terms = fraseResult.contentBrief.keyTerms.slice(0, 20).map((t: any) => t.term).join(', ')
       brief.push(`\n🔑 Important Terms to Include: ${terms}`)
     }
@@ -1108,6 +1121,7 @@ export class RAGWriterOrchestrator {
       }
       if (insights.topPerformingUrls?.length > 0) {
         brief.push('  • Top performing competitors:')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         insights.topPerformingUrls.slice(0, 3).forEach((url: any) => {
           brief.push(`    - ${url.title || url.url}`)
         })
