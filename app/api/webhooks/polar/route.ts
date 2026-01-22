@@ -37,15 +37,10 @@ export async function POST(req: NextRequest) {
             case 'subscription.created':
             case 'subscription.updated':
             case 'subscription.active':
-            case 'subscription.past_due':
-                await handleSubscriptionUpdate(event.data)
-                break
-            
             case 'subscription.revoked':
             case 'subscription.canceled':
-            case 'subscription.uncanceled':
-                 await handleSubscriptionRevoked(event.data, event.type)
-                 break
+                await handleSubscriptionUpdate(event.data)
+                break
 
             case 'checkout.created':
             case 'checkout.updated':
@@ -53,18 +48,9 @@ export async function POST(req: NextRequest) {
                 break
 
             case 'order.created':
-            case 'order.updated':
             case 'order.paid':
             case 'order.refunded':
                 await handleOrderEvent(event.data, event.type)
-                break
-
-            case 'customer.created':
-            case 'customer.updated':
-            case 'customer.deleted':
-            case 'customer.state_changed':
-                // We typically handle customer data via subscription updates, but logging here helps debugging
-                console.log(`Customer event received: ${event.type}`, event.data.id)
                 break
 
             default:
@@ -95,44 +81,21 @@ async function handleSubscriptionUpdate(data: any) {
                 updatedAt: new Date()
             })
             .where(eq(users.id, userId))
+    } else if (polarSubscriptionId) {
+        // Try to find user by subscription ID
+        await db.update(users)
+            .set({
+                subscriptionStatus: status,
+                currentPeriodEnd: currentPeriodEnd,
+                updatedAt: new Date()
+            })
+            .where(eq(users.polarSubscriptionId, polarSubscriptionId))
     } else {
         console.warn('Received subscription update without userId in metadata', data)
     }
 }
 
-async function handleSubscriptionRevoked(data: any, eventType: string) {
-    const polarSubscriptionId = data.id
-    // Map specific events to status strings if needed, or just use 'canceled' / 'inactive'
-    const status = eventType === 'subscription.uncanceled' ? 'active' : 'canceled'
-
-    if (polarSubscriptionId) {
-        const result = await db.update(users)
-             .set({
-                 subscriptionStatus: status,
-                 updatedAt: new Date()
-             })
-             .where(eq(users.polarSubscriptionId, polarSubscriptionId))
-             .returning({ updatedId: users.id })
-        
-         if (result.length > 0) return
-    }
-
-    const userId = data.metadata?.userId
-    if (userId) {
-       await db.update(users)
-           .set({
-               subscriptionStatus: status,
-               updatedAt: new Date()
-           })
-           .where(eq(users.id, userId))
-    } else {
-         console.warn(`Received ${eventType} without valid ID link`, data)
-    }
-}
-
 async function handleOrderEvent(data: any, eventType: string) {
-    // Log orders for now. In future, could store in an 'orders' table.
-    // If order.paid and it's a one-time purchase (not sub), we might grant credits here.
     console.log(`Processing Order Event: ${eventType}`, {
         orderId: data.id,
         amount: data.amount,
