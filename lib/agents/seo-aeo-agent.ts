@@ -84,7 +84,10 @@ export class SEOAEOAgent {
       )
       if (seoKnowledge && seoKnowledge.length > 0) {
         knowledgeContext = seoKnowledge
-          .map(doc => `### ${doc.title}\n${doc.content}`)
+          .map((doc: unknown) => {
+            const d = doc as { title: string; content: string };
+            return `### ${d.title}\n${d.content}`;
+          })
           .join('\n\n')
         console.log(`[SEO/AEO Agent] ✓ Retrieved ${seoKnowledge.length} knowledge documents (limit: ${params.researchData?.maxDocs ?? 20})`)
       }

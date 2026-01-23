@@ -98,6 +98,17 @@ interface ContentLearningRawRow {
     similarity: string | number
 }
 
+interface BrandVoiceRawRow {
+    id: string
+    user_id: string | null
+    tone: string | null
+    style: string | null
+    personality: string | null
+    sample_phrases: string | null
+    source: string | null
+    similarity: string | number
+}
+
 
 // ============================================================================
 // VECTOR SEARCH FUNCTIONS

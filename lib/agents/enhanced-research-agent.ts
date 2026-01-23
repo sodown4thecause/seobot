@@ -239,11 +239,14 @@ export class EnhancedResearchAgent {
 
       return {
         perplexityResearch: perplexityResult,
-        ragContext: ragDocs.map(doc => ({
-          title: doc.title || 'Untitled',
-          content: doc.content || '',
-          similarity: doc.similarity,
-        })),
+        ragContext: ragDocs.map((doc: unknown) => {
+          const d = doc as Record<string, unknown>
+          return {
+            title: (d.title as string) || 'Untitled',
+            content: (d.content as string) || '',
+            similarity: d.similarity as number,
+          }
+        }),
         combinedSummary,
         citations: perplexityResult.citations,
         competitorSnippets,

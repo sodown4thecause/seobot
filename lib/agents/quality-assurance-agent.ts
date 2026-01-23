@@ -43,7 +43,7 @@ export class QualityAssuranceAgent {
       // Specifically search for "AI Detection Avoidance" document
       const docs = await retrieveAgentDocuments('AI Detection Avoidance Banned Words', 'content_writer', 1);
       if (docs && docs.length > 0) {
-        avoidanceGuidance = docs[0].content;
+        avoidanceGuidance = (docs[0] as { content: string }).content;
         console.log('[QA Agent] ✓ Retrieved anti-AI detection guidance');
       }
     } catch (error) {

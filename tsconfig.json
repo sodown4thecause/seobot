@@ -47,6 +47,7 @@
     "test-*.tsx",
     "scripts/test-*.ts",
     "test-rag-retrieval.ts",
-    "tmp-librarian"
+    "tmp-librarian",
+    "superpowers"
   ]
 }
