@@ -27,6 +27,7 @@
     "case-study:prep": "npm run case-study:enrich && npm run sanity:export:case-study",
     "sanity:export:case-study": "node --import tsx scripts/export-case-study-sanity-json.ts",
     "sanity:publish:case-study": "node --import tsx scripts/publish-case-study-to-sanity.ts",
+    "sanity:publish:guide": "node --import tsx scripts/publish-guide-to-sanity.ts",
     "mcp:generate:jina": "mcp-to-ai-sdk https://mcp.jina.ai",
     "mcp:generate:winston": "mcp-to-ai-sdk https://api.gowinston.ai/mcp/v1",
     "mcp:generate:dataforseo": "echo 'Run local DataForSEO MCP server first, then: mcp-to-ai-sdk http://localhost:3000/mcp'",
