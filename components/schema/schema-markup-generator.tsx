@@ -691,7 +691,7 @@ export function SchemaMarkupGenerator({ userId }: SchemaMarkupGeneratorProps) {
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center space-x-2">
                             {getSchemaTypeIcon(schema.schemaType)}
-                            <span className="font-medium">{schema.schemaData?.headline || schema.schemaData?.name || 'Untitled'}</span>
+                            <span className="font-medium">{(schema.schemaData as Record<string, unknown>)?.headline as string || (schema.schemaData as Record<string, unknown>)?.name as string || 'Untitled'}</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Badge className={getValidationColor(schema.validationStatus)}>
@@ -708,7 +708,7 @@ export function SchemaMarkupGenerator({ userId }: SchemaMarkupGeneratorProps) {
                           </div>
                         </div>
                         <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                          {schema.schemaData?.description || 'No description available'}
+                          {(schema.schemaData as Record<string, unknown>)?.description as string || 'No description available'}
                         </p>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">
