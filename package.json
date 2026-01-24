@@ -28,6 +28,7 @@
     "sanity:export:case-study": "node --import tsx scripts/export-case-study-sanity-json.ts",
     "sanity:publish:case-study": "node --import tsx scripts/publish-case-study-to-sanity.ts",
     "sanity:publish:guide": "node --import tsx scripts/publish-guide-to-sanity.ts",
+    "sanity:publish:post": "node --import tsx scripts/publish-post-to-sanity.ts",
     "sanity:publish:resource": "node --import tsx scripts/publish-resource-to-sanity.ts",
     "research:ai-marketing-keywords": "node --import tsx scripts/research-ai-marketing-keywords.ts",
     "mcp:generate:jina": "mcp-to-ai-sdk https://mcp.jina.ai",
