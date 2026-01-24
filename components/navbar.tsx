@@ -33,8 +33,8 @@ export function Navbar() {
                         { label: 'Dashboard', href: '/dashboard' },
                         { label: 'Features', href: '#features' },
                         { label: 'Pricing', href: '/prices' },
+                        { label: 'Blog', href: '/blog' },
                         { label: 'Guides', href: '/guides' },
-                        { label: 'FAQ', href: '/faq' },
                         { label: 'Resources', href: '/resources' },
                         { label: 'Case Studies', href: '/case-studies' },
                     ].map((item) => (
