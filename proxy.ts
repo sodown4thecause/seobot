@@ -6,6 +6,9 @@ const isDev = process.env.NODE_ENV === 'development'
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   '/',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/.well-known(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/studio(.*)',         // Sanity Studio (has its own auth)
