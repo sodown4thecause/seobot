@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Image from "next/image";
 import { PortableText, type SanityDocument } from "next-sanity";
 import imageUrlBuilder, { type SanityImageSource } from "@sanity/image-url";
@@ -5,8 +6,12 @@ import { client } from "@/sanity/lib/client";
 import Link from "next/link";
 import { Navbar } from '@/components/navbar';
 import { ArrowLeft, Clock } from 'lucide-react';
+import { portableTextComponents } from '@/components/content/portable-text-components'
+import { buildPageMetadata } from '@/lib/seo/metadata'
+import { SITE_URL } from '@/lib/seo/site'
 
 const GUIDE_QUERY = `*[_type == "guide" && slug.current == $slug][0]`;
+const GUIDE_META_QUERY = `*[_type == "guide" && slug.current == $slug][0]{title, excerpt, publishedAt, image}`;
 
 const builder = imageUrlBuilder(client);
 const urlFor = (source: SanityImageSource) => builder.image(source);
@@ -19,12 +24,30 @@ const difficultyColors: Record<string, string> = {
     advanced: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+    const guide = await client.fetch<SanityDocument | null>(GUIDE_META_QUERY, { slug: params.slug }, options)
+    const title = guide?.title ? `${guide.title} | FlowIntent Guides` : 'Guide | FlowIntent'
+    const description =
+        guide?.excerpt ||
+        'Read FlowIntent guides: practical AEO and AI SEO tutorials for earning citations, mentions, and rankings.'
+
+    const imageUrl = guide?.image ? urlFor(guide.image).width(1200).height(630).url() : undefined
+
+    return buildPageMetadata({
+        title,
+        description,
+        path: `/guides/${params.slug}`,
+        type: 'article',
+        imagePath: imageUrl,
+    })
+}
+
 export default async function GuidePage({
     params,
 }: {
-    params: Promise<{ slug: string }>;
+    params: { slug: string };
 }) {
-    const { slug } = await params;
+    const { slug } = params;
     const guide = await client.fetch<SanityDocument>(GUIDE_QUERY, { slug }, options);
 
     if (!guide) {
@@ -46,8 +69,41 @@ export default async function GuidePage({
         ? urlFor(guide.image).width(1200).height(630).url()
         : null;
 
+    // Article structured data for guides
+    const articleSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: guide.title,
+        description: guide.excerpt || 'FlowIntent guide on AEO and AI SEO strategies',
+        image: imageUrl || `${SITE_URL}/images/logo.png`,
+        datePublished: guide.publishedAt,
+        dateModified: guide._updatedAt || guide.publishedAt,
+        author: {
+            '@type': 'Organization',
+            name: 'FlowIntent',
+            url: SITE_URL,
+        },
+        publisher: {
+            '@type': 'Organization',
+            name: 'FlowIntent',
+            url: SITE_URL,
+            logo: {
+                '@type': 'ImageObject',
+                url: `${SITE_URL}/images/logo.png`,
+            },
+        },
+        mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': `${SITE_URL}/guides/${slug}`,
+        },
+    }
+
     return (
         <div className="min-h-screen bg-black text-white selection:bg-indigo-500/30">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+            />
             <Navbar />
 
             <main className="container mx-auto px-6 pt-32 pb-20">
@@ -92,7 +148,9 @@ export default async function GuidePage({
                     )}
 
                     <article className="prose prose-invert prose-lg max-w-none prose-headings:font-bold prose-headings:text-white prose-p:text-zinc-300 prose-a:text-indigo-400 prose-a:no-underline hover:prose-a:underline prose-img:rounded-xl prose-img:border prose-img:border-white/10 prose-hr:border-white/10">
-                        {Array.isArray(guide.body) && <PortableText value={guide.body} />}
+                        {Array.isArray(guide.body) && (
+                            <PortableText value={guide.body} components={portableTextComponents} />
+                        )}
                     </article>
                 </div>
             </main>

@@ -7,6 +7,7 @@ import { Navbar } from '@/components/navbar';
 import { ArrowLeft } from 'lucide-react';
 import { portableTextComponents } from '@/components/content/portable-text-components'
 import { buildPageMetadata } from '@/lib/seo/metadata'
+import { SITE_URL } from '@/lib/seo/site'
 
 const POST_QUERY = `*[_type == "post" && slug.current == $slug][0]{
   ...,
@@ -65,8 +66,41 @@ export default async function BlogPostPage({
         ? urlFor(post.image).width(1200).height(630).url()
         : null;
 
+    // Article structured data
+    const articleSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: post.title,
+        description: post.excerpt || 'FlowIntent blog post on AEO, AI SEO, and content marketing',
+        image: postImageUrl || `${SITE_URL}/images/logo.png`,
+        datePublished: post.publishedAt,
+        dateModified: post._updatedAt || post.publishedAt,
+        author: {
+            '@type': 'Organization',
+            name: 'FlowIntent',
+            url: SITE_URL,
+        },
+        publisher: {
+            '@type': 'Organization',
+            name: 'FlowIntent',
+            url: SITE_URL,
+            logo: {
+                '@type': 'ImageObject',
+                url: `${SITE_URL}/images/logo.png`,
+            },
+        },
+        mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': `${SITE_URL}/blog/${slug}`,
+        },
+    }
+
     return (
         <div className="min-h-screen bg-black text-white selection:bg-indigo-500/30">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+            />
             <Navbar />
 
             <main className="container mx-auto px-6 pt-32 pb-20">
