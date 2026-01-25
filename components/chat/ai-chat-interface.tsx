@@ -837,13 +837,32 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     if (conversationId) {
       if (lastLoadedConversationId.current !== conversationId) {
         lastLoadedConversationId.current = conversationId
-        // Load messages (Omitted for brevity, but implicit in real logic)
+        // Clear messages immediately to avoid stale content flash
+        setMessages([])
+        // Load messages for the switched conversation
+        const loadMessagesForConversation = async () => {
+          try {
+            const res = await fetch(`/api/conversations/${conversationId}/messages`)
+            if (res.ok) {
+              const data = await res.json()
+              const msgs = data?.messages ?? []
+              if (mountedRef.current && lastLoadedConversationId.current === conversationId) {
+                setMessages(msgs)
+              }
+            } else {
+              console.warn('[Chat] Failed to load messages for conversation:', conversationId)
+            }
+          } catch (err) {
+            console.error('[Chat] Error loading messages:', err)
+          }
+        }
+        loadMessagesForConversation()
       }
     } else if (!hasInitializedRef.current) {
       hasInitializedRef.current = true
       bootstrapConversation()
     }
-  }, [conversationId, bootstrapConversation])
+  }, [conversationId, bootstrapConversation, setMessages])
 
   useEffect(() => {
     if (autoSendMessage && autoSendMessage !== lastAutoSentMessage.current && !isBootstrapping && status === 'ready') {
