@@ -1,145 +1,128 @@
 import type { MetadataRoute } from 'next'
-import { getAllPostSlugs, getAllCaseStudySlugs, getAllResourceSlugs } from '@/lib/wordpress'
-import { statSync } from 'fs'
-import { join } from 'path'
+import { client } from '@/sanity/lib/client'
+import { SITE_URL } from '@/lib/seo/site'
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://flowintent.com'
+const baseUrl = SITE_URL
 
-// Fallback date: December 14, 2025 (when SEO foundation was added)
-const FALLBACK_DATE = new Date('2025-12-14T00:00:00Z')
+const LAST_MODIFIED = new Date()
 
-/**
- * Get the last modified date for a file path relative to the project root
- * Falls back to FALLBACK_DATE if file doesn't exist or can't be read
- */
-function getFileLastModified(filePath: string): Date {
+// Fetch slugs from Sanity
+async function getSanitySlugs(type: string): Promise<Array<{ slug: string; publishedAt: string }>> {
   try {
-    const fullPath = join(process.cwd(), filePath)
-    const stats = statSync(fullPath)
-    return stats.mtime
+    const results = await client.fetch(
+      `*[_type == $type && defined(slug.current)]{
+        "slug": slug.current,
+        publishedAt
+      }`,
+      { type },
+      { next: { revalidate: 3600 } } // Cache for 1 hour
+    )
+    return results || []
   } catch (error) {
-    // File doesn't exist or can't be read, use fallback
-    return FALLBACK_DATE
+    console.error(`Error fetching ${type} slugs:`, error)
+    return []
   }
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Static routes with real file modification times
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
-      lastModified: getFileLastModified('app/page.tsx'),
+      lastModified: LAST_MODIFIED,
       changeFrequency: 'daily',
       priority: 1.0,
     },
     {
       url: `${baseUrl}/prices`,
-      lastModified: getFileLastModified('app/prices/page.tsx'),
+      lastModified: LAST_MODIFIED,
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
       url: `${baseUrl}/blog`,
-      lastModified: getFileLastModified('app/blog/page.tsx'),
+      lastModified: LAST_MODIFIED,
       changeFrequency: 'daily',
       priority: 0.8,
     },
     {
       url: `${baseUrl}/guides`,
-      lastModified: getFileLastModified('app/guides/page.tsx'),
+      lastModified: LAST_MODIFIED,
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
       url: `${baseUrl}/faq`,
-      lastModified: getFileLastModified('app/faq/page.tsx'),
+      lastModified: LAST_MODIFIED,
       changeFrequency: 'weekly',
       priority: 0.7,
     },
     {
       url: `${baseUrl}/docs`,
-      lastModified: getFileLastModified('app/docs/page.tsx'),
+      lastModified: LAST_MODIFIED,
       changeFrequency: 'weekly',
       priority: 0.7,
     },
     {
       url: `${baseUrl}/contact`,
-      lastModified: getFileLastModified('app/contact/page.tsx'),
+      lastModified: LAST_MODIFIED,
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${baseUrl}/privacy`,
-      lastModified: getFileLastModified('app/privacy/page.tsx'),
+      lastModified: LAST_MODIFIED,
       changeFrequency: 'monthly',
       priority: 0.3,
     },
     {
       url: `${baseUrl}/terms`,
-      lastModified: getFileLastModified('app/terms/page.tsx'),
+      lastModified: LAST_MODIFIED,
       changeFrequency: 'monthly',
       priority: 0.3,
     },
   ]
 
-  // Dynamic routes from WordPress
+  // Dynamic routes from Sanity
   try {
-    const [blogSlugs, resourceSlugs, caseStudySlugs] = await Promise.all([
-      getAllPostSlugs(),
-      getAllResourceSlugs(),
-      getAllCaseStudySlugs(),
+    const [blogSlugs, resourceSlugs, caseStudySlugs, guideSlugs] = await Promise.all([
+      getSanitySlugs('post'),
+      getSanitySlugs('resource'),
+      getSanitySlugs('caseStudy'),
+      getSanitySlugs('guide'),
     ])
 
-    // WordPress dynamic routes use fallback date since they're fetched from WordPress
-    // (modification dates would need to be fetched from WordPress GraphQL if available)
-    const blogRoutes: MetadataRoute.Sitemap = blogSlugs.map((slug) => ({
-      url: `${baseUrl}/blog/${slug}`,
-      lastModified: FALLBACK_DATE,
+    const blogRoutes: MetadataRoute.Sitemap = blogSlugs.map((item) => ({
+      url: `${baseUrl}/blog/${item.slug}`,
+      lastModified: item.publishedAt ? new Date(item.publishedAt) : LAST_MODIFIED,
       changeFrequency: 'weekly' as const,
       priority: 0.7,
     }))
 
-    const resourceRoutes: MetadataRoute.Sitemap = resourceSlugs.map((slug) => ({
-      url: `${baseUrl}/resources/${slug}`,
-      lastModified: FALLBACK_DATE,
+    const resourceRoutes: MetadataRoute.Sitemap = resourceSlugs.map((item) => ({
+      url: `${baseUrl}/resources/${item.slug}`,
+      lastModified: item.publishedAt ? new Date(item.publishedAt) : LAST_MODIFIED,
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     }))
 
-    const caseStudyRoutes: MetadataRoute.Sitemap = caseStudySlugs.map((slug) => ({
-      url: `${baseUrl}/case-studies/${slug}`,
-      lastModified: FALLBACK_DATE,
+    const caseStudyRoutes: MetadataRoute.Sitemap = caseStudySlugs.map((item) => ({
+      url: `${baseUrl}/case-studies/${item.slug}`,
+      lastModified: item.publishedAt ? new Date(item.publishedAt) : LAST_MODIFIED,
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     }))
 
-    // Guide routes with real file modification times
-    const guideRoutes: MetadataRoute.Sitemap = [
-      {
-        url: `${baseUrl}/guides/answer-engine-optimization`,
-        lastModified: getFileLastModified('app/guides/answer-engine-optimization/page.tsx'),
-        changeFrequency: 'weekly',
-        priority: 0.8,
-      },
-      {
-        url: `${baseUrl}/guides/aeo-vs-geo`,
-        lastModified: getFileLastModified('app/guides/aeo-vs-geo/page.tsx'),
-        changeFrequency: 'weekly',
-        priority: 0.7,
-      },
-      {
-        url: `${baseUrl}/guides/chatgpt-seo`,
-        lastModified: getFileLastModified('app/guides/chatgpt-seo/page.tsx'),
-        changeFrequency: 'weekly',
-        priority: 0.7,
-      },
-    ]
+    const guideRoutes: MetadataRoute.Sitemap = guideSlugs.map((item) => ({
+      url: `${baseUrl}/guides/${item.slug}`,
+      lastModified: item.publishedAt ? new Date(item.publishedAt) : LAST_MODIFIED,
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    }))
 
     return [...staticRoutes, ...blogRoutes, ...resourceRoutes, ...caseStudyRoutes, ...guideRoutes]
   } catch (error) {
     console.error('Error generating sitemap:', error)
-    // Return at least static routes if WordPress fetch fails
+    // Return at least static routes if Sanity fetch fails
     return staticRoutes
   }
 }
-
