@@ -3,8 +3,9 @@ import Link from 'next/link'
 import { Navbar } from '@/components/navbar'
 
 export const metadata: Metadata = {
-  title: 'FAQ - Frequently Asked Questions | FlowIntent',
-  description: 'Get answers to common questions about Answer Engine Optimization (AEO), AI search visibility, and the FlowIntent platform.',
+  title: 'FAQ - Answer Engine Optimization & AI SEO Questions | FlowIntent',
+  description: 'Get answers to common questions about Answer Engine Optimization (AEO), intent-based marketing, AI search visibility, LLM mentions, and the FlowIntent platform.',
+  keywords: ['AEO FAQ', 'answer engine optimization questions', 'AI SEO FAQ', 'LLM mentions', 'intent based marketing FAQ'],
 }
 
 export default function FAQPage() {
@@ -112,8 +113,28 @@ export default function FAQPage() {
     },
   ]
 
+  // Build FAQPage schema from all questions
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.flatMap((section) =>
+      section.questions.map((faq) => ({
+        '@type': 'Question',
+        name: faq.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.a,
+        },
+      }))
+    ),
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       <Navbar />
 
       <div className="container mx-auto px-4 py-16 pt-32 max-w-4xl">

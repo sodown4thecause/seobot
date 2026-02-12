@@ -5,28 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Clock, Play, Search, Target, Zap, Link2, Settings, MapPin, MessageCircle, BarChart3 } from 'lucide-react'
+import { Clock, Play, Search } from 'lucide-react'
 import { getAllWorkflows } from '@/lib/workflows/registry'
 import type { Workflow } from '@/lib/workflows/types'
 import { useRouter } from 'next/navigation'
-
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-    'seo': <Target className="w-5 h-5" />,
-    'aeo': <MessageCircle className="w-5 h-5" />,
-    'link-building': <Link2 className="w-5 h-5" />,
-    'technical': <Settings className="w-5 h-5" />,
-    'local': <MapPin className="w-5 h-5" />,
-    'default': <Zap className="w-5 h-5" />,
-}
-
-const CATEGORY_COLORS: Record<string, string> = {
-    'seo': 'from-blue-500 to-cyan-500',
-    'aeo': 'from-purple-500 to-pink-500',
-    'link-building': 'from-orange-500 to-amber-500',
-    'technical': 'from-slate-500 to-zinc-500',
-    'local': 'from-green-500 to-emerald-500',
-    'default': 'from-indigo-500 to-violet-500',
-}
 
 export default function CampaignsPage() {
     const router = useRouter()
@@ -49,38 +31,29 @@ export default function CampaignsPage() {
     })
 
     const handleStartCampaign = (workflow: Workflow) => {
-        // Navigate to dashboard with workflow context
-        // The workflow will be started via the chat interface
         router.push(`/dashboard?workflow=${workflow.id}`)
     }
 
-    const getCategoryIcon = (category: string) => {
-        return CATEGORY_ICONS[category] || CATEGORY_ICONS['default']
-    }
-
-    const getCategoryColor = (category: string) => {
-        return CATEGORY_COLORS[category] || CATEGORY_COLORS['default']
-    }
-
     return (
-        <div className="container mx-auto py-6 space-y-6">
+        <div className="min-h-[calc(100vh-8rem)] bg-zinc-950 py-6 px-6">
+            <div className="container mx-auto space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold mb-2">SEO & AEO Campaigns</h1>
-                <p className="text-muted-foreground">
-                    Launch guided campaigns to improve your search rankings and AI visibility
+                <h1 className="text-2xl font-semibold text-zinc-100 mb-2">Campaigns</h1>
+                <p className="text-sm text-zinc-400">
+                    Launch guided campaigns to improve your search rankings
                 </p>
             </div>
 
             {/* Search and Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                     <Input
                         placeholder="Search campaigns..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
+                        className="pl-9 bg-zinc-900 border-zinc-800 text-zinc-100 placeholder:text-zinc-500"
                     />
                 </div>
                 <div className="flex gap-2 flex-wrap">
@@ -88,6 +61,7 @@ export default function CampaignsPage() {
                         variant={selectedCategory === null ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setSelectedCategory(null)}
+                        className={selectedCategory === null ? 'bg-zinc-800 text-zinc-100' : 'border-zinc-800 text-zinc-400'}
                     >
                         All
                     </Button>
@@ -97,7 +71,7 @@ export default function CampaignsPage() {
                             variant={selectedCategory === category ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setSelectedCategory(category)}
-                            className="capitalize"
+                            className={selectedCategory === category ? 'bg-zinc-800 text-zinc-100 capitalize' : 'border-zinc-800 text-zinc-400 capitalize'}
                         >
                             {category}
                         </Button>
@@ -106,48 +80,35 @@ export default function CampaignsPage() {
             </div>
 
             {/* Campaign Cards Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredWorkflows.map((workflow) => (
-                    <Card key={workflow.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
-                        {/* Gradient Header Bar */}
-                        <div className={`h-2 bg-gradient-to-r ${getCategoryColor(workflow.category || 'default')}`} />
-
+                    <Card key={workflow.id} className="bg-zinc-900/50 border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700 transition-all">
                         <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg bg-gradient-to-br ${getCategoryColor(workflow.category || 'default')} text-white`}>
-                                        {getCategoryIcon(workflow.category || 'default')}
-                                    </div>
-                                    <div>
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            {workflow.icon && <span>{workflow.icon}</span>}
-                                            {workflow.name}
-                                        </CardTitle>
-                                        {workflow.estimatedTime && (
-                                        <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                                            <Clock className="w-3 h-3" />
-                                            {workflow.estimatedTime}
-                                        </div>
-                                        )}
-                                    </div>
+                            <CardTitle className="text-lg text-zinc-100">
+                                {workflow.name}
+                            </CardTitle>
+                            {workflow.estimatedTime && (
+                                <div className="flex items-center gap-2 mt-1 text-sm text-zinc-500">
+                                    <Clock className="w-3 h-3" />
+                                    {workflow.estimatedTime}
                                 </div>
-                            </div>
+                            )}
                         </CardHeader>
 
                         <CardContent className="space-y-4">
-                            <CardDescription className="text-sm line-clamp-2">
+                            <CardDescription className="text-sm line-clamp-2 text-zinc-400">
                                 {workflow.description}
                             </CardDescription>
 
                             {/* Tags */}
                             <div className="flex flex-wrap gap-1.5">
                                 {workflow.tags?.slice(0, 3).map((tag) => (
-                                    <Badge key={tag} variant="secondary" className="text-xs">
+                                    <Badge key={tag} variant="secondary" className="text-xs bg-zinc-800 text-zinc-400 border-zinc-700">
                                         {tag}
                                     </Badge>
                                 ))}
                                 {(workflow.tags?.length ?? 0) > 3 && (
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge variant="outline" className="text-xs border-zinc-700 text-zinc-500">
                                         +{(workflow.tags?.length ?? 0) - 3}
                                     </Badge>
                                 )}
@@ -156,7 +117,7 @@ export default function CampaignsPage() {
                             {/* Start Button */}
                             <Button
                                 onClick={() => handleStartCampaign(workflow)}
-                                className="w-full group-hover:bg-primary/90 transition-colors"
+                                className="w-full bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border-zinc-700"
                             >
                                 <Play className="w-4 h-4 mr-2" />
                                 Start Campaign
@@ -168,13 +129,14 @@ export default function CampaignsPage() {
 
             {filteredWorkflows.length === 0 && (
                 <div className="text-center py-12">
-                    <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
-                    <p className="text-muted-foreground">
-                        Try adjusting your search or filter to find campaigns
+                    <h3 className="text-lg font-semibold mb-2 text-zinc-200">No campaigns found</h3>
+                    <p className="text-zinc-400">
+                        Try adjusting your search or filter
                     </p>
                 </div>
             )}
+            </div>
         </div>
     )
 }
+

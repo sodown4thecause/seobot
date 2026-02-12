@@ -12,7 +12,9 @@ export const runtime = 'edge'
 export async function GET(request: NextRequest) {
   try {
     // Get authenticated user (optional to avoid throwing)
-    const userId = await getUserId()
+    const userIdPromise = getUserId()
+
+    const userId = await userIdPromise
 
     if (!userId) {
       return NextResponse.json(
@@ -35,12 +37,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Query conversations
-    const conversationList = await db
+    const conversationListPromise = db
       .select()
       .from(conversations)
       .where(and(...conditions))
       .orderBy(desc(conversations.updatedAt))
       .limit(limit)
+    const conversationList = await conversationListPromise
 
     return NextResponse.json({ conversations: conversationList })
   } catch (error) {
@@ -59,7 +62,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user (optional to avoid throwing)
-    const userId = await getUserId()
+    const userIdPromise = getUserId()
+
+    const userId = await userIdPromise
 
     if (!userId) {
       return NextResponse.json(
@@ -69,7 +74,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const body = await request.json()
+    const bodyPromise = request.json()
+    const body = await bodyPromise
     const { agentId, title } = body
 
     if (!agentId) {

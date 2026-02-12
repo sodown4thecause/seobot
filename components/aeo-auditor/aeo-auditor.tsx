@@ -133,12 +133,18 @@ export function AEOAuditor() {
 function AuditInputForm({ url, brandName, error, onUrlChange, onBrandChange, onSubmit }: {
   url: string; brandName: string; error: string | null; onUrlChange: (v: string) => void; onBrandChange: (v: string) => void; onSubmit: (e: React.FormEvent) => void
 }) {
+  const urlId = 'audit-url'
+  const brandId = 'audit-brand'
+
   return (
     <motion.form key="input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onSubmit={onSubmit} className="relative z-10 space-y-16">
       <div className="grid md:grid-cols-2 gap-16">
         <div className="space-y-6">
-          <label className="text-xs font-mono uppercase tracking-[0.4em] text-white block font-black">Website URL / Domain</label>
+          <label htmlFor={urlId} className="text-xs font-mono uppercase tracking-[0.4em] text-white block font-black">
+            Website URL / Domain
+          </label>
           <Input
+            id={urlId}
             type="url"
             placeholder="WWW.YOURCOMPANY.COM"
             value={url}
@@ -148,8 +154,11 @@ function AuditInputForm({ url, brandName, error, onUrlChange, onBrandChange, onS
           />
         </div>
         <div className="space-y-6">
-          <label className="text-xs font-mono uppercase tracking-[0.4em] text-white block font-black">Brand Identity</label>
+          <label htmlFor={brandId} className="text-xs font-mono uppercase tracking-[0.4em] text-white block font-black">
+            Brand Identity
+          </label>
           <Input
+            id={brandId}
             type="text"
             placeholder="YOUR COMPANY NAME"
             value={brandName}
@@ -205,6 +214,8 @@ function AuditLoadingState({ brandName }: { brandName: string }) {
 }
 
 function EmailCaptureForm({ email, score, grade, isSubmitting, onEmailChange, onSubmit }: { email: string; score: number; grade: string; isSubmitting: boolean; onEmailChange: (v: string) => void; onSubmit: (e: React.FormEvent) => void }) {
+  const emailId = 'audit-email'
+
   return (
     <motion.div key="email" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10 py-8 text-center bg-black">
       <div className="mb-12">
@@ -218,8 +229,11 @@ function EmailCaptureForm({ email, score, grade, isSubmitting, onEmailChange, on
       </div>
       <form onSubmit={onSubmit} className="max-w-md mx-auto space-y-8">
         <div className="space-y-2 text-left">
-          <label className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 block">Intelligence Recipient / Email</label>
+          <label htmlFor={emailId} className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 block">
+            Intelligence Recipient / Email
+          </label>
           <Input
+            id={emailId}
             type="email"
             placeholder="YOUR@EMAIL.COM"
             value={email}
@@ -231,7 +245,7 @@ function EmailCaptureForm({ email, score, grade, isSubmitting, onEmailChange, on
         <Button type="submit" disabled={isSubmitting} className="w-full h-20 text-xl bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-[0.1em] transition-all">
           {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : 'Decrypt Intelligence Report'}</Button>
         <p className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest mt-6 italic">
-          * CONFIDENTIAL DATA • SECURE TRANSMISSION *
+          * CONFIDENTIAL DATA - SECURE TRANSMISSION *
         </p>
       </form>
     </motion.div>

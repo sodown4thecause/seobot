@@ -31,7 +31,7 @@ export function Navbar() {
                 <div className="hidden lg:flex items-center gap-1">
                     {[
                         { label: 'Dashboard', href: '/dashboard' },
-                        { label: 'Features', href: '#features' },
+                        { label: 'Features', href: '/#features' },
                         { label: 'Pricing', href: '/prices' },
                         { label: 'Blog', href: '/blog' },
                         { label: 'Guides', href: '/guides' },

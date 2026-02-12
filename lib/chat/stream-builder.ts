@@ -21,8 +21,12 @@ import { createTelemetryConfig } from '@/lib/observability/langfuse'
 import type { AgentType } from './intent-classifier'
 import type { Tool } from 'ai'
 
-// Using Moonshot Kimi K2 - advanced reasoning model for chat
-const CHAT_MODEL_ID = 'moonshotai/kimi-k2'
+// Primary chat model - Gemini 2.5 Flash Lite for fast inference with large context
+// Note: MiniMax M2.1 and Moonshot Kimi K2 had reliability issues
+const CHAT_MODEL_ID = 'moonshotai/kimi-k2.5'
+
+// Fallback models if primary fails (used via providerOptions)
+const FALLBACK_MODELS = ['google/gemini-2.0-flash', 'openai/gpt-4o-mini', 'google/gemini-2.0-flash-lite']
 
 export interface StreamOptions {
   modelMessages: ModelMessage[]
@@ -243,10 +247,10 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
     system: systemPrompt,
     tools: allTools,
     toolChoice: 'auto',
-    // AI SDK 6: Model fallbacks via Vercel AI Gateway
+    // AI SDK 6: Model fallbacks via Vercel AI Gateway - used if primary model fails
     providerOptions: {
       gateway: {
-        models: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash'],
+        models: FALLBACK_MODELS,
       },
     },
     // AI SDK 6: Use stopWhen instead of maxSteps

@@ -66,7 +66,9 @@ function getDateDaysAgo(days: number): string {
 export async function GET(_req: NextRequest) {
   try {
     // Get current user from Clerk
-    const user = await getCurrentUser()
+    const userPromise = getCurrentUser()
+
+    const user = await userPromise
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -74,7 +76,8 @@ export async function GET(_req: NextRequest) {
 
     // Check cache first (cache for 5 minutes)
     const cacheKey = `${CACHE_PREFIXES.USER_ANALYTICS}${user.id}`
-    const cached = await cacheGet<AnalyticsData>(cacheKey)
+    const cachedPromise = cacheGet<AnalyticsData>(cacheKey)
+    const cached = await cachedPromise
 
     if (cached) {
       return NextResponse.json({ data: cached, cached: true })
@@ -84,22 +87,43 @@ export async function GET(_req: NextRequest) {
     const _monthAgo = getDateDaysAgo(30)
 
     // Get user stats from database using Drizzle
-    let userStats
+    const messageCountPromise = db
+      .select({ count: chatMessages.id })
+      .from(chatMessages)
+      .where(eq(chatMessages.userId, user.id))
+    const frameworksPromise = db
+      .select({
+        name: writingFrameworks.name,
+        category: writingFrameworks.category,
+        usageCount: writingFrameworks.usageCount,
+      })
+      .from(writingFrameworks)
+      .orderBy(desc(writingFrameworks.usageCount))
+      .limit(10)
+    const featureUsagePromise = db
+      .select({ metadata: chatMessages.metadata })
+      .from(chatMessages)
+      .where(eq(chatMessages.userId, user.id))
+
+    let messageCount
+    let frameworks
+    let featureUsage
     try {
-      const messageCount = await db
-        .select({ count: chatMessages.id })
-        .from(chatMessages)
-        .where(eq(chatMessages.userId, user.id))
-      
-      userStats = {
-        totalMessages: messageCount?.length || 0,
-      }
+      [messageCount, frameworks, featureUsage] = await Promise.all([
+        messageCountPromise,
+        frameworksPromise,
+        featureUsagePromise,
+      ])
     } catch (userStatsError) {
-      console.error('[Analytics] Failed to fetch user stats:', userStatsError)
+      console.error('[Analytics] Failed to fetch analytics data:', userStatsError)
       return NextResponse.json(
-        { error: 'Failed to fetch user statistics' },
+        { error: 'Failed to fetch analytics data' },
         { status: 500 }
       )
+    }
+
+    const userStats = {
+      totalMessages: messageCount?.length || 0,
     }
 
     // Check if userStats query succeeded
@@ -135,16 +159,6 @@ export async function GET(_req: NextRequest) {
     }
 
     // Get popular frameworks using Drizzle
-    const frameworks = await db
-      .select({
-        name: writingFrameworks.name,
-        category: writingFrameworks.category,
-        usageCount: writingFrameworks.usageCount,
-      })
-      .from(writingFrameworks)
-      .orderBy(desc(writingFrameworks.usageCount))
-      .limit(10)
-
     const popularFrameworks = frameworks.map((f) => ({
       name: f.name,
       category: f.category,
@@ -152,14 +166,6 @@ export async function GET(_req: NextRequest) {
     }))
 
     // Get feature usage from chat_messages using Drizzle
-    const monthAgoDate = new Date()
-    monthAgoDate.setDate(monthAgoDate.getDate() - 30)
-    
-    const featureUsage = await db
-      .select({ metadata: chatMessages.metadata })
-      .from(chatMessages)
-      .where(eq(chatMessages.userId, user.id))
-
     const featureCounts = new Map<string, number>()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     featureUsage?.forEach((msg: any) => {

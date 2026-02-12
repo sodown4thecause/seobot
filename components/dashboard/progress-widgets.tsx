@@ -29,6 +29,16 @@ export function ProgressWidgets({
   rankingProgress,
   learningProgress
 }: ProgressWidgetsProps) {
+  const campaignCompletion = React.useMemo(() => {
+    if (!campaignProgress || campaignProgress.total <= 0) return null
+    return (campaignProgress.completed / campaignProgress.total) * 100
+  }, [campaignProgress])
+
+  const learningCompletion = React.useMemo(() => {
+    if (!learningProgress || learningProgress.totalTutorials <= 0) return null
+    return (learningProgress.tutorialsCompleted / learningProgress.totalTutorials) * 100
+  }, [learningProgress])
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {/* Active Campaigns */}
@@ -49,9 +59,9 @@ export function ProgressWidgets({
               <div className="text-sm text-zinc-500">
                 {campaignProgress.completed} completed
               </div>
-              {campaignProgress.total > 0 && (
+              {campaignCompletion !== null && (
                 <Progress
-                  value={(campaignProgress.completed / campaignProgress.total) * 100}
+                  value={campaignCompletion}
                   className="h-1.5 bg-zinc-800"
                   indicatorClassName="bg-zinc-400"
                 />
@@ -109,9 +119,9 @@ export function ProgressWidgets({
                   Current: {learningProgress.currentTutorial}
                 </div>
               )}
-              {learningProgress.totalTutorials > 0 && (
+              {learningCompletion !== null && (
                 <Progress
-                  value={(learningProgress.tutorialsCompleted / learningProgress.totalTutorials) * 100}
+                  value={learningCompletion}
                   className="h-1.5 bg-zinc-800"
                   indicatorClassName="bg-zinc-400"
                 />

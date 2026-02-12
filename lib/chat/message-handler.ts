@@ -56,17 +56,17 @@ export function extractLastUserMessageContent(messages: UIMessage[]): string {
  * Convert UIMessage[] from useChat to ModelMessage[] for streamText.
  * AI SDK 6: Uses convertToModelMessages (renamed from convertToCoreMessages).
  */
-export function convertToModelFormat(messages: UIMessage[]): ModelMessage[] {
+export async function convertToModelFormat(messages: UIMessage[]): Promise<ModelMessage[]> {
   console.log('[Message Handler] Incoming messages count:', messages.length)
 
   try {
-    const modelMessages = convertToModelMessages(messages)
+    const modelMessages = await convertToModelMessages(messages)
     console.log('[Message Handler] Converted to ModelMessage[], count:', modelMessages.length)
     return modelMessages
   } catch (err) {
     console.error('[Message Handler] convertToModelMessages failed:', err)
     // Fallback: try again with type assertion (AI SDK 6 compatibility)
-    return convertToModelMessages(messages as unknown as UIMessage[])
+    return await convertToModelMessages(messages as unknown as UIMessage[])
   }
 }
 

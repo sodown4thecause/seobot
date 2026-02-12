@@ -19,7 +19,13 @@ import { getEnhancedContentQualityTools } from '@/lib/ai/content-quality-enhance
 import { getAEOTools } from '@/lib/ai/aeo-tools'
 import { getAEOPlatformTools } from '@/lib/ai/aeo-platform-tools'
 import { searchWithPerplexity } from '@/lib/external-apis/perplexity'
-import { researchAgentTool, competitorAgentTool, frameworkRagTool } from '@/lib/agents/tools'
+import {
+  researchAgentTool,
+  competitorAgentTool,
+  frameworkRagTool,
+  generateArticleImagesTool,
+  generateHeroImageTool,
+} from '@/lib/agents/tools'
 import { onboardingTools } from '@/lib/onboarding/tools'
 import { serverEnv } from '@/lib/config/env'
 import type { AgentType } from './intent-classifier'
@@ -431,14 +437,24 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
     // Perplexity search tool
     perplexity_search: createPerplexityTool(),
 
-    // Web search for competitors (legacy alias)
-    web_search_competitors: competitorAgentTool,
+    // NOTE: Removed web_search_competitors alias - it was mapped to competitorAgentTool
+    // which returns hardcoded text, not structured JSON that CompetitorAnalysisTable can render.
+    // For real competitor data, the agent should use:
+    // - serp_organic_live_advanced (find who ranks)
+    // - dataforseo_labs_google_competitors_domain (find similar domains)
+    // - firecrawl_scrape (get competitor content)
 
     // Keyword suggestion tool
     suggest_keywords: createKeywordSuggestionTool(),
 
     // Agent specific tools
     ...(agent === 'content' ? { ...contentQualityTools, ...enhancedContentTools } : {}),
+    ...(agent === 'image'
+      ? {
+          generate_article_images: generateArticleImagesTool,
+          generate_hero_image: generateHeroImageTool,
+        }
+      : {}),
 
     // N8N Backlinks - Available for SEO/AEO agent OR when backlinks intent is detected
     ...((agent === 'seo-aeo' || intentTools?.includes('n8n_backlinks')) ? { n8n_backlinks: createBacklinksTool() } : {}),

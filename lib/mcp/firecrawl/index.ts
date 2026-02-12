@@ -8,6 +8,7 @@ import { firecrawl_searchToolWithClient } from "./firecrawl_search";
 import { firecrawl_crawlToolWithClient } from "./firecrawl_crawl";
 import { firecrawl_check_crawl_statusToolWithClient } from "./firecrawl_check_crawl_status";
 import { firecrawl_extractToolWithClient } from "./firecrawl_extract";
+import { firecrawl_agentToolWithClient } from "./firecrawl_agent";
 
 // Exports using a default client
 export const mcpFirecrawlTools = {
@@ -18,6 +19,7 @@ export const mcpFirecrawlTools = {
   firecrawl_check_crawl_status:
     firecrawl_check_crawl_statusToolWithClient(getMcpClient),
   firecrawl_extract: firecrawl_extractToolWithClient(getMcpClient),
+  firecrawl_agent: firecrawl_agentToolWithClient(getMcpClient),
 } as const;
 
 export const mcpFirecrawlToolsWithClient = (client: Promise<Client> | Client) =>
@@ -30,6 +32,7 @@ export const mcpFirecrawlToolsWithClient = (client: Promise<Client> | Client) =>
       () => client,
     ),
     firecrawl_extract: firecrawl_extractToolWithClient(() => client),
+    firecrawl_agent: firecrawl_agentToolWithClient(() => client),
   }) as const;
 
 // Individual tool exports
@@ -43,3 +46,6 @@ export const firecrawl_check_crawl_statusTool =
   firecrawl_check_crawl_statusToolWithClient(getMcpClient);
 export const firecrawl_extractTool =
   firecrawl_extractToolWithClient(getMcpClient);
+export const firecrawl_agentTool =
+  firecrawl_agentToolWithClient(getMcpClient);
+

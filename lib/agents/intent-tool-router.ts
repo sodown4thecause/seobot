@@ -58,14 +58,23 @@ export const INTENT_TOOL_MAP: Record<IntentCategory, string[]> = {
         'serp_locations',
     ],
 
-    // Competitor Analysis (6 tools)
+    // Competitor Analysis (12 tools - full workflow: find → analyze → scrape → keywords)
     competitor_analysis: [
+        // Step 1: Find competitors in SERP
+        'serp_organic_live_advanced',
+        // Step 2: Analyze competitor domains
         'dataforseo_labs_google_competitors_domain',
         'dataforseo_labs_google_domain_intersection',
         'dataforseo_labs_google_page_intersection',
         'dataforseo_labs_google_ranked_keywords',
         'dataforseo_labs_google_relevant_pages',
         'dataforseo_labs_google_subdomains',
+        // Step 3: Scrape competitor content
+        'firecrawl_scrape',
+        'firecrawl_crawl',
+        // Step 4: Keyword research for gaps
+        'dataforseo_labs_google_keyword_ideas',
+        'keywords_data_google_ads_search_volume',
     ],
 
     // Domain Metrics (5 tools)
@@ -153,7 +162,7 @@ export const INTENT_TOOL_MAP: Record<IntentCategory, string[]> = {
 const INTENT_DESCRIPTIONS: Record<IntentCategory, string> = {
     keyword_research: 'Finding keywords, search volume, keyword difficulty, keyword suggestions, keyword ideas, content ideas with keywords',
     serp_analysis: 'Analyzing search results, SERP features, ranking positions, what ranks for a query',
-    competitor_analysis: 'Comparing domains, finding competitor keywords, keyword gaps, domain overlap',
+    competitor_analysis: 'Full competitor workflow: finding top competitors in SERP, analyzing their keywords/domains, scraping their content, keyword gaps, domain overlap, outranking strategies',
     domain_metrics: 'Domain authority, traffic estimation, domain overview, WHOIS data, technology stack',
     backlinks: 'Backlink analysis, referring domains, link building, link profile',
     content_optimization: 'Content analysis, content scoring, phrase trends, citation analysis',
@@ -207,7 +216,8 @@ const IntentClassificationSchema = z.object({
         'seo-aeo',
         'content',
         'general',
-    ]).describe('Which agent should handle this: seo-aeo for analysis/research/data, content for writing full articles, general for simple questions'),
+        'image',
+    ]).describe('Which agent should handle this: seo-aeo for analysis/research/data, content for writing full articles, image for image generation, general for simple questions'),
 
     confidence: z.number().min(0).max(1).describe('Confidence in the classification (0-1)'),
 
@@ -261,7 +271,7 @@ const RawIntentClassificationSchema = z.object({
     primaryIntent: z.string().describe('The primary intent of the user query'),
     secondaryIntents: z.array(z.string()).optional().describe('Additional intents that may be relevant (0-2)'),
     recommendedAgent: z.string().optional().describe('Which agent should handle this'),
-    confidence: z.number().min(0).max(1).optional().describe('Confidence in the classification (0-1)'),
+    confidence: z.union([z.number(), z.string()]).optional().describe('Confidence in the classification (0-1 number or high/medium/low)'),
     reasoning: z.string().optional().describe('Brief explanation of why this intent was selected'),
     extractedEntities: z.object({
         domains: z.array(z.string()).optional(),
@@ -280,20 +290,43 @@ function sanitizeClassificationResponse(raw: z.infer<typeof RawIntentClassificat
         .filter(i => i !== primaryIntent) // Remove duplicates of primary
         .slice(0, 2) as IntentCategory[]
 
-    // Map recommended agent
-    let recommendedAgent: 'seo-aeo' | 'content' | 'general' = 'general'
+    // Map recommended agent (fallback to keyword-based heuristics)
+    let recommendedAgent: 'seo-aeo' | 'content' | 'general' | 'image' = 'general'
     const rawAgent = (raw.recommendedAgent || '').toLowerCase().trim()
     if (rawAgent.includes('seo') || rawAgent.includes('aeo')) {
         recommendedAgent = 'seo-aeo'
     } else if (rawAgent.includes('content')) {
         recommendedAgent = 'content'
+    } else if (rawAgent.includes('image')) {
+        recommendedAgent = 'image'
+    } else {
+        const queryLower = raw.reasoning?.toLowerCase() || ''
+        if (queryLower.includes('image') || queryLower.includes('infographic') || queryLower.includes('hero')) {
+            recommendedAgent = 'image'
+        }
+    }
+
+    // Convert string confidence to number
+    let confidence = 0.8 // default
+    if (typeof raw.confidence === 'number') {
+        confidence = raw.confidence
+    } else if (typeof raw.confidence === 'string') {
+        const confStr = raw.confidence.toLowerCase()
+        if (confStr === 'high' || confStr === 'very high') confidence = 0.9
+        else if (confStr === 'medium') confidence = 0.7
+        else if (confStr === 'low') confidence = 0.5
+        else {
+            // Try parsing as float
+            const parsed = parseFloat(raw.confidence)
+            if (!isNaN(parsed)) confidence = parsed
+        }
     }
 
     return {
         primaryIntent,
         secondaryIntents,
         recommendedAgent,
-        confidence: typeof raw.confidence === 'number' ? raw.confidence : 0.8,
+        confidence,
         reasoning: raw.reasoning || 'Classified based on query analysis',
         extractedEntities: raw.extractedEntities,
     }
@@ -317,7 +350,7 @@ export class IntentToolRouter {
             // Use generateObject with PERMISSIVE schema to allow for LLM formatting issues
             // Then sanitize the result to handle cases like ":backlinks" instead of "backlinks"
             const { object: rawResult } = await generateObject({
-                model: vercelGateway.languageModel('moonshotai/kimi-k2' as GatewayModelId),
+                model: vercelGateway.languageModel('moonshotai/kimi-k2.5' as GatewayModelId),
                 schema: RawIntentClassificationSchema,
                 prompt: `You are an SEO/AEO intent classifier. Analyze the user query and classify their intent.
 
@@ -331,12 +364,28 @@ ${intentList}
 AGENT SELECTION RULES:
 - seo-aeo: Use for keyword research, SERP analysis, competitor analysis, domain metrics, backlinks, trends, technical SEO, content IDEAS
 - content: Use ONLY when user explicitly asks to WRITE/CREATE/GENERATE a full blog post or article
+- image: Use when the user explicitly asks to generate images, hero images, infographics, or social variants
 - general: Use for simple questions or chat
 
-EXAMPLES:
+COMPLEX MULTI-INTENT QUERY HANDLING:
+When a query involves RANKING, COMPETITORS, or OUTRANKING - use "competitor_analysis" as primary.
+This intent includes: finding competitors in SERP, analyzing their content, scraping their pages, and keyword gaps.
+
+CRITICAL EXAMPLES FOR COMPETITOR/RANKING QUERIES:
+- "rank for 'X keyword', analyze competitors, tell me what content to create" → primaryIntent: "competitor_analysis", secondaryIntents: ["keyword_research", "serp_analysis"]
+- "find keyword opportunities and analyze top 3 competitors" → primaryIntent: "competitor_analysis", secondaryIntents: ["keyword_research"]
+- "what content do I need to outrank competitors for X" → primaryIntent: "competitor_analysis", secondaryIntents: ["web_scraping"]
+- "who ranks for X and what are they doing right" → primaryIntent: "competitor_analysis", secondaryIntents: ["serp_analysis"]
+- "analyze the top competitors for my keyword" → primaryIntent: "competitor_analysis"
+
+OTHER EXAMPLES:
 - "content ideas with keywords" → primaryIntent: "keyword_research", recommendedAgent: "seo-aeo"
 - "write a blog post about SEO" → primaryIntent: "content_optimization", recommendedAgent: "content"
+- "generate a hero image for a blog post" → primaryIntent: "content_optimization", recommendedAgent: "image"
+- "create an infographic about AI adoption" → primaryIntent: "content_optimization", recommendedAgent: "image"
 - "analyze backlinks for competitor.com" → primaryIntent: "backlinks", recommendedAgent: "seo-aeo"
+- "what are the search volumes for these keywords" → primaryIntent: "keyword_research"
+- "scrape this URL for content" → primaryIntent: "web_scraping"
 
 Classify this query with appropriate intent, agent recommendation, and confidence level.`,
             })
@@ -445,11 +494,32 @@ Use these tools in priority order:
 3. dataforseo_labs_google_historical_serp - for ranking history`,
 
             competitor_analysis: `
-FOCUS: Competitor Analysis
-Use these tools in priority order:
-1. dataforseo_labs_google_ranked_keywords - what competitor ranks for
-2. dataforseo_labs_google_domain_intersection - keyword overlap
-3. dataforseo_labs_google_competitors_domain - find similar domains`,
+FOCUS: Comprehensive Competitor Analysis & Ranking Strategy
+
+For queries about ranking, competitors, outranking, or content strategy to beat competitors, follow this EXACT 4-step workflow:
+
+STEP 1 - FIND COMPETITORS IN SERP (MANDATORY FIRST STEP):
+→ serp_organic_live_advanced with the target keyword
+This returns the actual top 10-20 ranking pages/domains. You MUST do this to know WHO the competitors are.
+
+STEP 2 - ANALYZE COMPETITOR DOMAINS:
+→ dataforseo_labs_google_ranked_keywords - what keywords each competitor ranks for
+→ dataforseo_labs_google_domain_intersection - find keyword gaps between user's domain and competitors
+→ dataforseo_labs_google_competitors_domain - discover additional similar competing domains
+
+STEP 3 - SCRAPE COMPETITOR CONTENT (CRITICAL FOR CONTENT STRATEGY):
+→ firecrawl_scrape - extract the actual content from top 3-5 ranking pages
+This shows WHAT content structure, topics, headings, and depth competitors use. Users NEED this to know what to create.
+
+STEP 4 - KEYWORD OPPORTUNITIES:
+→ dataforseo_labs_google_keyword_ideas - related keywords and opportunities for the topic
+→ keywords_data_google_ads_search_volume - get search volume and difficulty data
+
+CRITICAL RULES:
+- DO NOT skip the serp_organic_live_advanced step - you need SERP data to identify actual competitors
+- DO NOT skip the firecrawl_scrape step - users need to see competitor content to understand how to outrank them
+- DO NOT use ONLY perplexity_search - it cannot provide actual competitor SERP data, rankings, or scraped content
+- perplexity_search is supplementary only, for additional context after you have real data`,
 
             domain_metrics: `
 FOCUS: Domain Analysis

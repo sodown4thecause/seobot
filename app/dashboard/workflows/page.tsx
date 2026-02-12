@@ -68,7 +68,7 @@ export default function WorkflowsPage() {
     }
 
     return (
-        <div className="relative min-h-[calc(100vh-8rem)] flex flex-col bg-[#1a1a1a]">
+        <div className="relative min-h-[calc(100vh-8rem)] flex flex-col bg-zinc-950">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

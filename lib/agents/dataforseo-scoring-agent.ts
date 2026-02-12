@@ -91,13 +91,14 @@ export class DataForSEOScoringAgent {
 
       checkAborted()
 
-      // Run three independent API calls in parallel for better latency
+      // Run four independent API calls in parallel for better latency (~0.5-1s savings)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let citationData: any = {}
       let phraseTrends: Array<{ phrase: string; trend: number }> = []
       let relatedKeywords: string[] = []
+      let aiSearchMetrics: DataForSEOScoringResult['metrics']['aiSearchMetrics'] | undefined
 
-      const [searchResult, trendsResult, relatedResult] = await Promise.all([
+      const [searchResult, trendsResult, relatedResult, aiAnalysisResult] = await Promise.all([
         // Step 1: Get detailed citation data using content_analysis_search
         executeTool(mcpDataforseoTools.content_analysis_search, {
           keyword: params.targetKeyword,
@@ -129,6 +130,17 @@ export class DataForSEOScoringAgent {
         }, toolCtx).catch(error => {
           console.warn('[DataForSEO Scoring] Related keywords failed:', error)
           return null
+        }),
+        // Step 4: Get AI search volume metrics (moved here for parallel execution)
+        aiSearchOptimizer.analyzeAISearchVolume(
+          [params.targetKeyword],
+          'United States',
+          params.language || 'en',
+          {},
+          params.abortSignal
+        ).catch(error => {
+          console.warn('[DataForSEO Scoring] AI search volume analysis failed:', error)
+          return { keywords: [] }
         }),
       ])
 
@@ -168,6 +180,18 @@ export class DataForSEOScoringAgent {
         }
       }
 
+      // Process AI search analysis result
+      if (aiAnalysisResult && aiAnalysisResult.keywords.length > 0) {
+        const aiKeyword = aiAnalysisResult.keywords[0]
+        aiSearchMetrics = {
+          chatgptVolume: aiKeyword.chatgptVolume,
+          perplexityVolume: aiKeyword.perplexityVolume,
+          aiOpportunityScore: aiKeyword.aiOpportunityScore,
+          aiVsTraditionalRatio: aiKeyword.aiVsTraditionalRatio,
+        }
+        console.log('[DataForSEO Scoring] AI search metrics retrieved:', aiSearchMetrics)
+      }
+
       // Step 4: Fallback to summary if search didn't work
       if (!citationData || Object.keys(citationData).length === 0) {
         checkAborted()
@@ -185,38 +209,53 @@ export class DataForSEOScoringAgent {
         }
       }
 
-      // Step 5: Analyze content structure if URL is provided
+      // Step 5: Analyze content structure if URL is provided (PARALLEL)
       let contentStructure: DataForSEOScoringResult['metrics']['contentStructure'] | undefined
       let technicalQuality: number | undefined
 
       if (params.contentUrl) {
-        try {
-          checkAborted()
-          const parseResult = await executeTool(mcpDataforseoTools.on_page_content_parsing, {
+        checkAborted()
+        
+        // Run content parsing and Lighthouse in parallel for ~1-2s savings
+        const [parseResult, lighthouseResult] = await Promise.all([
+          executeTool(mcpDataforseoTools.on_page_content_parsing, {
             url: params.contentUrl!,
             enable_javascript: true,
-          }, toolCtx)
+          }, toolCtx).catch(error => {
+            console.warn('[DataForSEO Scoring] Content parsing failed:', error)
+            return null
+          }),
+          executeTool(mcpDataforseoTools.on_page_lighthouse, {
+            url: params.contentUrl!,
+            enable_javascript: true,
+          }, toolCtx).catch(error => {
+            console.warn('[DataForSEO Scoring] Lighthouse analysis failed:', error)
+            return null
+          }),
+        ])
 
-          const parseParsed = typeof parseResult === 'string' ? JSON.parse(parseResult) : parseResult
-          if (parseParsed && parseParsed.tasks && parseParsed.tasks[0]?.result) {
-            const pageData = parseParsed.tasks[0].result[0]
-            contentStructure = {
-              headings: pageData.headings?.length || 0,
-              links: pageData.links?.length || 0,
-              images: pageData.images?.length || 0,
-              lists: pageData.lists?.length || 0,
-            }
-            console.log('[DataForSEO Scoring] Content structure analyzed:', contentStructure)
-          }
-
-          // Get Lighthouse score for technical quality
+        // Process content parsing result
+        if (parseResult) {
           try {
-            checkAborted()
-            const lighthouseResult = await executeTool(mcpDataforseoTools.on_page_lighthouse, {
-              url: params.contentUrl!,
-              enable_javascript: true,
-            }, toolCtx)
+            const parseParsed = typeof parseResult === 'string' ? JSON.parse(parseResult) : parseResult
+            if (parseParsed && parseParsed.tasks && parseParsed.tasks[0]?.result) {
+              const pageData = parseParsed.tasks[0].result[0]
+              contentStructure = {
+                headings: pageData.headings?.length || 0,
+                links: pageData.links?.length || 0,
+                images: pageData.images?.length || 0,
+                lists: pageData.lists?.length || 0,
+              }
+              console.log('[DataForSEO Scoring] Content structure analyzed:', contentStructure)
+            }
+          } catch (parseError) {
+            console.warn('[DataForSEO Scoring] Failed to parse content structure:', parseError)
+          }
+        }
 
+        // Process Lighthouse result
+        if (lighthouseResult) {
+          try {
             const lighthouseParsed = typeof lighthouseResult === 'string' ? JSON.parse(lighthouseResult) : lighthouseResult
             if (lighthouseParsed && lighthouseParsed.tasks && lighthouseParsed.tasks[0]?.result) {
               const scores = lighthouseParsed.tasks[0].result[0]?.items?.[0]?.lighthouse_result
@@ -230,39 +269,13 @@ export class DataForSEOScoringAgent {
                 console.log('[DataForSEO Scoring] Lighthouse score:', technicalQuality)
               }
             }
-          } catch (error) {
-            console.warn('[DataForSEO Scoring] Lighthouse analysis failed:', error)
+          } catch (lighthouseError) {
+            console.warn('[DataForSEO Scoring] Failed to parse Lighthouse result:', lighthouseError)
           }
-        } catch (error) {
-          console.warn('[DataForSEO Scoring] Content parsing failed:', error)
         }
       }
 
-      // Step 6: Get AI search volume metrics
-      let aiSearchMetrics: DataForSEOScoringResult['metrics']['aiSearchMetrics'] | undefined
-      try {
-        checkAborted()
-        const aiAnalysis = await aiSearchOptimizer.analyzeAISearchVolume(
-          [params.targetKeyword],
-          'United States',
-          params.language || 'en',
-          {}, // Traditional volumes would come from keyword research
-          params.abortSignal
-        )
-        
-        if (aiAnalysis.keywords.length > 0) {
-          const aiKeyword = aiAnalysis.keywords[0]
-          aiSearchMetrics = {
-            chatgptVolume: aiKeyword.chatgptVolume,
-            perplexityVolume: aiKeyword.perplexityVolume,
-            aiOpportunityScore: aiKeyword.aiOpportunityScore,
-            aiVsTraditionalRatio: aiKeyword.aiVsTraditionalRatio,
-          }
-          console.log('[DataForSEO Scoring] AI search metrics retrieved:', aiSearchMetrics)
-        }
-      } catch (error) {
-        console.warn('[DataForSEO Scoring] AI search volume analysis failed:', error)
-      }
+      // Note: AI search metrics moved to initial Promise.all for parallel execution
 
       // Step 7: Calculate content metrics from actual content
       checkAborted()

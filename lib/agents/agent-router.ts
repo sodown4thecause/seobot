@@ -112,6 +112,11 @@ const GENERAL_TOOLS = [
   'client_ui',
 ] as const
 
+const IMAGE_TOOLS = [
+  'generate_article_images',
+  'generate_hero_image',
+] as const
+
 export class AgentRouter {
   /**
    * Route user query to appropriate specialized agent
@@ -150,11 +155,15 @@ export class AgentRouter {
     // PRIORITY: Check content creation BEFORE SEO analytics to avoid false routing
     const contentMatches = this.matchKeywords(messageLower, this.getContentKeywords())
     const seoMatches = this.matchKeywords(messageLower, this.getSEOKeywords())
+    const imageMatches = this.matchKeywords(messageLower, this.getImageKeywords())
 
     // Content agent takes priority if explicit content creation patterns are found
     const hasExplicitContentIntent = this.hasExplicitContentIntent(messageLower)
 
-    if (hasExplicitContentIntent || (contentMatches.length > 0 && contentMatches.length >= seoMatches.length)) {
+    if (
+      imageMatches.length === 0 &&
+      (hasExplicitContentIntent || (contentMatches.length > 0 && contentMatches.length >= seoMatches.length))
+    ) {
       const confidence = hasExplicitContentIntent
         ? 0.95
         : this.calculateConfidence(contentMatches.length, 0.8, 0.95)
@@ -170,7 +179,18 @@ export class AgentRouter {
       }
     }
 
-    // 3. SEO/AEO AGENT - Handle analytics, technical SEO, competitor analysis
+    // 3. IMAGE AGENT - Handle image generation requests
+    if (imageMatches.length > 0) {
+      return {
+        agent: AGENT_IDS.IMAGE,
+        confidence: this.calculateConfidence(imageMatches.length, 0.85, 0.95),
+        reasoning: `Image generation request: ${imageMatches.slice(0, 3).join(', ')}`,
+        tools: [...IMAGE_TOOLS],
+        matchedKeywords: imageMatches,
+      }
+    }
+
+    // 4. SEO/AEO AGENT - Handle analytics, technical SEO, competitor analysis
     if (seoMatches.length > 0) {
       return {
         agent: AGENT_IDS.SEO_AEO,
@@ -181,7 +201,7 @@ export class AgentRouter {
       }
     }
 
-    // 4. GENERAL AGENT - Handle general queries, simple questions
+    // 5. GENERAL AGENT - Handle general queries, simple questions
     return {
       agent: AGENT_IDS.GENERAL,
       confidence: 0.7,
@@ -342,6 +362,20 @@ export class AgentRouter {
   }
 
   /**
+   * Get image generation keywords for word boundary matching
+   */
+  private static getImageKeywords(): string[] {
+    return [
+      'image', 'images', 'hero image', 'featured image', 'header image',
+      'infographic', 'diagram', 'illustration', 'chart', 'visual', 'graphic',
+      'generate image', 'create image', 'make image',
+      'social image', 'og image', 'twitter image', 'pinterest image',
+      'instagram image', 'linkedin image',
+      'image set', 'image pack', 'image variants',
+    ]
+  }
+
+  /**
    * Check if query requires SEO analytics/technical analysis (legacy - kept for compatibility)
    */
   private static isSEOAnalyticsQuery(message: string): boolean {
@@ -481,6 +515,8 @@ export class AgentRouter {
         return this.getSEOSystemPrompt()
       case 'content':
         return this.getContentSystemPrompt()
+      case 'image':
+        return this.getImageSystemPrompt()
       case 'general':
       default:
         return this.getGeneralSystemPrompt()
@@ -651,5 +687,19 @@ IMPORTANT: Never use emojis in your responses. Keep all text professional and cl
 For specialized tasks requiring analytics, content creation, or onboarding, you can route users to the appropriate specialized agents.
 
 Keep responses helpful and informative while being concise and actionable.`
+  }
+
+  private static getImageSystemPrompt(): string {
+    return `You are an Image Agent specializing in generating visuals for marketing content.
+
+IMPORTANT: Never use emojis in your responses. Keep all text professional and clean.
+
+Your responsibilities:
+1. Create hero images aligned with the content topic
+2. Generate section images that reinforce key points
+3. Produce infographics when statistics are present
+4. Provide social image variants when requested
+
+Always summarize what you generated and include relevant alt text guidance.`
   }
 }

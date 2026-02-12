@@ -61,6 +61,12 @@ const serverEnvSchema = z.object({
   // Feature flags / experimental toggles
   ENABLE_CODEMODE_PRIMARY: z.string().optional(),
 
+  // Vercel Sandbox (for code mode) - use either OIDC or access token approach
+  VERCEL_OIDC_TOKEN: z.string().optional(),
+  VERCEL_TOKEN: z.string().optional(),
+  VERCEL_TEAM_ID: z.string().optional(),
+  VERCEL_PROJECT_ID: z.string().optional(),
+
   // MCP Server URLs
   WINSTON_MCP_URL: z.string().url().optional(),
   FIRECRAWL_MCP_URL: z.string().url().optional(),

@@ -144,7 +144,7 @@ export async function orchestrateChat(
   })
 
   // Step 7: Convert messages to model format
-  const modelMessages = convertToModelFormat(messages)
+  const modelMessages = await convertToModelFormat(messages)
 
   console.log('[Chat Orchestrator] Building stream with:', {
     messageCount: modelMessages.length,

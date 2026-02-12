@@ -225,8 +225,58 @@ class InsertBuilder {
 
 export const userProgress = { __tableName: 'user_progress' }
 
+class UpdateBuilder {
+  private whereCondition: unknown
+  private pendingValues: Partial<UserProgressRow> | null = null
+
+  set(values: Record<string, unknown>) {
+    this.pendingValues = values as Partial<UserProgressRow>
+    return this
+  }
+
+  where(condition: unknown) {
+    this.whereCondition = condition
+    return this
+  }
+
+  returning() {
+    const updated = this.updateRows()
+    return Promise.resolve(updated)
+  }
+
+  private updateRows(): UserProgressRow[] {
+    const matches = applyFilters(rows, this.whereCondition)
+    if (!matches.length) return []
+
+    const updatedRows = rows.map((row) => {
+      if (!matches.includes(row)) return row
+
+      const next: UserProgressRow = {
+        ...row,
+        ...this.pendingValues,
+      }
+
+      if (this.pendingValues?.completedAt) {
+        next.completedAt =
+          this.pendingValues.completedAt instanceof Date
+            ? this.pendingValues.completedAt
+            : new Date(this.pendingValues.completedAt as unknown as string)
+      }
+
+      if (this.pendingValues?.metadata) {
+        next.metadata = this.pendingValues.metadata as Record<string, unknown>
+      }
+
+      return next
+    })
+
+    rows.splice(0, rows.length, ...updatedRows)
+    return updatedRows.filter((row) => matches.includes(row))
+  }
+}
+
 export const db = {
   select: () => new SelectBuilder(),
   insert: (_table: unknown) => new InsertBuilder('user_progress'),
+  update: (_table: unknown) => new UpdateBuilder(),
 } as const
-

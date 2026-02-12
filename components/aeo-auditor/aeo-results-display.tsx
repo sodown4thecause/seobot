@@ -197,7 +197,7 @@ export function AEOResultsDisplay({ report, brandName, onReset, sessionId, tools
       </div>
 
       {/* Final CTA */}
-      <div className="bg-white p-12 md:p-20 text-center space-y-12">
+      <div className="hidden">
         <div className="space-y-4">
           <h4 className="text-4xl md:text-6xl font-black text-black uppercase italic tracking-tighter leading-none italic">SECURE YOUR <br /> POSITION</h4>
           <p className="text-zinc-600 text-lg font-light uppercase tracking-tighter leading-tight max-w-xl mx-auto">
@@ -218,6 +218,16 @@ export function AEOResultsDisplay({ report, brandName, onReset, sessionId, tools
             [ RELOAD SYSTEM / AUDIT ANOTHER ]
           </button>
         </div>
+      </div>
+
+      {/* Audit Another Button */}
+      <div className="text-center pt-8">
+        <button
+          onClick={() => { handleCTAClick('audit_another'); onReset() }}
+          className="text-xs font-mono font-bold text-zinc-500 uppercase tracking-[0.4em] hover:text-white transition-colors"
+        >
+          [ RELOAD SYSTEM / AUDIT ANOTHER ]
+        </button>
       </div>
     </motion.div>
   )

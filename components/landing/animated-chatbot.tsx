@@ -46,21 +46,20 @@ export function AnimatedChatbot() {
 
   useEffect(() => {
     if (currentMessageIndex >= demoMessages.length) {
-      // Reset after showing all messages
-      setTimeout(() => {
+      const resetTimer = setTimeout(() => {
         setVisibleMessages([])
         setCurrentMessageIndex(0)
         setTypingText('')
       }, 5000)
-      return
+
+      return () => clearTimeout(resetTimer)
     }
 
     const currentMessage = demoMessages[currentMessageIndex]
     const timer = setTimeout(() => {
       setIsTyping(true)
       setTypingText('')
-      
-      // Type out the message character by character
+
       let charIndex = 0
       const typingInterval = setInterval(() => {
         if (charIndex < currentMessage.text.length) {
@@ -69,16 +68,14 @@ export function AnimatedChatbot() {
         } else {
           clearInterval(typingInterval)
           setIsTyping(false)
-          
-          // Add message to visible messages
-          setVisibleMessages(prev => [...prev, currentMessage])
-          
-          // Move to next message
+
+          setVisibleMessages((prev) => [...prev, currentMessage])
+
           setTimeout(() => {
-            setCurrentMessageIndex(prev => prev + 1)
+            setCurrentMessageIndex((prev) => prev + 1)
           }, 1000)
         }
-      }, 30) // Typing speed
+      }, 30)
 
       return () => clearInterval(typingInterval)
     }, currentMessage.delay)

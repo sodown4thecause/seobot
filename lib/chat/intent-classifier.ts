@@ -8,7 +8,7 @@
 import { IntentToolRouter, type IntentClassification } from '@/lib/agents/intent-tool-router'
 import { AgentRouter } from '@/lib/agents/agent-router'
 
-export type AgentType = 'seo-aeo' | 'content' | 'general' | 'onboarding'
+export type AgentType = 'seo-aeo' | 'content' | 'general' | 'onboarding' | 'image'
 
 export interface ClassificationResult {
   agent: AgentType
@@ -63,7 +63,7 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
     })
 
     return {
-      agent: intentResult.classification.recommendedAgent as AgentType,
+        agent: intentResult.classification.recommendedAgent as AgentType,
       confidence: intentResult.classification.confidence,
       reasoning: intentResult.classification.reasoning,
       tools: intentResult.tools,
@@ -72,10 +72,10 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
     }
   } catch (error) {
     console.error('[Intent Classifier] LLM classification failed, falling back to keyword routing:', error)
-    
+
     // Fallback to keyword-based routing
     const keywordRouting = AgentRouter.routeQuery(query, context)
-    
+
     return {
       agent: keywordRouting.agent as AgentType,
       confidence: 0.7,
@@ -97,7 +97,7 @@ export function buildAgentSystemPrompt(
 ): string {
   // Import here to avoid circular dependency issues
   const { buildOnboardingSystemPrompt } = require('@/lib/onboarding/prompts')
-  
+
   const isOnboarding = context?.page === 'onboarding' || !!context?.onboarding
 
   if (isOnboarding && context?.onboarding) {
@@ -111,6 +111,16 @@ export function buildAgentSystemPrompt(
   }
 
   let systemPrompt = AgentRouter.getAgentSystemPrompt(agent, context)
+
+  // Add current date/time awareness
+  const now = new Date()
+  const datePrefix = `CURRENT DATE: ${now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })} (${now.getFullYear()})\n\n`
+  systemPrompt = datePrefix + systemPrompt
 
   // Add intent-specific guidance if we have classification
   if (allIntents.length > 0) {

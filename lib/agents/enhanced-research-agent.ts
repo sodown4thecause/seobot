@@ -98,37 +98,24 @@ export class EnhancedResearchAgent {
       // Check abort before starting
       checkAborted(abortSignal, 'before research start')
 
-      // Step 1: Detect search intent using DataForSEO
+      // Step 1 + 2: Detect search intent AND get SERP data (PARALLEL)
+      // Run both in parallel for ~1-2s savings
       let searchIntent: EnhancedResearchResult['searchIntent'] | undefined
-      try {
-        checkAborted(abortSignal, 'before search intent detection')
-        const intentResult = await executeTool(mcpDataforseoTools.dataforseo_labs_search_intent, {
+      let serpData: EnhancedResearchResult['serpData'] | undefined
+
+      checkAborted(abortSignal, 'before search intent + SERP analysis')
+      
+      const [intentResult, serpResult] = await Promise.all([
+        // Search intent detection
+        executeTool(mcpDataforseoTools.dataforseo_labs_search_intent, {
           keywords: [params.targetKeyword],
           language_code: params.languageCode || 'en',
-        })
-
-        const intentData = typeof intentResult === 'string' ? JSON.parse(intentResult) : intentResult
-        if (intentData && Array.isArray(intentData) && intentData.length > 0) {
-          const keywordData = intentData[0]
-          searchIntent = {
-            intent: keywordData.main_intent || 'informational',
-            probability: keywordData.main_intent_probability || 0,
-            alternativeIntents: keywordData.other_intents?.map((alt: { intent: string; probability?: number }) => ({
-              intent: alt.intent,
-              probability: alt.probability || 0,
-            })),
-          }
-          console.log('[Enhanced Research] Search intent detected:', searchIntent.intent, `(${(searchIntent.probability * 100).toFixed(1)}%)`)
-        }
-      } catch (error) {
-        console.warn('[Enhanced Research] Search intent detection failed:', error)
-      }
-
-      // Step 2: Get SERP data for competitor analysis
-      let serpData: EnhancedResearchResult['serpData'] | undefined
-      try {
-        checkAborted(abortSignal, 'before SERP analysis')
-        const serpResult = await executeTool(mcpDataforseoTools.serp_organic_live_advanced, {
+        }).catch(error => {
+          console.warn('[Enhanced Research] Search intent detection failed:', error)
+          return null
+        }),
+        // SERP analysis
+        executeTool(mcpDataforseoTools.serp_organic_live_advanced, {
           keyword: params.targetKeyword,
           language_code: params.languageCode || 'en',
           location_name: params.location || 'United States',
@@ -136,28 +123,57 @@ export class EnhancedResearchAgent {
           depth: 10,
           max_crawl_pages: 1,
           device: 'desktop',
-        })
+        }).catch(error => {
+          console.warn('[Enhanced Research] SERP analysis failed:', error)
+          return null
+        }),
+      ])
 
-        const serpParsed = typeof serpResult === 'string' ? JSON.parse(serpResult) : serpResult
-        if (serpParsed && serpParsed.tasks && serpParsed.tasks[0]?.result) {
-          const results = serpParsed.tasks[0].result[0]?.items || []
-          serpData = {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            topResults: results.slice(0, 10).map((item: any, idx: number) => ({
-              title: item.title || '',
-              url: item.url || '',
-              snippet: item.snippet || '',
-              position: idx + 1,
-            })),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            peopleAlsoAsk: serpParsed.tasks[0].result[0]?.people_also_ask?.map((paa: any) => paa.question) || [],
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            relatedSearches: serpParsed.tasks[0].result[0]?.related_searches?.map((rs: any) => rs.keyword) || [],
+      // Process intent result
+      if (intentResult) {
+        try {
+          const intentData = typeof intentResult === 'string' ? JSON.parse(intentResult) : intentResult
+          if (intentData && Array.isArray(intentData) && intentData.length > 0) {
+            const keywordData = intentData[0]
+            searchIntent = {
+              intent: keywordData.main_intent || 'informational',
+              probability: keywordData.main_intent_probability || 0,
+              alternativeIntents: keywordData.other_intents?.map((alt: { intent: string; probability?: number }) => ({
+                intent: alt.intent,
+                probability: alt.probability || 0,
+              })),
+            }
+            console.log('[Enhanced Research] Search intent detected:', searchIntent.intent, `(${(searchIntent.probability * 100).toFixed(1)}%)`)
           }
-          console.log('[Enhanced Research] SERP data retrieved:', serpData.topResults.length, 'top results')
+        } catch (parseError) {
+          console.warn('[Enhanced Research] Failed to parse intent result:', parseError)
         }
-      } catch (error) {
-        console.warn('[Enhanced Research] SERP analysis failed:', error)
+      }
+
+      // Process SERP result
+      if (serpResult) {
+        try {
+          const serpParsed = typeof serpResult === 'string' ? JSON.parse(serpResult) : serpResult
+          if (serpParsed && serpParsed.tasks && serpParsed.tasks[0]?.result) {
+            const results = serpParsed.tasks[0].result[0]?.items || []
+            serpData = {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              topResults: results.slice(0, 10).map((item: any, idx: number) => ({
+                title: item.title || '',
+                url: item.url || '',
+                snippet: item.snippet || '',
+                position: idx + 1,
+              })),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              peopleAlsoAsk: serpParsed.tasks[0].result[0]?.people_also_ask?.map((paa: any) => paa.question) || [],
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              relatedSearches: serpParsed.tasks[0].result[0]?.related_searches?.map((rs: any) => rs.keyword) || [],
+            }
+            console.log('[Enhanced Research] SERP data retrieved:', serpData.topResults.length, 'top results')
+          }
+        } catch (parseError) {
+          console.warn('[Enhanced Research] Failed to parse SERP result:', parseError)
+        }
       }
 
       // Step 2.5: Scrape top competitor pages with Firecrawl for detailed analysis

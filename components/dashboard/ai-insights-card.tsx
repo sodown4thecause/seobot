@@ -23,36 +23,20 @@ interface AIInsightsCardProps {
 }
 
 export function AIInsightsCard({ insights, maxDisplay = 3 }: AIInsightsCardProps) {
-  const displayedInsights = insights.slice(0, maxDisplay)
+  const displayedInsights = React.useMemo(() => insights.slice(0, maxDisplay), [insights, maxDisplay])
 
-  const getIcon = (type: AIInsight['type']) => {
-    switch (type) {
-      case 'opportunity':
-        return <TrendingUp className="w-5 h-5 text-green-500" />
-      case 'warning':
-        return <AlertCircle className="w-5 h-5 text-orange-500" />
-      case 'tip':
-        return <Lightbulb className="w-5 h-5 text-yellow-500" />
-      case 'trend':
-        return <TrendingUp className="w-5 h-5 text-blue-500" />
-      default:
-        return <Sparkles className="w-5 h-5" />
-    }
+  const iconMap: Record<AIInsight['type'], React.ReactNode> = {
+    opportunity: <TrendingUp className="w-5 h-5 text-green-500" />,
+    warning: <AlertCircle className="w-5 h-5 text-orange-500" />,
+    tip: <Lightbulb className="w-5 h-5 text-yellow-500" />,
+    trend: <TrendingUp className="w-5 h-5 text-blue-500" />,
   }
 
-  const getBadgeVariant = (type: AIInsight['type']) => {
-    switch (type) {
-      case 'opportunity':
-        return 'default'
-      case 'warning':
-        return 'destructive'
-      case 'tip':
-        return 'secondary'
-      case 'trend':
-        return 'outline'
-      default:
-        return 'outline'
-    }
+  const badgeVariantMap: Record<AIInsight['type'], 'default' | 'destructive' | 'secondary' | 'outline'> = {
+    opportunity: 'default',
+    warning: 'destructive',
+    tip: 'secondary',
+    trend: 'outline',
   }
 
   if (displayedInsights.length === 0) {
@@ -74,10 +58,10 @@ export function AIInsightsCard({ insights, maxDisplay = 3 }: AIInsightsCardProps
             className="p-4 rounded-lg border border-white/5 bg-black/20 hover:bg-white/5 transition-colors"
           >
             <div className="flex items-start gap-3">
-              {getIcon(insight.type)}
+              {iconMap[insight.type]}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <Badge variant={getBadgeVariant(insight.type)} className="text-[10px]">
+                  <Badge variant={badgeVariantMap[insight.type]} className="text-[10px]">
                     {insight.type}
                   </Badge>
                   {insight.confidence && (

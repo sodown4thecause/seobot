@@ -205,6 +205,18 @@ export const AVAILABLE_TOOLS: Record<string, AgentToolConfig> = {
     category: 'content',
     priority: 'medium',
   },
+  generate_article_images: {
+    name: 'generate_article_images',
+    description: 'Generate a full article image set (hero, sections, infographics, social variants)',
+    category: 'content',
+    priority: 'medium',
+  },
+  generate_hero_image: {
+    name: 'generate_hero_image',
+    description: 'Generate a single hero image for content',
+    category: 'content',
+    priority: 'medium',
+  },
 
   // Analysis Tools
   competitor_analysis: {
@@ -628,6 +640,56 @@ You receive the user's business profile including their brand voice (tone, style
   updatedAt: new Date(),
 }
 
+// Image Agent Configuration
+const imageAgentConfig: AgentConfig = {
+  id: AGENT_IDS.IMAGE,
+  name: 'Image Agent',
+  description: 'Generates complete article image sets with hero images, section visuals, infographics, and social variants',
+  personality: {
+    tone: 'creative',
+    style: 'visual',
+    traits: ['detail-oriented', 'brand-aware', 'consistent'],
+    responseLength: 'moderate',
+    communicationStyle: 'professional',
+  },
+  capabilities: {
+    canGenerateImages: true,
+    canAccessExternalAPIs: true,
+    canPerformSEOAnalysis: false,
+    canConductResearch: false,
+    canWriteContent: false,
+    canManageCampaigns: false,
+  },
+  tools: [
+    AVAILABLE_TOOLS.generate_article_images,
+    AVAILABLE_TOOLS.generate_hero_image,
+  ],
+  ragConfig: {
+    frameworks: false,
+    agentDocuments: false,
+    conversationHistory: true,
+    maxContextLength: 2000,
+  },
+  systemPrompt: `You are an Image Agent that generates AI-powered visuals for marketing content. Your job is to:
+
+1. Generate hero images that align with the topic and brand style
+2. Create section images that reinforce each key section
+3. Produce data visualizations and infographics when statistics are present
+4. Deliver platform-specific social image variants
+
+Guidelines:
+- Match brand colors and style when provided
+- Keep visuals professional and modern
+- Ensure images are relevant to the content and keyword intent
+- Provide alt text and SEO-friendly filenames
+
+When responding, summarize what images were generated and how they align with the content goals.`,
+
+  fallbackAgent: 'content',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+}
+
 // Default/General Agent Configuration
 const generalAgentConfig: AgentConfig = {
   id: 'general',
@@ -758,6 +820,7 @@ export class AgentRegistry implements AgentRegistry {
     this.agents.set(seoManagerConfig.id, seoManagerConfig)
     this.agents.set(marketingManagerConfig.id, marketingManagerConfig)
     this.agents.set(articleWriterConfig.id, articleWriterConfig)
+    this.agents.set(imageAgentConfig.id, imageAgentConfig)
     this.agents.set(generalAgentConfig.id, generalAgentConfig)
 
     console.log(`[Agent Registry] Initialized ${this.agents.size} agents`)
@@ -816,5 +879,6 @@ export {
   seoManagerConfig,
   marketingManagerConfig,
   articleWriterConfig,
+  imageAgentConfig,
   generalAgentConfig,
 }

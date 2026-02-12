@@ -2,13 +2,22 @@ import Link from "next/link";
 import { type SanityDocument } from "next-sanity";
 import { client } from "@/sanity/lib/client";
 import { Navbar } from '@/components/navbar';
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
 const GUIDES_QUERY = `*[
   _type == "guide"
   && defined(slug.current)
-]|order(publishedAt desc)[0...12]{_id, title, slug, publishedAt, difficulty, readTime, excerpt}`;
+]|order(publishedAt desc){_id, title, slug, publishedAt, difficulty, readTime, excerpt}`;
 
 const options = { next: { revalidate: 30 } };
+
+export const metadata = buildPageMetadata({
+  title: 'AEO & GEO Guides | FlowIntent',
+  description:
+    'Learn Answer Engine Optimization and Generative Engine Optimization with practical, step-by-step guides for AI visibility.',
+  path: '/guides',
+  keywords: ['AEO guides', 'GEO guides', 'AI SEO tutorials', 'LLM mentions'],
+})
 
 const FEATURED_GUIDES = [
   {

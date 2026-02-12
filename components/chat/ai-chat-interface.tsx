@@ -74,7 +74,6 @@ const TOOL_COMPONENTS: Record<string, any> = {
   dataforseo_labs_google_competitors_domain: CompetitorAnalysisTable,
   dataforseo_labs_google_domain_intersection: CompetitorAnalysisTable,
   dataforseo_labs_google_page_intersection: CompetitorAnalysisTable,
-  web_search_competitors: CompetitorAnalysisTable,
 
   // SERP tools
   serp_organic_live_advanced: SERPTable,
@@ -405,6 +404,35 @@ const PlanList = ({ steps }: { steps: PlanStep[] }) => (
   </div>
 )
 
+const MessageMeta = ({
+  timestamp,
+  status,
+}: {
+  timestamp: string | null
+  status: { label: string; tone: 'neutral' | 'warning' | 'success' | 'error' } | null
+}) => {
+  if (!timestamp && !status) return null
+
+  const toneClasses = status?.tone === 'error'
+    ? 'text-red-300 bg-red-500/10 border-red-500/20'
+    : status?.tone === 'warning'
+      ? 'text-amber-300 bg-amber-500/10 border-amber-500/20'
+      : status?.tone === 'success'
+        ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20'
+        : 'text-zinc-300 bg-white/5 border-white/10'
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+      {timestamp && <span>{timestamp}</span>}
+      {status && (
+        <span className={cn('rounded-full border px-2 py-0.5 font-semibold uppercase tracking-wide', toneClasses)}>
+          {status.label}
+        </span>
+      )}
+    </div>
+  )
+}
+
 const getMessageText = (message: any): string => {
   if (typeof message.content === 'string' && message.content.trim().length > 0) {
     return message.content
@@ -709,6 +737,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     }
 
     sendMessage({ text: data.text })
+    setInput('') // Clear input after sending (AI SDK 6 best practice)
   }, [conversationId, isBootstrapping, sendMessage, messages.length, setFocus])
 
   const handleComponentSubmit = useCallback((componentType: string, data: any) => {
@@ -865,6 +894,11 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   }, [conversationId, bootstrapConversation, setMessages])
 
   useEffect(() => {
+    if (!messagesEndRef.current) return
+    messagesEndRef.current.scrollIntoView({ behavior: isLoading ? 'smooth' : 'auto', block: 'end' })
+  }, [messages.length, isLoading])
+
+  useEffect(() => {
     if (autoSendMessage && autoSendMessage !== lastAutoSentMessage.current && !isBootstrapping && status === 'ready') {
       lastAutoSentMessage.current = autoSendMessage
       setTimeout(() => sendMessage({ text: autoSendMessage }), 300)
@@ -887,6 +921,10 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     const parts = message.parts || []
     const toolInvocations = message.toolInvocations || []
     const imageSources: { src: string; alt?: string }[] = []
+    const sources = extractSources(message)
+    const planSteps = extractPlanSteps(message)
+    const timestamp = getMessageTimestamp(message)
+    const status = getMessageStatus(message)
 
     // Extracting images (Logic preserved from previous view)
     parts.filter((p: any) => p?.type === 'file' && p?.mediaType?.startsWith('image/') && p?.url)
@@ -920,6 +958,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             </div>
           )
         )}
+        {sources.length > 0 && <SourcesList sources={sources} />}
+        {planSteps.length > 0 && <PlanList steps={planSteps} />}
+        <MessageMeta timestamp={timestamp} status={status} />
         {parts.map((part: any, idx: number) => {
           if (part.type?.startsWith('tool-')) {
             const tName = part.type.replace('tool-', '')
@@ -941,9 +982,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   if (isBootstrapping) {
     return (
       <div className={cn('flex h-full items-center justify-center', className)}>
-        <div className="flex flex-col items-center gap-3 text-zinc-400">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <p className="text-sm">Loading your chat workspace…</p>
+        <div className="flex flex-col items-center gap-3 text-zinc-400" role="status" aria-live="polite" aria-label="Loading chat workspace">
+          <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+          <p className="text-sm">Loading your chat workspace...</p>
         </div>
       </div>
     )
@@ -973,7 +1014,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         category: 'execution',
         prompt: 'Write a high-quality, SEO-optimized blog post about [topic]',
         reasoning: 'Create content that ranks well in search engines',
-        icon: '✍️',
+        icon: 'Write',
         pillar: 'production',
         priority: 1
       },
@@ -982,7 +1023,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         category: 'deep_dive',
         prompt: 'Analyze my top competitors and find content gaps',
         reasoning: 'Understand your competitive landscape',
-        icon: '🔍',
+        icon: 'Research',
         pillar: 'gap_analysis',
         priority: 2
       },
@@ -991,7 +1032,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         category: 'adjacent',
         prompt: 'Generate 10 content ideas that will rank well for [keyword]',
         reasoning: 'Discover new topics to target',
-        icon: '💡',
+        icon: 'Ideas',
         pillar: 'discovery',
         priority: 3
       },
@@ -1000,14 +1041,14 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         category: 'deep_dive',
         prompt: 'How can I improve my content for better EEAT?',
         reasoning: 'Enhance expertise, experience, authority, and trust signals',
-        icon: '🏆',
+        icon: 'EEAT',
         pillar: 'strategy',
         priority: 4
       },
     ]
 
     return (
-      <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-[#1a1a1a] font-chat", className)}>
+      <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-zinc-950 font-chat", className)}>
         <div className="w-full max-w-4xl space-y-8">
           <div className="text-center space-y-3">
             <h1 className="text-4xl md:text-5xl font-semibold text-zinc-100 tracking-tight">Flow Intent</h1>
@@ -1038,7 +1079,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // Final Chat Interface
   return (
-    <div className="flex w-full h-full overflow-hidden">
+    <div className="flex w-full h-full overflow-hidden bg-zinc-950">
       <div className={cn("flex flex-col h-full transition-all duration-500", activeArtifact ? "w-1/2 border-r border-zinc-800" : "w-full")}>
         <Conversation className="flex-1 overflow-hidden">
           <ConversationContent className="px-4 py-8 max-w-3xl mx-auto space-y-8">
@@ -1050,7 +1091,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   {/* Only show regenerate button on last assistant message */}
                   {m.role === 'assistant' && idx === messages.length - 1 && !isLoading && (
                     <div className="mt-2">
-                      <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors" onClick={() => regenerate?.()}>Regenerate</button>
+                      <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
                     </div>
                   )}
                 </MessageContent>
@@ -1060,8 +1101,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               <AIMessage from="assistant">
                 <MessageAvatar isUser={false} name="AI" />
                 <MessageContent>
-                  <div className="flex items-center gap-2 text-zinc-400">
-                    <Loader2 size={16} className="text-indigo-400 animate-spin" />
+                  <div className="flex items-center gap-2 text-zinc-400" role="status" aria-live="polite" aria-label="AI is thinking">
+                    <Loader2 size={16} className="text-indigo-400 animate-spin" aria-hidden="true" />
                     <span>Thinking...</span>
                   </div>
                 </MessageContent>
@@ -1073,9 +1114,21 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         </Conversation>
 
         <div className="p-4">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto space-y-3">
             <ProactiveSuggestions suggestions={proactiveSuggestions} onSuggestionClick={(p) => handleSendMessage({ text: p })} isLoading={isLoading} />
-            <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />
+            <div className="flex items-center gap-3">
+              <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />
+              {isLoading && (
+                <button
+                  type="button"
+                  onClick={() => stop?.()}
+                  aria-label="Stop generating"
+                  className="h-10 shrink-0 rounded-full border border-zinc-700/50 bg-zinc-800/50 px-4 text-xs font-semibold uppercase tracking-wide text-zinc-200 hover:bg-zinc-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 cursor-pointer"
+                >
+                  Stop
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1083,8 +1136,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       <AnimatePresence>
         {activeArtifact && (
           <motion.div initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 100 }} className="w-1/2 h-full border-l border-zinc-800 bg-zinc-950 flex flex-col relative">
-            <button onClick={() => setActiveArtifactId(null)} className="absolute top-4 right-4 z-50 p-2 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100">
-              <X className="w-4 h-4" />
+            <button onClick={() => setActiveArtifactId(null)} aria-label="Close artifact panel" className="absolute top-4 right-4 z-50 p-2 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 cursor-pointer">
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
             {activeArtifact.type === 'keyword' && <KeywordArtifact data={activeArtifact.data} status={activeArtifact.status} />}
             {activeArtifact.type === 'backlink' && <BacklinkArtifact data={activeArtifact.data} status={activeArtifact.status} />}

@@ -1,16 +1,43 @@
+import type { Metadata } from 'next'
 import { PortableText, type SanityDocument } from "next-sanity";
 import imageUrlBuilder, { type SanityImageSource } from "@sanity/image-url";
 import { client } from "@/sanity/lib/client";
 import Link from "next/link";
 import { Navbar } from '@/components/navbar';
 import { ArrowLeft } from 'lucide-react';
+import { buildPageMetadata } from '@/lib/seo/metadata'
+import { SITE_URL } from '@/lib/seo/site'
 
 const CASE_STUDY_QUERY = `*[_type == "caseStudy" && slug.current == $slug][0]`;
+const CASE_STUDY_META_QUERY = `*[_type == "caseStudy" && slug.current == $slug][0]{title, excerpt, publishedAt, image}`;
 
 const builder = imageUrlBuilder(client);
 const urlFor = (source: SanityImageSource) => builder.image(source);
 
 const options = { next: { revalidate: 30 } };
+
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+    const { slug } = await params
+    const caseStudy = await client.fetch<SanityDocument | null>(CASE_STUDY_META_QUERY, { slug }, options)
+
+    const title = caseStudy?.title ? `${caseStudy.title} | FlowIntent Case Studies` : 'Case Study | FlowIntent'
+    const description =
+        caseStudy?.excerpt ||
+        'Read a FlowIntent case study on how teams improve search performance and AI answer visibility.'
+    const imageUrl = caseStudy?.image ? urlFor(caseStudy.image).width(1200).height(630).url() : undefined
+
+    return buildPageMetadata({
+        title,
+        description,
+        path: `/case-studies/${slug}`,
+        type: 'article',
+        imagePath: imageUrl,
+    })
+}
 
 export default async function CaseStudyPage({
     params,
@@ -39,8 +66,76 @@ export default async function CaseStudyPage({
         ? urlFor(study.image).width(1200).height(630).url()
         : null;
 
+    const caseStudySchema = {
+        '@context': 'https://schema.org',
+        '@graph': [
+            {
+                '@type': 'Article',
+                '@id': `${SITE_URL}/case-studies/${slug}#article`,
+                headline: study.title,
+                description: study.excerpt || 'FlowIntent SEO case study',
+                image: imageUrl || `${SITE_URL}/images/logo.png`,
+                datePublished: study.publishedAt,
+                dateModified: study._updatedAt || study.publishedAt,
+                author: {
+                    '@type': 'Organization',
+                    '@id': 'https://flowintent.com/#organization',
+                    name: 'FlowIntent',
+                    url: SITE_URL,
+                },
+                publisher: {
+                    '@type': 'Organization',
+                    '@id': 'https://flowintent.com/#organization',
+                    name: 'FlowIntent',
+                    url: SITE_URL,
+                    logo: {
+                        '@type': 'ImageObject',
+                        url: `${SITE_URL}/logo-new.png`,
+                    },
+                },
+                mainEntityOfPage: {
+                    '@type': 'WebPage',
+                    '@id': `${SITE_URL}/case-studies/${slug}`,
+                },
+                isPartOf: { '@id': 'https://flowintent.com/#website' },
+                ...(study.industry ? { articleSection: study.industry } : {}),
+                ...(Array.isArray(study.results) && study.results.length > 0
+                    ? { keywords: study.results.join(', ') }
+                    : {}),
+                inLanguage: 'en-US',
+            },
+            {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                    {
+                        '@type': 'ListItem',
+                        position: 1,
+                        name: 'Home',
+                        item: SITE_URL,
+                    },
+                    {
+                        '@type': 'ListItem',
+                        position: 2,
+                        name: 'Case Studies',
+                        item: `${SITE_URL}/case-studies`,
+                    },
+                    {
+                        '@type': 'ListItem',
+                        position: 3,
+                        name: study.title,
+                        item: `${SITE_URL}/case-studies/${slug}`,
+                    },
+                ],
+            },
+        ],
+    }
+
     return (
         <div className="min-h-screen bg-black text-white selection:bg-indigo-500/30">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(caseStudySchema) }}
+            />
             <Navbar />
 
             <main className="container mx-auto px-6 pt-32 pb-20">

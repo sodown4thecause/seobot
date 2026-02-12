@@ -14,9 +14,11 @@ import {
   Pin,
   Archive,
   Edit3,
-  Target,
-  BarChart3,
   Workflow,
+  Rocket,
+  Bot,
+  ImageIcon,
+  FileText,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -24,10 +26,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Logo } from '@/components/ui/logo'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useAgent } from '@/components/providers/agent-provider'
-import { ModeIndicator } from '@/components/user-mode/mode-indicator'
 
 export interface SidebarProps {
   collapsed: boolean
@@ -38,12 +39,11 @@ export interface SidebarProps {
 const MAIN_NAV = [
   { name: 'Home', href: '/dashboard', icon: Home },
   { name: 'Workflows', href: '/dashboard/workflows', icon: Workflow },
-  { name: 'SEO Tools', href: '/dashboard/seo-tools', icon: Search },
-  { name: 'Content Zone', href: '/dashboard/content/zone', icon: Edit3 },
-  { name: 'Blog', href: '/dashboard/blog', icon: BookOpen },
+  { name: 'Campaigns', href: '/dashboard/campaigns', icon: Rocket },
+  { name: 'AEO Center', href: '/dashboard/aeo', icon: Bot },
+  { name: 'Content Zone', href: '/dashboard/content-zone', icon: FileText },
+  { name: 'Image Studio', href: '/dashboard/images', icon: ImageIcon },
   { name: 'Tutorials', href: '/dashboard/tutorials', icon: BookOpen },
-  { name: 'Campaigns', href: '/dashboard/campaigns', icon: Target },
-  { name: 'Progress', href: '/dashboard/progress', icon: BarChart3 },
 ]
 
 const safeFormatDistanceToNow = (date: Date) => {
@@ -57,6 +57,7 @@ const safeFormatDistanceToNow = (date: Date) => {
 
 export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { state, actions } = useAgent()
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isCreating, setIsCreating] = React.useState(false)
@@ -92,6 +93,10 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
       if (conversation) {
         actions.setActiveConversation(conversation)
         actions.clearMessages()
+        // Navigate to dashboard if not already there
+        if (pathname !== '/dashboard') {
+          router.push('/dashboard')
+        }
       }
     } finally {
       setIsCreating(false)
@@ -110,9 +115,11 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
 
   return (
     <aside
+      role="navigation"
+      aria-label="Main navigation"
       className={cn(
         'fixed left-0 top-0 h-screen z-40',
-        'bg-[#0c0c0e]/90 backdrop-blur-xl border-r border-white/[0.08]',
+        'bg-zinc-950/90 backdrop-blur-xl border-r border-zinc-800/50',
         'transition-all duration-300 ease-in-out flex flex-col',
         collapsed ? 'w-[72px]' : 'w-[280px]'
       )}
@@ -132,29 +139,31 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
         {!collapsed ? (
           <>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" aria-hidden="true" />
               <Input
                 placeholder="Search chats"
+                aria-label="Search conversations"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                className="bg-white/[0.05] border-0 h-10 pl-9 pr-9 text-sm rounded-xl text-zinc-300 placeholder:text-zinc-600 focus-visible:ring-1 focus-visible:ring-white/20 transition-all"
+                className="bg-zinc-900/50 border-0 h-10 pl-9 pr-9 text-sm rounded-xl text-zinc-300 placeholder:text-zinc-600 focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-950 transition-all"
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/10 rounded p-0.5">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-zinc-800/80 rounded p-0.5" aria-hidden="true">
                 <Command className="h-3 w-3 text-zinc-500" />
               </div>
             </div>
             <Button
               onClick={handleNewConversation}
               disabled={isCreating}
-              className="mt-3 w-full rounded-xl bg-white text-black hover:bg-zinc-200 transition"
+              aria-label="Create new chat"
+              className="mt-3 w-full rounded-xl bg-white text-black hover:bg-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 transition cursor-pointer"
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               New chat
             </Button>
           </>
         ) : (
           <>
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10">
+            <Button variant="ghost" size="icon" aria-label="Search conversations" className="h-10 w-10 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/50 focus-visible:ring-2 focus-visible:ring-zinc-500 cursor-pointer">
               <Search className="h-5 w-5" />
             </Button>
             <Button
@@ -162,7 +171,8 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
               size="icon"
               onClick={handleNewConversation}
               disabled={isCreating}
-              className="h-10 w-10 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10"
+              aria-label="Create new chat"
+              className="h-10 w-10 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/50 focus-visible:ring-2 focus-visible:ring-zinc-500 cursor-pointer"
             >
               <Plus className="h-5 w-5" />
             </Button>
@@ -183,17 +193,17 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group',
+                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group cursor-pointer',
                     isActive
-                      ? 'bg-white/10 text-white font-medium'
-                      : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/5'
+                      ? 'bg-zinc-800/50 text-white font-medium'
+                      : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500'
                   )}
                   title={collapsed ? item.name : undefined}
                 >
                   <Icon className={cn(
                     "h-5 w-5 flex-shrink-0 transition-colors",
                     isActive ? "text-white" : "text-zinc-500 group-hover:text-zinc-300"
-                  )} />
+                  )} aria-hidden="true" />
                   {!collapsed && <span>{item.name}</span>}
                 </Link>
               )
@@ -214,8 +224,16 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
             )}
             <div className="space-y-1">
               {filteredConversations.length === 0 && (
-                <div className="text-center text-xs text-zinc-500 py-4">
-                  {searchQuery ? 'No chats match your search.' : 'No chats yet.'}
+                <div className="text-center py-8 px-4">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-zinc-800/50 flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-zinc-600" aria-hidden="true" />
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    {searchQuery ? 'No chats match your search.' : 'No conversations yet.'}
+                  </p>
+                  {!searchQuery && (
+                    <p className="text-xs text-zinc-600 mt-1">Start a new chat to begin</p>
+                  )}
                 </div>
               )}
               {filteredConversations.map((conversation) => {
@@ -231,15 +249,16 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
                   <div
                     key={conversation.id}
                     className={cn(
-                      'group relative flex items-start gap-3 rounded-xl px-3 py-3 transition-all',
+                      'group relative flex items-start gap-3 rounded-xl px-3 py-3 transition-all cursor-pointer',
                       isActive
-                        ? 'bg-white/10 text-white shadow-inner'
-                        : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'
+                        ? 'bg-zinc-800/50 text-white shadow-inner'
+                        : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/30'
                     )}
                   >
                     <button
                       onClick={() => handleSelectConversation(conversation)}
-                      className="flex flex-1 flex-col text-left"
+                      aria-label={`Open conversation: ${conversation.title}`}
+                      className="flex flex-1 flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded-lg"
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium truncate">
@@ -263,7 +282,7 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
-                          className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-white transition"
+                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-zinc-500 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded-lg p-1 transition cursor-pointer"
                           aria-label="Conversation actions"
                         >
                           <MoreHorizontal className="h-4 w-4" />
@@ -300,19 +319,14 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
         </div>
       </ScrollArea>
 
-      {/* Mode Indicator */}
-      {!collapsed && (
-        <div className="px-4 pb-2">
-          <ModeIndicator variant="full" className="w-full" />
-        </div>
-      )}
-
       {/* User Profile / Footer */}
-      <div className="p-4 border-t border-white/[0.05]">
+      <div className="p-4 border-t border-zinc-800/50">
         <button className={cn(
-          "flex items-center gap-3 w-full rounded-xl transition-colors hover:bg-white/5 p-2",
+          "flex items-center gap-3 w-full rounded-xl transition-colors hover:bg-zinc-800/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 p-2 cursor-pointer",
           collapsed ? "justify-center" : ""
-        )}>
+        )}
+          aria-label="User account menu"
+        >
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white">
             <User className="w-4 h-4" />
           </div>
@@ -322,7 +336,7 @@ export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
               <p className="text-xs text-zinc-500 truncate">Free Plan</p>
             </div>
           )}
-          {!collapsed && <MoreHorizontal className="h-4 w-4 text-zinc-500" />}
+          {!collapsed && <MoreHorizontal className="h-4 w-4 text-zinc-500" aria-hidden="true" />}
         </button>
       </div>
     </aside>
