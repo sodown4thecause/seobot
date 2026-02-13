@@ -85,12 +85,13 @@ export function ProactiveSuggestions({
                             key={`${suggestion.taskKey}-${index}`}
                             onClick={() => onSuggestionClick(suggestion.prompt)}
                             disabled={isLoading}
+                            aria-label={`Suggested action: ${suggestion.prompt}`}
                             className={cn(
                                 'group relative flex items-start gap-3 p-3 rounded-xl border transition-all text-left',
                                 style.bg,
                                 style.border,
                                 isLoading && 'opacity-50 cursor-not-allowed',
-                                !isLoading && 'cursor-pointer'
+                                !isLoading && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500'
                             )}
                         >
                             {/* Icon */}
@@ -119,7 +120,9 @@ export function ProactiveSuggestions({
                             <div className={cn(
                                 'flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity',
                                 style.text
-                            )}>
+                            )}
+                            aria-hidden="true"
+                            >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>
@@ -155,13 +158,14 @@ export function ProactiveSuggestionsCompact({
                         key={`${suggestion.taskKey}-${index}`}
                         onClick={() => onSuggestionClick(suggestion.prompt)}
                         disabled={isLoading}
+                        aria-label={`Suggested action: ${suggestion.prompt}`}
                         className={cn(
                             'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
                             style.bg,
                             style.border,
                             style.text,
                             isLoading && 'opacity-50 cursor-not-allowed',
-                            !isLoading && 'cursor-pointer'
+                            !isLoading && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500'
                         )}
                     >
                         <span>{suggestion.icon}</span>

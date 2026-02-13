@@ -106,6 +106,12 @@ export class RAGWriterOrchestrator {
   private traceIdGenerator = createIdGenerator()
 
   constructor() {
+    // Pre-warm MCP connections (fire and forget) for faster first request
+    Promise.all([
+      import('@/lib/mcp/dataforseo/client').then(m => m.getMcpClient()),
+      import('@/lib/mcp/firecrawl/client').then(m => m.getMcpClient()),
+    ]).catch(err => console.warn('[Orchestrator] MCP pre-warm failed:', err))
+
     this.researchAgent = new EnhancedResearchAgent()
     this.writerAgent = new ContentWriterAgent()
     this.scoringAgent = new DataForSEOScoringAgent()
@@ -238,48 +244,29 @@ export class RAGWriterOrchestrator {
           }
         }
 
-        // Step 1: Research Phase (Perplexity + RAG + DataForSEO)
-        console.log('[Orchestrator] Phase 1: Research')
+        // Step 1 + 1.5: Research + Frase Brief Generation (PARALLEL)
+        // Run research and Frase brief in parallel for ~2-5s savings
+        console.log('[Orchestrator] Phase 1: Research + Frase Brief (parallel)')
         checkAborted(abortSignal, 'before research phase')
-        await this.emitProgress(params, 'research', 'in_progress', 'Researching topic and analyzing competitors...', 'Using Perplexity AI, RAG, and DataForSEO')
+        await this.emitProgress(params, 'research', 'in_progress', 'Researching topic and generating SEO brief...', 'Running Research + Frase in parallel')
+        
         const researchTraceId = this.traceIdGenerator()
+        const fraseTraceId = this.traceIdGenerator()
 
-        await this.langWatch.logTrace({
-          traceId: researchTraceId,
-          agent: 'enhanced-research',
-          model: 'perplexity',
-          userId: params.userId, // Langfuse user tracking
-          sessionId, // Langfuse session tracking
-          telemetry: {
-            topic: params.topic,
-            targetKeyword: params.keywords[0] || params.topic,
-          },
-        })
-
-        const researchResult = await this.researchAgent.research({
-          topic: params.topic,
-          targetKeyword: params.keywords[0] || params.topic,
-          depth: 'standard',
-          competitorUrls: params.competitorUrls,
-          languageCode: 'en', // TODO: Get from user preferences
-          location: 'United States', // TODO: Get from user preferences
-          userId: params.userId,
-          langfuseTraceId: traceId, // Link to parent trace
-          sessionId, // Link to session
-          abortSignal: params.abortSignal,
-        })
-        await this.emitProgress(params, 'research', 'completed', 'Research complete', `Found ${researchResult.competitorSnippets?.length || 0} competitors`)
-
-        // Step 1.5: Frase Content Brief Generation (SEO/AEO Optimization)
-        console.log('[Orchestrator] Phase 1.5: Frase Content Brief')
-        await this.emitProgress(params, 'frase-brief', 'in_progress', 'Generating SEO content brief...', 'Analyzing SERP with Frase.io')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let fraseOptimizationResult: any = null
-        let fraseContentBrief = ''
-
-        try {
-          const fraseTraceId = this.traceIdGenerator()
-          await this.langWatch.logTrace({
+        // Log traces in parallel (fire and forget)
+        Promise.all([
+          this.langWatch.logTrace({
+            traceId: researchTraceId,
+            agent: 'enhanced-research',
+            model: 'perplexity',
+            userId: params.userId,
+            sessionId,
+            telemetry: {
+              topic: params.topic,
+              targetKeyword: params.keywords[0] || params.topic,
+            },
+          }),
+          this.langWatch.logTrace({
             traceId: fraseTraceId,
             agent: 'frase-optimization',
             model: 'frase-api',
@@ -289,27 +276,53 @@ export class RAGWriterOrchestrator {
               topic: params.topic,
               targetKeyword: params.keywords[0] || params.topic,
             },
-          })
+          }),
+        ]).catch(err => console.warn('[Orchestrator] Trace logging failed:', err))
 
-          fraseOptimizationResult = await this.fraseAgent.optimizeContent({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let fraseOptimizationResult: any = null
+        let fraseContentBrief = ''
+
+        // Run research and Frase in parallel
+        const [researchResult, fraseResult] = await Promise.all([
+          // Research phase
+          this.researchAgent.research({
+            topic: params.topic,
             targetKeyword: params.keywords[0] || params.topic,
-            competitorUrls: params.competitorUrls || (researchResult.competitorSnippets?.length ? researchResult.competitorSnippets.map(c => c.url) : []),
+            depth: 'standard',
+            competitorUrls: params.competitorUrls,
+            languageCode: 'en', // TODO: Get from user preferences
+            location: 'United States', // TODO: Get from user preferences
+            userId: params.userId,
+            langfuseTraceId: traceId,
+            sessionId,
+            abortSignal: params.abortSignal,
+          }),
+          // Frase brief generation (uses params.competitorUrls if available)
+          this.fraseAgent.optimizeContent({
+            targetKeyword: params.keywords[0] || params.topic,
+            competitorUrls: params.competitorUrls || [], // Frase can work without competitor URLs
             language: 'en',
             country: 'us',
             userId: params.userId,
             contentType: params.type,
             abortSignal: params.abortSignal,
-          })
+          }).catch(fraseError => {
+            console.error('[Orchestrator] Frase optimization failed, continuing without it:', fraseError)
+            return null
+          }),
+        ])
 
-          // Create a comprehensive content brief from Frase results
+        await this.emitProgress(params, 'research', 'completed', 'Research complete', `Found ${researchResult.competitorSnippets?.length || 0} competitors`)
+
+        // Process Frase result
+        if (fraseResult) {
+          fraseOptimizationResult = fraseResult
           fraseContentBrief = this.formatFraseContentBrief(fraseOptimizationResult)
-
           console.log(`[Orchestrator] ✓ Frase brief generated - Search Intent: ${fraseOptimizationResult.searchIntent}, Topics: ${fraseOptimizationResult.contentBrief.topicClusters?.length || 0}`)
           await this.emitProgress(params, 'frase-brief', 'completed', 'SEO brief ready', `${fraseOptimizationResult.contentBrief.topicClusters?.length || 0} topics identified`)
-        } catch (fraseError) {
-          console.error('[Orchestrator] Frase optimization failed, continuing without it:', fraseError)
+        } else {
           await this.emitProgress(params, 'frase-brief', 'completed', 'Skipped Frase analysis', 'Continuing without SERP analysis')
-          // Continue without Frase if it fails - don't break the pipeline
         }
 
         // Step 2: Initial Draft
@@ -536,21 +549,19 @@ export class RAGWriterOrchestrator {
 
           finalQAReport = qaResult.qaReport
 
-          // Evaluate content with LangWatch LLM-as-a-judge
-          // Wrap in try-catch so evaluation failures don't break the main flow
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let eeatEvaluation: any = { passed: true, scores: {}, evaluationId: EVALUATION_SCHEMAS.EEAT }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let contentQualityEvaluation: any = { passed: true, scores: {}, evaluationId: EVALUATION_SCHEMAS.CONTENT_QUALITY }
+          // Evaluate content with LangWatch LLM-as-a-judge (PARALLEL)
+          // Run both evaluations in parallel for ~1-2s savings
+          const defaultEeatEval = { passed: true, scores: {}, evaluationId: EVALUATION_SCHEMAS.EEAT, feedback: undefined }
+          const defaultQualityEval = { passed: true, scores: {}, evaluationId: EVALUATION_SCHEMAS.CONTENT_QUALITY, feedback: undefined }
 
-          try {
-            // Run EEAT evaluation
-            eeatEvaluation = await this.langWatch.evaluate({
+          const [eeatEvaluation, contentQualityEvaluation] = await Promise.all([
+            // EEAT evaluation
+            this.langWatch.evaluate({
               evaluationId: EVALUATION_SCHEMAS.EEAT,
               content: currentDraft.content,
-              userId: params.userId, // Langfuse user tracking
-              sessionId, // Langfuse session tracking
-              langfuseTraceId: traceId, // Link to parent trace
+              userId: params.userId,
+              sessionId,
+              langfuseTraceId: traceId,
               context: {
                 userId: params.userId,
                 topic: params.topic,
@@ -569,15 +580,12 @@ export class RAGWriterOrchestrator {
                 dataforseoRaw: scoringResult.dataforseoRaw,
                 qaReport: qaResult.qaReport,
               },
-            })
-          } catch (error) {
-            console.error('[Orchestrator] LangWatch EEAT evaluation failed:', error)
-            // Continue with default passed status
-          }
-
-          try {
-            // Run Content Quality evaluation
-            contentQualityEvaluation = await this.langWatch.evaluate({
+            }).catch(error => {
+              console.error('[Orchestrator] LangWatch EEAT evaluation failed:', error)
+              return defaultEeatEval
+            }),
+            // Content Quality evaluation
+            this.langWatch.evaluate({
               evaluationId: EVALUATION_SCHEMAS.CONTENT_QUALITY,
               content: currentDraft.content,
               context: {
@@ -595,11 +603,11 @@ export class RAGWriterOrchestrator {
                 traceId,
                 wordCount: currentDraft.content.split(/\s+/).length,
               },
-            })
-          } catch (error) {
-            console.error('[Orchestrator] LangWatch Content Quality evaluation failed:', error)
-            // Continue with default passed status
-          }
+            }).catch(error => {
+              console.error('[Orchestrator] LangWatch Content Quality evaluation failed:', error)
+              return defaultQualityEval
+            }),
+          ])
 
           // Store quality review in database metadata (using merge to preserve previous data)
           if (contentId) {

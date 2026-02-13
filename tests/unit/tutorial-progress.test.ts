@@ -13,23 +13,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Tutorial } from '@/lib/tutorials/types'
+import { db, userProgress } from '@/lib/db'
 
-// Mock Supabase client - must be defined before any imports that use it
-const mockGetUser = vi.fn()
-const mockFrom = vi.fn()
-const mockRpc = vi.fn()
-
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: {
-      getUser: mockGetUser
-    },
-    from: mockFrom,
-    rpc: mockRpc
-  })
-}))
-
-// Now import the service after mock is set up
 const { TutorialProgressService } = await import('@/lib/tutorials/progress-service')
 
 describe('Property 4: Tutorial Progress Tracking', () => {
@@ -51,36 +36,38 @@ describe('Property 4: Tutorial Progress Tracking', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    
-    // Reset mock implementations
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: 'test-user-id' } },
-      error: null
-    })
-    
+
     progressService = new TutorialProgressService()
   })
 
+  const seedTutorialProgress = async (params: {
+    tutorialId: string
+    currentStepIndex: number
+    completedSteps: string[]
+    startedAt?: Date
+    completedAt?: Date
+  }) => {
+    const startedAt = params.startedAt ?? new Date()
+    await db.insert(userProgress).values({
+      userId: 'test-user-id',
+      category: 'tutorial_progress',
+      itemKey: params.tutorialId,
+      completedAt: startedAt,
+      metadata: {
+        currentStepIndex: params.currentStepIndex,
+        completedSteps: params.completedSteps,
+        startedAt: startedAt.toISOString(),
+        completedAt: params.completedAt?.toISOString(),
+      },
+    }).returning()
+  }
+
   describe('Property: Progress State Consistency', () => {
     it('should maintain valid step index bounds', async () => {
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  tutorial_id: 'test-tutorial',
-                  current_step_index: 1,
-                  completed_steps: ['step-1'],
-                  started_at: new Date().toISOString(),
-                  last_accessed_at: new Date().toISOString(),
-                  metadata: {}
-                },
-                error: null
-              })
-            })
-          })
-        })
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: 1,
+        completedSteps: ['step-1'],
       })
 
       const progress = await progressService.getTutorialProgress('test-tutorial')
@@ -95,24 +82,10 @@ describe('Property 4: Tutorial Progress Tracking', () => {
     it('should only contain valid step IDs in completed steps', async () => {
       const validStepIds = new Set(mockTutorial.steps.map((s: { id: string }) => s.id))
 
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  tutorial_id: 'test-tutorial',
-                  current_step_index: 2,
-                  completed_steps: ['step-1', 'step-2'],
-                  started_at: new Date().toISOString(),
-                  last_accessed_at: new Date().toISOString(),
-                  metadata: {}
-                },
-                error: null
-              })
-            })
-          })
-        })
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: 2,
+        completedSteps: ['step-1', 'step-2'],
       })
 
       const progress = await progressService.getTutorialProgress('test-tutorial')
@@ -125,24 +98,10 @@ describe('Property 4: Tutorial Progress Tracking', () => {
     })
 
     it('should not exceed total steps in completed steps', async () => {
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  tutorial_id: 'test-tutorial',
-                  current_step_index: 2,
-                  completed_steps: ['step-1', 'step-2'],
-                  started_at: new Date().toISOString(),
-                  last_accessed_at: new Date().toISOString(),
-                  metadata: {}
-                },
-                error: null
-              })
-            })
-          })
-        })
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: 2,
+        completedSteps: ['step-1', 'step-2'],
       })
 
       const progress = await progressService.getTutorialProgress('test-tutorial')
@@ -159,29 +118,12 @@ describe('Property 4: Tutorial Progress Tracking', () => {
       let currentIndex = 0
       const completedSteps = new Set<string>()
 
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockImplementation(() => {
-                return Promise.resolve({
-                  data: {
-                    tutorial_id: 'test-tutorial',
-                    current_step_index: currentIndex,
-                    completed_steps: Array.from(completedSteps),
-                    started_at: new Date().toISOString(),
-                    last_accessed_at: new Date().toISOString(),
-                    metadata: {}
-                  },
-                  error: null
-                })
-              })
-            })
-          })
-        })
-      })
 
-      mockRpc.mockResolvedValue({ error: null })
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: currentIndex,
+        completedSteps: Array.from(completedSteps),
+      })
 
       for (let i = 0; i < mockTutorial.steps.length; i++) {
         const step = mockTutorial.steps[i]
@@ -204,27 +146,11 @@ describe('Property 4: Tutorial Progress Tracking', () => {
     it('should never lose completed steps', async () => {
       const initialCompleted = ['step-1', 'step-2']
 
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  tutorial_id: 'test-tutorial',
-                  current_step_index: 2,
-                  completed_steps: initialCompleted,
-                  started_at: new Date().toISOString(),
-                  last_accessed_at: new Date().toISOString(),
-                  metadata: {}
-                },
-                error: null
-              })
-            })
-          })
-        })
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: 2,
+        completedSteps: initialCompleted,
       })
-
-      mockRpc.mockResolvedValue({ error: null })
 
       await progressService.completeStep('test-tutorial', 'step-3', 2)
 
@@ -241,25 +167,14 @@ describe('Property 4: Tutorial Progress Tracking', () => {
     it('should only complete when all steps are done', async () => {
       const allStepsCompleted = mockTutorial.steps.map((s) => s.id)
 
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  tutorial_id: 'test-tutorial',
-                  current_step_index: mockTutorial.steps.length,
-                  completed_steps: allStepsCompleted,
-                  started_at: new Date(Date.now() - 10000).toISOString(),
-                  completed_at: new Date().toISOString(),
-                  last_accessed_at: new Date().toISOString(),
-                  metadata: {}
-                },
-                error: null
-              })
-            })
-          })
-        })
+      const startedAt = new Date(Date.now() - 10000)
+      const completedAt = new Date()
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: mockTutorial.steps.length,
+        completedSteps: allStepsCompleted,
+        startedAt,
+        completedAt,
       })
 
       const progress = await progressService.getTutorialProgress('test-tutorial')
@@ -276,25 +191,12 @@ describe('Property 4: Tutorial Progress Tracking', () => {
       const startTime = new Date(Date.now() - 10000)
       const completionTime = new Date()
 
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  tutorial_id: 'test-tutorial',
-                  current_step_index: mockTutorial.steps.length,
-                  completed_steps: mockTutorial.steps.map((s) => s.id),
-                  started_at: startTime.toISOString(),
-                  completed_at: completionTime.toISOString(),
-                  last_accessed_at: completionTime.toISOString(),
-                  metadata: {}
-                },
-                error: null
-              })
-            })
-          })
-        })
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: mockTutorial.steps.length,
+        completedSteps: mockTutorial.steps.map((s) => s.id),
+        startedAt: startTime,
+        completedAt: completionTime,
       })
 
       const progress = await progressService.getTutorialProgress('test-tutorial')
@@ -308,26 +210,10 @@ describe('Property 4: Tutorial Progress Tracking', () => {
 
   describe('Property: Progress Persistence', () => {
     it('should persist and retrieve progress correctly', async () => {
-      const savedProgress = {
-        tutorial_id: 'test-tutorial',
-        current_step_index: 1,
-        completed_steps: ['step-1'],
-        started_at: new Date().toISOString(),
-        last_accessed_at: new Date().toISOString(),
-        metadata: {}
-      }
-
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: savedProgress,
-                error: null
-              })
-            })
-          })
-        })
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: 1,
+        completedSteps: ['step-1'],
       })
 
       const progress1 = await progressService.getTutorialProgress('test-tutorial')
@@ -341,26 +227,10 @@ describe('Property 4: Tutorial Progress Tracking', () => {
     })
 
     it('should not create duplicate step completions', async () => {
-      mockRpc.mockResolvedValue({ error: null })
-
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  tutorial_id: 'test-tutorial',
-                  current_step_index: 1,
-                  completed_steps: ['step-1'],
-                  started_at: new Date().toISOString(),
-                  last_accessed_at: new Date().toISOString(),
-                  metadata: {}
-                },
-                error: null
-              })
-            })
-          })
-        })
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: 1,
+        completedSteps: ['step-1'],
       })
 
       await progressService.completeStep('test-tutorial', 'step-1', 0)
@@ -376,46 +246,6 @@ describe('Property 4: Tutorial Progress Tracking', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty tutorial gracefully', async () => {
-      // First call to getTutorialProgress returns null (no existing progress)
-      // Second call is the insert
-      let callCount = 0
-      mockFrom.mockImplementation(() => {
-        callCount++
-        if (callCount === 1) {
-          // First call: getTutorialProgress check
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  single: vi.fn().mockResolvedValue({
-                    data: null,
-                    error: { code: 'PGRST116' } // No rows found
-                  })
-                })
-              })
-            })
-          }
-        }
-        // Second call: insert new progress
-        return {
-          insert: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  tutorial_id: 'empty-tutorial',
-                  current_step_index: 0,
-                  completed_steps: [],
-                  started_at: new Date().toISOString(),
-                  last_accessed_at: new Date().toISOString(),
-                  metadata: {}
-                },
-                error: null
-              })
-            })
-          })
-        }
-      })
-
       const progress = await progressService.startTutorial('empty-tutorial')
 
       expect(progress).toBeDefined()
@@ -424,26 +254,10 @@ describe('Property 4: Tutorial Progress Tracking', () => {
     })
 
     it('should handle concurrent step completions', async () => {
-      mockRpc.mockResolvedValue({ error: null })
-
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  tutorial_id: 'test-tutorial',
-                  current_step_index: 2,
-                  completed_steps: ['step-1', 'step-2'],
-                  started_at: new Date().toISOString(),
-                  last_accessed_at: new Date().toISOString(),
-                  metadata: {}
-                },
-                error: null
-              })
-            })
-          })
-        })
+      await seedTutorialProgress({
+        tutorialId: 'test-tutorial',
+        currentStepIndex: 2,
+        completedSteps: ['step-1', 'step-2'],
       })
 
       const promises = [

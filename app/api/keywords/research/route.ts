@@ -14,7 +14,10 @@ interface RequestBody {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as RequestBody
+    const bodyPromise = req.json() as Promise<RequestBody>
+    const userPromise = getCurrentUser()
+
+    const body = await bodyPromise
     const { keywords: keywordsList, location } = body
 
     if (!keywordsList || keywordsList.length === 0) {
@@ -24,7 +27,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const user = await getCurrentUser()
+    const user = await userPromise
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -32,16 +35,18 @@ export async function POST(req: Request) {
 
     // Check rate limit (after getting user for better identification)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rateLimitResponse = await rateLimitMiddleware(req as any, 'KEYWORDS', user.id)
+    const rateLimitPromise = rateLimitMiddleware(req as any, 'KEYWORDS', user.id)
+    const rateLimitResponse = await rateLimitPromise
     if (rateLimitResponse) {
       return rateLimitResponse
     }
 
     // Get keyword data from DataForSEO
-    const result = await keywordResearch({
+    const keywordResearchPromise = keywordResearch({
       keywords: keywordsList,
       location_code: location,
     })
+    const result = await keywordResearchPromise
 
     if (!result.success) {
       return NextResponse.json(

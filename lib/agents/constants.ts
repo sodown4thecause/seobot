@@ -12,6 +12,7 @@ export const AGENT_IDS = {
   SEO_AEO: 'seo-aeo',
   CONTENT: 'content',
   GENERAL: 'general',
+  IMAGE: 'image',
 } as const
 
 export type AgentId = (typeof AGENT_IDS)[keyof typeof AGENT_IDS]
@@ -23,6 +24,7 @@ export type AgentId = (typeof AGENT_IDS)[keyof typeof AGENT_IDS]
 export const LEGACY_AGENT_ID_MAP: Record<string, AgentId> = {
   seo_manager: AGENT_IDS.SEO_AEO,
   content_writer: AGENT_IDS.CONTENT,
+  image_agent: AGENT_IDS.IMAGE,
   // Add more mappings as needed
 }
 

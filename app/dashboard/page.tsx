@@ -7,6 +7,7 @@ import { useAgent } from '@/components/providers/agent-provider'
 import { useUserMode } from '@/components/providers/user-mode-provider'
 import { useUser } from '@clerk/nextjs'
 import { getWorkflowPrompt } from '@/lib/workflows/guided-prompts'
+import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
 
 
 export default function DashboardPage() {
@@ -15,6 +16,7 @@ export default function DashboardPage() {
   const activeConversationId = state.activeConversation?.id
   const activeAgentId = state.activeAgent?.id
   const { user, isLoaded } = useUser()
+  const { ready: clerkReady, timedOut: clerkTimedOut } = useClerkLoadGuard(isLoaded, 5000)
 
   const [isNewUser, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -52,16 +54,35 @@ export default function DashboardPage() {
           setUserName(user.emailAddresses[0].emailAddress.split('@')[0])
         }
 
-        // Check if user has a business profile using API route (Drizzle runs server-side)
-        // Add timeout to prevent infinite hanging
+        // Fetch profile with retry logic for cold DB connections
+        const fetchWithRetry = async (retries = 3, delay = 2000): Promise<Response> => {
+          for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+              const response = await fetch('/api/user/profile', {
+                signal: controller.signal,
+                credentials: 'include',
+                headers: { 'Cache-Control': 'no-cache' }
+              })
+              return response
+            } catch (err) {
+              if (attempt === retries || (err instanceof Error && err.name === 'AbortError')) {
+                throw err
+              }
+              console.warn(`[Dashboard] Profile fetch attempt ${attempt} failed, retrying in ${delay}ms...`)
+              await new Promise(r => setTimeout(r, delay))
+              delay *= 1.5 // Exponential backoff
+            }
+          }
+          throw new Error('Max retries exceeded')
+        }
+
+        // Set overall timeout for all retries
         timeoutId = setTimeout(() => {
           controller.abort()
-          console.warn('[Dashboard] Profile fetch timeout')
-        }, 5000) //5 second timeout
+          console.warn('[Dashboard] Profile fetch timeout after 45s')
+        }, 45000)
 
-        const response = await fetch('/api/user/profile', {
-          signal: controller.signal
-        })
+        const response = await fetchWithRetry()
 
         if (response.ok) {
           const data = await response.json()
@@ -76,7 +97,7 @@ export default function DashboardPage() {
           setInitialMessage('__START_ONBOARDING__')
         } else if (response.status === 401) {
           // Unauthorized - redirect to sign-in
-          window.location.href = '/auth/sign-in'
+          window.location.href = '/sign-in'
         } else {
           // Server error or other issues - show error state
           console.error(`[Dashboard] Profile fetch failed with status ${response.status}`)
@@ -85,11 +106,12 @@ export default function DashboardPage() {
         }
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-          console.error('[Dashboard] Profile fetch timed out')
-          setInitialMessage('Loading timed out. Please refresh page.')
+          console.warn('[Dashboard] Profile fetch timed out - proceeding with defaults')
+          // Don't block the UI - just proceed without profile data
+          // User can still use the dashboard
         } else {
           console.error('[Dashboard] Error checking user profile:', error)
-          // Don't trigger onboarding on errors
+          // Don't trigger onboarding on errors - proceed with defaults
         }
       } finally {
         setIsLoading(false)
@@ -141,6 +163,29 @@ export default function DashboardPage() {
   )
 
   if (!isLoaded || isLoading || userModeState.isLoading) {
+    if (!clerkReady && !isLoaded) {
+      return (
+        <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
+          <div className="animate-pulse text-gray-400">Loading...</div>
+        </div>
+      )
+    }
+
+    if (clerkTimedOut && !isLoaded) {
+      return (
+        <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center px-6 text-center">
+          <div className="max-w-xl rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
+            Clerk auth is not loading in the browser. Verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, then restart `npm run dev`.
+            <div className="mt-2">
+              <a className="underline" href="/sign-in">
+                Open sign in
+              </a>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading...</div>
@@ -151,7 +196,7 @@ export default function DashboardPage() {
   // Dashboard always shows all NextPhase features now
 
   return (
-    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col">
+    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col bg-zinc-950">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -16,6 +16,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/audit(.*)',      // AEO audit API (free lead magnet)
   '/api/analytics/audit(.*)', // Audit analytics tracking
   '/audit(.*)',          // Audit page
+  '/aeo-auditor(.*)',    // AEO auditor page (linked from guides)
   '/blog(.*)',
   '/docs(.*)',
   '/guides(.*)',
@@ -51,7 +52,12 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // Redirect authenticated users away from auth pages
-  if (userId && (url.pathname.startsWith('/sign-in') || url.pathname.startsWith('/sign-up'))) {
+  if (userId && (
+    url.pathname.startsWith('/sign-in') || 
+    url.pathname.startsWith('/sign-up') ||
+    url.pathname.startsWith('/login') ||
+    url.pathname.startsWith('/signup')
+  )) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

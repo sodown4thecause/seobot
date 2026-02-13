@@ -45,14 +45,30 @@ function extractCompetitors(result: unknown): CompetitorData[] {
 
     // Case 2: Result is a stringified JSON array
     if (typeof result === 'string') {
+        // Early exit: if it doesn't look like JSON, don't try to parse
+        const trimmed = result.trim()
+        if (!trimmed.startsWith('[') && !trimmed.startsWith('{')) {
+            // This is prose text from the AI, not JSON data
+            console.warn('[CompetitorAnalysisTable] Result is text, not JSON. First 100 chars:', trimmed.substring(0, 100))
+            return []
+        }
+
         try {
             const parsed = JSON.parse(result)
             if (Array.isArray(parsed)) {
                 return parsed
             }
-            console.error('[CompetitorAnalysisTable] Parsed JSON is not an array:', parsed)
+            // If parsed is an object, try to extract competitors/items from it
+            if (parsed && typeof parsed === 'object') {
+                if (Array.isArray(parsed.competitors)) return parsed.competitors
+                if (Array.isArray(parsed.items)) return parsed.items
+                if (parsed.tasks?.[0]?.result && Array.isArray(parsed.tasks[0].result)) {
+                    return parsed.tasks[0].result
+                }
+            }
+            console.error('[CompetitorAnalysisTable] Parsed JSON is not an array or valid object:', parsed)
         } catch (parseError) {
-            console.error('[CompetitorAnalysisTable] Failed to parse result as JSON:', parseError, 'Raw result:', result)
+            console.error('[CompetitorAnalysisTable] Failed to parse result as JSON:', parseError, 'Raw result:', result.substring(0, 200))
         }
         return []
     }

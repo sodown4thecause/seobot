@@ -386,7 +386,7 @@ export const TOOL_CATEGORIES = {
 /**
  * Agent type definitions
  */
-export type AgentToolType = 'seo-aeo' | 'content' | 'general' | 'onboarding'
+export type AgentToolType = 'seo-aeo' | 'content' | 'general' | 'onboarding' | 'image'
 
 /**
  * Load tools based on agent type
@@ -423,6 +423,13 @@ export function loadToolsForAgent(
         // Add some keyword tools for content optimization
         'keywords_data_google_ads_search_volume',
         'dataforseo_labs_search_intent'
+      )
+      break
+
+    case 'image':
+      toolNames.push(
+        'generate_article_images',
+        'generate_hero_image'
       )
       break
 

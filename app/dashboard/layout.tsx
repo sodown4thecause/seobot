@@ -23,7 +23,7 @@ export default function DashboardLayout({
         <ActionProvider>
           <ChatModeProvider>
             <AgentProvider>
-              <div className="min-h-screen bg-[#1a1a1a] flex text-foreground relative overflow-hidden">
+              <div className="min-h-screen bg-zinc-950 flex text-foreground relative overflow-hidden">
 
             {/* Sidebar */}
             <Sidebar

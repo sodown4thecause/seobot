@@ -55,9 +55,10 @@ export function ChatInput({
               onClick={onImageGenerate}
               disabled={disabled}
               title="Generate image"
-              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Generate image"
+              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              <Image className="w-4 h-4" />
+              <Image className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
           {onWebSearch && (
@@ -66,9 +67,10 @@ export function ChatInput({
               onClick={onWebSearch}
               disabled={disabled}
               title="Search the web"
-              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Search the web"
+              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -82,6 +84,7 @@ export function ChatInput({
           placeholder={placeholder}
           disabled={disabled}
           rows={1}
+          aria-label="Chat message input"
           className={cn(
             'flex-1 bg-transparent border-none outline-none resize-none px-4 py-3',
             'text-zinc-100 placeholder:text-zinc-500',
@@ -97,9 +100,10 @@ export function ChatInput({
             type="button"
             onClick={onSubmit}
             disabled={disabled}
-            className="flex-shrink-0 p-2 m-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:text-white transition-all"
+            aria-label="Send message"
+            className="flex-shrink-0 p-2 m-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 transition-all cursor-pointer"
           >
-            <ArrowUp className="w-5 h-5" />
+            <ArrowUp className="w-5 h-5" aria-hidden="true" />
           </button>
         )}
       </div>

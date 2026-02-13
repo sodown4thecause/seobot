@@ -2,13 +2,22 @@ import Link from "next/link";
 import { type SanityDocument } from "next-sanity";
 import { client } from "@/sanity/lib/client";
 import { Navbar } from '@/components/navbar';
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
 const RESOURCES_QUERY = `*[
   _type == "resource"
   && defined(slug.current)
-]|order(publishedAt desc)[0...12]{_id, title, slug, publishedAt, category, excerpt, downloadUrl}`;
+]|order(publishedAt desc){_id, title, slug, publishedAt, category, excerpt, downloadUrl}`;
 
 const options = { next: { revalidate: 30 } };
+
+export const metadata = buildPageMetadata({
+    title: 'SEO Resources, Templates & Checklists | FlowIntent',
+    description:
+        'Access downloadable SEO resources, checklists, and templates for AEO, GEO, and AI search optimization workflows.',
+    path: '/resources',
+    keywords: ['SEO templates', 'AEO checklist', 'GEO resources', 'AI SEO toolkit'],
+})
 
 const categoryColors: Record<string, string> = {
     template: 'bg-blue-500/10 text-blue-400 border-blue-500/20',

@@ -43,7 +43,7 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: '/api/chat',
-      body: { context },
+      body: () => ({ context }),
     })
   }, [context])
 

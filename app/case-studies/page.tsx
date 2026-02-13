@@ -2,13 +2,22 @@ import Link from "next/link";
 import { type SanityDocument } from "next-sanity";
 import { client } from "@/sanity/lib/client";
 import { Navbar } from '@/components/navbar';
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
 const CASE_STUDIES_QUERY = `*[
   _type == "caseStudy"
   && defined(slug.current)
-]|order(publishedAt desc)[0...12]{_id, title, slug, publishedAt, client, industry, excerpt, results}`;
+]|order(publishedAt desc){_id, title, slug, publishedAt, client, industry, excerpt, results}`;
 
 const options = { next: { revalidate: 30 } };
+
+export const metadata = buildPageMetadata({
+    title: 'SEO Case Studies & Results | FlowIntent',
+    description:
+        'See how teams improved rankings, traffic, and AI visibility with FlowIntent strategies across industries.',
+    path: '/case-studies',
+    keywords: ['SEO case studies', 'AEO results', 'GEO case study', 'AI visibility examples'],
+})
 
 export default async function CaseStudiesPage() {
     const caseStudies = await client.fetch<SanityDocument[]>(CASE_STUDIES_QUERY, {}, options);

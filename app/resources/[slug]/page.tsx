@@ -1,16 +1,43 @@
+import type { Metadata } from 'next'
 import { PortableText, type SanityDocument } from "next-sanity";
 import imageUrlBuilder, { type SanityImageSource } from "@sanity/image-url";
 import { client } from "@/sanity/lib/client";
 import Link from "next/link";
 import { Navbar } from '@/components/navbar';
 import { ArrowLeft, Download } from 'lucide-react';
+import { buildPageMetadata } from '@/lib/seo/metadata'
+import { SITE_URL } from '@/lib/seo/site'
 
 const RESOURCE_QUERY = `*[_type == "resource" && slug.current == $slug][0]`;
+const RESOURCE_META_QUERY = `*[_type == "resource" && slug.current == $slug][0]{title, excerpt, publishedAt, image}`;
 
 const builder = imageUrlBuilder(client);
 const urlFor = (source: SanityImageSource) => builder.image(source);
 
 const options = { next: { revalidate: 30 } };
+
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+    const { slug } = await params
+    const resource = await client.fetch<SanityDocument | null>(RESOURCE_META_QUERY, { slug }, options)
+
+    const title = resource?.title ? `${resource.title} | FlowIntent Resources` : 'Resource | FlowIntent'
+    const description =
+        resource?.excerpt ||
+        'Download practical AEO and GEO resources from FlowIntent to improve AI search visibility and citations.'
+    const imageUrl = resource?.image ? urlFor(resource.image).width(1200).height(630).url() : undefined
+
+    return buildPageMetadata({
+        title,
+        description,
+        path: `/resources/${slug}`,
+        type: 'article',
+        imagePath: imageUrl,
+    })
+}
 
 export default async function ResourcePage({
     params,
@@ -39,8 +66,73 @@ export default async function ResourcePage({
         ? urlFor(resource.image).width(1200).height(630).url()
         : null;
 
+    const resourceSchema = {
+        '@context': 'https://schema.org',
+        '@graph': [
+            {
+                '@type': 'Article',
+                '@id': `${SITE_URL}/resources/${slug}#article`,
+                headline: resource.title,
+                description: resource.excerpt || 'FlowIntent SEO resource',
+                image: imageUrl || `${SITE_URL}/images/logo.png`,
+                datePublished: resource.publishedAt,
+                dateModified: resource._updatedAt || resource.publishedAt,
+                author: {
+                    '@type': 'Organization',
+                    '@id': 'https://flowintent.com/#organization',
+                    name: 'FlowIntent',
+                    url: SITE_URL,
+                },
+                publisher: {
+                    '@type': 'Organization',
+                    '@id': 'https://flowintent.com/#organization',
+                    name: 'FlowIntent',
+                    url: SITE_URL,
+                    logo: {
+                        '@type': 'ImageObject',
+                        url: `${SITE_URL}/logo-new.png`,
+                    },
+                },
+                mainEntityOfPage: {
+                    '@type': 'WebPage',
+                    '@id': `${SITE_URL}/resources/${slug}`,
+                },
+                isPartOf: { '@id': 'https://flowintent.com/#website' },
+                ...(resource.category ? { articleSection: resource.category } : {}),
+                inLanguage: 'en-US',
+            },
+            {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                    {
+                        '@type': 'ListItem',
+                        position: 1,
+                        name: 'Home',
+                        item: SITE_URL,
+                    },
+                    {
+                        '@type': 'ListItem',
+                        position: 2,
+                        name: 'Resources',
+                        item: `${SITE_URL}/resources`,
+                    },
+                    {
+                        '@type': 'ListItem',
+                        position: 3,
+                        name: resource.title,
+                        item: `${SITE_URL}/resources/${slug}`,
+                    },
+                ],
+            },
+        ],
+    }
+
     return (
         <div className="min-h-screen bg-black text-white selection:bg-indigo-500/30">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(resourceSchema) }}
+            />
             <Navbar />
 
             <main className="container mx-auto px-6 pt-32 pb-20">

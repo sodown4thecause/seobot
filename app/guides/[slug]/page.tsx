@@ -69,33 +69,67 @@ export default async function GuidePage({
         ? urlFor(guide.image).width(1200).height(630).url()
         : null;
 
-    // Article structured data for guides
+    // Article structured data + BreadcrumbList for guides
     const articleSchema = {
         '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: guide.title,
-        description: guide.excerpt || 'FlowIntent guide on AEO and AI SEO strategies',
-        image: imageUrl || `${SITE_URL}/images/logo.png`,
-        datePublished: guide.publishedAt,
-        dateModified: guide._updatedAt || guide.publishedAt,
-        author: {
-            '@type': 'Organization',
-            name: 'FlowIntent',
-            url: SITE_URL,
-        },
-        publisher: {
-            '@type': 'Organization',
-            name: 'FlowIntent',
-            url: SITE_URL,
-            logo: {
-                '@type': 'ImageObject',
-                url: `${SITE_URL}/images/logo.png`,
+        '@graph': [
+            {
+                '@type': 'Article',
+                '@id': `${SITE_URL}/guides/${slug}#article`,
+                headline: guide.title,
+                description: guide.excerpt || 'FlowIntent guide on AEO and AI SEO strategies',
+                image: imageUrl || `${SITE_URL}/images/logo.png`,
+                datePublished: guide.publishedAt,
+                dateModified: guide._updatedAt || guide.publishedAt,
+                author: {
+                    '@type': 'Organization',
+                    '@id': 'https://flowintent.com/#organization',
+                    name: 'FlowIntent',
+                    url: SITE_URL,
+                },
+                publisher: {
+                    '@type': 'Organization',
+                    '@id': 'https://flowintent.com/#organization',
+                    name: 'FlowIntent',
+                    url: SITE_URL,
+                    logo: {
+                        '@type': 'ImageObject',
+                        url: `${SITE_URL}/logo-new.png`,
+                    },
+                },
+                mainEntityOfPage: {
+                    '@type': 'WebPage',
+                    '@id': `${SITE_URL}/guides/${slug}`,
+                },
+                isPartOf: { '@id': 'https://flowintent.com/#website' },
+                ...(guide.difficulty ? { educationalLevel: guide.difficulty } : {}),
+                ...(guide.readTime ? { timeRequired: `PT${guide.readTime}M` } : {}),
+                inLanguage: 'en-US',
             },
-        },
-        mainEntityOfPage: {
-            '@type': 'WebPage',
-            '@id': `${SITE_URL}/guides/${slug}`,
-        },
+            {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                    {
+                        '@type': 'ListItem',
+                        position: 1,
+                        name: 'Home',
+                        item: SITE_URL,
+                    },
+                    {
+                        '@type': 'ListItem',
+                        position: 2,
+                        name: 'Guides',
+                        item: `${SITE_URL}/guides`,
+                    },
+                    {
+                        '@type': 'ListItem',
+                        position: 3,
+                        name: guide.title,
+                        item: `${SITE_URL}/guides/${slug}`,
+                    },
+                ],
+            },
+        ],
     }
 
     return (

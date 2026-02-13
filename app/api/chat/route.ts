@@ -33,7 +33,7 @@ import {
 import { classifyUserIntent, buildAgentSystemPrompt } from '@/lib/chat/intent-classifier'
 import { assembleTools } from '@/lib/chat/tool-assembler'
 import { buildStreamResponse, type StreamOptions } from '@/lib/chat/stream-builder'
-import { ensureConversationForUser } from '@/lib/chat/storage'
+import { ensureConversationForUser, saveUIMessage } from '@/lib/chat/storage'
 import { detectWorkflowTrigger } from '@/lib/chat/orchestrator'
 
 export const maxDuration = 300 // 5 minutes
@@ -171,8 +171,27 @@ const handler = async (req: Request) => {
     })
 
     // 12. Convert messages to model format
-    const modelMessages = convertToModelFormat(incomingMessages!)
+    const modelMessages = await convertToModelFormat(incomingMessages!)
     console.log('[Chat API] Converted to ModelMessage[], count:', modelMessages.length)
+
+    // 12.5 Save the user message before streaming (AI SDK message persistence pattern)
+    if (activeConversationId && user) {
+      const lastUserMessage = incomingMessages![incomingMessages!.length - 1]
+      if (lastUserMessage?.role === 'user') {
+        try {
+          await saveUIMessage(activeConversationId, user.id, lastUserMessage as {
+            id?: string
+            role: 'user' | 'assistant' | 'system'
+            content?: string
+            parts?: any[]
+          })
+          console.log('[Chat API] User message saved successfully')
+        } catch (saveError) {
+          console.error('[Chat API] Failed to save user message:', saveError)
+          // Continue with chat - don't block on persistence failure
+        }
+      }
+    }
 
     // 13. Build stream options
     const streamOptions: StreamOptions = {
@@ -208,8 +227,8 @@ const handler = async (req: Request) => {
         }
 
         // Log tool invocations for debugging (AI SDK 6 uses parts)
-        const toolParts = (finalAssistantMessage as unknown as { 
-          parts?: Array<{ type: string; toolInvocation?: Record<string, unknown> }> 
+        const toolParts = (finalAssistantMessage as unknown as {
+          parts?: Array<{ type: string; toolInvocation?: Record<string, unknown> }>
         }).parts?.filter((p) => p.type === 'tool-invocation') || []
 
         if (toolParts.length > 0) {
@@ -223,7 +242,19 @@ const handler = async (req: Request) => {
           })
         }
 
-        // TODO: Re-enable assistant message persistence once chat storage is migrated to Drizzle
+        // Save the assistant message with full AI SDK 6 format (parts + tool invocations)
+        try {
+          await saveUIMessage(activeConversationId, user.id, finalAssistantMessage as {
+            id?: string
+            role: 'user' | 'assistant' | 'system'
+            content?: string
+            parts?: any[]
+            toolInvocations?: any[]
+          })
+          console.log('[Chat API] Assistant message saved successfully')
+        } catch (saveError) {
+          console.error('[Chat API] Failed to save assistant message:', saveError)
+        }
       },
     }
 

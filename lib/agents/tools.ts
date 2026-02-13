@@ -1,8 +1,11 @@
-import { tool, generateText } from 'ai';
-import { z } from 'zod';
-import { perplexity } from '@ai-sdk/perplexity';
-import { findRelevantFrameworks, formatFrameworksForPrompt, batchIncrementUsage } from '@/lib/ai/rag-service';
-import { createTelemetryConfig } from '@/lib/observability/langfuse';
+import { tool, generateText } from 'ai'
+import { z } from 'zod'
+import { perplexity } from '@ai-sdk/perplexity'
+import { findRelevantFrameworks, formatFrameworksForPrompt, batchIncrementUsage } from '@/lib/ai/rag-service'
+import { createTelemetryConfig } from '@/lib/observability/langfuse'
+import { EnhancedImageAgent } from '@/lib/agents/enhanced-image-agent'
+
+const enhancedImageAgent = new EnhancedImageAgent()
 
 /**
  * Research Agent Tool
@@ -16,7 +19,7 @@ export const researchAgentTool = tool({
     depth: z.enum(['quick', 'standard', 'deep']).optional().describe('Depth of research'),
   }),
   execute: async ({ query, depth = 'standard' }: { query: string; depth?: 'quick' | 'standard' | 'deep' }) => {
-    console.log(`[Research Tool] Executing for: ${query} (depth: ${depth})`);
+    console.log(`[Research Tool] Executing for: ${query} (depth: ${depth})`)
     
     try {
       const { text } = await generateText({
@@ -38,15 +41,15 @@ Focus on information that would be valuable for creating SEO/AEO optimized conte
           provider: 'perplexity',
           model: 'sonar-pro',
         }),
-      });
-      
-      return text;
+      })
+
+      return text
     } catch (error) {
-      console.error('[Research Tool] Error:', error);
-      return "I encountered an error while researching this topic. Please try again.";
+      console.error('[Research Tool] Error:', error)
+      return 'I encountered an error while researching this topic. Please try again.'
     }
   },
-});
+})
 
 /**
  * Competitor Analysis Tool
@@ -58,7 +61,7 @@ export const competitorAgentTool = tool({
     query: z.string().describe("Search query for competitor or industry information"),
   }),
   execute: async ({ query }: { query: string }) => {
-    console.log(`[Competitor Tool] Executing for: ${query}`);
+    console.log(`[Competitor Tool] Executing for: ${query}`)
 
     // This logic was moved from route.ts
     // In a real implementation, this might call DataForSEO or a real search API
@@ -91,10 +94,10 @@ export const competitorAgentTool = tool({
 ✓ Direct AEO optimization for ChatGPT, Claude, Perplexity
 ✓ Automated research and writing workflows`;
 
-    console.log(`[Competitor Tool] Completed successfully`);
-    return analysis;
+    console.log(`[Competitor Tool] Completed successfully`)
+    return analysis
   },
-});
+})
 
 /**
  * RAG Framework Tool
@@ -106,27 +109,104 @@ export const frameworkRagTool = tool({
     query: z.string().describe("The type of content or framework to search for (e.g., 'blog post', 'landing page', 'email sequence')"),
   }),
   execute: async ({ query }: { query: string }) => {
-    console.log(`[Framework Tool] Searching for: ${query}`);
+    console.log(`[Framework Tool] Searching for: ${query}`)
     
     try {
-      const frameworks = await findRelevantFrameworks(query, { maxResults: 3 });
+      const frameworks = await findRelevantFrameworks(query, { maxResults: 3 })
       
       if (frameworks.length === 0) {
-        return "I couldn't find any specific frameworks for that content type. However, I can help you structure it based on general best practices.";
+        return "I couldn't find any specific frameworks for that content type. However, I can help you structure it based on general best practices."
       }
-      
-      const formatted = formatFrameworksForPrompt(frameworks);
-      
+
+      const formatted = formatFrameworksForPrompt(frameworks)
+
       // Track usage
-      const frameworkIds = frameworks.map(f => f.id);
-      batchIncrementUsage(frameworkIds).catch(err => 
-        console.warn("[Framework Tool] Failed to track usage:", err)
-      );
-      
-      return formatted;
+      const frameworkIds = frameworks.map(f => f.id)
+      batchIncrementUsage(frameworkIds).catch(err =>
+        console.warn('[Framework Tool] Failed to track usage:', err)
+      )
+
+      return formatted
     } catch (error) {
-      console.error("[Framework Tool] Error:", error);
-      return "I encountered an error retrieving frameworks.";
+      console.error('[Framework Tool] Error:', error)
+      return 'I encountered an error retrieving frameworks.'
     }
   },
-});
+})
+
+/**
+ * Generate a full article image set using EnhancedImageAgent.
+ */
+export const generateArticleImagesTool = tool({
+  description: 'Generate a complete image set for an article (hero, section images, infographics, social variants).',
+  inputSchema: z.object({
+    topic: z.string().describe('The main topic of the article'),
+    content: z.string().describe('The article content used to analyze sections'),
+    keywords: z.array(z.string()).optional().describe('Target keywords to align visuals with SEO intent'),
+    brandGuidelines: z
+      .object({
+        primaryColors: z.array(z.string()).optional(),
+        secondaryColors: z.array(z.string()).optional(),
+        styleKeywords: z.array(z.string()).optional(),
+      })
+      .optional()
+      .describe('Optional brand visual guidelines'),
+  }),
+  execute: async ({ topic, content, keywords, brandGuidelines }) => {
+    try {
+      const imageSet = await enhancedImageAgent.generateArticleImageSet({
+        topic,
+        content,
+        keywords: keywords ?? [],
+        brandGuidelines,
+      })
+
+      return {
+        success: true,
+        summary: {
+          hero: imageSet.hero?.url,
+          sections: imageSet.sections?.length ?? 0,
+          infographics: imageSet.infographics?.length ?? 0,
+          socialVariants: imageSet.social ? Object.keys(imageSet.social).length : 0,
+        },
+        images: imageSet,
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to generate article images'
+      console.error('[Image Tools] generateArticleImagesTool error:', error)
+      return { success: false, error: message }
+    }
+  },
+})
+
+/**
+ * Generate a single hero image using EnhancedImageAgent.
+ */
+export const generateHeroImageTool = tool({
+  description: 'Generate a single hero image optimized for the article topic.',
+  inputSchema: z.object({
+    topic: z.string().describe('Topic for the hero image'),
+    mood: z.enum(['professional', 'friendly', 'technical', 'inspirational', 'informative', 'casual']).optional(),
+    brandColors: z.array(z.string()).optional().describe('Brand colors in hex'),
+  }),
+  execute: async ({ topic, mood = 'professional', brandColors }) => {
+    try {
+      const hero = await enhancedImageAgent.generateHeroImage({
+        topic,
+        mood,
+        brandColors,
+        aspectRatio: '16:9',
+        keywords: [topic],
+      })
+
+      return {
+        success: true,
+        image: hero,
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to generate hero image'
+      console.error('[Image Tools] generateHeroImageTool error:', error)
+      return { success: false, error: message }
+    }
+  },
+})

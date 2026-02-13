@@ -17,6 +17,83 @@ export interface GuidedWorkflow {
  * Guided workflow definitions for dashboard quick actions
  */
 export const GUIDED_WORKFLOWS: Record<string, GuidedWorkflow> = {
+  // ========================================
+  // INSTANT CAMPAIGNS (3-minute promise)
+  // ========================================
+  
+  'instant-rank-keyword': {
+    id: 'instant-rank-keyword',
+    title: 'Rank for a Keyword',
+    description: 'Publish-ready content in under 3 minutes',
+    initialPrompt: `Let's create ranking content FAST!
+
+Enter your target keyword and I'll deliver in under 3 minutes:
+- Research-backed, SEO-optimized content
+- Hero image
+- Schema markup
+- Meta tags
+
+All you need to do is publish.
+
+What keyword do you want to rank for?`,
+    context: {
+      workflowType: 'instant-campaign',
+      campaignType: 'rank-keyword',
+      isInstant: true,
+      estimatedTime: '2-3 minutes'
+    }
+  },
+
+  'instant-beat-competitor': {
+    id: 'instant-beat-competitor',
+    title: 'Beat a Competitor',
+    description: 'Outrank any URL in under 5 minutes',
+    initialPrompt: `Let's create content that BEATS your competitor!
+
+Paste a competitor URL and I'll:
+- Analyze what they cover
+- Find gaps they missed
+- Create better, more comprehensive content
+- Include everything they have PLUS more
+
+You'll get a side-by-side comparison showing why your content should rank higher.
+
+What competitor URL do you want to outrank?`,
+    context: {
+      workflowType: 'instant-campaign',
+      campaignType: 'beat-competitor',
+      isInstant: true,
+      estimatedTime: '3-5 minutes'
+    }
+  },
+
+  'instant-answer-question': {
+    id: 'instant-answer-question',
+    title: 'Answer a Question (AEO)',
+    description: 'Get cited by ChatGPT/Perplexity in under 3 minutes',
+    initialPrompt: `Let's create content optimized for AI citations!
+
+Enter a question your audience asks and I'll create:
+- A 40-60 word direct answer (this is what AI systems cite)
+- Expanded E-E-A-T content
+- FAQ schema for related questions
+- Speakable markup for voice search
+
+This is how you get cited by ChatGPT, Claude, and Perplexity.
+
+What question do you want to answer?`,
+    context: {
+      workflowType: 'instant-campaign',
+      campaignType: 'answer-question',
+      isInstant: true,
+      estimatedTime: '2-3 minutes'
+    }
+  },
+
+  // ========================================
+  // STANDARD WORKFLOWS
+  // ========================================
+
   'seo-tools': {
     id: 'seo-tools',
     title: 'SEO Tools & Analysis',
@@ -213,4 +290,22 @@ export function getWorkflowPrompt(workflowId: string): GuidedWorkflow | null {
  */
 export function getAllWorkflows(): GuidedWorkflow[] {
   return Object.values(GUIDED_WORKFLOWS)
+}
+
+/**
+ * Get instant campaign workflows only
+ */
+export function getInstantCampaigns(): GuidedWorkflow[] {
+  return Object.values(GUIDED_WORKFLOWS).filter(
+    w => w.context?.isInstant === true
+  )
+}
+
+/**
+ * Get standard (non-instant) workflows
+ */
+export function getStandardWorkflows(): GuidedWorkflow[] {
+  return Object.values(GUIDED_WORKFLOWS).filter(
+    w => w.context?.isInstant !== true
+  )
 }

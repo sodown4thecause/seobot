@@ -52,6 +52,19 @@ export function SERPTable({ toolInvocation }: SERPTableProps) {
         )
     }
 
+    // Handle case where result is text prose from AI (not JSON data)
+    if (typeof result === 'string') {
+        const trimmed = result.trim()
+        if (!trimmed.startsWith('[') && !trimmed.startsWith('{')) {
+            console.warn('[SERPTable] Result is text, not JSON. First 100 chars:', trimmed.substring(0, 100))
+            return (
+                <div className="p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 text-zinc-400 text-center italic">
+                    SERP data unavailable (received text response instead of structured data).
+                </div>
+            )
+        }
+    }
+
     // Handle DataForSEO serp_organic_live_advanced structure
     const items: SERPResult[] = Array.isArray(result?.[0]?.result?.[0]?.items)
         ? result?.[0]?.result?.[0]?.items
@@ -108,15 +121,15 @@ export function SERPTable({ toolInvocation }: SERPTableProps) {
                                     <TableCell className="text-center py-4">
                                         <div className="flex flex-col items-center justify-center">
                                             <span className={`text-sm font-bold ${idx === 0 ? "text-amber-400" :
-                                                    idx === 1 ? "text-zinc-300" :
-                                                        idx === 2 ? "text-amber-700" :
-                                                            "text-zinc-500"
+                                                idx === 1 ? "text-zinc-300" :
+                                                    idx === 2 ? "text-amber-700" :
+                                                        "text-zinc-500"
                                                 }`}>
                                                 {item.rank_absolute || idx + 1}
                                             </span>
                                             {idx < 3 && <Award className={`w-3 h-3 mt-1 ${idx === 0 ? "text-amber-400" :
-                                                    idx === 1 ? "text-zinc-300" :
-                                                        "text-amber-700"
+                                                idx === 1 ? "text-zinc-300" :
+                                                    "text-amber-700"
                                                 }`} />}
                                         </div>
                                     </TableCell>

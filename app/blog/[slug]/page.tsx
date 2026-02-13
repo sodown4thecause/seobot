@@ -66,33 +66,67 @@ export default async function BlogPostPage({
         ? urlFor(post.image).width(1200).height(630).url()
         : null;
 
-    // Article structured data
+    // Article structured data + BreadcrumbList
     const articleSchema = {
         '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: post.title,
-        description: post.excerpt || 'FlowIntent blog post on AEO, AI SEO, and content marketing',
-        image: postImageUrl || `${SITE_URL}/images/logo.png`,
-        datePublished: post.publishedAt,
-        dateModified: post._updatedAt || post.publishedAt,
-        author: {
-            '@type': 'Organization',
-            name: 'FlowIntent',
-            url: SITE_URL,
-        },
-        publisher: {
-            '@type': 'Organization',
-            name: 'FlowIntent',
-            url: SITE_URL,
-            logo: {
-                '@type': 'ImageObject',
-                url: `${SITE_URL}/images/logo.png`,
+        '@graph': [
+            {
+                '@type': 'Article',
+                '@id': `${SITE_URL}/blog/${slug}#article`,
+                headline: post.title,
+                description: post.excerpt || 'FlowIntent blog post on AEO, AI SEO, and content marketing',
+                image: postImageUrl || `${SITE_URL}/images/logo.png`,
+                datePublished: post.publishedAt,
+                dateModified: post._updatedAt || post.publishedAt,
+                author: {
+                    '@type': 'Organization',
+                    '@id': 'https://flowintent.com/#organization',
+                    name: 'FlowIntent',
+                    url: SITE_URL,
+                },
+                publisher: {
+                    '@type': 'Organization',
+                    '@id': 'https://flowintent.com/#organization',
+                    name: 'FlowIntent',
+                    url: SITE_URL,
+                    logo: {
+                        '@type': 'ImageObject',
+                        url: `${SITE_URL}/logo-new.png`,
+                    },
+                },
+                mainEntityOfPage: {
+                    '@type': 'WebPage',
+                    '@id': `${SITE_URL}/blog/${slug}`,
+                },
+                isPartOf: { '@id': 'https://flowintent.com/#website' },
+                ...(post.category ? { articleSection: post.category } : {}),
+                ...(post.readTime ? { timeRequired: `PT${post.readTime}M` } : {}),
+                inLanguage: 'en-US',
             },
-        },
-        mainEntityOfPage: {
-            '@type': 'WebPage',
-            '@id': `${SITE_URL}/blog/${slug}`,
-        },
+            {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                    {
+                        '@type': 'ListItem',
+                        position: 1,
+                        name: 'Home',
+                        item: SITE_URL,
+                    },
+                    {
+                        '@type': 'ListItem',
+                        position: 2,
+                        name: 'Blog',
+                        item: `${SITE_URL}/blog`,
+                    },
+                    {
+                        '@type': 'ListItem',
+                        position: 3,
+                        name: post.title,
+                        item: `${SITE_URL}/blog/${slug}`,
+                    },
+                ],
+            },
+        ],
     }
 
     return (

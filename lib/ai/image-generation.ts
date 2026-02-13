@@ -20,6 +20,7 @@ export type {
 
 export { SEOPrompts } from './image-generation-types'
 
+import { SITE_URL } from '@/lib/seo/site'
 import type {
   ImageGenerationOptions,
   GeneratedImage,
@@ -36,7 +37,7 @@ export async function generateImageSuggestions(
   targetKeyword: string
 ): Promise<ImageSuggestion[]> {
   try {
-    const response = await fetch('/api/images/suggestions', {
+    const response = await fetch(new URL('/api/images/suggestions', SITE_URL), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, content, targetKeyword }),
@@ -77,7 +78,7 @@ export async function generateImageWithOpenAI(
   options: ImageGenerationOptions
 ): Promise<GeneratedImage[]> {
   try {
-    const response = await fetch('/api/images/generate', {
+    const response = await fetch(new URL('/api/images/generate', SITE_URL), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(options),
@@ -104,7 +105,7 @@ export async function generateImageWithGemini(
   options: import('./image-generation-types').GeminiImageRequest
 ): Promise<import('./image-generation-types').GeminiGeneratedImage> {
   try {
-    const response = await fetch('/api/images/generate', {
+    const response = await fetch(new URL('/api/images/generate', SITE_URL), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -146,7 +147,7 @@ export async function generateImageVariations(
   articleContext: ImageGenerationOptions['articleContext']
 ): Promise<GeneratedImage[]> {
   try {
-    const response = await fetch('/api/images/variations', {
+    const response = await fetch(new URL('/api/images/variations', SITE_URL), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, articleContext }),
@@ -216,7 +217,7 @@ export interface ImageGenerationResponse {
 export async function generateImageWithGatewayGemini(
   params: ImageGenerationParams
 ): Promise<ImageGenerationResponse> {
-  const response = await fetch('/api/images/generate', {
+  const response = await fetch(new URL('/api/images/generate', SITE_URL), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

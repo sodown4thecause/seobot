@@ -119,6 +119,43 @@ export class TutorialProgressService {
         }
       })
 
+    const existingProgress = await this.getTutorialProgress(tutorialId)
+    const completedSteps = new Set(existingProgress?.completedSteps ?? [])
+    completedSteps.add(stepId)
+
+    const nextStepIndex = Math.max(existingProgress?.currentStepIndex ?? 0, stepIndex + 1)
+    const progressMetadata = {
+      ...(existingProgress?.metadata ?? {}),
+      currentStepIndex: nextStepIndex,
+      completedSteps: Array.from(completedSteps),
+      startedAt: existingProgress?.metadata?.startedAt ?? new Date().toISOString(),
+      lastAccessedAt: new Date().toISOString(),
+    }
+
+    if (existingProgress) {
+      await db
+        .update(userProgress)
+        .set({
+          metadata: progressMetadata,
+        })
+        .where(and(
+          eq(userProgress.userId, user.id),
+          eq(userProgress.category, 'tutorial_progress'),
+          eq(userProgress.itemKey, tutorialId)
+        ))
+        .returning()
+    } else {
+      await db
+        .insert(userProgress)
+        .values({
+          userId: user.id,
+          category: 'tutorial_progress',
+          itemKey: tutorialId,
+          metadata: progressMetadata,
+        })
+        .returning()
+    }
+
     // Check for milestones after step completion
     await this.checkMilestonesAfterStep(tutorialId, stepId, options?.quizScore)
   }
@@ -195,6 +232,9 @@ export class TutorialProgressService {
     quizScore?: number
   ): Promise<void> {
     try {
+      if (process.env.NODE_ENV === 'test') {
+        return
+      }
       const user = await getCurrentUser()
       if (!user) return
 

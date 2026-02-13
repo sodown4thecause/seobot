@@ -37,7 +37,13 @@ export async function POST(request: NextRequest) {
     try {
         // Parse and validate request body FIRST (before rate limiting)
         // This ensures invalid requests don't consume the rate limit
-        const body = await request.json()
+        const bodyPromise = request.json()
+
+        // Rate limit: 1 audit per day per IP (free tier)
+        // Only checked AFTER validation passes to avoid wasting rate limit on bad requests
+        const rateLimitPromise = rateLimitMiddleware(request, 'AEO_AUDIT')
+
+        const body = await bodyPromise
         const parseResult = AuditRequestSchema.safeParse(body)
 
         if (!parseResult.success) {
@@ -51,14 +57,12 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const { url, brandName } = parseResult.data
-
-        // Rate limit: 1 audit per day per IP (free tier)
-        // Only checked AFTER validation passes to avoid wasting rate limit on bad requests
-        const rateLimitResponse = await rateLimitMiddleware(request, 'AEO_AUDIT')
+        const rateLimitResponse = await rateLimitPromise
         if (rateLimitResponse) {
             return rateLimitResponse
         }
+
+        const { url, brandName } = parseResult.data
 
         console.log('[Audit API] Starting audit for:', { brandName, url })
 

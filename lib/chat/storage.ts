@@ -202,3 +202,69 @@ export function normalizeUIMessage(message: GenericUIMessage): ChatMessage {
     createdAt: message.createdAt || new Date(),
   }
 }
+
+/**
+ * Save a UIMessage from AI SDK 6 format.
+ * Stores parts and tool invocations in metadata for proper rehydration.
+ */
+export async function saveUIMessage(
+  conversationId: string,
+  userId: string,
+  message: {
+    id?: string
+    role: 'user' | 'assistant' | 'system'
+    content?: string
+    parts?: any[]
+    toolInvocations?: any[]
+    createdAt?: Date
+  }
+): Promise<ChatMessage> {
+  // Extract text content from parts if content is not provided
+  let content = message.content || ''
+  if (!content && Array.isArray(message.parts)) {
+    content = message.parts
+      .filter((p: any) => p?.type === 'text' && typeof p.text === 'string')
+      .map((p: any) => p.text)
+      .join('')
+  }
+
+  // Store parts and tool invocations in metadata for AI SDK 6 compatibility
+  const metadata: Record<string, any> = {}
+  if (message.parts && message.parts.length > 0) {
+    metadata.parts = message.parts
+  }
+  if (message.toolInvocations && message.toolInvocations.length > 0) {
+    metadata.toolInvocations = message.toolInvocations
+  }
+
+  const result = await db.insert(messages).values({
+    conversationId,
+    role: message.role,
+    content,
+    metadata,
+  }).returning()
+
+  if (!result[0]) {
+    throw new Error('Failed to save UI message')
+  }
+
+  // Update conversation's lastMessageAt timestamp
+  try {
+    await db
+      .update(conversations)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(conversations.id, conversationId))
+  } catch (error) {
+    console.warn('[Storage] Failed to update conversation lastMessageAt:', error)
+  }
+
+  return {
+    id: result[0].id,
+    conversationId: result[0].conversationId,
+    role: result[0].role as 'user' | 'assistant' | 'system',
+    content: result[0].content,
+    createdAt: result[0].createdAt,
+    parts: metadata.parts,
+    toolInvocations: metadata.toolInvocations,
+  }
+}
