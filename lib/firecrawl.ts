@@ -76,7 +76,7 @@ function extractTitleCandidate(title: string, fallbackHost: string): string {
     return fallbackHost.split('.')[0]
   }
 
-  const segment = cleaned.split('|')[0].split('-')[0].trim()
+  const segment = cleaned.split(/\s*\|\s*/)[0].split(/\s+-\s+/)[0].trim()
   return segment || fallbackHost.split('.')[0]
 }
 

@@ -212,8 +212,8 @@ export function extractUsageFromResult(result: any): {
   // AI SDK 6 format
   if (result.usage) {
     return {
-      promptTokens: result.usage.promptTokens || 0,
-      completionTokens: result.usage.completionTokens || 0,
+      promptTokens: result.usage.inputTokens ?? 0,
+      completionTokens: result.usage.outputTokens ?? 0,
       toolCalls,
     }
   }
@@ -221,8 +221,8 @@ export function extractUsageFromResult(result: any): {
   // Fallback: try to extract from response
   if (result.response?.usage) {
     return {
-      promptTokens: result.response.usage.promptTokens || 0,
-      completionTokens: result.response.usage.completionTokens || 0,
+      promptTokens: result.response.usage.inputTokens ?? 0,
+      completionTokens: result.response.usage.outputTokens ?? 0,
       toolCalls,
     }
   }

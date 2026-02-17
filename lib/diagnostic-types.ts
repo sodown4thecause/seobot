@@ -2,9 +2,11 @@ export type DiagnosticIntent = 'transactional' | 'comparative' | 'informational'
 
 export type DiagnosticModel = 'gemini' | 'perplexity' | 'grok'
 
-export type ParseMethod = 'json' | 'heuristic' | 'failed'
+export const DIAGNOSTIC_ENGINES: DiagnosticModel[] = ['gemini', 'perplexity', 'grok']
 
-export type AIRecommendationType = 'primary' | 'secondary' | 'listed' | 'mention_only'
+export const DIAGNOSTIC_INTENTS: DiagnosticIntent[] = ['transactional', 'comparative', 'informational']
+
+export type ParseMethod = 'json' | 'heuristic' | 'failed'
 
 export type AIPerceptionCategory =
   | 'Informational Authority'

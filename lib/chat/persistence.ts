@@ -62,7 +62,7 @@ function deriveConversationTitle(text: string): string | null {
 }
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
 export async function ensureChatForUser(params: {
@@ -89,7 +89,6 @@ export async function ensureChatForUser(params: {
     .values({
       userId,
       agentType,
-      title: null,
       status: 'active',
       updatedAt: new Date(),
       lastMessageAt: new Date(),
@@ -114,14 +113,12 @@ export async function autosaveUserMessage(params: {
     .insert(messages)
     .values({
       conversationId: chatId,
-      messageId: normalized.messageId,
       role: normalized.role,
       content: normalized.content,
-      parts: normalized.parts as unknown as Json,
       metadata: normalized.metadata,
       createdAt: normalized.createdAt,
     })
-    .onConflictDoNothing({ target: [messages.conversationId, messages.messageId] })
+    .onConflictDoNothing({ target: [messages.conversationId, messages.id] })
 
   const [conversation] = await db
     .select({ title: conversations.title })
@@ -153,31 +150,27 @@ export async function persistAssistantMessages(params: {
   const assistants = messagesToPersist.filter((message) => message.role === 'assistant')
   if (assistants.length === 0) return
 
-  let lastMessageAt = new Date(0)
+  const normalizedAssistants = assistants.map(normalizePersistedMessage)
+  const lastMessageAt = new Date(
+    Math.max(...normalizedAssistants.map((msg) => msg.createdAt.getTime()))
+  )
 
-  for (const assistantMessage of assistants) {
-    const normalized = normalizePersistedMessage(assistantMessage)
-    if (normalized.createdAt > lastMessageAt) {
-      lastMessageAt = normalized.createdAt
-    }
+  for (const normalized of normalizedAssistants) {
 
     await db
       .insert(messages)
       .values({
         conversationId: chatId,
-        messageId: normalized.messageId,
         role: normalized.role,
         content: normalized.content,
-        parts: normalized.parts as unknown as Json,
         metadata: normalized.metadata,
         createdAt: normalized.createdAt,
       })
       .onConflictDoUpdate({
-        target: [messages.conversationId, messages.messageId],
+        target: [messages.conversationId, messages.id],
         set: {
           role: normalized.role,
           content: normalized.content,
-          parts: normalized.parts as unknown as Json,
           metadata: normalized.metadata,
           createdAt: normalized.createdAt,
         },
@@ -245,10 +238,9 @@ export async function loadChatMessagesForUser(params: {
 
   const messageRows = await db
     .select({
-      messageId: messages.messageId,
+      id: messages.id,
       role: messages.role,
       content: messages.content,
-      parts: messages.parts,
       metadata: messages.metadata,
       createdAt: messages.createdAt,
     })
@@ -257,10 +249,7 @@ export async function loadChatMessagesForUser(params: {
     .orderBy(asc(messages.createdAt))
 
   const uiMessages = messageRows.map((message) => {
-    const parts =
-      Array.isArray(message.parts) && message.parts.length > 0
-        ? (message.parts as UIMessage['parts'])
-        : ([{ type: 'text', text: message.content || '' }] as UIMessage['parts'])
+    const parts = [{ type: 'text', text: message.content || '' }] as UIMessage['parts']
 
     const metadata: MessageMetadata = {
       ...(message.metadata ? (message.metadata as MessageMetadata) : {}),
@@ -268,7 +257,7 @@ export async function loadChatMessagesForUser(params: {
     }
 
     return {
-      id: message.messageId,
+      id: message.id,
       role: message.role as UIMessage['role'],
       parts,
       metadata,
