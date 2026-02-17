@@ -7,10 +7,11 @@ export const metadata: Metadata = {
   description: 'Step 1 AI Influence Diagnostic snapshot result.',
 }
 
-export default function DiagnosticResultPage({
+export default async function DiagnosticResultPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
-  return <ResultPageClient id={params.id} />
+  const { id } = await params
+  return <ResultPageClient id={id} />
 }

@@ -205,8 +205,8 @@ export function ResultPageClient({ id }: ResultPageClientProps) {
           <section className="mt-6 rounded-2xl border border-amber-300/30 bg-amber-500/10 p-5">
             <h3 className="text-sm font-semibold uppercase tracking-[0.15em] text-amber-100">Incomplete details</h3>
             <ul className="mt-2 space-y-1 text-sm text-amber-50/90">
-              {result.incompleteReasons.map((reason) => (
-                <li key={reason}>- {reason}</li>
+              {result.incompleteReasons.map((reason, idx) => (
+                <li key={`${reason}-${idx}`}>- {reason}</li>
               ))}
             </ul>
           </section>

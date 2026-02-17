@@ -10,13 +10,29 @@ import { Input } from '@/components/ui/input'
 
 const MAX_KEYWORDS = 5
 
-export function DiagnosticPageClient() {
+interface DiagnosticPageClientProps {
+  aiAuditsRun?: number
+  avgCitationIncrease?: number
+  agenciesTrustUs?: number
+}
+
+export function DiagnosticPageClient({
+  aiAuditsRun: initialAiAuditsRun,
+  avgCitationIncrease: initialAvgCitationIncrease,
+  agenciesTrustUs: initialAgenciesTrustUs,
+}: DiagnosticPageClientProps) {
   const router = useRouter()
   const [domain, setDomain] = useState('')
   const [brandIdentity, setBrandIdentity] = useState('')
   const [keywords, setKeywords] = useState<string[]>([''])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const hasRealMetrics = initialAiAuditsRun !== undefined && initialAvgCitationIncrease !== undefined && initialAgenciesTrustUs !== undefined
+
+  const aiAuditsRun = initialAiAuditsRun ?? null
+  const avgCitationIncrease = initialAvgCitationIncrease ?? null
+  const agenciesTrustUs = initialAgenciesTrustUs ?? null
 
   const canAddKeyword = keywords.length < MAX_KEYWORDS
 
@@ -46,6 +62,24 @@ export function DiagnosticPageClient() {
     setError(null)
     setSubmitting(true)
 
+    const domainRegex = /^(?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9][-a-zA-Z0-9]*(?:\.[a-zA-Z0-9][-a-zA-Z0-9]*)+(?:\/.*)?$/i
+
+    if (!domain || !domainRegex.test(domain)) {
+      setError('Please enter a valid domain (e.g., example.com)')
+      setSubmitting(false)
+      return
+    }
+
+    const domainOnly = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+    if (domainOnly.length < 4 || domainOnly.includes(' ') || domainOnly.length > 253) {
+      setError('Please enter a valid domain (e.g., example.com)')
+      setSubmitting(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000)
+
     try {
       const response = await fetch('/api/diagnostic/run', {
         method: 'POST',
@@ -57,7 +91,10 @@ export function DiagnosticPageClient() {
           brandIdentity,
           keywords: normalizedKeywords,
         }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       const payload = (await response.json()) as { id?: string; error?: string }
 
@@ -67,7 +104,11 @@ export function DiagnosticPageClient() {
 
       router.push(`/diagnostic/result/${payload.id}`)
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Something went wrong')
+      if (submitError instanceof Error && submitError.name === 'AbortError') {
+        setError('Request timed out. Please try again.')
+      } else {
+        setError(submitError instanceof Error ? submitError.message : 'Something went wrong')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -108,22 +149,50 @@ export function DiagnosticPageClient() {
             </a>
             <div>
               <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">No signup required</p>
-              <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-600">2,847 audits this month</p>
+              {aiAuditsRun !== null ? (
+                <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-600">{aiAuditsRun.toLocaleString()} audits this month</p>
+              ) : (
+                <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-600">Audits this month (illustrative)</p>
+              )}
             </div>
           </div>
 
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             <div className="border border-white/10 bg-white/[0.02] px-6 py-7 text-center">
-              <p className="text-4xl md:text-5xl font-black">2,847+</p>
-              <p className="mt-2 text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">AI Audits Run</p>
+              <p className="text-4xl md:text-5xl font-black">
+                {aiAuditsRun !== null ? (
+                  <>{(aiAuditsRun || 0).toLocaleString()}+</>
+                ) : (
+                  <span className="text-zinc-600">--</span>
+                )}
+              </p>
+              <p className="mt-2 text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">
+                AI Audits Run {!hasRealMetrics && '(Illustrative)'}
+              </p>
             </div>
             <div className="border border-white/10 bg-white/[0.02] px-6 py-7 text-center">
-              <p className="text-4xl md:text-5xl font-black">89%</p>
-              <p className="mt-2 text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">Avg Citation Increase</p>
+              <p className="text-4xl md:text-5xl font-black">
+                {avgCitationIncrease !== null ? (
+                  <>{avgCitationIncrease}%</>
+                ) : (
+                  <span className="text-zinc-600">--</span>
+                )}
+              </p>
+              <p className="mt-2 text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">
+                Avg Citation Increase {!hasRealMetrics && '(Illustrative)'}
+              </p>
             </div>
             <div className="border border-white/10 bg-white/[0.02] px-6 py-7 text-center">
-              <p className="text-4xl md:text-5xl font-black">127</p>
-              <p className="mt-2 text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">Agencies Trust Us</p>
+              <p className="text-4xl md:text-5xl font-black">
+                {agenciesTrustUs !== null ? (
+                  <>{agenciesTrustUs.toLocaleString()}</>
+                ) : (
+                  <span className="text-zinc-600">--</span>
+                )}
+              </p>
+              <p className="mt-2 text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">
+                Agencies Trust Us {!hasRealMetrics && '(Illustrative)'}
+              </p>
             </div>
           </div>
         </section>

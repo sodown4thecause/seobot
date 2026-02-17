@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getUserId } from '@/lib/auth/clerk'
 import {
   buildDiagnosticCacheKey,
   createDiagnosticResultId,
   getCachedResultIdForInput,
   saveDiagnosticResult,
 } from '@/lib/diagnostic-store'
-import type {
-  DiagnosticIntent,
-  DiagnosticModel,
-  DiagnosticResultStored,
-  DiagnosticRunDebug,
-  DiagnosticRunPublic,
-  ParseMethod,
+import {
+  DIAGNOSTIC_ENGINES,
+  DIAGNOSTIC_INTENTS,
+  type DiagnosticIntent,
+  type DiagnosticModel,
+  type DiagnosticResultStored,
+  type DiagnosticRunDebug,
+  type DiagnosticRunPublic,
+  type ParseMethod,
 } from '@/lib/diagnostic-types'
-import { selectStrongestKeywords } from '@/lib/dataforseo'
+import { selectStrongestKeywords } from '@/lib/keyword-selector'
 import { scrapeBrandContext } from '@/lib/firecrawl'
 import { parseLlmResponseWithFallback } from '@/lib/llm/parse'
 import { buildIntentPrompt, DEFAULT_USE_CASE, DIAGNOSTIC_SYSTEM_PROMPT } from '@/lib/llm/prompts'
@@ -24,7 +27,10 @@ import { runPerplexityAdapter } from '@/lib/llm/adapters/perplexity'
 import { computeStep1Score, analyzeDiagnosticRun } from '@/lib/scoring'
 import { buildXShareIntentUrl, generateShareCardSvg, svgToDataUrl } from '@/lib/sharecard'
 import { diagnosticRunInputSchema } from '@/lib/validate'
+import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 
+// Node.js required: process.env access, LLM adapters (Gemini, Grok, Perplexity), 
+// Firecrawl scraping, and async Promise.allSettled for parallel model runs.
 export const runtime = 'nodejs'
 
 const EXPECTED_RUNS = 9
@@ -63,7 +69,7 @@ interface RunTaskResult {
 }
 
 async function executeModelRun(task: RunTask): Promise<{ rawResponse: string }> {
-  if (task.model === 'gemini') {
+  if (task.model === DIAGNOSTIC_ENGINES[0]) {
     const response = await runGeminiAdapter({
       systemPrompt: task.systemPrompt,
       userPrompt: task.userPrompt,
@@ -73,7 +79,7 @@ async function executeModelRun(task: RunTask): Promise<{ rawResponse: string }> 
     return { rawResponse: response.rawText }
   }
 
-  if (task.model === 'perplexity') {
+  if (task.model === DIAGNOSTIC_ENGINES[1]) {
     const response = await runPerplexityAdapter({
       systemPrompt: task.systemPrompt,
       userPrompt: task.userPrompt,
@@ -93,6 +99,16 @@ async function executeModelRun(task: RunTask): Promise<{ rawResponse: string }> 
 }
 
 export async function POST(request: NextRequest) {
+  const userId = await getUserId()
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
+  const rateLimitResponse = await rateLimitMiddleware(request, 'AEO_AUDIT', userId)
+  if (rateLimitResponse) {
+    return rateLimitResponse
+  }
+
   const startedAt = Date.now()
 
   try {
@@ -108,9 +124,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { domain, keywords: inputKeywords } = parsedInput.data
+    const { domain, keywords: inputKeywords, brandIdentity } = parsedInput.data
     const inputKey = buildDiagnosticCacheKey(domain, inputKeywords)
-    const cachedId = getCachedResultIdForInput(inputKey)
+    const cachedId = await getCachedResultIdForInput(inputKey)
     if (cachedId) {
       return NextResponse.json({ id: cachedId, cached: true })
     }
@@ -126,6 +142,14 @@ export async function POST(request: NextRequest) {
       retries: RETRY_ATTEMPTS,
     })
 
+    if (brandIdentity && firecrawl.brandSummary.length < 50) {
+      firecrawl.brandSummary = brandIdentity
+      firecrawl.incomplete = false
+      firecrawl.errors = []
+    } else if (brandIdentity) {
+      firecrawl.brandSummary = `${brandIdentity}\n\n${firecrawl.brandSummary}`
+    }
+
     const keywordSelection = await selectStrongestKeywords({
       domain,
       brandName: firecrawl.brandName,
@@ -140,8 +164,8 @@ export async function POST(request: NextRequest) {
     const primaryKeyword = selectedKeywords[0] || inputKeywords[0] || 'AI visibility tools'
     const secondaryKeyword = selectedKeywords[1] || primaryKeyword
 
-    const intents: DiagnosticIntent[] = ['transactional', 'comparative', 'informational']
-    const models: DiagnosticModel[] = ['gemini', 'perplexity', 'grok']
+    const intents = DIAGNOSTIC_INTENTS
+    const models = DIAGNOSTIC_ENGINES
 
     const tasks: RunTask[] = []
     for (const intent of intents) {
@@ -181,11 +205,18 @@ export async function POST(request: NextRequest) {
         error = settledResult.reason instanceof Error ? settledResult.reason.message : 'Model call failed'
       }
 
-      const parsedResponse = parseLlmResponseWithFallback({
-        rawResponse,
-        targetDomain: domain,
-        targetBrandName: firecrawl.brandName,
-      })
+      const parsedResponse =
+        settledResult.status === 'fulfilled' && rawResponse
+          ? parseLlmResponseWithFallback({
+              rawResponse,
+              targetDomain: domain,
+              targetBrandName: firecrawl.brandName,
+            })
+          : {
+              structured: { recommended_brands: [], direct_links_included: [] },
+              parseMethod: 'failed' as const,
+              parseError: error || 'Empty response from LLM',
+            }
 
       const analysis = analyzeDiagnosticRun({
         run: {
@@ -292,7 +323,7 @@ export async function POST(request: NextRequest) {
       debugRuns: runResults.map((run) => run.debugRun),
     }
 
-    saveDiagnosticResult({
+    await saveDiagnosticResult({
       inputKey,
       result,
       ttlMs: CACHE_TTL_MS,
