@@ -72,7 +72,11 @@ export async function ensureChatForUser(params: {
 }): Promise<{ id: string; created: boolean }> {
   const { userId, requestedChatId, agentType = 'general' } = params
 
-  if (requestedChatId && isUuid(requestedChatId)) {
+  if (requestedChatId) {
+    if (!isUuid(requestedChatId)) {
+      throw new Error('Invalid requestedChatId: not a valid UUID')
+    }
+
     const [existing] = await db
       .select({ id: conversations.id })
       .from(conversations)
@@ -82,6 +86,8 @@ export async function ensureChatForUser(params: {
     if (existing) {
       return { id: existing.id, created: false }
     }
+
+    throw new Error('requestedChatId not found or not owned by user')
   }
 
   const [created] = await db
@@ -106,6 +112,16 @@ export async function autosaveUserMessage(params: {
   const { userId, chatId, message } = params
   if (message.role !== 'user') return
 
+  const [conversation] = await db
+    .select({ title: conversations.title })
+    .from(conversations)
+    .where(and(eq(conversations.id, chatId), eq(conversations.userId, userId)))
+    .limit(1)
+
+  if (!conversation) {
+    throw new Error('Conversation not found for authenticated user')
+  }
+
   const normalized = normalizePersistedMessage(message)
   const suggestedTitle = deriveConversationTitle(normalized.content)
 
@@ -119,16 +135,6 @@ export async function autosaveUserMessage(params: {
       createdAt: normalized.createdAt,
     })
     .onConflictDoNothing({ target: [messages.conversationId, messages.id] })
-
-  const [conversation] = await db
-    .select({ title: conversations.title })
-    .from(conversations)
-    .where(and(eq(conversations.id, chatId), eq(conversations.userId, userId)))
-    .limit(1)
-
-  if (!conversation) {
-    throw new Error('Conversation not found for authenticated user')
-  }
 
   await db
     .update(conversations)
@@ -146,6 +152,16 @@ export async function persistAssistantMessages(params: {
   messagesToPersist: PersistedMessage[]
 }): Promise<void> {
   const { userId, chatId, messagesToPersist } = params
+
+  const [conversation] = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(and(eq(conversations.id, chatId), eq(conversations.userId, userId)))
+    .limit(1)
+
+  if (!conversation) {
+    throw new Error('Conversation not found for authenticated user')
+  }
 
   const assistants = messagesToPersist.filter((message) => message.role === 'assistant')
   if (assistants.length === 0) return
@@ -248,11 +264,13 @@ export async function loadChatMessagesForUser(params: {
     .where(eq(messages.conversationId, chatId))
     .orderBy(asc(messages.createdAt))
 
-  const uiMessages = messageRows.map((message) => {
-    const parts = [{ type: 'text', text: message.content || '' }] as UIMessage['parts']
+const uiMessages = messageRows.map((message) => {
+    const metadataObj = message.metadata ? (message.metadata as MessageMetadata) : {}
+    const existingParts = Array.isArray(metadataObj.parts) ? metadataObj.parts : null
+    const parts = existingParts ?? ([{ type: 'text', text: message.content || '' }] as UIMessage['parts'])
 
     const metadata: MessageMetadata = {
-      ...(message.metadata ? (message.metadata as MessageMetadata) : {}),
+      ...metadataObj,
       createdAt: message.createdAt.toISOString(),
     }
 

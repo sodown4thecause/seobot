@@ -70,8 +70,15 @@ export function DiagnosticPageClient({
       return
     }
 
-    const domainOnly = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
-    if (domainOnly.length < 4 || domainOnly.includes(' ') || domainOnly.length > 253) {
+const domainOnly = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+    const labels = domainOnly.split('.')
+    const isValidDomain =
+      domainOnly.length <= 253 &&
+      !domainOnly.includes(' ') &&
+      labels.length >= 2 &&
+      labels.every((label) => label.length >= 1 && label.length <= 63) &&
+      /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(labels[labels.length - 1])
+    if (!isValidDomain) {
       setError('Please enter a valid domain (e.g., example.com)')
       setSubmitting(false)
       return
@@ -80,7 +87,7 @@ export function DiagnosticPageClient({
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 60000)
 
-    try {
+try {
       const response = await fetch('/api/diagnostic/run', {
         method: 'POST',
         headers: {
@@ -94,9 +101,12 @@ export function DiagnosticPageClient({
         signal: controller.signal,
       })
 
-      clearTimeout(timeoutId)
-
-      const payload = (await response.json()) as { id?: string; error?: string }
+      let payload: { id?: string; error?: string }
+      try {
+        payload = (await response.json()) as { id?: string; error?: string }
+      } finally {
+        clearTimeout(timeoutId)
+      }
 
       if (!response.ok || !payload.id) {
         throw new Error(payload.error || 'Failed to run the instant snapshot')

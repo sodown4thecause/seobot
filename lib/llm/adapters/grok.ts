@@ -19,8 +19,8 @@ export interface GrokAdapterResult {
   }
 }
 
-const GROK_MODEL = 'grok-2-1212'
-const XAI_BASE_URL = 'https://api.x.ai/v1'
+const GROK_MODEL_DEFAULT = 'grok-2-1212'
+const XAI_BASE_URL_DEFAULT = 'https://api.x.ai/v1'
 
 export async function runGrokAdapter(params: RunGrokAdapterParams): Promise<GrokAdapterResult> {
   const { systemPrompt, userPrompt, timeoutMs = 15000, retries = 2 } = params
@@ -30,9 +30,12 @@ export async function runGrokAdapter(params: RunGrokAdapterParams): Promise<Grok
     throw new Error('XAI_API_KEY is not configured')
   }
 
+  const model = serverEnv.GROK_MODEL || GROK_MODEL_DEFAULT
+  const baseURL = serverEnv.XAI_BASE_URL || XAI_BASE_URL_DEFAULT
+
   const xai = createOpenAI({
     apiKey,
-    baseURL: XAI_BASE_URL,
+    baseURL,
   })
 
   let lastError: Error | null = null
@@ -40,7 +43,7 @@ export async function runGrokAdapter(params: RunGrokAdapterParams): Promise<Grok
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const result = await generateText({
-        model: xai(GROK_MODEL),
+        model: xai(model),
         system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.3,
@@ -50,7 +53,7 @@ export async function runGrokAdapter(params: RunGrokAdapterParams): Promise<Grok
       const usage = result.usage
       return {
         rawText: result.text,
-        model: GROK_MODEL,
+        model,
         usage: usage
           ? {
               promptTokens: usage.inputTokens ?? 0,
@@ -63,8 +66,8 @@ export async function runGrokAdapter(params: RunGrokAdapterParams): Promise<Grok
       lastError = error instanceof Error ? error : new Error('Unknown error')
       console.error(`[Grok] Attempt ${attempt + 1} failed:`, lastError.message)
       
-      if (attempt < retries) {
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt))
       }
     }
   }

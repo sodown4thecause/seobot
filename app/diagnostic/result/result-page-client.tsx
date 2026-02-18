@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Copy, Loader2, Share2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import type { DiagnosticModel, DiagnosticResultPublic } from '@/lib/diagnostic-types'
+
+const ENGINE_ORDER: DiagnosticModel[] = ['gemini', 'perplexity', 'grok']
 
 interface ResultPageClientProps {
   id: string
@@ -30,10 +32,18 @@ export function ResultPageClient({ id }: ResultPageClientProps) {
           cache: 'no-store',
         })
 
-        const payload = (await response.json()) as DiagnosticResultPublic & { error?: string }
         if (!response.ok) {
-          throw new Error(payload.error || 'Unable to load diagnostic result')
+          let errorMessage: string
+          try {
+            const payload = (await response.json()) as { error?: string }
+            errorMessage = payload.error || 'Unable to load diagnostic result'
+          } catch {
+            errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unable to load diagnostic result'}`
+          }
+          throw new Error(errorMessage)
         }
+
+        const payload = (await response.json()) as DiagnosticResultPublic
 
         if (!cancelled) {
           setResult(payload)
@@ -54,8 +64,6 @@ export function ResultPageClient({ id }: ResultPageClientProps) {
       cancelled = true
     }
   }, [id])
-
-  const engineOrder: DiagnosticModel[] = useMemo(() => ['gemini', 'perplexity', 'grok'], [])
 
   const handleCopy = async () => {
     try {
@@ -150,7 +158,7 @@ export function ResultPageClient({ id }: ResultPageClientProps) {
         <section className="mt-6 rounded-3xl border border-cyan-100/10 bg-[#0a1f2b] p-8">
           <h2 className="text-xl font-semibold">Engine breakdown</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
-            {engineOrder.map((engine) => {
+            {ENGINE_ORDER.map((engine) => {
               const data = result.engineBreakdown[engine]
               return (
                 <div key={engine} className="rounded-2xl border border-cyan-100/10 bg-[#071723] p-4">

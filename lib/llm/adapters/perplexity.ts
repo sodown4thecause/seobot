@@ -19,7 +19,7 @@ export interface PerplexityAdapterResult {
   }
 }
 
-const PERPLEXITY_MODEL = 'sonar-pro'
+const PERPLEXITY_MODEL_DEFAULT = 'sonar-pro'
 const PERPLEXITY_BASE_URL = 'https://api.perplexity.ai'
 
 export async function runPerplexityAdapter(params: RunPerplexityAdapterParams): Promise<PerplexityAdapterResult> {
@@ -29,6 +29,8 @@ export async function runPerplexityAdapter(params: RunPerplexityAdapterParams): 
   if (!apiKey) {
     throw new Error('PERPLEXITY_API_KEY is not configured')
   }
+
+  const model = serverEnv.PERPLEXITY_MODEL || PERPLEXITY_MODEL_DEFAULT
 
   const perplexity = createOpenAI({
     apiKey,
@@ -40,7 +42,7 @@ export async function runPerplexityAdapter(params: RunPerplexityAdapterParams): 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const result = await generateText({
-        model: perplexity(PERPLEXITY_MODEL),
+        model: perplexity(model),
         system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.2,
@@ -50,7 +52,7 @@ export async function runPerplexityAdapter(params: RunPerplexityAdapterParams): 
       const usage = result.usage
       return {
         rawText: result.text,
-        model: PERPLEXITY_MODEL,
+        model,
         usage: usage
           ? {
               promptTokens: usage.inputTokens ?? 0,
@@ -63,8 +65,8 @@ export async function runPerplexityAdapter(params: RunPerplexityAdapterParams): 
       lastError = error instanceof Error ? error : new Error('Unknown error')
       console.error(`[Perplexity] Attempt ${attempt + 1} failed:`, lastError.message)
       
-      if (attempt < retries) {
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt))
       }
     }
   }

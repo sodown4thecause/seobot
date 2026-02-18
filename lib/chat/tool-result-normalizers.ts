@@ -15,7 +15,7 @@ export interface NormalizedKeywordResult {
 }
 
 const isRecord = (value: unknown): value is UnknownRecord => {
-  return typeof value === 'object' && value !== null
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 const toFiniteNumber = (value: unknown): number => {
@@ -40,7 +40,11 @@ const parseJsonString = (value: string): unknown => {
   }
 
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    return JSON.parse(trimmed)
+    try {
+      return JSON.parse(trimmed)
+    } catch {
+      return null
+    }
   }
 
   if (trimmed.includes('\n')) {

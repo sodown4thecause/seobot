@@ -37,6 +37,22 @@ interface QueuedUsageEvent {
 }
 
 // In-memory queue for batching usage events
+interface UsageResultShape {
+  usage?: {
+    inputTokens?: number
+    outputTokens?: number
+  }
+  response?: {
+    usage?: {
+      inputTokens?: number
+      outputTokens?: number
+    }
+  }
+  steps?: Array<{ toolCalls?: unknown[] }>
+}
+
+let beforeExitRegistered = false
+
 class UsageEventQueue {
   private queue: QueuedUsageEvent[] = []
   private flushInterval: NodeJS.Timeout | null = null
@@ -71,14 +87,14 @@ class UsageEventQueue {
       clearInterval(this.flushInterval)
     }
 
-    this.flushInterval = setInterval(() => {
+this.flushInterval = setInterval(() => {
       this.flush().catch(error => {
         console.error('[UsageQueue] Scheduled flush failed:', error)
       })
     }, this.flushIntervalMs)
 
-    // Ensure cleanup on process exit
-    if (typeof process !== 'undefined') {
+    if (typeof process !== 'undefined' && !beforeExitRegistered) {
+      beforeExitRegistered = true
       process.on('beforeExit', () => {
         this.flush().catch(error => {
           console.error('[UsageQueue] Final flush failed:', error)
@@ -201,15 +217,13 @@ export function getUsageQueueSize(): number {
 /**
  * Extract usage from AI SDK result
  */
-export function extractUsageFromResult(result: any): {
+export function extractUsageFromResult(result: UsageResultShape): {
   promptTokens: number
   completionTokens: number
   toolCalls: number
 } {
-  // Compute tool calls once to avoid redundant iteration
-  const toolCalls = result.steps?.reduce((sum: number, step: any) => sum + (step.toolCalls?.length || 0), 0) || 0
+  const toolCalls = result.steps?.reduce((sum: number, step) => sum + (step.toolCalls?.length || 0), 0) || 0
 
-  // AI SDK 6 format
   if (result.usage) {
     return {
       promptTokens: result.usage.inputTokens ?? 0,
@@ -218,7 +232,6 @@ export function extractUsageFromResult(result: any): {
     }
   }
 
-  // Fallback: try to extract from response
   if (result.response?.usage) {
     return {
       promptTokens: result.response.usage.inputTokens ?? 0,
@@ -227,7 +240,6 @@ export function extractUsageFromResult(result: any): {
     }
   }
 
-  // Default: return zeros (will use conservative estimate)
   return {
     promptTokens: 0,
     completionTokens: 0,

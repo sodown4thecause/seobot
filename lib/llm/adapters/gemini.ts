@@ -19,7 +19,7 @@ export interface GeminiAdapterResult {
   }
 }
 
-const GEMINI_MODEL = 'gemini-2.0-flash'
+const GEMINI_MODEL_DEFAULT = 'gemini-2.0-flash'
 
 export async function runGeminiAdapter(params: RunGeminiAdapterParams): Promise<GeminiAdapterResult> {
   const { systemPrompt, userPrompt, timeoutMs = 15000, retries = 2 } = params
@@ -29,6 +29,8 @@ export async function runGeminiAdapter(params: RunGeminiAdapterParams): Promise<
     throw new Error('GOOGLE_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY is not configured')
   }
 
+  const model = serverEnv.GEMINI_MODEL || GEMINI_MODEL_DEFAULT
+
   const google = createGoogleGenerativeAI({ apiKey })
 
   let lastError: Error | null = null
@@ -36,7 +38,7 @@ export async function runGeminiAdapter(params: RunGeminiAdapterParams): Promise<
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const result = await generateText({
-        model: google(GEMINI_MODEL),
+        model: google(model),
         system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.3,
@@ -46,7 +48,7 @@ export async function runGeminiAdapter(params: RunGeminiAdapterParams): Promise<
       const usage = result.usage
       return {
         rawText: result.text,
-        model: GEMINI_MODEL,
+        model,
         usage: usage
           ? {
               promptTokens: usage.inputTokens ?? 0,
@@ -59,8 +61,8 @@ export async function runGeminiAdapter(params: RunGeminiAdapterParams): Promise<
       lastError = error instanceof Error ? error : new Error('Unknown error')
       console.error(`[Gemini] Attempt ${attempt + 1} failed:`, lastError.message)
       
-      if (attempt < retries) {
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt))
       }
     }
   }

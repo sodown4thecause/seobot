@@ -5,7 +5,7 @@ import type {
   EngineBreakdown,
   ParseMethod,
 } from '@/lib/diagnostic-types'
-import { DIAGNOSTIC_ENGINES } from '@/lib/diagnostic-types'
+import { DIAGNOSTIC_ENGINES, DIAGNOSTIC_INTENTS } from '@/lib/diagnostic-types'
 import type { LlmStructuredResponse } from '@/lib/validate'
 
 interface RunInput {
@@ -78,9 +78,10 @@ function brandMatchesTarget(name: string, targetDomain: string, targetBrandName:
 
   const MIN_TOKEN_LENGTH = 3
 
-  if (brandToken) {
+if (brandToken) {
     if (brandToken.length < MIN_TOKEN_LENGTH) {
-      if (name.toLowerCase().split(/\b/).some((part) => part.toLowerCase() === targetBrandName.toLowerCase())) {
+      const tokens = name.toLowerCase().match(/\b\w+\b/g) || []
+      if (tokens.some((token) => token === targetBrandName.toLowerCase())) {
         return true
       }
     } else if (normalizedName.includes(brandToken)) {
@@ -91,7 +92,8 @@ function brandMatchesTarget(name: string, targetDomain: string, targetBrandName:
   if (domainToken) {
     if (domainToken.length < MIN_TOKEN_LENGTH) {
       const domainBase = targetDomain.split('.')[0] || targetDomain
-      if (name.toLowerCase().split(/\b/).some((part) => part.toLowerCase() === domainBase.toLowerCase())) {
+      const tokens = name.toLowerCase().match(/\b\w+\b/g) || []
+      if (tokens.some((token) => token === domainBase.toLowerCase())) {
         return true
       }
     } else if (normalizedName.includes(domainToken)) {
@@ -181,7 +183,7 @@ function buildEngineBreakdown(runs: RunAnalysis[]): Record<DiagnosticModel, Engi
       cited: engineRuns.some((run) => run.cited),
       bestPosition,
       completedRuns: engineRuns.filter((run) => !run.error).length,
-      totalRuns: DIAGNOSTIC_ENGINES.length,
+      totalRuns: DIAGNOSTIC_INTENTS.length,
     }
   }
 

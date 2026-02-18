@@ -9,7 +9,7 @@ import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 export const runtime = 'nodejs'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const rateLimitResponse = await rateLimitMiddleware(_request, 'CHAT', userId)
+    const rateLimitResponse = await rateLimitMiddleware(request, 'CHAT', userId)
     if (rateLimitResponse) {
       return rateLimitResponse
     }

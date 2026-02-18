@@ -170,8 +170,22 @@ function isTargetBrand(name: string, targetDomain: string, targetBrandName: stri
   const normalizedDomain = targetDomain.toLowerCase().replace(/^www\./, '')
   const normalizedBrandName = targetBrandName.toLowerCase()
 
+  const domainLabel = normalizedDomain.split('.')[0]
+
+  if (normalizedName.length < 4) {
+    const nameTokens = normalizedName.match(/\b\w+\b/g) || [normalizedName]
+    const domainTokens = normalizedDomain.split('.').map((t) => t.toLowerCase())
+    const brandTokens = normalizedBrandName.split(/\s+/).map((t) => t.toLowerCase())
+
+    return (
+      nameTokens.some((token) => domainTokens.includes(token) || brandTokens.includes(token)) ||
+      domainTokens.includes(normalizedName) ||
+      brandTokens.includes(normalizedName)
+    )
+  }
+
   return (
-    normalizedName.includes(normalizedDomain.split('.')[0]) ||
+    normalizedName.includes(domainLabel) ||
     normalizedName.includes(normalizedBrandName) ||
     normalizedDomain.includes(normalizedName) ||
     normalizedBrandName.includes(normalizedName)

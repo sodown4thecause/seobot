@@ -35,6 +35,8 @@ export interface DataForSEOSelectionResult {
 
 const DATAFORSEO_BASE_URL = 'https://api.dataforseo.com/v3'
 
+const DEFAULT_FALLBACK_KEYWORD = 'ai visibility software'
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -152,7 +154,7 @@ function extractRankedKeywordCandidates(raw: DataForSEOTaskResponse<unknown>): R
   if (!Array.isArray(result) || result.length === 0) return []
 
   const first = result[0] as { items?: unknown[] }
-  const items = Array.isArray(first?.items) ? first.items : Array.isArray(result) ? result : []
+  const items = Array.isArray(first?.items) ? first.items : []
 
   const candidates: RankedKeywordCandidate[] = []
   for (const item of items as Array<Record<string, unknown>>) {
@@ -304,8 +306,8 @@ export async function selectStrongestKeywords(args: {
     selectedKeywords = fallbackKeywords(args.inputKeywords, args.topics)
   }
 
-  if (selectedKeywords.length === 0) {
-    selectedKeywords = ['ai visibility software']
+if (selectedKeywords.length === 0) {
+    selectedKeywords = [DEFAULT_FALLBACK_KEYWORD]
   }
 
   const primaryKeyword = selectedKeywords[0]

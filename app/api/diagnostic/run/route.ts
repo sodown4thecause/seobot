@@ -68,28 +68,18 @@ interface RunTaskResult {
   debugRun: DiagnosticRunDebug
 }
 
+const ENGINE_ADAPTER_MAP: Record<DiagnosticModel, (args: { systemPrompt: string; userPrompt: string; timeoutMs: number; retries: number }) => Promise<{ rawText: string }>> = {
+  gemini: runGeminiAdapter,
+  perplexity: runPerplexityAdapter,
+  grok: runGrokAdapter,
+}
+
 async function executeModelRun(task: RunTask): Promise<{ rawResponse: string }> {
-  if (task.model === DIAGNOSTIC_ENGINES[0]) {
-    const response = await runGeminiAdapter({
-      systemPrompt: task.systemPrompt,
-      userPrompt: task.userPrompt,
-      timeoutMs: HTTP_TIMEOUT_MS,
-      retries: RETRY_ATTEMPTS,
-    })
-    return { rawResponse: response.rawText }
+  const adapter = ENGINE_ADAPTER_MAP[task.model]
+  if (!adapter) {
+    throw new Error(`Unknown engine: ${task.model}`)
   }
-
-  if (task.model === DIAGNOSTIC_ENGINES[1]) {
-    const response = await runPerplexityAdapter({
-      systemPrompt: task.systemPrompt,
-      userPrompt: task.userPrompt,
-      timeoutMs: HTTP_TIMEOUT_MS,
-      retries: RETRY_ATTEMPTS,
-    })
-    return { rawResponse: response.rawText }
-  }
-
-  const response = await runGrokAdapter({
+  const response = await adapter({
     systemPrompt: task.systemPrompt,
     userPrompt: task.userPrompt,
     timeoutMs: HTTP_TIMEOUT_MS,
@@ -142,12 +132,12 @@ export async function POST(request: NextRequest) {
       retries: RETRY_ATTEMPTS,
     })
 
-    if (brandIdentity && firecrawl.brandSummary.length < 50) {
-      firecrawl.brandSummary = brandIdentity
-      firecrawl.incomplete = false
-      firecrawl.errors = []
-    } else if (brandIdentity) {
-      firecrawl.brandSummary = `${brandIdentity}\n\n${firecrawl.brandSummary}`
+if (brandIdentity) {
+      if (firecrawl.brandSummary.length < 50) {
+        firecrawl.brandSummary = brandIdentity
+      } else {
+        firecrawl.brandSummary = `${brandIdentity}\n\n${firecrawl.brandSummary}`
+      }
     }
 
     const keywordSelection = await selectStrongestKeywords({
