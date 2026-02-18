@@ -40,10 +40,10 @@ export function parseLlmResponseWithFallback(params: ParseLlmResponseParams): Pa
     }
   }
 
-  const jsonResult = tryJsonParse(rawResponse)
+const jsonResult = tryJsonParse(rawResponse)
   if (jsonResult.success) {
     return {
-      structured: normalizeStructuredResponse(jsonResult.data, targetDomain, targetBrandName),
+      structured: normalizeStructuredResponse(jsonResult.data, targetDomain, targetBrandName, rawResponse),
       parseMethod: 'json',
     }
   }
@@ -100,10 +100,11 @@ function tryJsonParse(rawResponse: string): { success: true; data: unknown } | {
 function normalizeStructuredResponse(
   data: unknown,
   targetDomain: string,
-  targetBrandName: string
+  targetBrandName: string,
+  rawResponse?: string
 ): LlmStructuredResponse {
   const typed = data as Record<string, unknown>
-  
+
   const rawRecommendations = Array.isArray(typed.recommendations) ? typed.recommendations : []
   const recommended_brands = rawRecommendations.map((rec, index) => {
     const r = rec as Record<string, unknown>
@@ -114,7 +115,29 @@ function normalizeStructuredResponse(
     }
   })
 
-  return { recommended_brands, direct_links_included: [] }
+  const directLinksField = typed.direct_links ?? typed.directLinks ?? typed.links
+  let direct_links_included: { url: string }[] = []
+
+  if (Array.isArray(directLinksField)) {
+    direct_links_included = directLinksField
+      .map((link) => {
+        if (typeof link === 'string') {
+          return { url: link }
+        }
+        if (typeof link === 'object' && link && 'url' in link) {
+          return { url: String((link as Record<string, unknown>).url) }
+        }
+        return null
+      })
+      .filter((link): link is { url: string } => link !== null && link.url.length > 0)
+  } else if (rawResponse) {
+    const urlRegex = /https?:\/\/[^\s<>"')\]]+/gi
+    const matches = rawResponse.match(urlRegex) ?? []
+    const uniqueUrls = [...new Set(matches.map((url) => url.trim()).filter((url) => url.length > 0))]
+    direct_links_included = uniqueUrls.map((url) => ({ url }))
+  }
+
+  return { recommended_brands, direct_links_included }
 }
 
 function normalizeRecommendationType(type: unknown): AIRecommendationType {
@@ -131,7 +154,7 @@ function tryHeuristicParse(
   targetBrandName: string
 ): LlmStructuredResponse {
   const recommended_brands: { name: string; recommendation_type: AIRecommendationType; position: number | null }[] = []
-  
+
   const brandPatterns = [
     /(?:^|\n)[\d]+[.)\s]+([A-Z][A-Za-z0-9\s]+?)(?::|[-–—]|\n)/gm,
     /(?:^|\n)[•\-*]\s*([A-Z][A-Za-z0-9\s]+?)(?::|[-–—]|\n)/gm,
@@ -140,16 +163,16 @@ function tryHeuristicParse(
   ]
 
   const extractedNames = new Set<string>()
-  
+
   for (const pattern of brandPatterns) {
     let match
     while ((match = pattern.exec(rawResponse)) !== null) {
       const name = match[1]?.trim()
       if (name && name.length > 2 && name.length < 50 && !extractedNames.has(name.toLowerCase())) {
         extractedNames.add(name.toLowerCase())
-        
+
         const isTarget = isTargetBrand(name, targetDomain, targetBrandName)
-        
+
         recommended_brands.push({
           name,
           recommendation_type: isTarget ? 'listed' : 'secondary',
@@ -159,9 +182,14 @@ function tryHeuristicParse(
     }
   }
 
+  const urlRegex = /https?:\/\/[^\s<>"')\]]+/gi
+  const urlMatches = rawResponse.match(urlRegex) ?? []
+  const uniqueUrls = [...new Set(urlMatches.map((url) => url.trim()).filter((url) => url.length > 0))]
+  const direct_links_included = uniqueUrls.map((url) => ({ url }))
+
   return {
     recommended_brands,
-    direct_links_included: [],
+    direct_links_included,
   }
 }
 

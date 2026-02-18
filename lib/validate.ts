@@ -2,6 +2,23 @@ import { z } from 'zod'
 
 export type AIRecommendationType = 'primary' | 'secondary' | 'listed' | 'mention_only'
 
+export const aiRecommendationTypeSchema = z.enum(['primary', 'secondary', 'listed', 'mention_only'])
+
+export const recommendedBrandSchema = z.object({
+  name: z.string(),
+  recommendation_type: aiRecommendationTypeSchema,
+  position: z.number().nullable().optional(),
+})
+
+export const directLinkSchema = z.object({
+  url: z.string().url(),
+})
+
+export const llmStructuredResponseSchema = z.object({
+  recommended_brands: z.array(recommendedBrandSchema),
+  direct_links_included: z.array(directLinkSchema),
+})
+
 export interface RecommendedBrand {
   name: string
   recommendation_type: AIRecommendationType

@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { z } from 'zod'
+
 import { serverEnv } from '@/lib/config/env'
 
 interface DataForSEOTaskResponse<T> {
@@ -12,6 +14,34 @@ interface DataForSEOTaskResponse<T> {
     result?: T
   }>
 }
+
+const keywordDataSchema = z.object({
+  keyword: z.string().optional(),
+  keyword_info: z.object({
+    search_volume: z.number().optional(),
+  }).optional(),
+}).passthrough()
+
+const rankedSerpElementSchema = z.object({
+  serp_item: z.object({
+    rank_group: z.number().optional(),
+  }).optional(),
+}).passthrough()
+
+const rankedKeywordItemSchema = z.object({
+  keyword_data: keywordDataSchema.optional(),
+  keyword: z.string().optional(),
+  ranked_serp_element: rankedSerpElementSchema.optional(),
+}).passthrough()
+
+const rankedKeywordResultSchema = z.object({
+  items: z.array(rankedKeywordItemSchema).optional(),
+}).passthrough()
+
+const searchVolumeRowSchema = z.object({
+  keyword: z.string().optional(),
+  search_volume: z.number().optional(),
+}).passthrough()
 
 interface RankedKeywordCandidate {
   keyword: string
@@ -153,23 +183,17 @@ function extractRankedKeywordCandidates(raw: DataForSEOTaskResponse<unknown>): R
   const result = raw.tasks?.[0]?.result
   if (!Array.isArray(result) || result.length === 0) return []
 
-  const first = result[0] as { items?: unknown[] }
-  const items = Array.isArray(first?.items) ? first.items : []
+  const parsed = rankedKeywordResultSchema.safeParse(result[0])
+  if (!parsed.success) return []
+
+  const items = parsed.data.items
+  if (!Array.isArray(items)) return []
 
   const candidates: RankedKeywordCandidate[] = []
-  for (const item of items as Array<Record<string, unknown>>) {
-    const keyword =
-      (item.keyword_data as { keyword?: string } | undefined)?.keyword ||
-      (item.keyword as string | undefined) ||
-      ''
-
-    const rank =
-      (item.ranked_serp_element as { serp_item?: { rank_group?: number } } | undefined)?.serp_item
-        ?.rank_group || 0
-
-    const volume =
-      (item.keyword_data as { keyword_info?: { search_volume?: number } } | undefined)?.keyword_info
-        ?.search_volume || 0
+  for (const item of items) {
+    const keyword = item.keyword_data?.keyword || item.keyword || ''
+    const rank = item.ranked_serp_element?.serp_item?.rank_group || 0
+    const volume = item.keyword_data?.keyword_info?.search_volume || 0
 
     if (!keyword || rank <= 0 || volume <= 0) continue
     candidates.push({ keyword, rank, volume })
@@ -182,13 +206,20 @@ function extractSearchVolumes(raw: DataForSEOTaskResponse<unknown>): SearchVolum
   const result = raw.tasks?.[0]?.result
   if (!Array.isArray(result)) return []
 
-  const rows = result as Array<Record<string, unknown>>
-  return rows
-    .map((row) => ({
-      keyword: String(row.keyword || '').trim(),
-      volume: Number(row.search_volume || 0),
-    }))
-    .filter((row) => row.keyword.length > 0 && Number.isFinite(row.volume))
+  const candidates: SearchVolumeCandidate[] = []
+  for (const row of result) {
+    const parsed = searchVolumeRowSchema.safeParse(row)
+    if (!parsed.success) continue
+
+    const keyword = String(parsed.data.keyword || '').trim()
+    const volume = Number(parsed.data.search_volume || 0)
+
+    if (keyword.length > 0 && Number.isFinite(volume)) {
+      candidates.push({ keyword, volume })
+    }
+  }
+
+  return candidates
 }
 
 function extractSerpCompetitorDomains(raw: DataForSEOTaskResponse<unknown>, targetDomain: string): string[] {

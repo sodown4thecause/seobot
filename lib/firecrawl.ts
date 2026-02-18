@@ -76,7 +76,7 @@ function extractTitleCandidate(title: string, fallbackHost: string): string {
     return fallbackHost.split('.')[0]
   }
 
-  const segment = cleaned.split(/\s*\|\s*/)[0].split(/\s+-\s+/)[0].trim()
+  const segment = cleaned.split(/\s*\|\s*/)[0].split(/\s+[-\u2012\u2013\u2014\u2015]\s+/)[0].trim()
   return segment || fallbackHost.split('.')[0]
 }
 
@@ -206,8 +206,8 @@ async function scrapeWithFirecrawl(args: {
     throw new Error('Firecrawl is not configured')
   }
 
-  let lastError: unknown
-  for (let attempt = 1; attempt <= args.retries; attempt += 1) {
+let lastError: unknown
+  for (let attempt = 0; attempt <= args.retries; attempt += 1) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), args.timeoutMs)
 
@@ -254,10 +254,10 @@ async function scrapeWithFirecrawl(args: {
         title,
         url: sourceUrl,
       }
-    } catch (error) {
+} catch (error) {
       lastError = error
       if (attempt < args.retries) {
-        await sleep(250 * attempt)
+        await sleep(250 * (attempt + 1))
       }
     } finally {
       clearTimeout(timeout)

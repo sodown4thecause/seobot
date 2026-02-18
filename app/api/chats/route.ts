@@ -1,15 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 
 import { getUserId } from '@/lib/auth/clerk'
 import { ensureChatForUser, listChatsForSidebar } from '@/lib/chat/persistence'
+import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 
 export const runtime = 'nodejs'
+
+const chatInputSchema = z.object({
+  chatId: z.string().uuid().optional(),
+  agentType: z.string().optional(),
+})
 
 export async function GET(request: NextRequest) {
   try {
     const userId = await getUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const rateLimitResponse = await rateLimitMiddleware(request, 'CHAT', userId)
+    if (rateLimitResponse) {
+      return rateLimitResponse
     }
 
     const { searchParams } = new URL(request.url)
@@ -31,15 +43,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const body = (await request.json().catch(() => ({}))) as {
-      chatId?: string
-      agentType?: string
+    const rateLimitResponse = await rateLimitMiddleware(request, 'CHAT', userId)
+    if (rateLimitResponse) {
+      return rateLimitResponse
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const parseResult = chatInputSchema.safeParse(body)
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: parseResult.error.issues },
+        { status: 400 },
+      )
     }
 
     const chat = await ensureChatForUser({
       userId,
-      requestedChatId: body.chatId ?? null,
-      agentType: body.agentType,
+      requestedChatId: parseResult.data.chatId ?? null,
+      agentType: parseResult.data.agentType,
     })
 
     return NextResponse.json({

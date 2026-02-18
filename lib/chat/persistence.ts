@@ -125,6 +125,8 @@ export async function autosaveUserMessage(params: {
   const normalized = normalizePersistedMessage(message)
   const suggestedTitle = deriveConversationTitle(normalized.content)
 
+  const DEFAULT_TITLE = 'New Conversation'
+
   await db
     .insert(messages)
     .values({
@@ -134,12 +136,16 @@ export async function autosaveUserMessage(params: {
       metadata: normalized.metadata,
       createdAt: normalized.createdAt,
     })
-    .onConflictDoNothing({ target: [messages.conversationId, messages.id] })
+    .onConflictDoNothing({ target: [messages.id] })
+
+  const effectiveTitle = conversation.title === DEFAULT_TITLE && suggestedTitle
+    ? suggestedTitle
+    : conversation.title
 
   await db
     .update(conversations)
     .set({
-      title: conversation.title ?? suggestedTitle,
+      title: effectiveTitle,
       updatedAt: normalized.createdAt,
       lastMessageAt: normalized.createdAt,
     })
@@ -171,24 +177,25 @@ export async function persistAssistantMessages(params: {
     Math.max(...normalizedAssistants.map((msg) => msg.createdAt.getTime()))
   )
 
-  for (const normalized of normalizedAssistants) {
+  const payloads = normalizedAssistants.map((normalized) => ({
+    conversationId: chatId,
+    role: normalized.role,
+    content: normalized.content,
+    metadata: normalized.metadata,
+    createdAt: normalized.createdAt,
+  }))
 
+  for (const payload of payloads) {
     await db
       .insert(messages)
-      .values({
-        conversationId: chatId,
-        role: normalized.role,
-        content: normalized.content,
-        metadata: normalized.metadata,
-        createdAt: normalized.createdAt,
-      })
+      .values(payload)
       .onConflictDoUpdate({
-        target: [messages.conversationId, messages.id],
+        target: [messages.id],
         set: {
-          role: normalized.role,
-          content: normalized.content,
-          metadata: normalized.metadata,
-          createdAt: normalized.createdAt,
+          role: payload.role,
+          content: payload.content,
+          metadata: payload.metadata,
+          createdAt: payload.createdAt,
         },
       })
   }

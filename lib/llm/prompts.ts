@@ -42,6 +42,44 @@ Return ONLY valid JSON, no additional text or markdown.`
 
 export const DEFAULT_USE_CASE = 'a business or individual looking for solutions in this market'
 
+function sanitizeBrandSummary(summary: string): string {
+  let sanitized = summary
+    .replace(/\n/g, ' ')
+    .replace(/\r/g, ' ')
+    .replace(/["`'\\]/g, '')
+
+  const imperativePatterns = [
+    /^(ignore|disregard|forget|override|skip)\b/gim,
+    /^(you must|you should|you have to|your task is|your role is)\b/gim,
+    /^(system:|assistant:|user:)\b/gim,
+  ]
+
+  for (const pattern of imperativePatterns) {
+    sanitized = sanitized.replace(pattern, '[redacted]')
+  }
+
+  const lines = sanitized.split(/[.!?]/)
+  const filteredLines = lines.filter((line) => {
+    const trimmed = line.trim().toLowerCase()
+    return !trimmed.startsWith('ignore') &&
+           !trimmed.startsWith('disregard') &&
+           !trimmed.startsWith('forget') &&
+           !trimmed.includes('system prompt') &&
+           !trimmed.includes('your instructions')
+  })
+  sanitized = filteredLines.join('. ').trim()
+
+  if (sanitized.length > 200) {
+    sanitized = sanitized.slice(0, 200).trim()
+    const lastSpace = sanitized.lastIndexOf(' ')
+    if (lastSpace > 150) {
+      sanitized = sanitized.slice(0, lastSpace)
+    }
+  }
+
+  return sanitized || 'a company in this market'
+}
+
 export interface BuildIntentPromptParams {
   intent: DiagnosticIntent
   domain: string
@@ -61,10 +99,12 @@ export function buildIntentPrompt(params: BuildIntentPromptParams): string {
     useCase = DEFAULT_USE_CASE,
   } = params
 
+  const safeBrandSummary = sanitizeBrandSummary(brandSummary)
+
   const intentPrompts: Record<DiagnosticIntent, string> = {
     transactional: `I need to find the best solution for "${primaryKeyword}". I'm comparing options and ready to make a decision soon.
 
-Context: I'm ${useCase}. I've heard about ${domain} - ${brandSummary}
+Context: I'm ${useCase}. I've heard about ${domain} - ${safeBrandSummary}
 
 What are the top solutions you'd recommend? Please provide your top recommendations with reasoning.`,
     

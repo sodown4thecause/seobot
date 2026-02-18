@@ -2,9 +2,9 @@ export type DiagnosticIntent = 'transactional' | 'comparative' | 'informational'
 
 export type DiagnosticModel = 'gemini' | 'perplexity' | 'grok'
 
-export const DIAGNOSTIC_ENGINES: DiagnosticModel[] = ['gemini', 'perplexity', 'grok']
+export const DIAGNOSTIC_ENGINES = ['gemini', 'perplexity', 'grok'] as const
 
-export const DIAGNOSTIC_INTENTS: DiagnosticIntent[] = ['transactional', 'comparative', 'informational']
+export const DIAGNOSTIC_INTENTS = ['transactional', 'comparative', 'informational'] as const
 
 export type ParseMethod = 'json' | 'heuristic' | 'failed'
 
