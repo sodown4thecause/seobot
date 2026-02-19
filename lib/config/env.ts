@@ -21,6 +21,11 @@ const serverEnvSchema = z.object({
   DEEPSEEK_API_KEY: z.string().min(1).optional(),
   XAI_API_KEY: z.string().min(1).optional(),
 
+  GEMINI_MODEL: z.string().min(1).optional(),
+  PERPLEXITY_MODEL: z.string().min(1).optional(),
+  GROK_MODEL: z.string().min(1).optional(),
+  XAI_BASE_URL: z.string().url().optional(),
+
   // Vercel AI Gateway
   AI_GATEWAY_API_KEY: z.string().min(1).optional(),
   AI_GATEWAY_BASE_URL: z.string().url().optional(),
