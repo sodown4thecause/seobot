@@ -82,12 +82,12 @@ class UsageEventQueue {
   /**
    * Start periodic flush worker
    */
-  private startFlushWorker(): void {
+private startFlushWorker(): void {
     if (this.flushInterval) {
       clearInterval(this.flushInterval)
     }
 
-this.flushInterval = setInterval(() => {
+    this.flushInterval = setInterval(() => {
       this.flush().catch(error => {
         console.error('[UsageQueue] Scheduled flush failed:', error)
       })

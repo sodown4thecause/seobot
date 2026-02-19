@@ -127,9 +127,10 @@ export async function autosaveUserMessage(params: {
 
   const DEFAULT_TITLE = 'New Conversation'
 
-  await db
+await db
     .insert(messages)
     .values({
+      id: normalized.messageId,
       conversationId: chatId,
       role: normalized.role,
       content: normalized.content,
@@ -177,7 +178,8 @@ export async function persistAssistantMessages(params: {
     Math.max(...normalizedAssistants.map((msg) => msg.createdAt.getTime()))
   )
 
-  const payloads = normalizedAssistants.map((normalized) => ({
+const payloads = normalizedAssistants.map((normalized) => ({
+    id: normalized.messageId,
     conversationId: chatId,
     role: normalized.role,
     content: normalized.content,
