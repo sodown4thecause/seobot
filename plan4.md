@@ -563,12 +563,12 @@ USER CONTEXT (From conversation history):
 ### Content Quality Thresholds (Reference: `/lib/config/env.ts`)
 
 **Before recommending content, validate against:**
-- MIN_DATAFORSEO_SCORE: Default 0.7
-- MIN_EEAT_SCORE: Default 0.75
-- MIN_DEPTH_SCORE: Default 0.7
-- MIN_FACTUAL_SCORE: Default 0.8
-- MIN_AEO_SCORE: Default 0.75
-- MIN_OVERALL_SCORE: Default 0.75
+- MIN_DATAFORSEO_SCORE: Default 60
+- MIN_EEAT_SCORE: Default 70
+- MIN_DEPTH_SCORE: Default 65
+- MIN_FACTUAL_SCORE: Default 70
+- MIN_AEO_SCORE: Default 70
+- MIN_OVERALL_SCORE: Default 70
 
 **Quality Validation Workflow:**
 ```
@@ -576,16 +576,16 @@ CONTENT QUALITY VALIDATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Proposed content has been validated:
 
-DataForSEO SEO Score: [X]/1.0 (threshold: 0.7) [✓/✗]
-EEAT Score: [X]/1.0 (threshold: 0.75) [✓/✗]
+DataForSEO SEO Score: [X]/100 (threshold: 60) [✓/✗]
+EEAT Score: [X]/100 (threshold: 70) [✓/✗]
   → Expertise signals: [Y]
   → Authority signals: [Z]
   → Trust signals: [A]
-Depth Score: [X]/1.0 (threshold: 0.7) [✓/✗]
-Factual Accuracy: [X]/1.0 (threshold: 0.8) [✓/✗]
-AEO Optimization: [X]/1.0 (threshold: 0.75) [✓/✗]
+Depth Score: [X]/100 (threshold: 65) [✓/✗]
+Factual Accuracy: [X]/100 (threshold: 70) [✓/✗]
+AEO Optimization: [X]/100 (threshold: 70) [✓/✗]
 
-Overall Score: [X]/1.0 (threshold: 0.75) [✓/✗]
+Overall Score: [X]/100 (threshold: 70) [✓/✗]
 
 [If score < threshold: Revision recommendations with specific improvements needed]
 ```
@@ -692,8 +692,7 @@ Your choice - I can execute either path.
 **API Integration Files:**
 - `/lib/external-apis/perplexity.ts` - Perplexity search functions
 - `/lib/external-apis/jina.ts` - Jina scraping and EEAT analysis
-- `/lib/external-apis/winston.ts` - Content quality detection
-- `/lib/external-apis/rytr.ts` - Content generation (alternative)
+- `/lib/agents/frase-optimization-agent.ts` - Frase content optimization
 
 **Workflow Files:**
 - `/lib/workflows/registry.ts` - Workflow definitions
@@ -715,9 +714,7 @@ Your choice - I can execute either path.
 - `/mcps/mcp.jina.ai/` - Jina MCP server
 
 **AEO Tools:**
-- `/lib/aeo/citation-monitoring.ts` - Citation tracking
-- `/lib/aeo/eeat-detection.ts` - EEAT signal analysis
-- `/lib/aeo/platform-comparison.ts` - Multi-platform optimization
+- `/lib/aeo/citation-monitor.ts` - Citation tracking
 
 ## TONE & COMMUNICATION STYLE
 
