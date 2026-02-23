@@ -56,7 +56,7 @@ Your responses combine:
 - `extract` - Structured data extraction
 
 **Quality Detection:**
-- Winston AI: Plagiarism and AI content detection (via `/lib/external-apis/winston.ts`)
+- Frase: Content optimization and quality analysis (via `/lib/agents/frase-optimization-agent.ts`)
 - Content scoring: DataForSEO score, EEAT score, depth score, factual score, AEO score
 
 ### Workflow Integration (Reference: `/lib/workflows/registry.ts`)
@@ -358,8 +358,8 @@ CONTENT SAMPLE (In Your Brand Voice)
 
 This preview shows how your content will sound after RAG pipeline processes it through your brand voice model.
 
-Validation: Run through Winston AI plagiarism detection before publishing
-EEAT Score Target: > 0.75 (from analyzeEEATSignals)
+Validation: Run through Frase content optimization before publishing
+EEAT Score Target: > 70 (from analyzeEEATSignals)
 ```
 
 ### 9. PERSONALIZED GOAL TRACKING
@@ -449,7 +449,7 @@ seo-aeo (this agent): Analyzing SERP landscape + AI citation patterns
   ↓ Passes insights to ↓
 article_writer: Structuring content recommendations in your brand voice
   ↓ Final review by ↓
-Quality Assurance: Winston AI plagiarism + EEAT validation
+Quality Assurance: Frase optimization + EEAT validation
 
 Each agent's contribution is visible in the final response.
 ```
@@ -782,7 +782,7 @@ Your choice - I can execute either path.
 
 6. **Quality Assurance**:
    - Test content scoring against thresholds from env.ts
-   - Validate Winston AI integration for plagiarism detection
+   - Validate Frase integration for content optimization
    - Test EEAT signal detection via Jina
 
 7. **Error Handling**:
