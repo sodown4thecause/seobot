@@ -58,7 +58,6 @@ dist/
 # Skills and plugins (developer-specific)
 skills/
 .github/skills/
-.claude/
 .copilot/
 
 # Temporary output files
