@@ -5,11 +5,18 @@ import { AuditForm } from '@/components/audit/AuditForm'
 import { BrandConfirmation } from '@/components/audit/BrandConfirmation'
 import { CitationSources } from '@/components/audit/CitationSources'
 import { PlatformBreakdown } from '@/components/audit/PlatformBreakdown'
+import { ProgressStages } from '@/components/audit/ProgressStages'
 import { ResultsHero } from '@/components/audit/ResultsHero'
 import { UpsellGate } from '@/components/audit/UpsellGate'
-import type { AuditResults, BrandDetectionPayload, PlatformResult } from '@/lib/audit/types'
+import type {
+  AuditExecutionMeta,
+  AuditResults,
+  BrandDetectionPayload,
+  PlatformResult,
+} from '@/lib/audit/types'
 
 type Stage = 'form' | 'confirm' | 'results'
+type RunPhase = 'idle' | 'detecting' | 'running-checks' | 'scoring' | 'done'
 
 interface RequestState {
   domain: string
@@ -22,11 +29,14 @@ export function AuditFlow() {
   const [detected, setDetected] = useState<BrandDetectionPayload | null>(null)
   const [results, setResults] = useState<AuditResults | null>(null)
   const [platformResults, setPlatformResults] = useState<PlatformResult[]>([])
+  const [executionMeta, setExecutionMeta] = useState<AuditExecutionMeta | null>(null)
   const [loading, setLoading] = useState(false)
+  const [runPhase, setRunPhase] = useState<RunPhase>('idle')
   const [error, setError] = useState<string | null>(null)
 
   const handleDetect = async (input: RequestState) => {
     setLoading(true)
+    setRunPhase('detecting')
     setError(null)
 
     try {
@@ -48,6 +58,7 @@ export function AuditFlow() {
       setError(err instanceof Error ? err.message : 'Detection failed')
     } finally {
       setLoading(false)
+      setRunPhase('idle')
     }
   }
 
@@ -55,9 +66,11 @@ export function AuditFlow() {
     if (!requestState) return
 
     setLoading(true)
+    setRunPhase('detecting')
     setError(null)
 
     try {
+      setRunPhase('running-checks')
       const response = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,8 +86,11 @@ export function AuditFlow() {
         throw new Error(payload.message || 'Audit failed')
       }
 
+      setRunPhase('scoring')
       setResults(payload.results)
       setPlatformResults(payload.platformResults || [])
+      setExecutionMeta(payload.executionMeta || null)
+      setRunPhase('done')
       setStage('results')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Audit failed')
@@ -98,11 +114,19 @@ export function AuditFlow() {
       {stage === 'form' ? <AuditForm onSubmit={handleDetect} loading={loading} /> : null}
 
       {stage === 'confirm' && detected ? (
-        <BrandConfirmation detected={detected} onConfirm={handleConfirm} loading={loading} />
+        <div className="space-y-4">
+          {loading ? <ProgressStages phase={runPhase === 'idle' ? 'detecting' : runPhase} /> : null}
+          <BrandConfirmation detected={detected} onConfirm={handleConfirm} loading={loading} />
+        </div>
       ) : null}
 
       {stage === 'results' && results ? (
         <div className="space-y-6">
+          {executionMeta?.message ? (
+            <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+              {executionMeta.message}
+            </p>
+          ) : null}
           <ResultsHero results={results} />
           <PlatformBreakdown summary={results.platformResults} rawResults={platformResults} />
           <CitationSources urls={results.citationUrls} />

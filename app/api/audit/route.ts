@@ -14,6 +14,7 @@ import { executeAiVisibilityAuditWorkflow } from '@/lib/workflows/definitions/ai
 import { parsePlatformResponse } from '@/lib/audit/parser'
 import { computeAuditResults } from '@/lib/audit/scorer'
 import { runHomepageExtraction } from '@/lib/audit/extraction-agent'
+import { sendAuditReportEmail } from '@/lib/audit/report-email'
 
 const RATE_LIMIT_PER_DAY = 2
 const inMemoryLimiter = new Map<string, number[]>()
@@ -259,6 +260,15 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.warn('[AI Visibility Audit] Persistence skipped (table may be missing locally)')
     }
+
+    void sendAuditReportEmail({
+      email: runPayload.email,
+      domain: runPayload.domain,
+      results,
+      executionMeta: workflowExecution.meta,
+    }).catch((error) => {
+      console.warn('[AI Visibility Audit] Email recap failed (non-blocking):', error)
+    })
 
     return jsonResponse({
       ok: true,
