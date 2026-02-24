@@ -6,6 +6,18 @@ export interface BrandDetectionPayload {
   vertical: string
 }
 
+export interface DetectionMeta {
+  source: 'scraped' | 'fallback'
+  fallbackReason?: string
+}
+
+export interface AuditExecutionMeta {
+  fallbackApplied: boolean
+  citationAvailability: 'full' | 'degraded'
+  message?: string
+  fallbackDetails?: string[]
+}
+
 export interface PlatformResult {
   platform: 'perplexity' | 'grok' | 'gemini'
   prompt: string
@@ -57,8 +69,10 @@ export interface AuditResponsePayload {
   ok: boolean
   stage: 'detected' | 'completed'
   detected?: BrandDetectionPayload
+  detectionMeta?: DetectionMeta
   results?: AuditResults
   platformResults?: PlatformResult[]
+  executionMeta?: AuditExecutionMeta
   citationUrls?: string[]
   totalChecks?: 5
   message?: string

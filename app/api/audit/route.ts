@@ -13,6 +13,7 @@ import { buildBuyerIntentPrompts } from '@/lib/audit/prompts'
 import { executeAiVisibilityAuditWorkflow } from '@/lib/workflows/definitions/ai-visibility-audit'
 import { parsePlatformResponse } from '@/lib/audit/parser'
 import { computeAuditResults } from '@/lib/audit/scorer'
+import { runHomepageExtraction } from '@/lib/audit/extraction-agent'
 
 const RATE_LIMIT_PER_DAY = 2
 const inMemoryLimiter = new Map<string, number[]>()
@@ -23,7 +24,7 @@ function normalizeDomain(domain: string): string {
   return normalized.split('/')[0]
 }
 
-function detectBrandContext(domain: string): BrandDetectionPayload {
+function buildFallbackBrandContext(domain: string): BrandDetectionPayload {
   const normalized = normalizeDomain(domain)
   const root = normalized.split('.')[0]
   const title = root
@@ -174,12 +175,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (payload.action === 'detect') {
-      const detected = detectBrandContext((payload as AuditDetectPayload).domain)
+      const detectPayload = payload as AuditDetectPayload
+      const extracted = await runHomepageExtraction({
+        domain: detectPayload.domain,
+      })
+      const detected = extracted.detected || buildFallbackBrandContext(detectPayload.domain)
+
       return jsonResponse({
         ok: true,
         stage: 'detected',
         detected,
-        message: 'Review and confirm your detected brand profile.',
+        detectionMeta: extracted.success
+          ? { source: 'scraped' }
+          : {
+              source: 'fallback',
+              fallbackReason: extracted.error || 'Homepage extraction unavailable for this site.',
+            },
+        message: extracted.success
+          ? 'Review and confirm your detected brand profile.'
+          : 'We could not confidently extract your homepage profile, so we generated a safe editable draft.',
       })
     }
 

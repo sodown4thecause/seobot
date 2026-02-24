@@ -7,9 +7,11 @@
  */
 
 import { generateObject } from 'ai'
+import { z } from 'zod'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { mcpFirecrawlTools } from '@/lib/mcp/firecrawl/index'
+import type { BrandDetectionPayload } from '@/lib/audit/types'
 import { EntityProfileSchema, type EntityProfile } from './schemas'
 
 // Model ID for extraction (Gemini 2.5 Flash via Gateway)
@@ -22,6 +24,22 @@ export interface ExtractionResult {
   error?: string
   scrapeBlocked?: boolean
 }
+
+export interface HomepageExtractionResult {
+  success: boolean
+  detected?: BrandDetectionPayload
+  rawContent?: string
+  error?: string
+  scrapeBlocked?: boolean
+}
+
+const HomepageExtractionSchema = z.object({
+  brand: z.string().trim().min(1).max(120),
+  category: z.string().trim().min(1).max(160),
+  icp: z.string().trim().min(1).max(200),
+  competitors: z.array(z.string().trim().min(1).max(120)).min(1).max(3),
+  vertical: z.string().trim().min(1).max(120),
+})
 
 /**
  * Scrape website content using Firecrawl MCP
@@ -113,6 +131,82 @@ Focus on:
   return object
 }
 
+async function extractHomepageBrandContext(
+  content: string,
+  domain: string
+): Promise<BrandDetectionPayload> {
+  const prompt = `Analyze this homepage content and extract core brand context for an AI visibility audit.
+
+Domain: ${domain}
+
+Homepage Content:
+${content.slice(0, 16000)}
+
+Return JSON with exactly these fields:
+- brand
+- category
+- icp
+- competitors (2-3 likely direct competitors)
+- vertical
+
+Use concise, practical values. If a field is uncertain, infer the most likely value from the visible copy.`
+
+  const { object } = await generateObject({
+    model: vercelGateway.languageModel(EXTRACTION_MODEL_ID),
+    prompt,
+    schema: HomepageExtractionSchema,
+    temperature: 0.2,
+    experimental_telemetry: {
+      isEnabled: true,
+      functionId: 'ai-visibility-homepage-extraction',
+      metadata: {
+        domain,
+        contentLength: content.length,
+      },
+    },
+  })
+
+  return {
+    brand: object.brand,
+    category: object.category,
+    icp: object.icp,
+    competitors: object.competitors.slice(0, 3),
+    vertical: object.vertical,
+  }
+}
+
+export async function runHomepageExtraction(params: {
+  domain: string
+}): Promise<HomepageExtractionResult> {
+  const domain = params.domain.trim()
+
+  try {
+    const url = domain.startsWith('http://') || domain.startsWith('https://') ? domain : `https://${domain}`
+    const { content, blocked } = await scrapeWebsite(url)
+
+    if (blocked || !content) {
+      return {
+        success: false,
+        error: 'Homepage scrape failed or returned no usable content.',
+        scrapeBlocked: true,
+      }
+    }
+
+    const detected = await extractHomepageBrandContext(content, domain)
+
+    return {
+      success: true,
+      detected,
+      rawContent: content.slice(0, 5000),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Homepage extraction failed',
+    }
+  }
+}
+
 /**
  * Main extraction function - Phase 1 of the AEO Audit
  */
@@ -155,4 +249,3 @@ export async function runExtractionAgent(params: {
     }
   }
 }
-

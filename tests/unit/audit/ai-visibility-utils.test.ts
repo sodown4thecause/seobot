@@ -106,4 +106,19 @@ describe('AI visibility audit utilities', () => {
     expect(results.brandFoundCount).toBe(3)
     expect(results.topCompetitor).toBe('Semrush')
   })
+
+  it('handles fallback-style responses without citations', () => {
+    const parsed = parsePlatformResponse({
+      platform: 'perplexity',
+      prompt: 'What are the best SEO software tools?',
+      rawResponse: 'Temporary fallback response: Flow Intent and Semrush are often compared for marketing teams.',
+      citationUrls: [],
+      domain: 'flowintent.com',
+      context,
+    })
+
+    expect(parsed.brandMentioned).toBe(true)
+    expect(parsed.citationUrls).toEqual([])
+    expect(parsed.competitorsMentioned).toContain('Semrush')
+  })
 })
