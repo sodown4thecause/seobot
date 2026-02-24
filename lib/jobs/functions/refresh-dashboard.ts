@@ -12,6 +12,9 @@ import { db } from '@/lib/db'
 import { refreshJobs, dashboardData, apiUsageEvents, type Json } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
+import { executeAsyncTaskFlow } from '@/lib/dataforseo/client'
+import type { DataForSEOResponse } from '@/lib/dataforseo/types'
+import { executeRefreshDataTypeWithCircuitBreaker } from '@/lib/jobs/circuit-breaker'
 
 // ============================================================================
 // Job Configuration
@@ -71,6 +74,9 @@ export const refreshDashboardJob = inngest.createFunction(
     // ============================================================================
     for (let i = 0; i < dataTypes.length; i++) {
       const dataType = dataTypes[i]
+      if (!dataType) {
+        continue
+      }
       const progress = Math.round(((i + 2) / totalSteps) * 100)
 
       try {
@@ -85,7 +91,7 @@ export const refreshDashboardJob = inngest.createFunction(
             .where(eq(refreshJobs.id, jobId))
 
           // Refresh data based on type
-          const data = await refreshDataByType(dataType, userId, websiteUrl, competitorUrls)
+          const data = await refreshDataByType(dataType, userId, websiteUrl, jobId, competitorUrls)
 
           // Store in dashboard_data table
           await db
@@ -195,68 +201,181 @@ async function refreshDataByType(
   dataType: string,
   userId: string,
   websiteUrl: string,
+  jobId: string,
   competitorUrls?: string[]
 ): Promise<Json> {
-  // TODO: Integrate with DataForSEO MCP tools in Plan 01-03
-  // This will call the actual DataForSEO APIs through MCP wrappers
-
   console.log(`[RefreshJob] Refreshing ${dataType} for ${websiteUrl}`)
 
-  // Placeholder return with structure that matches expected dashboard format
+  const endpointConfig = getDataTypeEndpointConfig(dataType)
+  const taskPayload = buildTaskPayload(dataType, websiteUrl, competitorUrls)
+
+  const maxAttempts = 3
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const response = await executeRefreshDataTypeWithCircuitBreaker<DataForSEOResponse<Json>>({
+        endpoint: endpointConfig.submitEndpoint,
+        userId,
+        jobId,
+        dataType,
+        timeoutMs: 90000,
+        execute: () =>
+          executeAsyncTaskFlow<Json>({
+            submitEndpoint: endpointConfig.submitEndpoint,
+            tasksReadyEndpoint: endpointConfig.tasksReadyEndpoint,
+            resultEndpoint: endpointConfig.resultEndpoint,
+            tasks: [taskPayload],
+            tracking: {
+              userId,
+              jobId,
+            },
+            refreshTrigger: 'manual',
+            pollIntervalMs: 3000,
+            timeoutMs: 60000,
+            resultHttpMethod: endpointConfig.resultHttpMethod,
+          }),
+      })
+
+      if (!response.success || !response.data?.tasks) {
+        throw new Error(response.error?.message || `DataForSEO ${dataType} refresh failed`)
+      }
+
+      return {
+        provider: 'dataforseo',
+        dataType,
+        fetchedAt: new Date().toISOString(),
+        sourceEndpoint: endpointConfig.submitEndpoint,
+        taskCount: response.data.tasks.length,
+        tasks: response.data.tasks.map((task: { id?: string; status?: string; result?: Json; error?: unknown }) => ({
+          id: task.id,
+          status: task.status,
+          result: task.result,
+          error: serializeTaskError(task.error),
+        })),
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown refresh error')
+
+      if (attempt === maxAttempts - 1) {
+        break
+      }
+
+      const backoffMs = getExponentialBackoffMs(attempt)
+      console.warn(
+        `[RefreshJob] Retry ${attempt + 1}/${maxAttempts - 1} for ${dataType} in ${backoffMs}ms due to: ${lastError.message}`
+      )
+      await sleep(backoffMs)
+    }
+  }
+
+  throw lastError || new Error(`Refresh failed for ${dataType}`)
+}
+
+type DataTypeEndpointConfig = {
+  submitEndpoint: string
+  tasksReadyEndpoint: string
+  resultEndpoint: string | ((taskId: string) => string)
+  resultHttpMethod?: 'GET' | 'POST'
+}
+
+function getDataTypeEndpointConfig(dataType: string): DataTypeEndpointConfig {
   switch (dataType) {
     case 'overview':
-      return {
-        healthScore: 0,
-        metrics: {
-          organicTraffic: 0,
-          rankingKeywords: 0,
-          backlinkCount: 0,
-          contentPieces: 0,
-          aeoMentions: 0,
-          competitorPosition: 0,
-        },
-        changes: [],
-      }
     case 'ranks':
       return {
-        keywords: [],
-        positions: {},
-        history: {},
+        submitEndpoint: 'serp/organic/task_post',
+        tasksReadyEndpoint: 'serp/organic/tasks_ready',
+        resultEndpoint: (taskId) => `serp/organic/task_get/${taskId}`,
+        resultHttpMethod: 'GET',
       }
     case 'backlinks':
       return {
-        totalBacklinks: 0,
-        referringDomains: 0,
-        newLinks: [],
-        lostLinks: [],
-        topReferrers: [],
+        submitEndpoint: 'backlinks/backlinks/task_post',
+        tasksReadyEndpoint: 'backlinks/backlinks/tasks_ready',
+        resultEndpoint: (taskId) => `backlinks/backlinks/task_get/${taskId}`,
+        resultHttpMethod: 'GET',
       }
     case 'audit':
       return {
-        technicalScore: 0,
-        issues: [],
-        warnings: [],
-        recommendations: [],
+        submitEndpoint: 'onpage/summary/task_post',
+        tasksReadyEndpoint: 'onpage/summary/tasks_ready',
+        resultEndpoint: (taskId) => `onpage/summary/task_get/${taskId}`,
+        resultHttpMethod: 'GET',
       }
     case 'keywords':
       return {
-        opportunities: [],
-        gaps: [],
-        trending: [],
+        submitEndpoint: 'keywords_data/google/search_volume/task_post',
+        tasksReadyEndpoint: 'keywords_data/google/search_volume/tasks_ready',
+        resultEndpoint: (taskId) => `keywords_data/google/search_volume/task_get/${taskId}`,
+        resultHttpMethod: 'GET',
       }
     case 'aeo':
       return {
-        citations: {},
-        featuredSnippets: [],
-        peopleAlsoAsk: [],
+        submitEndpoint: 'ai_optimization/keyword_data/task_post',
+        tasksReadyEndpoint: 'ai_optimization/keyword_data/tasks_ready',
+        resultEndpoint: (taskId) => `ai_optimization/keyword_data/task_get/${taskId}`,
+        resultHttpMethod: 'GET',
       }
     case 'content':
       return {
-        topPages: [],
-        decayingContent: [],
-        publishingVelocity: 0,
+        submitEndpoint: 'content_analysis/summary/task_post',
+        tasksReadyEndpoint: 'content_analysis/summary/tasks_ready',
+        resultEndpoint: (taskId) => `content_analysis/summary/task_get/${taskId}`,
+        resultHttpMethod: 'GET',
       }
     default:
-      return {}
+      return {
+        submitEndpoint: 'serp/organic/task_post',
+        tasksReadyEndpoint: 'serp/organic/tasks_ready',
+        resultEndpoint: (taskId) => `serp/organic/task_get/${taskId}`,
+        resultHttpMethod: 'GET',
+      }
   }
+}
+
+function buildTaskPayload(dataType: string, websiteUrl: string, competitorUrls?: string[]): Record<string, unknown> {
+  return {
+    target: websiteUrl,
+    keyword: websiteUrl,
+    language_code: 'en',
+    location_code: 2840,
+    limit: 100,
+    include_subdomains: true,
+    competitors: competitorUrls || [],
+    data_type: dataType,
+  }
+}
+
+function getExponentialBackoffMs(attempt: number): number {
+  const baseDelayMs = 1000
+  const maxDelayMs = 30000
+  const backoff = baseDelayMs * 2 ** attempt
+  return Math.min(maxDelayMs, backoff)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+function serializeTaskError(error: unknown): Json {
+  if (!error) {
+    return null
+  }
+
+  if (typeof error === 'string' || typeof error === 'number' || typeof error === 'boolean') {
+    return error
+  }
+
+  if (Array.isArray(error)) {
+    return error as Json
+  }
+
+  if (typeof error === 'object') {
+    return error as Json
+  }
+
+  return String(error)
 }
