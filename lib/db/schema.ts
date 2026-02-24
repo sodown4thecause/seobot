@@ -13,6 +13,7 @@ import {
     jsonb,
     boolean,
     index,
+    uniqueIndex,
     vector,
     real,
 } from 'drizzle-orm/pg-core'
@@ -103,6 +104,23 @@ export const competitors = pgTable('competitors', {
     metadata: jsonb('metadata').$type<Json>(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+/**
+ * User Competitors - Explicit mapping between users/sites and competitor records
+ */
+export const userCompetitors = pgTable('user_competitors', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    competitorId: uuid('competitor_id').notNull(),
+    websiteUrl: text('website_url').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        userCompetitorUniqueIdx: uniqueIndex('idx_user_competitors_user_competitor_unique').on(table.userId, table.competitorId),
+        userWebsiteIdx: index('idx_user_competitors_user_website').on(table.userId, table.websiteUrl),
+    }
 })
 
 /**
@@ -623,3 +641,7 @@ export type NewJobHistory = typeof jobHistory.$inferInsert
 // API Usage Tracking Types
 export type ApiUsageEvent = typeof apiUsageEvents.$inferSelect
 export type NewApiUsageEvent = typeof apiUsageEvents.$inferInsert
+
+// User Competitor Mapping Types
+export type UserCompetitor = typeof userCompetitors.$inferSelect
+export type NewUserCompetitor = typeof userCompetitors.$inferInsert
