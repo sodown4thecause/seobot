@@ -3,7 +3,7 @@
 **Project:** SEO Dashboard + SEO SaaS Platform  
 **Current Phase:** Phase 2 Ready (Phase 1 Complete)  
 **Last Updated:** 2026-02-25
-**Last activity:** 2026-02-25 - Completed 01-09-PLAN.md (overview freshness + stale-data wiring)
+**Last activity:** 2026-02-25 - Completed quick-006 analytics instrumentation for AI visibility audit funnel
 
 ---
 
@@ -92,6 +92,7 @@ Begin Phase 2 Core Dashboards using completed Phase 1 infrastructure and overvie
 | Audit provider outage fallback | Keep fixed 5-check output by rerouting failed Perplexity/Grok checks and exposing citation degradation metadata | Applied in quick-003 |
 | Audit conversion attribution loop | Return completed `auditId` and use non-blocking CTA conversion events to mark monetization intent per audit | Applied in quick-004 |
 | Durable audit report re-entry | Expose persisted report endpoint/page and deep-link recap email to canonical `/audit/results/{auditId}` URLs | Applied in quick-005 |
+| Audit funnel telemetry normalization | Emit non-blocking lifecycle/reopen analytics with stable `sessionId` + `auditId` context and strict payload normalization at ingestion | Applied in quick-006 |
 | Overview resilience strategy | Keep per-slice fallback payloads so overview widgets preserve stale/partial rendering even when slice APIs are unavailable | Applied in 01-09 |
 | Widget freshness contract | Standardize `lastUpdated` (Date/string) and render `FreshnessIndicator` at top-level widget headers | Applied in 01-09 |
 
@@ -168,6 +169,7 @@ Executed Foundation plans (`01-01` through `01-07`) and established schema, jobs
 | 003 | ai-visibility-audit-prompt.md finish it | 2026-02-25 | 3cc4c69 | [003-ai-visibility-audit-prompt-md-finish-it](./quick/003-ai-visibility-audit-prompt-md-finish-it/) |
 | 004 | ai-visibility-audit-prompt | 2026-02-25 | bd6c52a | [004-ai-visibility-audit-prompt](./quick/004-ai-visibility-audit-prompt/) |
 | 005 | ai-visibility-audit-prompt | 2026-02-25 | 5af367f | [005-ai-visibility-audit-prompt](./quick/005-ai-visibility-audit-prompt/) |
+| 006 | ai-visibility-audit-prompt | 2026-02-25 | d564929 | [006-ai-visibility-audit-prompt](./quick/006-ai-visibility-audit-prompt/) |
 
 ## Decisions Needed
 
@@ -181,8 +183,8 @@ Executed Foundation plans (`01-01` through `01-07`) and established schema, jobs
 
 ## Session Continuity (Execution)
 
-Last session: 2026-02-24 21:22 UTC  
-Stopped at: Completed `01-09-PLAN.md`  
+Last session: 2026-02-24 21:43 UTC  
+Stopped at: Completed `quick-006-ai-visibility-audit-prompt/006-PLAN.md`  
 Resume file: None
 
 ---
