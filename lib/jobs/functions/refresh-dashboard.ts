@@ -15,6 +15,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { executeAsyncTaskFlow } from '@/lib/dataforseo/client'
 import type { DataForSEOResponse } from '@/lib/dataforseo/types'
 import { executeRefreshDataTypeWithCircuitBreaker } from '@/lib/jobs/circuit-breaker'
+import { invalidateDashboardCache } from '@/lib/cache/redis-client'
 
 // ============================================================================
 // Job Configuration
@@ -165,6 +166,7 @@ export const refreshDashboardJob = inngest.createFunction(
     await step.run('finalize-job', async () => {
       if (wasCancelled) {
         await setJobCancelled(jobId, skippedDataTypes)
+        await invalidateDashboardCache(userId)
 
         console.log(`[RefreshJob] Cancelled job ${jobId}`)
 
@@ -180,6 +182,8 @@ export const refreshDashboardJob = inngest.createFunction(
           updatedAt: new Date(),
         })
         .where(eq(refreshJobs.id, jobId))
+
+      await invalidateDashboardCache(userId)
 
       console.log(`[RefreshJob] Completed job ${jobId}`)
 
@@ -222,9 +226,6 @@ function getDataTypesForJobType(jobType: string): string[] {
 
 /**
  * Refresh data for a specific data type
- *
- * This is a placeholder that will be implemented in later phases.
- * For now, returns mock data structure.
  */
 async function refreshDataByType(
   dataType: string,

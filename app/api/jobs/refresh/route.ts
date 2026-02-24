@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { businessProfiles } from '@/lib/db/schema'
 import { sendRefreshRequest } from '@/lib/jobs/inngest-client'
+import { invalidateDashboardCache } from '@/lib/cache/redis-client'
 
 type RefreshJobType = 'full-refresh' | 'ranks-only' | 'backlinks-only' | 'audit-only' | 'overview-only'
 
@@ -38,7 +39,9 @@ export async function POST(request: Request) {
   }
 
   const jobType = body.jobType ?? 'full-refresh'
+
+  await invalidateDashboardCache(userId)
   await sendRefreshRequest(userId, websiteUrl, jobType, body.competitorUrls)
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, invalidatedCache: true })
 }

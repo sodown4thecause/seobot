@@ -46,6 +46,10 @@ export function generateKey(userId: string, dataType: string, params?: string): 
   return `dashboard:${userId}:${dataType}:${hashValue(params)}`
 }
 
+export function getDashboardPatternForUser(userId: string): string {
+  return `dashboard:${userId}:*`
+}
+
 export async function get<T>(key: string): Promise<T | null> {
   const client = getClient()
   if (!client) {
@@ -114,6 +118,10 @@ export async function deletePattern(pattern: string): Promise<void> {
   }
 }
 
+export async function invalidateDashboardCache(userId: string): Promise<void> {
+  await deletePattern(getDashboardPatternForUser(userId))
+}
+
 type WarmCacheOptions<T> = {
   userId: string
   dataType: keyof typeof DASHBOARD_TTL_BY_TYPE
@@ -136,6 +144,8 @@ export const redisCache = {
   set,
   delete: del,
   deletePattern,
+  invalidateDashboardCache,
   generateKey,
+  getDashboardPatternForUser,
   warmDashboardCache,
 }
