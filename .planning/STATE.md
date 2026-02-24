@@ -3,7 +3,7 @@
 **Project:** SEO Dashboard + SEO SaaS Platform  
 **Current Phase:** Phase 1 Gap Closure In Progress  
 **Last Updated:** 2026-02-25
-**Last activity:** 2026-02-25 - Completed quick task 002: complete-ai-visibility-audit-prompt-md
+**Last activity:** 2026-02-25 - Completed 01-07-PLAN.md (DataForSEO async + cost attribution)
 
 ---
 
@@ -29,20 +29,20 @@ SEO professionals, marketing teams, and website owners who need ongoing monitori
 ### Phase Status
 | Phase | Name | Status | Progress |
 |-------|------|--------|----------|
-| 1 | Foundation & Infrastructure | 🟡 In Progress | 66.7% (6/9 plans) |
+| 1 | Foundation & Infrastructure | 🟡 In Progress | 77.8% (7/9 plans) |
 | 2 | Core Dashboards | 🔴 Not Started | 0% |
 | 3 | Advanced Intelligence | 🔴 Not Started | 0% |
 | 4 | AEO Insights | 🔴 Not Started | 0% |
 | 5 | Scale & Automation | 🔴 Not Started | 0% |
 
 ### Active Plan
-**01-07** — pending execution (DataForSEO async lifecycle).
+**None** — 01-07 execution complete.
 
 ### Current Focus
-Complete Phase 1 gap-closure plans (01-07 to 01-09), then proceed to Phase 2 Core Dashboards.
+Complete remaining Phase 1 gap-closure plans (01-08 and 01-09), then proceed to Phase 2 Core Dashboards.
 
 ### Progress
-`███████░░░` 66.7% (6/9 plans complete)
+`████████░░` 77.8% (7/9 plans complete)
 
 ---
 
@@ -84,6 +84,8 @@ Complete Phase 1 gap-closure plans (01-07 to 01-09), then proceed to Phase 2 Cor
 | Refresh trigger pattern | Browser calls `/api/jobs/refresh`; server emits Inngest event | Applied in 01-05 |
 | Cache config compatibility | Keep `cacheComponents`/`cacheLife` under `experimental` until route segment runtime exports are migrated | Applied in 01-04 |
 | Competitor relationship mapping | Keep `competitors` table and add explicit `user_competitors` mapping artifact | Applied in 01-06 |
+| Async DataForSEO lifecycle path | Use canonical POST submit -> tasks_ready polling -> GET-style result retrieval for refresh workloads | Applied in 01-07 |
+| Cost attribution enforcement | Require `executeTrackedDataForSeoCall` with `userId` and `jobId` on submit/poll/fetch helper paths | Applied in 01-07 |
 
 ### Critical Risks Identified
 
@@ -129,15 +131,15 @@ Complete Phase 1 gap-closure plans (01-07 to 01-09), then proceed to Phase 2 Cor
 ## Session Continuity
 
 ### This Session
-**Action:** Executed quick task `002-PLAN.md` (AI Visibility Audit conversion completion)  
-**Outcome:** Upgraded homepage lead-magnet messaging and finalized `/audit` completed-state composition with non-blocking upsell gate and CTA handoff  
-**Next Action:** Execute `01-07-PLAN.md` and run conversion QA on `/` and `/audit`
+**Action:** Executed `01-07-PLAN.md` (DataForSEO async lifecycle + cost attribution foundation)  
+**Outcome:** Added canonical lifecycle helpers, tracked executor writing `apiUsageEvents`, and Inngest middleware wiring for consistent refresh-job attribution  
+**Next Action:** Execute `01-08-PLAN.md` (refresh job rewiring onto new async path)
 
 ### Last Session
-Executed Foundation plans (`01-01` through `01-06`) and established schema, jobs, DataForSEO integration, UX/SSE primitives, and competitor mapping migration artifact.
+Executed Foundation plans (`01-01` through `01-07`) and established schema, jobs, async DataForSEO lifecycle helpers, cost-tracking middleware, UX/SSE primitives, and competitor mapping migration artifact.
 
 ### Upcoming Sessions
-1. Execute `01-07-PLAN.md`
+1. Execute `01-08-PLAN.md`
 2. `/gsd-research-phase 4` — AEO domain research (before Week 12)
 3. Define health score weighting for REQ-OVERVIEW-01
 
@@ -168,8 +170,8 @@ Executed Foundation plans (`01-01` through `01-06`) and established schema, jobs
 
 ## Session Continuity (Execution)
 
-Last session: 2026-02-24 17:44 UTC  
-Stopped at: Completed `quick/002-PLAN.md`  
+Last session: 2026-02-24 17:47 UTC  
+Stopped at: Completed `01-07-PLAN.md`  
 Resume file: None
 
 ---
