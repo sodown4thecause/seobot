@@ -1,15 +1,14 @@
-import { AuditPageClient } from '@/components/landing/audit-page-client'
+import { AuditFlow } from '@/components/audit/AuditFlow'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 
 export const metadata = buildPageMetadata({
-  title: 'Free AEO/GEO Audit | FlowIntent',
+  title: 'AI Visibility Audit | FlowIntent',
   description:
-    'Run an AEO and GEO audit to identify opportunities for better LLM mentions, citations, and AI search visibility.',
+    'Find out whether AI buyers are seeing your brand or your competitors across Perplexity, Grok, and Gemini.',
   path: '/audit',
-  keywords: ['AEO audit', 'GEO audit', 'AI visibility audit', 'LLM citation audit'],
+  keywords: ['AI visibility audit', 'LLM competitor audit', 'Perplexity citation audit', 'brand visibility'],
 })
 
 export default function AuditPage() {
-  return <AuditPageClient />
+  return <AuditFlow />
 }
-
