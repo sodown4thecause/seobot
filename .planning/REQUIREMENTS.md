@@ -328,17 +328,151 @@
 
 | Requirement ID | Mapped to Phase | Implementation Status |
 |----------------|-----------------|----------------------|
-| REQ-OVERVIEW-* | Phase 2 | Not Started |
-| REQ-AUDIT-* | Phase 2 | Not Started |
-| REQ-COMPETITOR-* | Phase 3 | Not Started |
-| REQ-KEYWORDS-* | Phase 3 | Not Started |
-| REQ-AEO-* | Phase 4 | Not Started |
-| REQ-BACKLINKS-* | Phase 3 | Not Started |
-| REQ-RANKS-* | Phase 2 | Not Started |
-| REQ-CONTENT-* | Phase 3 | Not Started |
-| REQ-INFRA-* | Phase 1 | Not Started |
-| REQ-UX-* | All Phases | Not Started |
+| REQ-OVERVIEW-01 | Phase 2 | Not Started |
+| REQ-OVERVIEW-02 | Phase 2 | Not Started |
+| REQ-OVERVIEW-03 | Phase 2 | Not Started |
+| REQ-OVERVIEW-04 | Phase 2 | Not Started |
+| REQ-OVERVIEW-05 | Phase 2 | Not Started |
+| REQ-OVERVIEW-06 | Phase 2 | Not Started |
+| REQ-AUDIT-01 | Phase 2 | Not Started |
+| REQ-AUDIT-02 | Phase 2 | Not Started |
+| REQ-AUDIT-03 | Phase 2 | Not Started |
+| REQ-AUDIT-04 | Phase 2 | Not Started |
+| REQ-AUDIT-05 | Phase 2 | Not Started |
+| REQ-AUDIT-06 | Phase 2 | Not Started |
+| REQ-AUDIT-07 | Phase 2 | Not Started |
+| REQ-AUDIT-08 | Phase 2 | Not Started |
+| REQ-AUDIT-09 | Phase 2 | Not Started |
+| REQ-AUDIT-10 | Phase 2 | Not Started |
+| REQ-COMPETITOR-01 | Phase 3 | Not Started |
+| REQ-COMPETITOR-02 | Phase 3 | Not Started |
+| REQ-COMPETITOR-03 | Phase 3 | Not Started |
+| REQ-COMPETITOR-04 | Phase 3 | Not Started |
+| REQ-COMPETITOR-05 | Phase 3 | Not Started |
+| REQ-COMPETITOR-06 | Phase 3 | Not Started |
+| REQ-COMPETITOR-07 | Phase 3 | Not Started |
+| REQ-COMPETITOR-08 | Phase 3 | Not Started |
+| REQ-COMPETITOR-09 | Phase 3 | Not Started |
+| REQ-COMPETITOR-10 | Phase 3 | Not Started |
+| REQ-COMPETITOR-11 | Phase 3 | Not Started |
+| REQ-COMPETITOR-12 | Phase 3 | Not Started |
+| REQ-COMPETITOR-13 | Phase 3 | Not Started |
+| REQ-COMPETITOR-14 | Phase 3 | Not Started |
+| REQ-COMPETITOR-15 | Phase 3 | Not Started |
+| REQ-COMPETITOR-16 | Phase 3 | Not Started |
+| REQ-COMPETITOR-17 | Phase 3 | Not Started |
+| REQ-COMPETITOR-18 | Phase 3 | Not Started |
+| REQ-KEYWORDS-01 | Phase 3 | Not Started |
+| REQ-KEYWORDS-02 | Phase 3 | Not Started |
+| REQ-KEYWORDS-03 | Phase 3 | Not Started |
+| REQ-KEYWORDS-04 | Phase 3 | Not Started |
+| REQ-KEYWORDS-05 | Phase 3 | Not Started |
+| REQ-KEYWORDS-06 | Phase 3 | Not Started |
+| REQ-KEYWORDS-07 | Phase 3 | Not Started |
+| REQ-KEYWORDS-08 | Phase 3 | Not Started |
+| REQ-KEYWORDS-09 | Phase 3 | Not Started |
+| REQ-KEYWORDS-10 | Phase 3 | Not Started |
+| REQ-KEYWORDS-11 | Phase 3 | Not Started |
+| REQ-KEYWORDS-12 | Phase 3 | Not Started |
+| REQ-AEO-01 | Phase 4 | Not Started |
+| REQ-AEO-02 | Phase 4 | Not Started |
+| REQ-AEO-03 | Phase 4 | Not Started |
+| REQ-AEO-04 | Phase 4 | Not Started |
+| REQ-AEO-05 | Phase 4 | Not Started |
+| REQ-AEO-06 | Phase 4 | Not Started |
+| REQ-AEO-07 | Phase 4 | Not Started |
+| REQ-AEO-08 | Phase 4 | Not Started |
+| REQ-AEO-09 | Phase 4 | Not Started |
+| REQ-AEO-10 | Phase 4 | Not Started |
+| REQ-AEO-11 | Phase 4 | Not Started |
+| REQ-AEO-12 | Phase 4 | Not Started |
+| REQ-AEO-13 | Phase 4 | Not Started |
+| REQ-AEO-14 | Phase 4 | Not Started |
+| REQ-BACKLINKS-01 | Phase 3 | Not Started |
+| REQ-BACKLINKS-02 | Phase 3 | Not Started |
+| REQ-BACKLINKS-03 | Phase 3 | Not Started |
+| REQ-BACKLINKS-04 | Phase 3 | Not Started |
+| REQ-BACKLINKS-05 | Phase 3 | Not Started |
+| REQ-BACKLINKS-06 | Phase 3 | Not Started |
+| REQ-BACKLINKS-07 | Phase 3 | Not Started |
+| REQ-BACKLINKS-08 | Phase 3 | Not Started |
+| REQ-BACKLINKS-09 | Phase 3 | Not Started |
+| REQ-BACKLINKS-10 | Phase 3 | Not Started |
+| REQ-BACKLINKS-11 | Phase 3 | Not Started |
+| REQ-BACKLINKS-12 | Phase 3 | Not Started |
+| REQ-BACKLINKS-13 | Phase 3 | Not Started |
+| REQ-BACKLINKS-14 | Phase 3 | Not Started |
+| REQ-BACKLINKS-15 | Phase 3 | Not Started |
+| REQ-RANKS-01 | Phase 2 | Not Started |
+| REQ-RANKS-02 | Phase 2 | Not Started |
+| REQ-RANKS-03 | Phase 2 | Not Started |
+| REQ-RANKS-04 | Phase 2 | Not Started |
+| REQ-RANKS-05 | Phase 2 | Not Started |
+| REQ-RANKS-06 | Phase 2 | Not Started |
+| REQ-RANKS-07 | Phase 2 | Not Started |
+| REQ-RANKS-08 | Phase 2 | Not Started |
+| REQ-RANKS-09 | Phase 2 | Not Started |
+| REQ-RANKS-10 | Phase 2 | Not Started |
+| REQ-RANKS-11 | Phase 2 | Not Started |
+| REQ-RANKS-12 | Phase 2 | Not Started |
+| REQ-CONTENT-01 | Phase 3 | Not Started |
+| REQ-CONTENT-02 | Phase 3 | Not Started |
+| REQ-CONTENT-03 | Phase 3 | Not Started |
+| REQ-CONTENT-04 | Phase 3 | Not Started |
+| REQ-CONTENT-05 | Phase 3 | Not Started |
+| REQ-CONTENT-06 | Phase 3 | Not Started |
+| REQ-CONTENT-07 | Phase 3 | Not Started |
+| REQ-CONTENT-08 | Phase 3 | Not Started |
+| REQ-CONTENT-09 | Phase 3 | Not Started |
+| REQ-CONTENT-10 | Phase 3 | Not Started |
+| REQ-CONTENT-11 | Phase 3 | Not Started |
+| REQ-CONTENT-12 | Phase 3 | Not Started |
+| REQ-CONTENT-13 | Phase 3 | Not Started |
+| REQ-CONTENT-14 | Phase 3 | Not Started |
+| REQ-INFRA-JOBS-01 | Phase 1 | Not Started |
+| REQ-INFRA-JOBS-02 | Phase 1 | Not Started |
+| REQ-INFRA-JOBS-03 | Phase 1 | Not Started |
+| REQ-INFRA-JOBS-04 | Phase 1 | Not Started |
+| REQ-INFRA-JOBS-05 | Phase 1 | Not Started |
+| REQ-INFRA-CACHE-01 | Phase 1 | Not Started |
+| REQ-INFRA-CACHE-02 | Phase 1 | Not Started |
+| REQ-INFRA-CACHE-03 | Phase 1 | Not Started |
+| REQ-INFRA-CACHE-04 | Phase 1 | Not Started |
+| REQ-INFRA-DATAFORSEO-01 | Phase 1 | Not Started |
+| REQ-INFRA-DATAFORSEO-02 | Phase 1 | Not Started |
+| REQ-INFRA-DATAFORSEO-03 | Phase 1 | Not Started |
+| REQ-INFRA-DATAFORSEO-04 | Phase 1 | Not Started |
+| REQ-INFRA-DATAFORSEO-05 | Phase 1 | Not Started |
+| REQ-INFRA-DB-01 | Phase 1 | Not Started |
+| REQ-INFRA-DB-02 | Phase 1 | Not Started |
+| REQ-INFRA-DB-03 | Phase 1 | Not Started |
+| REQ-INFRA-DB-04 | Phase 1 | Not Started |
+| REQ-INFRA-DB-05 | Phase 1 | Not Started |
+| REQ-UX-NAV-01 | Phase 1 | Not Started |
+| REQ-UX-NAV-02 | Phase 1 | Not Started |
+| REQ-UX-NAV-03 | Phase 1 | Not Started |
+| REQ-UX-NAV-04 | Phase 1 | Not Started |
+| REQ-UX-FRESHNESS-01 | Phase 1 | Not Started |
+| REQ-UX-FRESHNESS-02 | Phase 1 | Not Started |
+| REQ-UX-FRESHNESS-03 | Phase 1 | Not Started |
+| REQ-UX-FRESHNESS-04 | Phase 1 | Not Started |
+| REQ-UX-LOADING-01 | Phase 1 | Not Started |
+| REQ-UX-LOADING-02 | Phase 1 | Not Started |
+| REQ-UX-LOADING-03 | Phase 2 | Not Started |
+| REQ-UX-LOADING-04 | Phase 2 | Not Started |
+| REQ-UX-ONBOARD-01 | Phase 2 | Not Started |
+| REQ-UX-ONBOARD-02 | Phase 2 | Not Started |
+| REQ-UX-ONBOARD-03 | Phase 2 | Not Started |
+| REQ-UX-ONBOARD-04 | Phase 2 | Not Started |
 
----
+**Coverage Summary:**
+| Phase | Requirements |
+|-------|--------------|
+| Phase 1 | 28 requirements (Infrastructure, Navigation, Freshness, Loading base, Onboarding) |
+| Phase 2 | 34 requirements (Overview, Audit, Rank Tracker, Loading complete) |
+| Phase 3 | 59 requirements (Competitor, Keywords, Backlinks, Content) |
+| Phase 4 | 14 requirements (AEO Insights) |
+| Phase 5 | TBD (Scale extensions) |
+| **Total** | **135 mapped (includes Phase 5 extensions)** |
 
-*Last updated: 2026-02-24 — Ready for Roadmap creation*
+*Last updated: 2026-02-24 — Roadmap created, ready for execution*
