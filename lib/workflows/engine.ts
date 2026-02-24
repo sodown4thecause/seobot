@@ -235,7 +235,7 @@ export class WorkflowEngine {
    * - Provides detailed performance metrics
    */
   private async executeToolsParallel(
-    tools: Array<{ name: string; params?: Record<string, any>; required?: boolean }>
+    tools: Array<{ id?: string; name: string; params?: Record<string, any>; required?: boolean }>
   ): Promise<Record<string, any>> {
     console.log(`[Workflow] Executing ${tools.length} tools in parallel`)
     const startTime = Date.now()
@@ -251,15 +251,16 @@ export class WorkflowEngine {
     const successfulTools: string[] = []
 
     tools.forEach((tool, index) => {
+      const toolKey = tool.id || tool.name
       const result = results[index]
 
       if (result.status === 'fulfilled') {
-        toolResults[tool.name] = result.value
+        toolResults[toolKey] = result.value
         successfulTools.push(tool.name)
       } else {
         // Tool failed
         failedTools.push(tool.name)
-        toolResults[tool.name] = {
+        toolResults[toolKey] = {
           toolName: tool.name,
           success: false,
           error: result.reason instanceof Error ? result.reason.message : 'Unknown error',
@@ -289,7 +290,7 @@ export class WorkflowEngine {
    * Execute tools sequentially (for tool chaining)
    */
   private async executeToolsSequential(
-    tools: Array<{ name: string; params?: Record<string, any> }>
+    tools: Array<{ id?: string; name: string; params?: Record<string, any> }>
   ): Promise<Record<string, any>> {
     console.log(`[Workflow] Executing ${tools.length} tools sequentially`)
 
@@ -297,12 +298,13 @@ export class WorkflowEngine {
 
     for (const tool of tools) {
       const result = await this.executeTool(tool.name, tool.params)
-      toolResults[tool.name] = result
+      const toolKey = tool.id || tool.name
+      toolResults[toolKey] = result
 
       // Make previous tool results available to next tool
       this.context.previousStepResults = {
         ...this.context.previousStepResults,
-        [tool.name]: result,
+        [toolKey]: result,
       }
     }
 
@@ -350,6 +352,10 @@ export class WorkflowEngine {
         data = await this.executeJinaTool(effectiveParams)
       } else if (toolName === 'perplexity_search') {
         data = await this.executePerplexityTool(effectiveParams)
+      } else if (toolName === 'grok_text') {
+        data = await this.executeGrokTool(effectiveParams)
+      } else if (toolName === 'gemini_text') {
+        data = await this.executeGeminiTool(effectiveParams)
       }
       // Firecrawl tools
       else if (toolName.startsWith('firecrawl_') || toolName === 'scrape' || toolName === 'crawl' || toolName === 'map') {
@@ -525,6 +531,52 @@ export class WorkflowEngine {
   }
 
   /**
+   * Execute Grok text generation tool
+   */
+  private async executeGrokTool(params?: Record<string, any>): Promise<any> {
+    const { runGrokAdapter } = await import('@/lib/llm/adapters/grok')
+
+    if (!params?.systemPrompt || !params?.userPrompt) {
+      throw new Error('Grok text tool requires systemPrompt and userPrompt parameters')
+    }
+
+    const result = await runGrokAdapter({
+      systemPrompt: params.systemPrompt,
+      userPrompt: params.userPrompt,
+    })
+
+    return {
+      answer: result.rawText,
+      model: result.model,
+      usage: result.usage,
+      citations: [],
+    }
+  }
+
+  /**
+   * Execute Gemini text generation tool
+   */
+  private async executeGeminiTool(params?: Record<string, any>): Promise<any> {
+    const { runGeminiAdapter } = await import('@/lib/llm/adapters/gemini')
+
+    if (!params?.systemPrompt || !params?.userPrompt) {
+      throw new Error('Gemini text tool requires systemPrompt and userPrompt parameters')
+    }
+
+    const result = await runGeminiAdapter({
+      systemPrompt: params.systemPrompt,
+      userPrompt: params.userPrompt,
+    })
+
+    return {
+      answer: result.rawText,
+      model: result.model,
+      usage: result.usage,
+      citations: [],
+    }
+  }
+
+  /**
    * Execute Firecrawl tool
    */
   private async executeFirecrawlTool(toolName: string, params?: Record<string, any>): Promise<any> {
@@ -678,4 +730,3 @@ export class WorkflowEngine {
     }
   }
 }
-
