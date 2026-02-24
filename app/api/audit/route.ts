@@ -228,13 +228,15 @@ export async function POST(request: NextRequest) {
 
     const runPayload = payload as AuditRunPayload
     const prompts = buildBuyerIntentPrompts(runPayload.confirmedContext)
-    const workflowChecks = await executeAiVisibilityAuditWorkflow({
+    const workflowExecution = await executeAiVisibilityAuditWorkflow({
       prompts,
       context: runPayload.confirmedContext,
       mockSafe: runPayload.mockSafe,
+      simulatePerplexityFailure: runPayload.simulatePerplexityFailure,
+      simulateGrokFailure: runPayload.simulateGrokFailure,
     })
 
-    const platformResults = workflowChecks.map((check) =>
+    const platformResults = workflowExecution.checks.map((check) =>
       parsePlatformResponse({
         platform: check.platform,
         prompt: check.prompt,
@@ -263,6 +265,7 @@ export async function POST(request: NextRequest) {
       stage: 'completed',
       results,
       platformResults,
+      executionMeta: workflowExecution.meta,
       citationUrls: results.citationUrls,
       totalChecks: 5,
     })

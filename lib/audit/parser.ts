@@ -67,8 +67,9 @@ function detectMentions(rawResponse: string, candidates: string[]): string[] {
 
 export function parsePlatformResponse(input: ParsePlatformResponseInput): PlatformResult {
   const normalizedDomain = normalizeDomain(input.domain)
+  const rawResponse = input.rawResponse?.trim() || 'No model response returned for this check.'
   const citationUrls = Array.from(
-    new Set([...(input.citationUrls || []), ...extractUrlsFromText(input.rawResponse)])
+    new Set([...(input.citationUrls || []), ...extractUrlsFromText(rawResponse)])
   )
 
   const citationDomains = citationUrls.map((url) => {
@@ -89,7 +90,7 @@ export function parsePlatformResponse(input: ParsePlatformResponseInput): Platfo
     )
   )
 
-  const brandPosition = detectPosition(input.rawResponse, input.context.brand)
+  const brandPosition = detectPosition(rawResponse, input.context.brand)
   const brandMentioned = brandPosition !== null
 
   return {
@@ -97,11 +98,11 @@ export function parsePlatformResponse(input: ParsePlatformResponseInput): Platfo
     prompt: input.prompt,
     brandMentioned,
     brandPosition,
-    brandContext: extractBrandContext(input.rawResponse, input.context.brand),
-    competitorsMentioned: detectMentions(input.rawResponse, input.context.competitors),
+    brandContext: extractBrandContext(rawResponse, input.context.brand),
+    competitorsMentioned: detectMentions(rawResponse, input.context.competitors),
     citationUrls,
     userDomainCited: citationDomains.some((domain) => domain.includes(normalizedDomain)),
     competitorDomainsCited,
-    rawResponse: input.rawResponse,
+    rawResponse,
   }
 }

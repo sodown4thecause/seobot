@@ -55,6 +55,8 @@ export interface AuditRunPayload {
   email: string
   confirmedContext: BrandDetectionPayload
   mockSafe?: boolean
+  simulatePerplexityFailure?: boolean
+  simulateGrokFailure?: boolean
 }
 
 export interface AuditDetectPayload {

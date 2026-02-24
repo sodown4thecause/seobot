@@ -3,6 +3,8 @@ import { WorkflowEngine } from '@/lib/workflows/engine'
 import type { BrandDetectionPayload } from '@/lib/audit/types'
 import type { BuyerIntentPrompts } from '@/lib/audit/prompts'
 import { getAuditSystemPrompt } from '@/lib/audit/prompts'
+import { runGrokAdapter } from '@/lib/llm/adapters/grok'
+import { runGeminiAdapter } from '@/lib/llm/adapters/gemini'
 
 export interface WorkflowCheckResult {
   key: 'perplexity_prompt_1' | 'perplexity_prompt_2' | 'perplexity_prompt_3' | 'grok_prompt_1' | 'gemini_prompt_1'
@@ -12,7 +14,30 @@ export interface WorkflowCheckResult {
   citationUrls: string[]
 }
 
+export interface WorkflowExecutionMeta {
+  fallbackApplied: boolean
+  citationAvailability: 'full' | 'degraded'
+  message?: string
+  fallbackDetails: string[]
+}
+
+export interface WorkflowExecutionResult {
+  checks: WorkflowCheckResult[]
+  meta: WorkflowExecutionMeta
+}
+
 export const AI_VISIBILITY_AUDIT_WORKFLOW_ID = 'ai-visibility-audit'
+
+type WorkflowKey = WorkflowCheckResult['key']
+
+interface ToolSuccessLike {
+  success?: boolean
+  data?: {
+    answer?: string
+    citations?: Array<{ url: string }>
+  }
+  error?: string
+}
 
 function buildMockResult(prompt: string, context: BrandDetectionPayload, platform: 'perplexity' | 'grok' | 'gemini', includeCitations = false): { answer: string; citations: Array<{ url: string }> } {
   const competitor = context.competitors[0] || 'competitor'
@@ -32,6 +57,62 @@ function buildMockResult(prompt: string, context: BrandDetectionPayload, platfor
     : []
 
   return { answer, citations }
+}
+
+function buildFallbackAnswer(platform: string, prompt: string, reason?: string): string {
+  const details = reason ? ` Reason: ${reason}` : ''
+  return `Fallback response (${platform}) could not complete the prompt.${details}\nPrompt: ${prompt}`
+}
+
+function getToolResult(toolResults: Record<string, unknown>, key: WorkflowKey): ToolSuccessLike {
+  return (toolResults[key] || {}) as ToolSuccessLike
+}
+
+function normalizeCheck(
+  key: WorkflowKey,
+  prompt: string,
+  platform: 'perplexity' | 'grok' | 'gemini',
+  toolResult: ToolSuccessLike,
+  fallbackAnswer?: string
+): WorkflowCheckResult {
+  const answer = toolResult.success === false
+    ? fallbackAnswer || buildFallbackAnswer(platform, prompt, toolResult.error)
+    : toolResult.data?.answer || fallbackAnswer || buildFallbackAnswer(platform, prompt)
+
+  const citationUrls =
+    platform === 'perplexity'
+      ? toolResult.success === false
+        ? []
+        : toolResult.data?.citations?.map((item) => item.url) || []
+      : []
+
+  return {
+    key,
+    prompt,
+    platform,
+    rawResponse: answer,
+    citationUrls,
+  }
+}
+
+async function runTextFallback(
+  platform: 'grok' | 'gemini',
+  params: { systemPrompt: string; userPrompt: string }
+): Promise<{ answer: string; error?: string }> {
+  try {
+    if (platform === 'grok') {
+      const result = await runGrokAdapter(params)
+      return { answer: result.rawText }
+    }
+
+    const result = await runGeminiAdapter(params)
+    return { answer: result.rawText }
+  } catch (error) {
+    return {
+      answer: buildFallbackAnswer(platform, params.userPrompt, error instanceof Error ? error.message : 'Unknown error'),
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
 }
 
 export function buildAiVisibilityAuditWorkflow(
@@ -110,45 +191,80 @@ export async function executeAiVisibilityAuditWorkflow(input: {
   prompts: BuyerIntentPrompts
   context: BrandDetectionPayload
   mockSafe?: boolean
-}): Promise<WorkflowCheckResult[]> {
+  simulatePerplexityFailure?: boolean
+  simulateGrokFailure?: boolean
+}): Promise<WorkflowExecutionResult> {
+  const meta: WorkflowExecutionMeta = {
+    fallbackApplied: false,
+    citationAvailability: 'full',
+    fallbackDetails: [],
+  }
+
   if (input.mockSafe) {
-    return [
-      {
-        key: 'perplexity_prompt_1',
-        prompt: input.prompts.prompt1,
-        platform: 'perplexity',
-        rawResponse: buildMockResult(input.prompts.prompt1, input.context, 'perplexity', true).answer,
-        citationUrls: buildMockResult(input.prompts.prompt1, input.context, 'perplexity', true).citations.map((item) => item.url),
-      },
-      {
-        key: 'perplexity_prompt_2',
-        prompt: input.prompts.prompt2,
-        platform: 'perplexity',
-        rawResponse: buildMockResult(input.prompts.prompt2, input.context, 'perplexity', true).answer,
-        citationUrls: buildMockResult(input.prompts.prompt2, input.context, 'perplexity', true).citations.map((item) => item.url),
-      },
-      {
-        key: 'perplexity_prompt_3',
-        prompt: input.prompts.prompt3,
-        platform: 'perplexity',
-        rawResponse: buildMockResult(input.prompts.prompt3, input.context, 'perplexity', true).answer,
-        citationUrls: buildMockResult(input.prompts.prompt3, input.context, 'perplexity', true).citations.map((item) => item.url),
-      },
-      {
-        key: 'grok_prompt_1',
-        prompt: input.prompts.prompt1,
-        platform: 'grok',
-        rawResponse: buildMockResult(input.prompts.prompt1, input.context, 'grok').answer,
-        citationUrls: [],
-      },
-      {
-        key: 'gemini_prompt_1',
-        prompt: input.prompts.prompt1,
-        platform: 'gemini',
-        rawResponse: buildMockResult(input.prompts.prompt1, input.context, 'gemini').answer,
-        citationUrls: [],
-      },
-    ]
+    const checks: WorkflowCheckResult[] = [
+        {
+          key: 'perplexity_prompt_1',
+          prompt: input.prompts.prompt1,
+          platform: 'perplexity',
+          rawResponse: buildMockResult(input.prompts.prompt1, input.context, 'perplexity', true).answer,
+          citationUrls: buildMockResult(input.prompts.prompt1, input.context, 'perplexity', true).citations.map((item) => item.url),
+        },
+        {
+          key: 'perplexity_prompt_2',
+          prompt: input.prompts.prompt2,
+          platform: 'perplexity',
+          rawResponse: buildMockResult(input.prompts.prompt2, input.context, 'perplexity', true).answer,
+          citationUrls: buildMockResult(input.prompts.prompt2, input.context, 'perplexity', true).citations.map((item) => item.url),
+        },
+        {
+          key: 'perplexity_prompt_3',
+          prompt: input.prompts.prompt3,
+          platform: 'perplexity',
+          rawResponse: buildMockResult(input.prompts.prompt3, input.context, 'perplexity', true).answer,
+          citationUrls: buildMockResult(input.prompts.prompt3, input.context, 'perplexity', true).citations.map((item) => item.url),
+        },
+        {
+          key: 'grok_prompt_1',
+          prompt: input.prompts.prompt1,
+          platform: 'grok',
+          rawResponse: buildMockResult(input.prompts.prompt1, input.context, 'grok').answer,
+          citationUrls: [],
+        },
+        {
+          key: 'gemini_prompt_1',
+          prompt: input.prompts.prompt1,
+          platform: 'gemini',
+          rawResponse: buildMockResult(input.prompts.prompt1, input.context, 'gemini').answer,
+          citationUrls: [],
+        },
+      ]
+
+    if (input.simulatePerplexityFailure) {
+      meta.fallbackApplied = true
+      meta.citationAvailability = 'degraded'
+      meta.message = 'Citation depth is temporarily limited because Perplexity fallback mode was used for one or more checks.'
+      meta.fallbackDetails.push('perplexity_prompt_1: simulated outage rerouted to Grok')
+      meta.fallbackDetails.push('perplexity_prompt_2: simulated outage rerouted to Grok')
+      meta.fallbackDetails.push('perplexity_prompt_3: simulated outage rerouted to Grok')
+
+      checks[0].citationUrls = []
+      checks[1].citationUrls = []
+      checks[2].citationUrls = []
+      checks[0].rawResponse = buildMockResult(input.prompts.prompt1, input.context, 'grok').answer
+      checks[1].rawResponse = buildMockResult(input.prompts.prompt2, input.context, 'grok').answer
+      checks[2].rawResponse = buildMockResult(input.prompts.prompt3, input.context, 'grok').answer
+    }
+
+    if (input.simulateGrokFailure) {
+      meta.fallbackApplied = true
+      meta.fallbackDetails.push('grok_prompt_1: simulated outage rerouted to Gemini')
+      checks[3].rawResponse = buildMockResult(input.prompts.prompt1, input.context, 'gemini').answer
+    }
+
+    return {
+      checks,
+      meta,
+    }
   }
 
   const workflow = buildAiVisibilityAuditWorkflow(input.prompts, input.context)
@@ -165,48 +281,96 @@ export async function executeAiVisibilityAuditWorkflow(input: {
 
   const execution = await engine.execute()
   const stepResult = execution.stepResults.find((step) => step.stepId === 'run-five-checks')
-  const toolResults = stepResult?.toolResults || {}
+  const toolResults = (stepResult?.toolResults || {}) as Record<string, unknown>
 
-  const normalized: WorkflowCheckResult[] = [
-    {
-      key: 'perplexity_prompt_1',
-      prompt: input.prompts.prompt1,
-      platform: 'perplexity',
-      rawResponse: toolResults.perplexity_prompt_1?.data?.answer || '',
-      citationUrls:
-        toolResults.perplexity_prompt_1?.data?.citations?.map((item: { url: string }) => item.url) || [],
-    },
-    {
-      key: 'perplexity_prompt_2',
-      prompt: input.prompts.prompt2,
-      platform: 'perplexity',
-      rawResponse: toolResults.perplexity_prompt_2?.data?.answer || '',
-      citationUrls:
-        toolResults.perplexity_prompt_2?.data?.citations?.map((item: { url: string }) => item.url) || [],
-    },
-    {
-      key: 'perplexity_prompt_3',
-      prompt: input.prompts.prompt3,
-      platform: 'perplexity',
-      rawResponse: toolResults.perplexity_prompt_3?.data?.answer || '',
-      citationUrls:
-        toolResults.perplexity_prompt_3?.data?.citations?.map((item: { url: string }) => item.url) || [],
-    },
-    {
-      key: 'grok_prompt_1',
-      prompt: input.prompts.prompt1,
-      platform: 'grok',
-      rawResponse: toolResults.grok_prompt_1?.data?.answer || '',
-      citationUrls: [],
-    },
-    {
-      key: 'gemini_prompt_1',
-      prompt: input.prompts.prompt1,
-      platform: 'gemini',
-      rawResponse: toolResults.gemini_prompt_1?.data?.answer || '',
-      citationUrls: [],
-    },
+  const systemPrompt = getAuditSystemPrompt(input.context)
+
+  if (input.simulatePerplexityFailure) {
+    toolResults.perplexity_prompt_1 = { success: false, error: 'Simulated Perplexity outage' }
+    toolResults.perplexity_prompt_2 = { success: false, error: 'Simulated Perplexity outage' }
+    toolResults.perplexity_prompt_3 = { success: false, error: 'Simulated Perplexity outage' }
+  }
+
+  if (input.simulateGrokFailure) {
+    toolResults.grok_prompt_1 = { success: false, error: 'Simulated Grok outage' }
+  }
+
+  const perplexityKeys: Array<{ key: WorkflowKey; prompt: string }> = [
+    { key: 'perplexity_prompt_1', prompt: input.prompts.prompt1 },
+    { key: 'perplexity_prompt_2', prompt: input.prompts.prompt2 },
+    { key: 'perplexity_prompt_3', prompt: input.prompts.prompt3 },
   ]
 
-  return normalized
+  const perplexityFallbacks = new Map<WorkflowKey, string>()
+  for (const item of perplexityKeys) {
+    const baseResult = getToolResult(toolResults, item.key)
+    if (baseResult.success === false) {
+      meta.fallbackApplied = true
+      meta.citationAvailability = 'degraded'
+      meta.fallbackDetails.push(`${item.key}: rerouted from Perplexity due to ${baseResult.error || 'provider failure'}`)
+
+      const grokFallback = await runTextFallback('grok', {
+        systemPrompt,
+        userPrompt: item.prompt,
+      })
+
+      if (grokFallback.error) {
+        const geminiFallback = await runTextFallback('gemini', {
+          systemPrompt,
+          userPrompt: item.prompt,
+        })
+        perplexityFallbacks.set(item.key, geminiFallback.answer)
+        meta.fallbackDetails.push(`${item.key}: Grok fallback also failed, rerouted to Gemini`)        
+      } else {
+        perplexityFallbacks.set(item.key, grokFallback.answer)
+      }
+    }
+  }
+
+  const grokResult = getToolResult(toolResults, 'grok_prompt_1')
+  let grokFallbackAnswer: string | undefined
+  if (grokResult.success === false) {
+    meta.fallbackApplied = true
+    meta.fallbackDetails.push(`grok_prompt_1: rerouted to Gemini due to ${grokResult.error || 'provider failure'}`)
+    const geminiFallback = await runTextFallback('gemini', {
+      systemPrompt,
+      userPrompt: input.prompts.prompt1,
+    })
+    grokFallbackAnswer = geminiFallback.answer
+  }
+
+  if (meta.citationAvailability === 'degraded') {
+    meta.message = 'Citation depth is temporarily limited because Perplexity fallback mode was used for one or more checks.'
+  }
+
+  const checks: WorkflowCheckResult[] = [
+    normalizeCheck(
+      'perplexity_prompt_1',
+      input.prompts.prompt1,
+      'perplexity',
+      getToolResult(toolResults, 'perplexity_prompt_1'),
+      perplexityFallbacks.get('perplexity_prompt_1')
+    ),
+    normalizeCheck(
+      'perplexity_prompt_2',
+      input.prompts.prompt2,
+      'perplexity',
+      getToolResult(toolResults, 'perplexity_prompt_2'),
+      perplexityFallbacks.get('perplexity_prompt_2')
+    ),
+    normalizeCheck(
+      'perplexity_prompt_3',
+      input.prompts.prompt3,
+      'perplexity',
+      getToolResult(toolResults, 'perplexity_prompt_3'),
+      perplexityFallbacks.get('perplexity_prompt_3')
+    ),
+    normalizeCheck('grok_prompt_1', input.prompts.prompt1, 'grok', grokResult, grokFallbackAnswer),
+    normalizeCheck('gemini_prompt_1', input.prompts.prompt1, 'gemini', getToolResult(toolResults, 'gemini_prompt_1')),
+  ]
+
+  return {
+    checks,
+    meta,
+  }
 }
