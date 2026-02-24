@@ -8,6 +8,13 @@ import { PlatformBreakdown } from '@/components/audit/PlatformBreakdown'
 import { ProgressStages } from '@/components/audit/ProgressStages'
 import { ResultsHero } from '@/components/audit/ResultsHero'
 import { UpsellGate } from '@/components/audit/UpsellGate'
+import {
+  generateSessionId,
+  trackAuditCompleted,
+  trackAuditFailed,
+  trackAuditStarted,
+  trackEmailCaptured,
+} from '@/lib/analytics/audit-tracker'
 import type {
   AuditExecutionMeta,
   AuditResults,
@@ -31,14 +38,27 @@ export function AuditFlow() {
   const [platformResults, setPlatformResults] = useState<PlatformResult[]>([])
   const [executionMeta, setExecutionMeta] = useState<AuditExecutionMeta | null>(null)
   const [auditId, setAuditId] = useState<string | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [runPhase, setRunPhase] = useState<RunPhase>('idle')
   const [error, setError] = useState<string | null>(null)
 
   const handleDetect = async (input: RequestState) => {
+    const nextSessionId = generateSessionId()
+
+    setSessionId(nextSessionId)
     setLoading(true)
     setRunPhase('detecting')
     setError(null)
+
+    trackAuditStarted({
+      sessionId: nextSessionId,
+      url: input.domain,
+      email: input.email,
+      properties: {
+        source: 'live-audit',
+      },
+    })
 
     try {
       const response = await fetch('/api/audit', {
@@ -56,8 +76,31 @@ export function AuditFlow() {
       setDetected(payload.detected)
       setAuditId(null)
       setStage('confirm')
+
+      trackEmailCaptured({
+        sessionId: nextSessionId,
+        url: input.domain,
+        email: input.email,
+        brandName: payload.detected.brand,
+        properties: {
+          source: 'live-audit',
+          category: payload.detected.category,
+        },
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Detection failed')
+      const message = err instanceof Error ? err.message : 'Detection failed'
+
+      setError(message)
+      trackAuditFailed({
+        sessionId: nextSessionId,
+        url: input.domain,
+        email: input.email,
+        properties: {
+          source: 'live-audit',
+          phase: 'detect',
+          error: message,
+        },
+      })
     } finally {
       setLoading(false)
       setRunPhase('idle')
@@ -66,6 +109,11 @@ export function AuditFlow() {
 
   const handleConfirm = async (context: BrandDetectionPayload) => {
     if (!requestState) return
+
+    const activeSessionId = sessionId || generateSessionId()
+    if (!sessionId) {
+      setSessionId(activeSessionId)
+    }
 
     setLoading(true)
     setRunPhase('detecting')
@@ -92,11 +140,41 @@ export function AuditFlow() {
       setResults(payload.results)
       setPlatformResults(payload.platformResults || [])
       setExecutionMeta(payload.executionMeta || null)
-      setAuditId(typeof payload.auditId === 'string' ? payload.auditId : null)
+      const resolvedAuditId = typeof payload.auditId === 'string' ? payload.auditId : null
+
+      setAuditId(resolvedAuditId)
       setRunPhase('done')
       setStage('results')
+
+      trackAuditCompleted({
+        sessionId: activeSessionId,
+        auditId: resolvedAuditId || undefined,
+        url: requestState.domain,
+        email: requestState.email,
+        brandName: context.brand,
+        properties: {
+          source: 'live-audit',
+          category: context.category,
+          visibilityRate: payload.results.visibilityRate,
+          topCompetitor: payload.results.topCompetitor,
+        },
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Audit failed')
+      const message = err instanceof Error ? err.message : 'Audit failed'
+
+      setError(message)
+      trackAuditFailed({
+        sessionId: activeSessionId,
+        url: requestState.domain,
+        email: requestState.email,
+        brandName: context.brand,
+        properties: {
+          source: 'live-audit',
+          category: context.category,
+          phase: 'run',
+          error: message,
+        },
+      })
     } finally {
       setLoading(false)
     }
