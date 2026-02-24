@@ -1,8 +1,8 @@
 import type { AuditExecutionMeta, AuditResults } from '@/lib/audit/types'
 
 export interface AuditReportEmailInput {
+  auditId: string
   email: string
-  domain: string
   results: AuditResults
   executionMeta?: AuditExecutionMeta
 }
@@ -21,17 +21,13 @@ export interface AuditReportEmailPayload {
   text: string
 }
 
-function normalizeDomain(domain: string): string {
-  return domain.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0].toLowerCase()
-}
-
-function getReportUrl(domain: string): string {
+function getReportUrl(auditId: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://flowintent.com'
-  return `${baseUrl}/audit?domain=${encodeURIComponent(normalizeDomain(domain))}`
+  return `${baseUrl}/audit/results/${auditId}`
 }
 
 export function buildAuditReportEmailPayload(input: AuditReportEmailInput): AuditReportEmailPayload {
-  const reportUrl = getReportUrl(input.domain)
+  const reportUrl = getReportUrl(input.auditId)
   const citationAvailability = input.executionMeta?.citationAvailability || 'full'
 
   return {
@@ -47,6 +43,7 @@ export function buildAuditReportEmailPayload(input: AuditReportEmailInput): Audi
     },
     text: [
       `Your AI Visibility Audit for ${input.results.brand} is complete.`,
+      `Across 5 checks, ${input.results.brand} was recommended ${input.results.brandFoundCount} times while ${input.results.topCompetitor} was recommended ${input.results.topCompetitorFoundCount} times.`,
       `Visibility rate: ${input.results.visibilityRate}%`,
       `Top competitor: ${input.results.topCompetitor}`,
       `Competitive summary: ${input.results.competitorAdvantage}`,

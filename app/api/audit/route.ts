@@ -281,14 +281,16 @@ export async function POST(request: NextRequest) {
       console.warn('[AI Visibility Audit] Persistence skipped (table may be missing locally)')
     }
 
-    void sendAuditReportEmail({
-      email: runPayload.email,
-      domain: runPayload.domain,
-      results,
-      executionMeta: workflowExecution.meta,
-    }).catch((error) => {
-      console.warn('[AI Visibility Audit] Email recap failed (non-blocking):', error)
-    })
+    if (auditId) {
+      void sendAuditReportEmail({
+        auditId,
+        email: runPayload.email,
+        results,
+        executionMeta: workflowExecution.meta,
+      }).catch((error) => {
+        console.warn('[AI Visibility Audit] Email recap failed (non-blocking):', error)
+      })
+    }
 
     return jsonResponse({
       ok: true,
