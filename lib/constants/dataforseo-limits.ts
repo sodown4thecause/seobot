@@ -44,6 +44,15 @@ export const RATE_LIMITS = {
   DATABASE_MAX_SIMULTANEOUS: 30,
 } as const
 
+/**
+ * Polling guidance for async task lifecycle.
+ * tasks_ready supports up to 20 requests/minute, so use >=3s interval.
+ */
+export const TASKS_READY_POLL = {
+  MIN_INTERVAL_MS: 3000,
+  DEFAULT_TIMEOUT_MS: 120000,
+} as const
+
 export type RateLimitTier = keyof typeof RATE_LIMITS
 
 // ============================================================================
@@ -232,6 +241,22 @@ export function getRecommendedMethod(useCase: 'scheduled' | 'user-triggered'): M
   // Scheduled updates should use Standard (cheaper, bulk)
   // User-triggered refreshes can use Live (faster, more expensive)
   return useCase === 'scheduled' ? 'standard' : 'live'
+}
+
+/**
+ * Refresh method policy used by job orchestration.
+ * Scheduled/background refreshes always default to standard.
+ * Manual refresh may opt into live mode.
+ */
+export function getRefreshMethodPolicy(options: {
+  trigger: 'scheduled' | 'manual'
+  preferLive?: boolean
+}): MethodType {
+  if (options.trigger === 'scheduled') {
+    return 'standard'
+  }
+
+  return options.preferLive ? 'live' : 'standard'
 }
 
 // ============================================================================
