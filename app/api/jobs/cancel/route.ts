@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'jobId is required' }, { status: 400 })
   }
 
-  await db
+  const cancelledRows = await db
     .update(refreshJobs)
     .set({ status: 'cancelled', updatedAt: new Date(), completedAt: new Date() })
     .where(
@@ -30,6 +30,7 @@ export async function POST(request: Request) {
         inArray(refreshJobs.status, ['queued', 'processing'])
       )
     )
+    .returning({ id: refreshJobs.id })
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, cancelled: cancelledRows.length > 0 })
 }

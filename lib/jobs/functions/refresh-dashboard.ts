@@ -39,6 +39,8 @@ export const refreshDashboardJob = inngest.createFunction(
   async ({ event, step }: { event: RefreshRequestedEvent; step: { run: <R>(name: string, fn: () => Promise<R>) => Promise<R> } }) => {
     const { userId, websiteUrl, jobType, competitorUrls } = event.data
     const jobId = uuidv4()
+    let wasCancelled = false
+    let skippedDataTypes: string[] = []
 
     console.log(`[RefreshJob] Starting ${jobType} for user ${userId}, job ${jobId}`)
 
@@ -77,6 +79,14 @@ export const refreshDashboardJob = inngest.createFunction(
       if (!dataType) {
         continue
       }
+
+      const cancelledBeforeStep = await isJobCancelled(jobId)
+      if (cancelledBeforeStep) {
+        wasCancelled = true
+        skippedDataTypes = dataTypes.slice(i)
+        break
+      }
+
       const progress = Math.round(((i + 2) / totalSteps) * 100)
 
       try {
@@ -91,7 +101,11 @@ export const refreshDashboardJob = inngest.createFunction(
             .where(eq(refreshJobs.id, jobId))
 
           // Refresh data based on type
-          const data = await refreshDataByType(dataType, userId, websiteUrl, jobId, competitorUrls)
+          const data = await refreshDataByType(dataType, userId, websiteUrl, jobId, competitorUrls, () => isJobCancelled(jobId))
+
+          if (await isJobCancelled(jobId)) {
+            throw new JobCancelledError(`Job ${jobId} was cancelled after ${dataType}`)
+          }
 
           // Store in dashboard_data table
           await db
@@ -118,6 +132,12 @@ export const refreshDashboardJob = inngest.createFunction(
           return { dataType, status: 'refreshed' }
         })
       } catch (error) {
+        if (error instanceof JobCancelledError) {
+          wasCancelled = true
+          skippedDataTypes = dataTypes.slice(i + 1)
+          break
+        }
+
         console.error(`[RefreshJob] Error refreshing ${dataType}:`, error)
 
         // Log error but continue with other data types
@@ -143,6 +163,14 @@ export const refreshDashboardJob = inngest.createFunction(
     // Step 4: Finalize job
     // ============================================================================
     await step.run('finalize-job', async () => {
+      if (wasCancelled) {
+        await setJobCancelled(jobId, skippedDataTypes)
+
+        console.log(`[RefreshJob] Cancelled job ${jobId}`)
+
+        return { jobId, status: 'cancelled', skippedDataTypes }
+      }
+
       await db
         .update(refreshJobs)
         .set({
@@ -162,7 +190,8 @@ export const refreshDashboardJob = inngest.createFunction(
       jobId,
       userId,
       dataTypes,
-      status: 'complete',
+      status: wasCancelled ? 'cancelled' : 'complete',
+      skippedDataTypes,
     }
   }
 )
@@ -202,7 +231,8 @@ async function refreshDataByType(
   userId: string,
   websiteUrl: string,
   jobId: string,
-  competitorUrls?: string[]
+  competitorUrls?: string[],
+  shouldCancel?: () => Promise<boolean>
 ): Promise<Json> {
   console.log(`[RefreshJob] Refreshing ${dataType} for ${websiteUrl}`)
 
@@ -214,6 +244,10 @@ async function refreshDataByType(
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
+      if (shouldCancel && (await shouldCancel())) {
+        throw new JobCancelledError(`Job ${jobId} cancelled before ${dataType} attempt ${attempt + 1}`)
+      }
+
       const response = await executeRefreshDataTypeWithCircuitBreaker<DataForSEOResponse<Json>>({
         endpoint: endpointConfig.submitEndpoint,
         userId,
@@ -241,6 +275,10 @@ async function refreshDataByType(
         throw new Error(response.error?.message || `DataForSEO ${dataType} refresh failed`)
       }
 
+      if (shouldCancel && (await shouldCancel())) {
+        throw new JobCancelledError(`Job ${jobId} cancelled after ${dataType} polling`)
+      }
+
       return {
         provider: 'dataforseo',
         dataType,
@@ -255,6 +293,10 @@ async function refreshDataByType(
         })),
       }
     } catch (error) {
+      if (error instanceof JobCancelledError) {
+        throw error
+      }
+
       lastError = error instanceof Error ? error : new Error('Unknown refresh error')
 
       if (attempt === maxAttempts - 1) {
@@ -270,6 +312,50 @@ async function refreshDataByType(
   }
 
   throw lastError || new Error(`Refresh failed for ${dataType}`)
+}
+
+class JobCancelledError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'JobCancelledError'
+  }
+}
+
+async function isJobCancelled(jobId: string): Promise<boolean> {
+  const job = await db
+    .select({ status: refreshJobs.status })
+    .from(refreshJobs)
+    .where(eq(refreshJobs.id, jobId))
+    .limit(1)
+
+  return job[0]?.status === 'cancelled'
+}
+
+async function setJobCancelled(jobId: string, skipped: string[]): Promise<void> {
+  const existing = await db
+    .select({ metadata: refreshJobs.metadata })
+    .from(refreshJobs)
+    .where(eq(refreshJobs.id, jobId))
+    .limit(1)
+
+  const metadata =
+    existing[0]?.metadata && typeof existing[0].metadata === 'object' && !Array.isArray(existing[0].metadata)
+      ? existing[0].metadata
+      : {}
+
+  await db
+    .update(refreshJobs)
+    .set({
+      status: 'cancelled',
+      updatedAt: new Date(),
+      completedAt: new Date(),
+      metadata: {
+        ...metadata,
+        cancelledAt: new Date().toISOString(),
+        skippedDataTypes: skipped,
+      },
+    })
+    .where(and(eq(refreshJobs.id, jobId), eq(refreshJobs.status, 'cancelled')))
 }
 
 type DataTypeEndpointConfig = {
