@@ -2,8 +2,8 @@
 
 **Project:** SEO Dashboard + SEO SaaS Platform  
 **Current Phase:** Phase 1 Gap Closure In Progress  
-**Last Updated:** 2026-02-25
-**Last activity:** 2026-02-25 - Completed 01-07-PLAN.md (DataForSEO async + cost attribution)
+**Last Updated:** 2026-02-24
+**Last activity:** 2026-02-24 - Completed 01-08-PLAN.md (refresh resilience + cancellation + invalidation)
 
 ---
 
@@ -29,20 +29,20 @@ SEO professionals, marketing teams, and website owners who need ongoing monitori
 ### Phase Status
 | Phase | Name | Status | Progress |
 |-------|------|--------|----------|
-| 1 | Foundation & Infrastructure | 🟡 In Progress | 77.8% (7/9 plans) |
+| 1 | Foundation & Infrastructure | 🟡 In Progress | 88.9% (8/9 plans) |
 | 2 | Core Dashboards | 🔴 Not Started | 0% |
 | 3 | Advanced Intelligence | 🔴 Not Started | 0% |
 | 4 | AEO Insights | 🔴 Not Started | 0% |
 | 5 | Scale & Automation | 🔴 Not Started | 0% |
 
 ### Active Plan
-**None** — 01-07 execution complete.
+**None** — 01-08 execution complete.
 
 ### Current Focus
-Complete remaining Phase 1 gap-closure plans (01-08 and 01-09), then proceed to Phase 2 Core Dashboards.
+Complete remaining Phase 1 gap-closure plan (01-09), then proceed to Phase 2 Core Dashboards.
 
 ### Progress
-`████████░░` 77.8% (7/9 plans complete)
+`█████████░` 88.9% (8/9 plans complete)
 
 ---
 
@@ -86,6 +86,8 @@ Complete remaining Phase 1 gap-closure plans (01-08 and 01-09), then proceed to 
 | Competitor relationship mapping | Keep `competitors` table and add explicit `user_competitors` mapping artifact | Applied in 01-06 |
 | Async DataForSEO lifecycle path | Use canonical POST submit -> tasks_ready polling -> GET-style result retrieval for refresh workloads | Applied in 01-07 |
 | Cost attribution enforcement | Require `executeTrackedDataForSeoCall` with `userId` and `jobId` on submit/poll/fetch helper paths | Applied in 01-07 |
+| Refresh execution strategy | Run real async DataForSEO calls per data type with explicit exponential backoff and job-scoped circuit wrapper | Applied in 01-08 |
+| Cache invalidation timing | Invalidate user dashboard cache at manual enqueue and again at job finalize (complete/cancelled) | Applied in 01-08 |
 
 ### Critical Risks Identified
 
@@ -131,15 +133,15 @@ Complete remaining Phase 1 gap-closure plans (01-08 and 01-09), then proceed to 
 ## Session Continuity
 
 ### This Session
-**Action:** Executed `01-07-PLAN.md` (DataForSEO async lifecycle + cost attribution foundation)  
-**Outcome:** Added canonical lifecycle helpers, tracked executor writing `apiUsageEvents`, and Inngest middleware wiring for consistent refresh-job attribution  
-**Next Action:** Execute `01-08-PLAN.md` (refresh job rewiring onto new async path)
+**Action:** Executed `01-08-PLAN.md` (refresh resiliency/cancellation/cache invalidation wiring)  
+**Outcome:** Replaced placeholder refresh execution with async DataForSEO flows, added cancellation checkpoints with skipped-work metadata, and wired enqueue/finalize Redis invalidation  
+**Next Action:** Execute `01-09-PLAN.md` (final Phase 1 gap closure)
 
 ### Last Session
 Executed Foundation plans (`01-01` through `01-07`) and established schema, jobs, async DataForSEO lifecycle helpers, cost-tracking middleware, UX/SSE primitives, and competitor mapping migration artifact.
 
 ### Upcoming Sessions
-1. Execute `01-08-PLAN.md`
+1. Execute `01-09-PLAN.md`
 2. `/gsd-research-phase 4` — AEO domain research (before Week 12)
 3. Define health score weighting for REQ-OVERVIEW-01
 
@@ -170,8 +172,8 @@ Executed Foundation plans (`01-01` through `01-07`) and established schema, jobs
 
 ## Session Continuity (Execution)
 
-Last session: 2026-02-24 17:47 UTC  
-Stopped at: Completed `01-07-PLAN.md`  
+Last session: 2026-02-24 19:18 UTC  
+Stopped at: Completed `01-08-PLAN.md`  
 Resume file: None
 
 ---
