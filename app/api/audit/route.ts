@@ -123,8 +123,8 @@ async function persistAudit(input: {
   results: ReturnType<typeof computeAuditResults>
   platformResults: ReturnType<typeof parsePlatformResponse>[]
   ipAddress: string
-}): Promise<void> {
-  await db.execute(sql`
+}): Promise<string | null> {
+  const insertResult = await db.execute(sql`
     INSERT INTO ai_visibility_audits (
       email,
       domain,
@@ -160,7 +160,24 @@ async function persistAudit(input: {
       ${input.ipAddress},
       false
     )
+    RETURNING id
   `)
+
+  if (Array.isArray(insertResult)) {
+    return typeof insertResult[0]?.id === 'string' ? insertResult[0].id : null
+  }
+
+  if (
+    insertResult &&
+    typeof insertResult === 'object' &&
+    'rows' in insertResult &&
+    Array.isArray((insertResult as { rows?: Array<{ id?: unknown }> }).rows)
+  ) {
+    const firstRow = (insertResult as { rows: Array<{ id?: unknown }> }).rows[0]
+    return typeof firstRow?.id === 'string' ? firstRow.id : null
+  }
+
+  return null
 }
 
 function jsonResponse(payload: AuditResponsePayload, status = 200): NextResponse {
@@ -250,13 +267,15 @@ export async function POST(request: NextRequest) {
 
     const results = computeAuditResults(runPayload.confirmedContext, platformResults)
 
+    let auditId: string | undefined
     try {
-      await persistAudit({
+      const persistedAuditId = await persistAudit({
         payload: runPayload,
         results,
         platformResults,
         ipAddress,
       })
+      auditId = persistedAuditId || undefined
     } catch (error) {
       console.warn('[AI Visibility Audit] Persistence skipped (table may be missing locally)')
     }
@@ -276,6 +295,7 @@ export async function POST(request: NextRequest) {
       results,
       platformResults,
       executionMeta: workflowExecution.meta,
+      auditId,
       citationUrls: results.citationUrls,
       totalChecks: 5,
     })

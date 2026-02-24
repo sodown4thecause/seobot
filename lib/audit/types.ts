@@ -67,6 +67,13 @@ export interface AuditDetectPayload {
 
 export type AuditRequestPayload = AuditRunPayload | AuditDetectPayload
 
+export type AuditConversionEvent = 'strategy-call' | 'full-audit'
+
+export interface AuditConvertPayload {
+  auditId: string
+  event: AuditConversionEvent
+}
+
 export interface AuditResponsePayload {
   ok: boolean
   stage: 'detected' | 'completed'
@@ -75,6 +82,7 @@ export interface AuditResponsePayload {
   results?: AuditResults
   platformResults?: PlatformResult[]
   executionMeta?: AuditExecutionMeta
+  auditId?: string
   citationUrls?: string[]
   totalChecks?: 5
   message?: string
