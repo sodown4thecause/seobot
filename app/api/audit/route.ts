@@ -96,7 +96,7 @@ async function enforceBudgetGuards(): Promise<{ allowed: boolean; message?: stri
   if (todayCount >= dailyLimit) {
     return {
       allowed: false,
-      message: 'High demand today. New audit slots open tomorrow.',
+      message: 'High demand today. New audit slots open tomorrow after the daily budget reset.',
     }
   }
 
