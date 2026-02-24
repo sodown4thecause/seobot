@@ -3,7 +3,7 @@
 **Project:** SEO Dashboard + SEO SaaS Platform  
 **Current Phase:** Phase 1 Gap Closure In Progress  
 **Last Updated:** 2026-02-25
-**Last activity:** 2026-02-25 - Completed quick task 003: ai-visibility-audit-prompt.md finish it
+**Last activity:** 2026-02-24 - Completed quick task 004: ai-visibility-audit-prompt
 
 ---
 
@@ -90,6 +90,7 @@ Complete remaining Phase 1 gap-closure plan (01-09), then proceed to Phase 2 Cor
 | Cache invalidation timing | Invalidate user dashboard cache at manual enqueue and again at job finalize (complete/cancelled) | Applied in 01-08 |
 | Audit detection source transparency | Return explicit detect metadata (`scraped` vs `fallback`) so users can trust or edit extracted context before run | Applied in quick-003 |
 | Audit provider outage fallback | Keep fixed 5-check output by rerouting failed Perplexity/Grok checks and exposing citation degradation metadata | Applied in quick-003 |
+| Audit conversion attribution loop | Return completed `auditId` and use non-blocking CTA conversion events to mark monetization intent per audit | Applied in quick-004 |
 
 ### Critical Risks Identified
 
@@ -135,8 +136,8 @@ Complete remaining Phase 1 gap-closure plan (01-09), then proceed to Phase 2 Cor
 ## Session Continuity
 
 ### This Session
-**Action:** Executed `01-08-PLAN.md` (refresh resiliency/cancellation/cache invalidation wiring)  
-**Outcome:** Replaced placeholder refresh execution with async DataForSEO flows, added cancellation checkpoints with skipped-work metadata, and wired enqueue/finalize Redis invalidation  
+**Action:** Executed `quick/004-PLAN.md` (AI visibility audit conversion attribution loop)  
+**Outcome:** Added completed-run `auditId` handoff, conversion endpoint, non-blocking upsell CTA tracking, and targeted idempotency tests  
 **Next Action:** Execute `01-09-PLAN.md` (final Phase 1 gap closure)
 
 ### Last Session
@@ -162,6 +163,7 @@ Executed Foundation plans (`01-01` through `01-07`) and established schema, jobs
 | 001 | ai-visibility-audit-prompt (1).md | 2026-02-25 | 1b55728 | [001-ai-visibility-audit-prompt-1-md](./quick/001-ai-visibility-audit-prompt-1-md/) |
 | 002 | complete-ai-visibility-audit-prompt-md | 2026-02-25 | b042b53 | [002-complete-ai-visibility-audit-prompt-md](./quick/002-complete-ai-visibility-audit-prompt-md/) |
 | 003 | ai-visibility-audit-prompt.md finish it | 2026-02-25 | 3cc4c69 | [003-ai-visibility-audit-prompt-md-finish-it](./quick/003-ai-visibility-audit-prompt-md-finish-it/) |
+| 004 | ai-visibility-audit-prompt | 2026-02-24 | 46670ac | [004-ai-visibility-audit-prompt](./quick/004-ai-visibility-audit-prompt/) |
 
 ## Decisions Needed
 
@@ -175,8 +177,8 @@ Executed Foundation plans (`01-01` through `01-07`) and established schema, jobs
 
 ## Session Continuity (Execution)
 
-Last session: 2026-02-24 19:35 UTC  
-Stopped at: Completed `quick/003-PLAN.md`  
+Last session: 2026-02-24 20:09 UTC  
+Stopped at: Completed `quick/004-PLAN.md`  
 Resume file: None
 
 ---
