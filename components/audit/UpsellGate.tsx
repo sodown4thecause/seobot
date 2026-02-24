@@ -1,16 +1,35 @@
+'use client'
+
 import Link from 'next/link'
 import { ArrowRight, Lock, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import type { AuditConversionEvent } from '@/lib/audit/types'
 
 interface UpsellGateProps {
+  auditId: string | null
   brand: string
   visibilityRate: number
   topCompetitor: string
 }
 
-export function UpsellGate({ brand, visibilityRate, topCompetitor }: UpsellGateProps) {
+export function UpsellGate({ auditId, brand, visibilityRate, topCompetitor }: UpsellGateProps) {
   const invisibleRate = Math.max(0, 100 - visibilityRate)
+
+  const trackConversion = (event: AuditConversionEvent) => {
+    if (!auditId) {
+      return
+    }
+
+    void fetch('/api/audit/convert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auditId, event }),
+      keepalive: true,
+    }).catch(() => {
+      // Best-effort attribution should never affect CTA navigation.
+    })
+  }
 
   return (
     <Card className="relative overflow-hidden border-zinc-300 bg-gradient-to-b from-zinc-100 to-zinc-200">
@@ -42,13 +61,13 @@ export function UpsellGate({ brand, visibilityRate, topCompetitor }: UpsellGateP
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Link href="/contact" className="w-full sm:w-auto">
+          <Link href="/contact" className="w-full sm:w-auto" onClick={() => trackConversion('strategy-call')}>
             <Button className="w-full bg-zinc-900 text-white hover:bg-black">
               Book Strategy Call
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
-          <Link href="/sign-up" className="w-full sm:w-auto">
+          <Link href="/sign-up" className="w-full sm:w-auto" onClick={() => trackConversion('full-audit')}>
             <Button variant="outline" className="w-full border-zinc-500 bg-white/80 text-zinc-900 hover:bg-white">
               <Sparkles className="mr-2 h-4 w-4" />
               Get Full Audit

@@ -30,6 +30,7 @@ export function AuditFlow() {
   const [results, setResults] = useState<AuditResults | null>(null)
   const [platformResults, setPlatformResults] = useState<PlatformResult[]>([])
   const [executionMeta, setExecutionMeta] = useState<AuditExecutionMeta | null>(null)
+  const [auditId, setAuditId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [runPhase, setRunPhase] = useState<RunPhase>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +54,7 @@ export function AuditFlow() {
 
       setRequestState(input)
       setDetected(payload.detected)
+      setAuditId(null)
       setStage('confirm')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Detection failed')
@@ -90,6 +92,7 @@ export function AuditFlow() {
       setResults(payload.results)
       setPlatformResults(payload.platformResults || [])
       setExecutionMeta(payload.executionMeta || null)
+      setAuditId(typeof payload.auditId === 'string' ? payload.auditId : null)
       setRunPhase('done')
       setStage('results')
     } catch (err) {
@@ -131,6 +134,7 @@ export function AuditFlow() {
           <PlatformBreakdown summary={results.platformResults} rawResults={platformResults} />
           <CitationSources urls={results.citationUrls} />
           <UpsellGate
+            auditId={auditId}
             brand={results.brand}
             visibilityRate={results.visibilityRate}
             topCompetitor={results.topCompetitor}
