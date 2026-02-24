@@ -88,6 +88,8 @@ Complete remaining Phase 1 gap-closure plan (01-09), then proceed to Phase 2 Cor
 | Cost attribution enforcement | Require `executeTrackedDataForSeoCall` with `userId` and `jobId` on submit/poll/fetch helper paths | Applied in 01-07 |
 | Refresh execution strategy | Run real async DataForSEO calls per data type with explicit exponential backoff and job-scoped circuit wrapper | Applied in 01-08 |
 | Cache invalidation timing | Invalidate user dashboard cache at manual enqueue and again at job finalize (complete/cancelled) | Applied in 01-08 |
+| Audit detection source transparency | Return explicit detect metadata (`scraped` vs `fallback`) so users can trust or edit extracted context before run | Applied in quick-003 |
+| Audit provider outage fallback | Keep fixed 5-check output by rerouting failed Perplexity/Grok checks and exposing citation degradation metadata | Applied in quick-003 |
 
 ### Critical Risks Identified
 
