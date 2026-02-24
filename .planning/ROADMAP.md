@@ -89,6 +89,20 @@ Establish bulletproof technical foundation addressing critical DataForSEO integr
 - Circuit Breaker Blindness (graceful degradation with timeouts)
 - Missing Cost Attribution (per-tenant tracking middleware)
 
+### Plans
+**Plans:** 5 plans in 3 waves
+
+#### Wave 1 (Foundation)
+- [ ] 01-01-PLAN.md — Database schema (dashboard data, jobs, cost tracking)
+
+#### Wave 2 (Core Infrastructure - Parallel)
+- [ ] 01-02-PLAN.md — Inngest job orchestration with cost middleware
+- [ ] 01-03-PLAN.md — DataForSEO rate limiting and circuit breaker
+
+#### Wave 3 (UX + Real-time)
+- [ ] 01-04-PLAN.md — Three-layer caching (Next.js + TanStack + Redis)
+- [ ] 01-05-PLAN.md — Sidebar navigation and real-time job status (SSE)
+
 ### Research Notes
 Research indicates these infrastructure pieces must be built FIRST before any dashboard features. Attempting to retrofit later causes cascading failures and cost overruns.
 
