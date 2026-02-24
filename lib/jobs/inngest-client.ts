@@ -10,6 +10,8 @@
 import { Inngest } from 'inngest'
 import { z } from 'zod'
 
+import { costTrackingMiddleware, executeTrackedDataForSeoCall } from '@/lib/jobs/middleware/cost-tracking'
+
 // ============================================================================
 // Environment Validation
 // ============================================================================
@@ -91,71 +93,6 @@ export const refreshFailedSchema = z.object({
 export type RefreshFailedEvent = z.infer<typeof refreshFailedSchema>
 
 // ============================================================================
-// Cost Tracking Middleware
-// ============================================================================
-
-interface CostContext {
-  userId: string
-  jobId?: string
-  endpoint: string
-  method: 'standard' | 'live'
-}
-
-/**
- * DataForSEO Cost Calculator
- * Based on official pricing as of 2026-02-24
- */
-export function calculateCost(endpoint: string, method: 'standard' | 'live'): number {
-  // SERP endpoints
-  if (endpoint.includes('serp')) {
-    return method === 'live' ? 0.005 : 0.001
-  }
-
-  // Backlinks endpoints
-  if (endpoint.includes('backlinks')) {
-    return 0.01
-  }
-
-  // Keywords data
-  if (endpoint.includes('keywords')) {
-    return 0.001
-  }
-
-  // Domain analytics
-  if (endpoint.includes('domain')) {
-    return 0.001
-  }
-
-  // Content analysis
-  if (endpoint.includes('content')) {
-    return 0.001
-  }
-
-  // Default pricing
-  return 0.001
-}
-
-/**
- * Cost tracking middleware for Inngest
- * Wraps job execution to track API costs
- */
-export const costTrackingMiddleware = () => {
-  return async ({ context, next }: { context: { userId: string; jobId?: string }; next: () => Promise<unknown> }) => {
-    const startTime = Date.now()
-
-    try {
-      const result = await next()
-      return result
-    } finally {
-      const duration = Date.now() - startTime
-
-      // Log execution time for monitoring
-      console.log(`[Inngest] Job completed in ${duration}ms for user ${context.userId}`)
-    }
-  }
-}
-
-// ============================================================================
 // Inngest Client
 // ============================================================================
 
@@ -167,6 +104,7 @@ export const inngest = new Inngest({
   id: 'seobot-dashboard',
   name: 'SEOBOT Dashboard Jobs',
   eventKey: env.INNGEST_EVENT_KEY,
+  middleware: [costTrackingMiddleware],
 })
 
 // ============================================================================
@@ -242,3 +180,4 @@ export async function sendProgressUpdate(
 
 // Export for use in job functions
 export { env as inngestEnv }
+export { executeTrackedDataForSeoCall }
