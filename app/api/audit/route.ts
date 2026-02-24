@@ -266,6 +266,7 @@ export async function POST(request: NextRequest) {
     )
 
     const results = computeAuditResults(runPayload.confirmedContext, platformResults)
+    const completedAt = new Date().toISOString()
 
     let auditId: string | undefined
     try {
@@ -296,6 +297,7 @@ export async function POST(request: NextRequest) {
       platformResults,
       executionMeta: workflowExecution.meta,
       auditId,
+      completedAt,
       citationUrls: results.citationUrls,
       totalChecks: 5,
     })

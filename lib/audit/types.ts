@@ -83,6 +83,7 @@ export interface AuditResponsePayload {
   platformResults?: PlatformResult[]
   executionMeta?: AuditExecutionMeta
   auditId?: string
+  completedAt?: string
   citationUrls?: string[]
   totalChecks?: 5
   message?: string
