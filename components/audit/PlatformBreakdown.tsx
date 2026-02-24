@@ -57,7 +57,15 @@ export function PlatformBreakdown({ summary, rawResults }: PlatformBreakdownProp
             <div key={`${result.platform}-${index}`} className="rounded-md border p-3 text-sm">
               <div className="mb-1 flex items-center justify-between">
                 <span className="font-medium">{result.platform.toUpperCase()}</span>
-                <span className="text-muted-foreground">{result.prompt}</span>
+                <span className="text-xs text-muted-foreground">{result.prompt}</span>
+              </div>
+              <div className="mb-2 flex flex-wrap gap-2">
+                <Badge variant={result.brandMentioned ? 'default' : 'outline'}>
+                  {result.brandMentioned ? `Brand found (#${result.brandPosition || '-'})` : 'Brand not found'}
+                </Badge>
+                {result.competitorsMentioned.length > 0 ? (
+                  <Badge variant="secondary">Competitors: {result.competitorsMentioned.slice(0, 3).join(', ')}</Badge>
+                ) : null}
               </div>
               <p className="line-clamp-2 text-muted-foreground">{result.brandContext || result.rawResponse}</p>
             </div>

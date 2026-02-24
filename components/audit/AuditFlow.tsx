@@ -6,6 +6,7 @@ import { BrandConfirmation } from '@/components/audit/BrandConfirmation'
 import { CitationSources } from '@/components/audit/CitationSources'
 import { PlatformBreakdown } from '@/components/audit/PlatformBreakdown'
 import { ResultsHero } from '@/components/audit/ResultsHero'
+import { UpsellGate } from '@/components/audit/UpsellGate'
 import type { AuditResults, BrandDetectionPayload, PlatformResult } from '@/lib/audit/types'
 
 type Stage = 'form' | 'confirm' | 'results'
@@ -105,6 +106,11 @@ export function AuditFlow() {
           <ResultsHero results={results} />
           <PlatformBreakdown summary={results.platformResults} rawResults={platformResults} />
           <CitationSources urls={results.citationUrls} />
+          <UpsellGate
+            brand={results.brand}
+            visibilityRate={results.visibilityRate}
+            topCompetitor={results.topCompetitor}
+          />
         </div>
       ) : null}
     </section>
