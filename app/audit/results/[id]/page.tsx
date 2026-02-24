@@ -6,6 +6,7 @@ import { CitationSources } from '@/components/audit/CitationSources'
 import { PlatformBreakdown } from '@/components/audit/PlatformBreakdown'
 import { ResultsHero } from '@/components/audit/ResultsHero'
 import { UpsellGate } from '@/components/audit/UpsellGate'
+import { trackResultsViewed } from '@/lib/analytics/audit-tracker'
 import type { AuditResponsePayload } from '@/lib/audit/types'
 
 interface AuditResultsPageProps {
@@ -50,6 +51,19 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
             message: payload.message || 'This audit report is unavailable.',
           })
           return
+        }
+
+        if (payload.results) {
+          trackResultsViewed({
+            sessionId: `audit_report_${id}`,
+            auditId: typeof payload.auditId === 'string' ? payload.auditId : id,
+            brandName: payload.results.brand,
+            properties: {
+              source: 'reopened-report',
+              visibilityRate: payload.results.visibilityRate,
+              topCompetitor: payload.results.topCompetitor,
+            },
+          })
         }
 
         setState({
