@@ -36,11 +36,13 @@ import {
   Trophy
 } from 'lucide-react'
 import type { LinkProspect, LinkCampaign, ProspectStatus } from '@/lib/link-building/types'
+import { FreshnessIndicator } from '@/components/dashboard/freshness-indicator'
 
 interface LinkBuildingDashboardProps {
   campaigns?: LinkCampaign[]
   onCreateCampaign?: () => void
   onProspectStatusChange?: (prospectId: string, newStatus: ProspectStatus) => void
+  lastUpdated?: Date | string
 }
 
 const COLUMN_CONFIG = {
@@ -93,13 +95,22 @@ type ColumnStatus = keyof typeof COLUMN_CONFIG
 export function LinkBuildingDashboard({ 
   campaigns = [], 
   onCreateCampaign,
-  onProspectStatusChange 
+  onProspectStatusChange,
+  lastUpdated,
 }: LinkBuildingDashboardProps) {
   const [activeCampaign, setActiveCampaign] = useState<LinkCampaign | null>(
     campaigns.length > 0 ? campaigns[0] : null
   )
   const [searchQuery, setSearchQuery] = useState('')
   const [filterDomain, setFilterDomain] = useState<string>('all')
+  const freshnessDate = React.useMemo(() => {
+    if (!lastUpdated) {
+      return undefined
+    }
+
+    const parsed = typeof lastUpdated === 'string' ? new Date(lastUpdated) : lastUpdated
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed
+  }, [lastUpdated])
 
   useEffect(() => {
     if (campaigns.length > 0 && !activeCampaign) {
@@ -155,6 +166,12 @@ export function LinkBuildingDashboard({
   if (campaigns.length === 0) {
     return (
       <Card className="glass-card border-none bg-black/40">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-zinc-100">Link Building Dashboard</CardTitle>
+            {freshnessDate ? <FreshnessIndicator lastUpdated={freshnessDate} /> : null}
+          </div>
+        </CardHeader>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Link2 className="w-16 h-16 text-zinc-600 mb-4" />
           <h3 className="text-xl font-semibold text-zinc-300 mb-2">No Link Building Campaigns</h3>
@@ -182,10 +199,13 @@ export function LinkBuildingDashboard({
                 Manage prospects and track outreach campaigns
               </CardDescription>
             </div>
-            <Button onClick={onCreateCampaign}>
-              <Plus className="w-4 h-4 mr-2" />
-              New Campaign
-            </Button>
+            <div className="flex items-center gap-3">
+              {freshnessDate ? <FreshnessIndicator lastUpdated={freshnessDate} /> : null}
+              <Button onClick={onCreateCampaign}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Campaign
+              </Button>
+            </div>
           </div>
         </CardHeader>
 

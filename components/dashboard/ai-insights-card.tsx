@@ -4,8 +4,9 @@ import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Sparkles, TrendingUp, AlertCircle, Lightbulb } from 'lucide-react'
+import { FreshnessIndicator } from '@/components/dashboard/freshness-indicator'
 
-interface AIInsight {
+export interface AIInsight {
   id: string
   type: 'opportunity' | 'warning' | 'tip' | 'trend'
   title: string
@@ -20,10 +21,19 @@ interface AIInsight {
 interface AIInsightsCardProps {
   insights: AIInsight[]
   maxDisplay?: number
+  lastUpdated?: Date | string
 }
 
-export function AIInsightsCard({ insights, maxDisplay = 3 }: AIInsightsCardProps) {
+export function AIInsightsCard({ insights, maxDisplay = 3, lastUpdated }: AIInsightsCardProps) {
   const displayedInsights = React.useMemo(() => insights.slice(0, maxDisplay), [insights, maxDisplay])
+  const freshnessDate = React.useMemo(() => {
+    if (!lastUpdated) {
+      return undefined
+    }
+
+    const parsed = typeof lastUpdated === 'string' ? new Date(lastUpdated) : lastUpdated
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed
+  }, [lastUpdated])
 
   const iconMap: Record<AIInsight['type'], React.ReactNode> = {
     opportunity: <TrendingUp className="w-5 h-5 text-green-500" />,
@@ -46,10 +56,13 @@ export function AIInsightsCard({ insights, maxDisplay = 3 }: AIInsightsCardProps
   return (
     <Card className="glass-card border-none bg-black/40">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-zinc-100">
-          <Sparkles className="w-5 h-5 text-amber-400" />
-          AI Insights
-        </CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-zinc-100">
+            <Sparkles className="w-5 h-5 text-amber-400" />
+            AI Insights
+          </CardTitle>
+          {freshnessDate ? <FreshnessIndicator lastUpdated={freshnessDate} /> : null}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {displayedInsights.map((insight) => (
@@ -95,4 +108,3 @@ export function AIInsightsCard({ insights, maxDisplay = 3 }: AIInsightsCardProps
     </Card>
   )
 }
-
