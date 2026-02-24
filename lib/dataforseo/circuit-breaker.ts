@@ -138,7 +138,7 @@ function getCircuitBreaker(
     console.log(`[CircuitBreaker] Circuit CLOSED for ${endpoint} - healthy`)
   })
 
-  breaker.on('fallback', (result) => {
+  breaker.on('fallback', (_result: unknown) => {
     const status = circuitStatuses.get(endpoint)
     if (status) {
       status.stats.fallbacks++
@@ -146,7 +146,7 @@ function getCircuitBreaker(
     console.log(`[CircuitBreaker] Fallback executed for ${endpoint}`)
   })
 
-  breaker.on('failure', (error) => {
+  breaker.on('failure', (error: unknown) => {
     const status = circuitStatuses.get(endpoint)
     if (status) {
       status.stats.failures++

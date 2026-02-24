@@ -167,7 +167,6 @@ export const inngest = new Inngest({
   id: 'seobot-dashboard',
   name: 'SEOBOT Dashboard Jobs',
   eventKey: env.INNGEST_EVENT_KEY,
-  middleware: [costTrackingMiddleware()],
 })
 
 // ============================================================================
