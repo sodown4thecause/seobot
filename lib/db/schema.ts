@@ -524,4 +524,102 @@ export type CompletedTask = typeof completedTasks.$inferSelect
 export type NewCompletedTask = typeof completedTasks.$inferInsert
 
 export type AgentMemory = typeof agentMemory.$inferSelect
-export type NewAgentMemory = typeof agentMemory.$inferInsert
+/**
+ * Dashboard Data - Cached dashboard widget data with JSONB flexibility
+ * Stores all dashboard metrics (overview, ranks, backlinks, etc.)
+ */
+export const dashboardData = pgTable('dashboard_data', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    websiteUrl: text('website_url').notNull(),
+    dataType: text('data_type').notNull(), // 'overview', 'ranks', 'backlinks', 'audit', 'keywords', 'aeo', 'content'
+    data: jsonb('data').$type<Json>(),
+    lastUpdated: timestamp('last_updated').defaultNow().notNull(),
+    freshness: text('freshness').default('fresh').notNull(), // 'fresh', 'stale', 'expired'
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        userDataTypeIdx: index('idx_dashboard_data_user_type_fresh').on(table.userId, table.dataType, table.freshness),
+        lastUpdatedIdx: index('idx_dashboard_data_last_updated').on(table.lastUpdated),
+        userIdIdx: index('idx_dashboard_data_user_id').on(table.userId),
+    }
+})
+
+/**
+ * Refresh Jobs - Background job tracking for dashboard data refreshes
+ */
+export const refreshJobs = pgTable('refresh_jobs', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    jobType: text('job_type').notNull(), // 'full-refresh', 'ranks-only', 'backlinks-only', etc.
+    status: text('status').default('queued').notNull(), // 'queued', 'processing', 'complete', 'failed', 'cancelled'
+    progress: integer('progress').default(0), // 0-100
+    metadata: jsonb('metadata').$type<Json>(),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    errorMessage: text('error_message'),
+    estimatedCost: real('estimated_cost'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        userStatusIdx: index('idx_refresh_jobs_user_status').on(table.userId, table.status),
+        startedAtIdx: index('idx_refresh_jobs_started_at').on(table.startedAt),
+        statusIdx: index('idx_refresh_jobs_status').on(table.status),
+    }
+})
+
+/**
+ * Job History - Event log for job lifecycle tracking
+ */
+export const jobHistory = pgTable('job_history', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    jobId: uuid('job_id').notNull(),
+    eventType: text('event_type').notNull(), // 'started', 'progress', 'completed', 'failed', 'cancelled'
+    eventData: jsonb('event_data').$type<Json>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        jobIdIdx: index('idx_job_history_job_id').on(table.jobId),
+        userCreatedIdx: index('idx_job_history_user_created').on(table.userId, table.createdAt),
+    }
+})
+
+/**
+ * API Usage Events - Track DataForSEO API calls and costs per user
+ * Enables REQ-INFRA-DATAFORSEO-04 (cost tracking per user)
+ */
+export const apiUsageEvents = pgTable('api_usage_events', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    jobId: uuid('job_id'), // nullable, links to refreshJobs when part of a job
+    provider: text('provider').notNull(), // 'dataforseo', 'firecrawl', etc.
+    endpoint: text('endpoint').notNull(), // e.g., 'serp_organic_live', 'backlinks_summary'
+    method: text('method'), // 'standard' or 'live'
+    costUsd: real('cost_usd'), // estimated cost per call
+    metadata: jsonb('metadata').$type<Json>(), // request/response summary
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        userCreatedIdx: index('idx_api_usage_user_created').on(table.userId, table.createdAt),
+        providerEndpointIdx: index('idx_api_usage_provider_endpoint').on(table.provider, table.endpoint),
+        jobIdIdx: index('idx_api_usage_job_id').on(table.jobId),
+    }
+})
+
+// Dashboard Data Types
+export type DashboardData = typeof dashboardData.$inferSelect
+export type NewDashboardData = typeof dashboardData.$inferInsert
+
+// Job Tracking Types
+export type RefreshJob = typeof refreshJobs.$inferSelect
+export type NewRefreshJob = typeof refreshJobs.$inferInsert
+
+export type JobHistory = typeof jobHistory.$inferSelect
+export type NewJobHistory = typeof jobHistory.$inferInsert
+
+// API Usage Tracking Types
+export type ApiUsageEvent = typeof apiUsageEvents.$inferSelect
+export type NewApiUsageEvent = typeof apiUsageEvents.$inferInsert
