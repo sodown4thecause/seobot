@@ -1,0 +1,39 @@
+{
+  "dataforseo": {
+    "topics": [
+      {
+        "topic": "technical seo audit",
+        "intent": "informational",
+        "youCoverage": 42,
+        "competitorCoverage": 67,
+        "evidenceDepth": 55,
+        "sourceUrl": "https://flowintent.com/technical-seo-audit"
+      }
+    ]
+  },
+  "firecrawl": {
+    "topics": [
+      {
+        "topic": "technical seo audit",
+        "evidenceDepth": 61,
+        "sourceUrl": "https://flowintent.com/technical-seo-audit",
+        "lastIndexedAt": "2026-02-25T00:00:00.000Z"
+      }
+    ]
+  },
+  "aiDiagnostics": {
+    "topics": [
+      {
+        "topic": "technical seo audit",
+        "aiMentions": 2,
+        "citations": 1,
+        "sourceUrl": "https://semrush.com/blog/technical-seo-audit"
+      }
+    ]
+  },
+  "providerStatus": {
+    "dataforseo": "ok",
+    "firecrawl": "ok",
+    "aiDiagnostics": "ok"
+  }
+}

@@ -1,10 +1,12 @@
 import type { Workflow } from '@/lib/workflows/types'
 import { WorkflowEngine } from '@/lib/workflows/engine'
-import type { BrandDetectionPayload } from '@/lib/audit/types'
+import type { BrandDetectionPayload, TopicalMapProviderStatus } from '@/lib/audit/types'
 import type { BuyerIntentPrompts } from '@/lib/audit/prompts'
 import { getAuditSystemPrompt } from '@/lib/audit/prompts'
 import { runGrokAdapter } from '@/lib/llm/adapters/grok'
 import { runGeminiAdapter } from '@/lib/llm/adapters/gemini'
+import { getDataforseoTopicalTopics } from '@/lib/mcp/dataforseo/topical-map'
+import { getFirecrawlTopicalTopics } from '@/lib/mcp/firecrawl/topical-map'
 
 export interface WorkflowCheckResult {
   key: 'perplexity_prompt_1' | 'perplexity_prompt_2' | 'perplexity_prompt_3' | 'grok_prompt_1' | 'gemini_prompt_1'
@@ -24,6 +26,12 @@ export interface WorkflowExecutionMeta {
 export interface WorkflowExecutionResult {
   checks: WorkflowCheckResult[]
   meta: WorkflowExecutionMeta
+  topicalMapInput: {
+    dataforseo: { topics: Array<{ topic: string; intent: 'informational' | 'commercial' | 'transactional' | 'navigational'; youCoverage: number; competitorCoverage: number; evidenceDepth: number; sourceUrl: string }> }
+    firecrawl: { topics: Array<{ topic: string; evidenceDepth: number; sourceUrl: string; lastIndexedAt: string }> }
+    aiDiagnostics: { topics: Array<{ topic: string; aiMentions: number; citations: number; sourceUrl: string }> }
+    providerStatus: TopicalMapProviderStatus
+  }
 }
 
 export const AI_VISIBILITY_AUDIT_WORKFLOW_ID = 'ai-visibility-audit'
@@ -92,6 +100,118 @@ function normalizeCheck(
     platform,
     rawResponse: answer,
     citationUrls,
+  }
+}
+
+function buildTopicalMapInput(
+  context: BrandDetectionPayload,
+  checks: WorkflowCheckResult[],
+  providerStatus: TopicalMapProviderStatus,
+  providerTopics?: {
+    dataforseo: WorkflowExecutionResult['topicalMapInput']['dataforseo']['topics']
+    firecrawl: WorkflowExecutionResult['topicalMapInput']['firecrawl']['topics']
+  }
+): WorkflowExecutionResult['topicalMapInput'] {
+  const primaryCompetitor = context.competitors[0] || 'competitor'
+  const prompts = checks.map((check) => check.prompt)
+
+  const baseTopics = prompts.length
+    ? prompts.slice(0, 3).map((prompt, idx) => ({
+        topic: prompt.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() || `topic-${idx + 1}`,
+        intent: idx === 2 ? 'transactional' as const : 'informational' as const,
+        youCoverage: idx === 0 ? 58 : 44,
+        competitorCoverage: idx === 0 ? 71 : 63,
+        evidenceDepth: idx === 0 ? 64 : 48,
+        sourceUrl: `https://${context.brand.toLowerCase().replace(/\s+/g, '')}.com/${idx + 1}`,
+      }))
+    : [
+        {
+          topic: `${context.category.toLowerCase()} strategy`,
+          intent: 'informational' as const,
+          youCoverage: 42,
+          competitorCoverage: 67,
+          evidenceDepth: 45,
+          sourceUrl: `https://${context.brand.toLowerCase().replace(/\s+/g, '')}.com/overview`,
+        },
+      ]
+
+  const dataforseoTopics = providerTopics?.dataforseo.length ? providerTopics.dataforseo : baseTopics
+  const firecrawlTopics = providerTopics?.firecrawl.length
+    ? providerTopics.firecrawl
+    : baseTopics.map((topic) => ({
+        topic: topic.topic,
+        evidenceDepth: Math.min(100, topic.evidenceDepth + 8),
+        sourceUrl: topic.sourceUrl,
+        lastIndexedAt: new Date().toISOString(),
+      }))
+
+  return {
+    dataforseo: {
+      topics: dataforseoTopics,
+    },
+    firecrawl: {
+      topics: firecrawlTopics,
+    },
+    aiDiagnostics: {
+      topics: baseTopics.map((topic) => ({
+        topic: topic.topic,
+        aiMentions: checks.filter((check) => check.rawResponse.toLowerCase().includes(context.brand.toLowerCase())).length,
+        citations: checks.filter((check) => check.citationUrls.length > 0).length,
+        sourceUrl: `https://${primaryCompetitor.toLowerCase().replace(/\s+/g, '')}.com/compare`,
+      })),
+    },
+    providerStatus,
+  }
+}
+
+async function collectTopicalProviderData(context: BrandDetectionPayload): Promise<{
+  providerStatus: TopicalMapProviderStatus
+  providerTopics: {
+    dataforseo: WorkflowExecutionResult['topicalMapInput']['dataforseo']['topics']
+    firecrawl: WorkflowExecutionResult['topicalMapInput']['firecrawl']['topics']
+  }
+}> {
+  const domain = `${context.brand.toLowerCase().replace(/\s+/g, '')}.com`
+  const providerStatus: TopicalMapProviderStatus = {
+    dataforseo: 'ok',
+    firecrawl: 'ok',
+    aiDiagnostics: 'ok',
+  }
+
+  let dataforseoTopics: WorkflowExecutionResult['topicalMapInput']['dataforseo']['topics'] = []
+  let firecrawlTopics: WorkflowExecutionResult['topicalMapInput']['firecrawl']['topics'] = []
+
+  try {
+    dataforseoTopics = await getDataforseoTopicalTopics({
+      domain,
+      brand: context.brand,
+      category: context.category,
+    })
+    if (!dataforseoTopics.length) {
+      providerStatus.dataforseo = 'partial'
+    }
+  } catch {
+    providerStatus.dataforseo = 'failed'
+  }
+
+  try {
+    firecrawlTopics = await getFirecrawlTopicalTopics({
+      domain,
+      brand: context.brand,
+    })
+    if (!firecrawlTopics.length) {
+      providerStatus.firecrawl = 'partial'
+    }
+  } catch {
+    providerStatus.firecrawl = 'failed'
+  }
+
+  return {
+    providerStatus,
+    providerTopics: {
+      dataforseo: dataforseoTopics,
+      firecrawl: firecrawlTopics,
+    },
   }
 }
 
@@ -201,6 +321,7 @@ export async function executeAiVisibilityAuditWorkflow(input: {
   }
 
   if (input.mockSafe) {
+    const providerData = await collectTopicalProviderData(input.context)
     const checks: WorkflowCheckResult[] = [
         {
           key: 'perplexity_prompt_1',
@@ -261,9 +382,20 @@ export async function executeAiVisibilityAuditWorkflow(input: {
       checks[3].rawResponse = buildMockResult(input.prompts.prompt1, input.context, 'gemini').answer
     }
 
+    const providerStatus: TopicalMapProviderStatus = {
+      ...providerData.providerStatus,
+      aiDiagnostics: meta.citationAvailability === 'degraded' ? 'partial' : 'ok',
+    }
+
     return {
       checks,
       meta,
+      topicalMapInput: buildTopicalMapInput(
+        input.context,
+        checks,
+        providerStatus,
+        providerData.providerTopics
+      ),
     }
   }
 
@@ -369,8 +501,21 @@ export async function executeAiVisibilityAuditWorkflow(input: {
     normalizeCheck('gemini_prompt_1', input.prompts.prompt1, 'gemini', getToolResult(toolResults, 'gemini_prompt_1')),
   ]
 
+  const providerData = await collectTopicalProviderData(input.context)
+
+  const providerStatus: TopicalMapProviderStatus = {
+    ...providerData.providerStatus,
+    aiDiagnostics: meta.citationAvailability === 'degraded' ? 'partial' : 'ok',
+  }
+
   return {
     checks,
     meta,
+    topicalMapInput: buildTopicalMapInput(
+      input.context,
+      checks,
+      providerStatus,
+      providerData.providerTopics
+    ),
   }
 }

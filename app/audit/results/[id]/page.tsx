@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { CitationSources } from '@/components/audit/CitationSources'
 import { PlatformBreakdown } from '@/components/audit/PlatformBreakdown'
 import { ResultsHero } from '@/components/audit/ResultsHero'
+import { SharePanel } from '@/components/audit/SharePanel'
+import { TopicalAuthorityMap } from '@/components/audit/TopicalAuthorityMap'
 import { UpsellGate } from '@/components/audit/UpsellGate'
 import { trackResultsViewed } from '@/lib/analytics/audit-tracker'
 import type { AuditResponsePayload } from '@/lib/audit/types'
@@ -28,6 +30,7 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
     status: null,
     message: null,
   })
+  const [visibility, setVisibility] = useState<'unlisted' | 'public' | 'private'>('unlisted')
 
   useEffect(() => {
     let active = true
@@ -72,6 +75,9 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
           status: response.status,
           message: null,
         })
+        const resolvedVisibility =
+          payload.publicVisibility || payload.topicalMapPayload?.publicVisibility || 'unlisted'
+        setVisibility(resolvedVisibility)
       } catch {
         if (!active) {
           return
@@ -92,6 +98,57 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
       active = false
     }
   }, [id])
+
+  useEffect(() => {
+    const content = visibility === 'public' ? 'index,follow' : 'noindex,nofollow'
+    const existing = document.querySelector('meta[name="robots"]')
+    if (existing) {
+      existing.setAttribute('content', content)
+      return
+    }
+
+    const tag = document.createElement('meta')
+    tag.setAttribute('name', 'robots')
+    tag.setAttribute('content', content)
+    document.head.appendChild(tag)
+  }, [visibility])
+
+  const updateVisibility = async (nextVisibility: 'unlisted' | 'public' | 'private') => {
+    try {
+      const response = await fetch(`/api/audit/results/${id}/visibility`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: nextVisibility }),
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json()) as { message?: string }
+        setState((prev) => ({ ...prev, message: payload.message || 'Unable to update visibility.' }))
+        return
+      }
+
+      setVisibility(nextVisibility)
+      setState((prev) => {
+        if (!prev.payload) return prev
+        return {
+          ...prev,
+          payload: {
+            ...prev.payload,
+            publicVisibility: nextVisibility,
+            topicalMapPayload: prev.payload.topicalMapPayload
+              ? {
+                  ...prev.payload.topicalMapPayload,
+                  publicVisibility: nextVisibility,
+                }
+              : prev.payload.topicalMapPayload,
+          },
+          message: null,
+        }
+      })
+    } catch {
+      setState((prev) => ({ ...prev, message: 'Unable to update visibility.' }))
+    }
+  }
 
   if (state.loading) {
     return (
@@ -119,7 +176,7 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
     )
   }
 
-  const { results, platformResults, executionMeta, auditId } = state.payload
+  const { results, platformResults, executionMeta, auditId, topicalMapPayload } = state.payload
 
   return (
     <section className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10 md:px-8">
@@ -133,9 +190,39 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
         <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">{executionMeta.message}</p>
       ) : null}
 
+      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Share Visibility</p>
+        <p className="mt-1 text-sm text-zinc-700">Current: {visibility}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => updateVisibility('unlisted')}
+            className="rounded border border-zinc-300 bg-white px-3 py-1 text-sm"
+          >
+            Unlisted
+          </button>
+          <button
+            type="button"
+            onClick={() => updateVisibility('public')}
+            className="rounded border border-zinc-300 bg-white px-3 py-1 text-sm"
+          >
+            Publish
+          </button>
+          <button
+            type="button"
+            onClick={() => updateVisibility('private')}
+            className="rounded border border-zinc-300 bg-white px-3 py-1 text-sm"
+          >
+            Private
+          </button>
+        </div>
+      </div>
+
       <ResultsHero results={results} />
       <PlatformBreakdown summary={results.platformResults} rawResults={platformResults} />
       <CitationSources urls={results.citationUrls} />
+      {topicalMapPayload ? <TopicalAuthorityMap payload={topicalMapPayload} /> : null}
+      {topicalMapPayload ? <SharePanel artifacts={topicalMapPayload.shareArtifacts} /> : null}
       <UpsellGate
         auditId={typeof auditId === 'string' ? auditId : null}
         brand={results.brand}

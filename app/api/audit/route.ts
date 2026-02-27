@@ -15,6 +15,8 @@ import { parsePlatformResponse } from '@/lib/audit/parser'
 import { computeAuditResults } from '@/lib/audit/scorer'
 import { runHomepageExtraction } from '@/lib/audit/extraction-agent'
 import { sendAuditReportEmail } from '@/lib/audit/report-email'
+import { normalizeTopicalMap } from '@/lib/audit/topical-map-normalizer'
+import { buildTopicalMapPayload } from '@/lib/audit/topical-map-payload'
 
 const RATE_LIMIT_PER_DAY = 2
 const inMemoryLimiter = new Map<string, number[]>()
@@ -266,6 +268,29 @@ export async function POST(request: NextRequest) {
     )
 
     const results = computeAuditResults(runPayload.confirmedContext, platformResults)
+    const normalizedTopicalMap = normalizeTopicalMap(
+      workflowExecution.topicalMapInput || {
+        aiDiagnostics: {
+          topics: platformResults.slice(0, 3).map((result, index) => ({
+            topic: result.prompt.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() || `topic-${index + 1}`,
+            aiMentions: result.brandMentioned ? 1 : 0,
+            citations: result.citationUrls.length,
+            sourceUrl: result.citationUrls[0] || `https://${normalizeDomain(runPayload.domain)}`,
+          })),
+        },
+        providerStatus: {
+          dataforseo: 'partial',
+          firecrawl: 'partial',
+          aiDiagnostics: workflowExecution.meta.citationAvailability === 'degraded' ? 'partial' : 'ok',
+        },
+      }
+    )
+    const topicalMapPayload = buildTopicalMapPayload({
+      nodes: normalizedTopicalMap.nodes,
+      confidence: normalizedTopicalMap.confidence,
+      partialData: normalizedTopicalMap.partialData,
+      providerStatus: normalizedTopicalMap.providerStatus,
+    })
     const completedAt = new Date().toISOString()
 
     let auditId: string | undefined
@@ -302,6 +327,8 @@ export async function POST(request: NextRequest) {
       completedAt,
       citationUrls: results.citationUrls,
       totalChecks: 5,
+      publicVisibility: topicalMapPayload.publicVisibility,
+      topicalMapPayload,
     })
   } catch (error) {
     console.error('[AI Visibility Audit] Error:', error)

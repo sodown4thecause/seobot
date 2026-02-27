@@ -3,6 +3,8 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import type { AuditExecutionMeta, AuditResponsePayload, PlatformResult } from '@/lib/audit/types'
 import { computeAuditResults } from '@/lib/audit/scorer'
+import { normalizeTopicalMap } from '@/lib/audit/topical-map-normalizer'
+import { buildTopicalMapPayload } from '@/lib/audit/topical-map-payload'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -12,6 +14,7 @@ interface PersistedAuditRow {
   brand_name: string | null
   competitors: unknown
   platform_results: unknown
+  public_visibility?: 'unlisted' | 'public' | 'private' | null
   created_at: string | Date
 }
 
@@ -83,7 +86,7 @@ export async function GET(
   let queryResult: unknown
   try {
     queryResult = await db.execute(sql`
-      SELECT id, brand_name, competitors, platform_results, created_at
+      SELECT id, brand_name, competitors, platform_results, public_visibility, created_at
       FROM ai_visibility_audits
       WHERE id = ${id}
       LIMIT 1
@@ -125,6 +128,28 @@ export async function GET(
     platformResults
   )
   const executionMeta = parseExecutionMeta(platformResults)
+  const normalizedTopicalMap = normalizeTopicalMap({
+    aiDiagnostics: {
+      topics: platformResults.slice(0, 3).map((result, index) => ({
+        topic: result.prompt.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() || `topic-${index + 1}`,
+        aiMentions: result.brandMentioned ? 1 : 0,
+        citations: result.citationUrls.length,
+        sourceUrl: result.citationUrls[0] || `https://${results.brand.toLowerCase().replace(/\s+/g, '')}.com`,
+      })),
+    },
+    providerStatus: {
+      dataforseo: 'partial',
+      firecrawl: 'partial',
+      aiDiagnostics: executionMeta.citationAvailability === 'degraded' ? 'partial' : 'ok',
+    },
+  })
+  const topicalMapPayload = buildTopicalMapPayload({
+    nodes: normalizedTopicalMap.nodes,
+    confidence: normalizedTopicalMap.confidence,
+    partialData: normalizedTopicalMap.partialData,
+    providerStatus: normalizedTopicalMap.providerStatus,
+    visibility: row.public_visibility || 'unlisted',
+  })
 
   return jsonResponse(
     {
@@ -137,6 +162,8 @@ export async function GET(
       executionMeta,
       citationUrls: results.citationUrls,
       totalChecks: 5,
+      publicVisibility: topicalMapPayload.publicVisibility,
+      topicalMapPayload,
     },
     200
   )

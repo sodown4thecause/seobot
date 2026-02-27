@@ -1,21 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { ArrowRight, MessageSquare, Search, Brain, LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, type Variants } from 'framer-motion'
 import { Navbar } from '@/components/navbar'
 import { SymbolBackground } from '@/components/landing/symbol-background'
-
-const AEOAuditor = dynamic(() => import('@/components/aeo-auditor').then((mod) => mod.AEOAuditor), {
-  ssr: false,
-  loading: () => (
-    <div className="mx-auto max-w-4xl border border-white/10 bg-black/60 p-12 text-center">
-      <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Loading audit experience</p>
-    </div>
-  ),
-})
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -135,7 +125,17 @@ export function LandingPageClient() {
 
       <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5 backdrop-blur-sm">
         <div className="container mx-auto px-6 text-center">
-          <AEOAuditor />
+          <div className="mx-auto max-w-3xl space-y-5 rounded-none border border-white/10 bg-black/40 p-10">
+            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Canonical Lead Magnet Flow</p>
+            <h3 className="text-3xl font-black uppercase tracking-tight">Run the full audit at /audit</h3>
+            <p className="text-zinc-400">
+              We moved the full lead-magnet journey to one canonical path for consistent tracking and share-ready reports.
+            </p>
+            <Link href="/audit" className="inline-flex items-center gap-2 border border-white px-6 py-3 text-sm font-black uppercase tracking-[0.18em] hover:bg-white hover:text-black transition-colors">
+              Go To Audit
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
