@@ -123,7 +123,8 @@ async function performJsonRequest(
   } = {}
 ): Promise<{ statusCode: number; data: unknown }> {
   const method = options.method ?? 'POST'
-  const timeoutMs = Number(process.env.DATAFORSEO_REQUEST_TIMEOUT_MS || '30000')
+  const parsedTimeoutMs = Number(process.env.DATAFORSEO_REQUEST_TIMEOUT_MS)
+  const timeoutMs = Number.isFinite(parsedTimeoutMs) && parsedTimeoutMs > 0 ? parsedTimeoutMs : 30000
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 

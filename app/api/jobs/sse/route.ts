@@ -47,6 +47,15 @@ async function releaseConnection(userId: string): Promise<void> {
   }
 }
 
+async function refreshConnectionTtl(userId: string): Promise<void> {
+  const redis = getRedisClient()
+  if (!redis) {
+    return
+  }
+
+  await redis.expire(connectionKey(userId), SSE_CONNECTION_TTL_SECONDS)
+}
+
 function toSSE(data: string): Uint8Array {
   return encoder.encode(`data: ${data}\n\n`)
 }
@@ -108,6 +117,8 @@ export async function GET(request: Request) {
 
       const sendLatestJob = async () => {
         try {
+          await refreshConnectionTtl(userId)
+
           const latest = await db
             .select({
               jobId: refreshJobs.id,
@@ -164,7 +175,6 @@ export async function GET(request: Request) {
       })
     },
     cancel() {
-      cleanup()
       cleanup()
       void releaseOnce()
     },

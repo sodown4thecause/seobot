@@ -35,6 +35,10 @@ async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
     throw new Error(toErrorMessage(payload?.error, `Request failed with status ${response.status}`))
   }
 
+  if (payload === null) {
+    throw new Error('Request succeeded but response body was empty or invalid JSON')
+  }
+
   return payload as T
 }
 

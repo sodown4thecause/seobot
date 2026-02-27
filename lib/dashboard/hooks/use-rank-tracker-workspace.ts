@@ -22,7 +22,10 @@ export function useRankTrackerWorkspace() {
     queryKey: ['dashboard', 'rank-tracker', activeJobId],
     queryFn: () => getRankTrackerJob(activeJobId as string),
     enabled: Boolean(activeJobId),
-    refetchInterval: 5_000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === 'completed' ? false : 5_000
+    },
     retry: 1,
   })
 

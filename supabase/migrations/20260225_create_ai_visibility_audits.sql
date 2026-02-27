@@ -32,4 +32,4 @@ CREATE INDEX IF NOT EXISTS idx_ai_visibility_audits_domain
   ON public.ai_visibility_audits (domain);
 
 CREATE INDEX IF NOT EXISTS idx_ai_visibility_audits_converted
-  ON public.ai_visibility_audits (converted) WHERE converted = true;
+  ON public.ai_visibility_audits (created_at DESC) WHERE converted = true;

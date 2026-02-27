@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth/clerk'
+import { getUserId, rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { generateText } from 'ai'
 import { createGateway } from '@ai-sdk/gateway'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
@@ -38,6 +39,12 @@ function toImageUrl(image: { dataUrl?: string; base64?: string; mediaType?: stri
 }
 
 export async function POST(req: NextRequest) {
+    const userId = await getUserId()
+    const rateLimitResponse = await rateLimitMiddleware(req, 'IMAGE_GENERATION', userId)
+    if (rateLimitResponse) {
+      return rateLimitResponse
+    }
+
     try {
         await requireUserId()
     } catch {

@@ -459,15 +459,10 @@ async function runDataForSeo(
   const historicalOverviewError = asRecord(historicalOverviewResult)?.__error
   const historicalSerpError = asRecord(historicalSerpResult)?.__error
 
-  let providerStatus: ProviderStatus = 'ok'
-  if (rankedKeywordsError) {
-    providerStatus = 'failed'
-  } else if (keywords.length === 0 || serpError || historicalOverviewError || historicalSerpError) {
-    providerStatus = 'partial'
-  }
+  const providerStatus: ProviderStatus =
+    keywords.length === 0 || serpError || historicalOverviewError || historicalSerpError ? 'partial' : 'ok'
 
   const providerError = combineErrors([
-    rankedKeywordsError,
     typeof serpError === 'string' ? serpError : undefined,
     typeof historicalOverviewError === 'string' ? historicalOverviewError : undefined,
     typeof historicalSerpError === 'string' ? historicalSerpError : undefined,
