@@ -53,6 +53,9 @@ export function computeAuditResults(
     .slice(0, 3)
     .map((result) => ({ mentioned: result.brandMentioned, position: result.brandPosition }))
 
+  const grokResult = platformResults.find((result) => result.platform === 'grok')
+  const geminiResult = platformResults.find((result) => result.platform === 'gemini')
+
   return {
     brand: context.brand,
     brandFoundCount,
@@ -66,20 +69,12 @@ export function computeAuditResults(
     competitorDomainsCited,
     platformResults: {
       perplexity: perplexityChecks,
-      grok:
-        platformResults.find((result) => result.platform === 'grok')
-          ? {
-              mentioned: !!platformResults.find((result) => result.platform === 'grok')?.brandMentioned,
-              position: platformResults.find((result) => result.platform === 'grok')?.brandPosition || null,
-            }
-          : { mentioned: false, position: null },
-      gemini:
-        platformResults.find((result) => result.platform === 'gemini')
-          ? {
-              mentioned: !!platformResults.find((result) => result.platform === 'gemini')?.brandMentioned,
-              position: platformResults.find((result) => result.platform === 'gemini')?.brandPosition || null,
-            }
-          : { mentioned: false, position: null },
+      grok: grokResult
+        ? { mentioned: grokResult.brandMentioned, position: grokResult.brandPosition }
+        : { mentioned: false, position: null },
+      gemini: geminiResult
+        ? { mentioned: geminiResult.brandMentioned, position: geminiResult.brandPosition }
+        : { mentioned: false, position: null },
     },
   }
 }

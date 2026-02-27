@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { requireUserId } from '@/lib/auth/clerk'
 import type { AuditConversionEvent, AuditConvertPayload } from '@/lib/audit/types'
 
 const UUID_REGEX =
@@ -38,6 +39,12 @@ function isValidPayload(payload: unknown): payload is AuditConvertPayload {
 }
 
 export async function POST(request: NextRequest) {
+  try {
+    await requireUserId()
+  } catch {
+    return NextResponse.json({ ok: false, message: 'Authentication required.' }, { status: 401 })
+  }
+
   let payload: unknown
 
   try {

@@ -103,14 +103,26 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
     const content = visibility === 'public' ? 'index,follow' : 'noindex,nofollow'
     const existing = document.querySelector('meta[name="robots"]')
     if (existing) {
+      const previousContent = existing.getAttribute('content')
       existing.setAttribute('content', content)
-      return
+
+      return () => {
+        if (previousContent === null) {
+          existing.removeAttribute('content')
+        } else {
+          existing.setAttribute('content', previousContent)
+        }
+      }
     }
 
     const tag = document.createElement('meta')
     tag.setAttribute('name', 'robots')
     tag.setAttribute('content', content)
     document.head.appendChild(tag)
+
+    return () => {
+      tag.remove()
+    }
   }, [visibility])
 
   const updateVisibility = async (nextVisibility: 'unlisted' | 'public' | 'private') => {
@@ -216,6 +228,9 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
             Private
           </button>
         </div>
+        {state.message ? (
+          <p className="mt-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{state.message}</p>
+        ) : null}
       </div>
 
       <ResultsHero results={results} />

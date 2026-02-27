@@ -4,6 +4,15 @@ interface CitationSourcesProps {
   urls: string[]
 }
 
+function isSafeUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export function CitationSources({ urls }: CitationSourcesProps) {
   return (
     <Card>
@@ -22,9 +31,13 @@ export function CitationSources({ urls }: CitationSourcesProps) {
           <ul className="space-y-2 text-sm">
             {urls.map((url) => (
               <li key={url} className="rounded-md border p-2">
-                <a href={url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
-                  {url}
-                </a>
+                {isSafeUrl(url) ? (
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    {url}
+                  </a>
+                ) : (
+                  <span className="text-muted-foreground">{url}</span>
+                )}
               </li>
             ))}
           </ul>

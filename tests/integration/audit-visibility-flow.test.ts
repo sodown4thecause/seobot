@@ -42,4 +42,19 @@ describe('audit visibility flow', () => {
     expect(privateResponse.status).toBe(200)
     expect(privatePayload.visibility).toBe('private')
   })
+
+  it('returns 400 for malformed JSON body', async () => {
+    const context = { params: Promise.resolve({ id: '31f729ef-f64c-4a56-aedd-e0b66373fd07' }) }
+    const request = new NextRequest('http://localhost:3000/api/audit/results/31f729ef-f64c-4a56-aedd-e0b66373fd07/visibility', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{"visibility":',
+    })
+
+    const response = await PATCH(request, context)
+    const payload = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(payload).toEqual({ ok: false, message: 'Invalid JSON body.' })
+  })
 })

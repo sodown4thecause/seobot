@@ -13,6 +13,7 @@ import {
 import { buildShareArtifacts } from '@/lib/audit/share-artifacts'
 
 interface BuildTopicalMapPayloadInput {
+  brand?: string
   nodes: TopicalMapNode[]
   providerStatus?: TopicalMapProviderStatus
   confidence?: number
@@ -75,7 +76,7 @@ export function buildTopicalMapPayload(input: BuildTopicalMapPayloadInput): Topi
 
   const priorityActions = buildPriorityActions(nodes)
   const shareArtifacts = buildShareArtifacts({
-    brand: 'Your brand',
+    brand: input.brand || 'Your brand',
     payload: {
       topicalMap: { nodes, scores },
       priorityActions,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { getRedisClient } from '@/lib/redis/client'
+import { getUserId } from '@/lib/auth/clerk'
 import type {
   AuditDetectPayload,
   AuditRequestPayload,
@@ -20,6 +21,8 @@ import { buildTopicalMapPayload } from '@/lib/audit/topical-map-payload'
 
 const RATE_LIMIT_PER_DAY = 2
 const inMemoryLimiter = new Map<string, number[]>()
+const MAX_IN_MEMORY_LIMIT_KEYS = 2000
+let hasLoggedRedisFallback = false
 
 function normalizeDomain(domain: string): string {
   const trimmed = domain.trim().toLowerCase()
@@ -62,8 +65,30 @@ async function enforceRateLimit(ipAddress: string): Promise<boolean> {
     return count <= RATE_LIMIT_PER_DAY
   }
 
+  if (!hasLoggedRedisFallback) {
+    console.warn('[AI Visibility Audit] Redis unavailable; using best-effort in-memory rate limiter')
+    hasLoggedRedisFallback = true
+  }
+
   const now = Date.now()
   const windowMs = 24 * 60 * 60 * 1000
+
+  for (const [existingKey, timestamps] of inMemoryLimiter.entries()) {
+    const activeTimes = timestamps.filter((time) => now - time < windowMs)
+    if (activeTimes.length === 0) {
+      inMemoryLimiter.delete(existingKey)
+    } else if (activeTimes.length !== timestamps.length) {
+      inMemoryLimiter.set(existingKey, activeTimes)
+    }
+  }
+
+  if (!inMemoryLimiter.has(key) && inMemoryLimiter.size >= MAX_IN_MEMORY_LIMIT_KEYS) {
+    const oldestKey = inMemoryLimiter.keys().next().value
+    if (oldestKey) {
+      inMemoryLimiter.delete(oldestKey)
+    }
+  }
+
   const entries = inMemoryLimiter.get(key) || []
   const active = entries.filter((time) => now - time < windowMs)
 
@@ -188,7 +213,19 @@ function jsonResponse(payload: AuditResponsePayload, status = 200): NextResponse
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = (await request.json()) as AuditRequestPayload
+    const userId = await getUserId()
+    if (!userId) {
+      return jsonResponse({ ok: false, stage: 'detected', message: 'Unauthorized' }, 401)
+    }
+
+    let rawPayload: unknown
+    try {
+      rawPayload = await request.json()
+    } catch {
+      return jsonResponse({ ok: false, stage: 'detected', message: 'Invalid JSON body.' }, 400)
+    }
+
+    const payload = rawPayload as AuditRequestPayload
     const baseError = validateBasePayload(payload)
     if (baseError) {
       return jsonResponse({ ok: false, stage: 'detected', message: baseError }, 400)
@@ -196,6 +233,24 @@ export async function POST(request: NextRequest) {
 
     if (payload.action === 'detect') {
       const detectPayload = payload as AuditDetectPayload
+      const ipAddress = getRequestIp(request)
+      const allowedByRateLimit = await enforceRateLimit(ipAddress)
+      if (!allowedByRateLimit) {
+        return jsonResponse(
+          {
+            ok: false,
+            stage: 'detected',
+            message: 'You reached the free audit limit for today. Please try again tomorrow.',
+          },
+          429
+        )
+      }
+
+      const budget = await enforceBudgetGuards()
+      if (!budget.allowed) {
+        return jsonResponse({ ok: false, stage: 'detected', message: budget.message }, 503)
+      }
+
       const extracted = await runHomepageExtraction({
         domain: detectPayload.domain,
       })
@@ -286,6 +341,7 @@ export async function POST(request: NextRequest) {
       }
     )
     const topicalMapPayload = buildTopicalMapPayload({
+      brand: runPayload.confirmedContext.brand,
       nodes: normalizedTopicalMap.nodes,
       confidence: normalizedTopicalMap.confidence,
       partialData: normalizedTopicalMap.partialData,
