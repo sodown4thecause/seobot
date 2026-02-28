@@ -51,6 +51,7 @@ export function buildXShareIntentUrl(args: {
   const { domain, score, category, resultPath } = args
   const text = `My ${domain} AI Visibility Score: ${score}/100 (${category}). Check your site:`
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://seobot.ai'
-  const url = `${baseUrl}${resultPath}`
+  const normalizedPath = resultPath.startsWith('/') ? resultPath : `/${resultPath}`
+  const url = `${baseUrl}${normalizedPath}`
   return `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
 }

@@ -64,13 +64,13 @@ export function DiagnosticPageClient({
 
     const domainRegex = /^(?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9][-a-zA-Z0-9]*(?:\.[a-zA-Z0-9][-a-zA-Z0-9]*)+(?:\/.*)?$/i
 
-    if (!domain || !domainRegex.test(domain)) {
+if (!domain || !domainRegex.test(domain)) {
       setError('Please enter a valid domain (e.g., example.com)')
       setSubmitting(false)
       return
     }
 
-const domainOnly = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+    const domainOnly = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
     const labels = domainOnly.split('.')
     const isValidDomain =
       domainOnly.length <= 253 &&
@@ -87,7 +87,7 @@ const domainOnly = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').spli
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 60000)
 
-try {
+    try {
       const response = await fetch('/api/diagnostic/run', {
         method: 'POST',
         headers: {
@@ -113,13 +113,14 @@ try {
       }
 
       router.push(`/diagnostic/result/${payload.id}`)
-    } catch (submitError) {
+} catch (submitError) {
       if (submitError instanceof Error && submitError.name === 'AbortError') {
         setError('Request timed out. Please try again.')
       } else {
         setError(submitError instanceof Error ? submitError.message : 'Something went wrong')
       }
     } finally {
+      clearTimeout(timeoutId)
       setSubmitting(false)
     }
   }

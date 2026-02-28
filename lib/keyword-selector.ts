@@ -102,7 +102,13 @@ function tokenize(value: string): string[] {
 
 function keywordIsBranded(keyword: string, brandTokens: string[]): boolean {
   const normalized = normalizeKeyword(keyword)
-  return brandTokens.some((token) => token.length > 2 && normalized.includes(token))
+  const keywordWords = normalized.split(/\s+/)
+  return brandTokens.some((token) => {
+    if (token.length > 2) {
+      return normalized.includes(token)
+    }
+    return keywordWords.some((word) => word === token)
+  })
 }
 
 function isTooSimilar(candidate: string, existing: string): boolean {
@@ -333,11 +339,11 @@ export async function selectStrongestKeywords(args: {
     }
   }
 
-  if (selectedKeywords.length === 0) {
+if (selectedKeywords.length === 0) {
     selectedKeywords = fallbackKeywords(args.inputKeywords, args.topics)
   }
 
-if (selectedKeywords.length === 0) {
+  if (selectedKeywords.length === 0) {
     selectedKeywords = [DEFAULT_FALLBACK_KEYWORD]
   }
 

@@ -1,0 +1,151 @@
+export interface BrandDetectionPayload {
+  brand: string
+  category: string
+  icp: string
+  competitors: string[]
+  vertical: string
+}
+
+export interface DetectionMeta {
+  source: 'scraped' | 'fallback'
+  fallbackReason?: string
+}
+
+export interface AuditExecutionMeta {
+  fallbackApplied: boolean
+  citationAvailability: 'full' | 'degraded'
+  message?: string
+  fallbackDetails?: string[]
+}
+
+export type AuditVisibilityState = 'unlisted' | 'public' | 'private'
+
+export interface TopicalMapNode {
+  topic: string
+  intent: 'informational' | 'commercial' | 'transactional' | 'navigational'
+  youCoverage: number
+  competitorCoverage: number
+  aiMentions: number
+  citations: number
+  evidenceDepth: number
+  freshness: {
+    lastIndexedAt: string
+  }
+  sourceUrls: string[]
+  confidence: number
+}
+
+export interface TopicalMapScores {
+  topicalAuthority: number
+  aeoCitation: number
+  proofGap: number
+  shareShock: number
+}
+
+export interface TopicalMapProviderStatus {
+  dataforseo: 'ok' | 'partial' | 'failed'
+  firecrawl: 'ok' | 'partial' | 'failed'
+  aiDiagnostics: 'ok' | 'partial' | 'failed'
+}
+
+export interface TopicalMapResultPayload {
+  auditVersion: string
+  publicVisibility: AuditVisibilityState
+  topicalMap: {
+    nodes: TopicalMapNode[]
+    scores: TopicalMapScores
+  }
+  priorityActions: string[]
+  shareArtifacts: {
+    verdictCard: {
+      title: string
+      summary: string
+    }
+    topicalMapCard: {
+      topGaps: string[]
+    }
+    channels: {
+      x: string
+      reddit: string
+    }
+  }
+  runMetadata: {
+    generatedAt: string
+    confidence: number
+    partialData: boolean
+    providerStatus: TopicalMapProviderStatus
+  }
+}
+
+export interface PlatformResult {
+  platform: 'perplexity' | 'grok' | 'gemini'
+  prompt: string
+  brandMentioned: boolean
+  brandPosition: number | null
+  brandContext: string | null
+  competitorsMentioned: string[]
+  citationUrls: string[]
+  userDomainCited: boolean
+  competitorDomainsCited: string[]
+  rawResponse: string
+}
+
+export interface AuditResults {
+  brand: string
+  brandFoundCount: number
+  totalChecks: 5
+  visibilityRate: number
+  topCompetitor: string
+  topCompetitorFoundCount: number
+  competitorAdvantage: string
+  citationUrls: string[]
+  userDomainCited: boolean
+  competitorDomainsCited: Array<{ domain: string; count: number }>
+  platformResults: {
+    perplexity: Array<{ mentioned: boolean; position: number | null }>
+    grok: { mentioned: boolean; position: number | null }
+    gemini: { mentioned: boolean; position: number | null }
+  }
+}
+
+export interface AuditRunPayload {
+  action: 'run'
+  domain: string
+  email: string
+  confirmedContext: BrandDetectionPayload
+  mockSafe?: boolean
+  simulatePerplexityFailure?: boolean
+  simulateGrokFailure?: boolean
+}
+
+export interface AuditDetectPayload {
+  action: 'detect'
+  domain: string
+  email: string
+}
+
+export type AuditRequestPayload = AuditRunPayload | AuditDetectPayload
+
+export type AuditConversionEvent = 'strategy-call' | 'full-audit'
+
+export interface AuditConvertPayload {
+  auditId: string
+  event: AuditConversionEvent
+}
+
+export interface AuditResponsePayload {
+  ok: boolean
+  stage: 'detected' | 'completed'
+  detected?: BrandDetectionPayload
+  detectionMeta?: DetectionMeta
+  results?: AuditResults
+  platformResults?: PlatformResult[]
+  executionMeta?: AuditExecutionMeta
+  auditId?: string
+  completedAt?: string
+  citationUrls?: string[]
+  totalChecks?: 5
+  topicalMapPayload?: TopicalMapResultPayload
+  publicVisibility?: AuditVisibilityState
+  message?: string
+}

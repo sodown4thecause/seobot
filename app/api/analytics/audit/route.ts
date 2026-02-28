@@ -1,40 +1,118 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth/clerk'
 import { isAdmin } from '@/lib/auth/admin-check'
-import { db, auditEvents } from '@/lib/db'
+import { db, auditEvents, type Json } from '@/lib/db'
 import { gte } from 'drizzle-orm'
+
+const AUDIT_EVENT_TYPES = new Set([
+  'audit_started',
+  'audit_completed',
+  'audit_failed',
+  'email_captured',
+  'results_viewed',
+  'cta_clicked',
+])
+
+type NormalizedAuditEvent = {
+  eventType: string
+  sessionId: string
+  brandName: string | null
+  url: string | null
+  email: string | null
+  score: number | null
+  grade: string | null
+  properties: Json
+  referrer: string | null
+  userAgent: string | null
+}
+
+function normalizeOptionalText(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+function normalizeOptionalNumber(value: unknown): number | null {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return null
+  }
+
+  return value
+}
+
+function normalizeAuditEvent(body: unknown): { ok: true; data: NormalizedAuditEvent } | { ok: false; error: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, error: 'Malformed payload.' }
+  }
+
+  const eventTypeRaw = Reflect.get(body, 'eventType')
+  const sessionIdRaw = Reflect.get(body, 'sessionId')
+  const propertiesRaw = Reflect.get(body, 'properties')
+
+  const eventType = normalizeOptionalText(eventTypeRaw)
+  if (!eventType || !AUDIT_EVENT_TYPES.has(eventType)) {
+    return { ok: false, error: 'Invalid eventType.' }
+  }
+
+  const sessionId = normalizeOptionalText(sessionIdRaw)
+  if (!sessionId) {
+    return { ok: false, error: 'Invalid sessionId.' }
+  }
+
+  let properties: Json = {}
+  if (typeof propertiesRaw !== 'undefined') {
+    if (!propertiesRaw || typeof propertiesRaw !== 'object' || Array.isArray(propertiesRaw)) {
+      return { ok: false, error: 'Invalid properties object.' }
+    }
+
+    properties = propertiesRaw as Json
+  }
+
+  return {
+    ok: true,
+    data: {
+      eventType,
+      sessionId,
+      brandName: normalizeOptionalText(Reflect.get(body, 'brandName')),
+      url: normalizeOptionalText(Reflect.get(body, 'url')),
+      email: normalizeOptionalText(Reflect.get(body, 'email'))?.toLowerCase() || null,
+      score: normalizeOptionalNumber(Reflect.get(body, 'score')),
+      grade: normalizeOptionalText(Reflect.get(body, 'grade')),
+      properties,
+      referrer: normalizeOptionalText(Reflect.get(body, 'referrer')),
+      userAgent: normalizeOptionalText(Reflect.get(body, 'userAgent')),
+    },
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const {
-      eventType,
-      sessionId,
-      brandName,
-      url,
-      email,
-      score,
-      grade,
-      properties,
-      referrer,
-      userAgent,
-    } = body
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Malformed payload.' }, { status: 400 })
+    }
 
-    if (!eventType || !sessionId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    const normalized = normalizeAuditEvent(body)
+    if (!normalized.ok) {
+      return NextResponse.json({ error: normalized.error }, { status: 400 })
     }
 
     await db.insert(auditEvents).values({
-      eventType,
-      sessionId,
-      brandName: brandName || null,
-      url: url || null,
-      email: email?.toLowerCase().trim() || null,
-      score: score || null,
-      grade: grade || null,
-      properties: properties || {},
-      referrer: referrer || null,
-      userAgent: userAgent || null,
+      eventType: normalized.data.eventType,
+      sessionId: normalized.data.sessionId,
+      brandName: normalized.data.brandName,
+      url: normalized.data.url,
+      email: normalized.data.email,
+      score: normalized.data.score,
+      grade: normalized.data.grade,
+      properties: normalized.data.properties,
+      referrer: normalized.data.referrer,
+      userAgent: normalized.data.userAgent,
     })
 
     return NextResponse.json({ success: true })

@@ -1,0 +1,111 @@
+import type { NormalizedRankTrackerPayload } from '@/lib/dashboard/rank-tracker/types'
+import type { DashboardDataType, DashboardSnapshotRecord } from '@/lib/dashboard/repository'
+import type { NormalizedWebsiteAuditPayload } from '@/lib/dashboard/website-audit/types'
+
+type RunResponse<TSnapshot> = {
+  jobId: string
+  dataType: DashboardDataType
+  status: 'completed'
+  websiteUrl: string
+  createdAt: string
+  snapshot: TSnapshot
+}
+
+type JobResponse<TSnapshot> = RunResponse<TSnapshot> & {
+  lastUpdated: string
+}
+
+function toErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error
+  }
+
+  return fallback
+}
+
+async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, {
+    credentials: 'include',
+    cache: 'no-store',
+    ...init,
+  })
+
+  const payload = (await response.json().catch(() => null)) as { error?: unknown } | null
+  if (!response.ok) {
+    throw new Error(toErrorMessage(payload?.error, `Request failed with status ${response.status}`))
+  }
+
+  if (payload === null) {
+    throw new Error('Request succeeded but response body was empty or invalid JSON')
+  }
+
+  return payload as T
+}
+
+export interface RunWebsiteAuditInput {
+  domain: string
+  maxUrls?: number
+  firecrawlLimit?: number
+  includeJinaScreenshot?: boolean
+}
+
+export interface RunRankTrackerInput {
+  domain: string
+  competitors?: string[]
+  keywordLimit?: number
+  locationName?: string
+  languageCode?: string
+  serpDepth?: number
+  firecrawlLimit?: number
+  historicalKeywordLimit?: number
+}
+
+export async function runWebsiteAudit(input: RunWebsiteAuditInput): Promise<RunResponse<NormalizedWebsiteAuditPayload>> {
+  return requestJson('/api/dashboard/website-audit/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+export async function getWebsiteAuditJob(jobId: string): Promise<JobResponse<NormalizedWebsiteAuditPayload>> {
+  return requestJson(`/api/dashboard/website-audit/${jobId}`)
+}
+
+export async function runRankTracker(input: RunRankTrackerInput): Promise<RunResponse<NormalizedRankTrackerPayload>> {
+  return requestJson('/api/dashboard/rank-tracker/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+export async function getRankTrackerJob(jobId: string): Promise<JobResponse<NormalizedRankTrackerPayload>> {
+  return requestJson(`/api/dashboard/rank-tracker/${jobId}`)
+}
+
+export interface RankTrackerHistoryInput {
+  websiteUrl?: string
+  limit?: number
+}
+
+export interface RankTrackerHistoryResponse {
+  dataType: 'ranks'
+  count: number
+  items: DashboardSnapshotRecord[]
+}
+
+export async function getRankTrackerHistory(input?: RankTrackerHistoryInput): Promise<RankTrackerHistoryResponse> {
+  const params = new URLSearchParams()
+  if (input?.websiteUrl) {
+    params.set('websiteUrl', input.websiteUrl)
+  }
+  if (typeof input?.limit === 'number') {
+    params.set('limit', String(input.limit))
+  }
+
+  const query = params.toString()
+  const url = query.length > 0 ? `/api/dashboard/rank-tracker/history?${query}` : '/api/dashboard/rank-tracker/history'
+
+  return requestJson(url)
+}

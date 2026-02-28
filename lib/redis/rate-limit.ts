@@ -25,6 +25,12 @@ export const RATE_LIMITS = {
     window: '1 m',
     message: 'Too many content generation requests. Please wait before generating more content.',
   },
+  // Image generation: stricter limit due higher cost
+  IMAGE_GENERATION: {
+    limit: 3,
+    window: '1 m',
+    message: 'Too many image generation requests. Please wait before generating more images.',
+  },
   // Export: 20 requests per minute per IP
   EXPORT: {
     limit: 20,
@@ -586,3 +592,5 @@ export async function clearAllRateLimits(): Promise<number> {
     return 0
   }
 }
+
+export { getUserId }

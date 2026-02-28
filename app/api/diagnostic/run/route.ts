@@ -33,7 +33,7 @@ import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 // Firecrawl scraping, and async Promise.allSettled for parallel model runs.
 export const runtime = 'nodejs'
 
-const EXPECTED_RUNS = 9
+const EXPECTED_RUNS = DIAGNOSTIC_INTENTS.length * DIAGNOSTIC_ENGINES.length
 
 function parseNumberEnv(name: string, fallback: number): number {
   const raw = process.env[name]
@@ -99,10 +99,16 @@ export async function POST(request: NextRequest) {
     return rateLimitResponse
   }
 
-  const startedAt = Date.now()
+const startedAt = Date.now()
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
+  }
 
   try {
-    const body = await request.json()
     const parsedInput = diagnosticRunInputSchema.safeParse(body)
     if (!parsedInput.success) {
       return NextResponse.json(
@@ -150,8 +156,10 @@ if (brandIdentity) {
       retries: RETRY_ATTEMPTS,
     })
 
+const DEFAULT_FALLBACK_KEYWORD = 'AI visibility tools'
+
     const selectedKeywords = keywordSelection.selectedKeywords.slice(0, 5)
-    const primaryKeyword = selectedKeywords[0] || inputKeywords[0] || 'AI visibility tools'
+    const primaryKeyword = selectedKeywords[0] || inputKeywords[0] || DEFAULT_FALLBACK_KEYWORD
     const secondaryKeyword = selectedKeywords[1] || primaryKeyword
 
     const intents = DIAGNOSTIC_INTENTS
@@ -180,8 +188,8 @@ if (brandIdentity) {
 
     const settled = await Promise.allSettled(tasks.map((task) => executeModelRun(task)))
 
-    const runResults: RunTaskResult[] = []
-    const runAnalyses = []
+const runResults: RunTaskResult[] = []
+    const runAnalyses: ReturnType<typeof analyzeDiagnosticRun>[] = []
 
     for (let i = 0; i < tasks.length; i += 1) {
       const task = tasks[i]
@@ -261,11 +269,11 @@ if (brandIdentity) {
     })
 
     const incompleteReasons: string[] = []
-    if (firecrawl.incomplete) {
-      incompleteReasons.push(...firecrawl.errors.map((error) => `Firecrawl: ${error}`))
+if (firecrawl.incomplete) {
+      incompleteReasons.push(...firecrawl.errors.map((msg) => `Firecrawl: ${msg}`))
     }
     if (keywordSelection.incomplete) {
-      incompleteReasons.push(...keywordSelection.errors.map((error) => `DataForSEO: ${error}`))
+      incompleteReasons.push(...keywordSelection.errors.map((msg) => `DataForSEO: ${msg}`))
     }
 
     const failedRuns = runResults.filter((run) => !!run.error)

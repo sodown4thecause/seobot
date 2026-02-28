@@ -1,21 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { ArrowRight, MessageSquare, Search, Brain, LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, type Variants } from 'framer-motion'
 import { Navbar } from '@/components/navbar'
 import { SymbolBackground } from '@/components/landing/symbol-background'
-
-const AEOAuditor = dynamic(() => import('@/components/aeo-auditor').then((mod) => mod.AEOAuditor), {
-  ssr: false,
-  loading: () => (
-    <div className="mx-auto max-w-4xl border border-white/10 bg-black/60 p-12 text-center">
-      <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Loading audit experience</p>
-    </div>
-  ),
-})
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -45,7 +35,7 @@ export function LandingPageClient() {
         </div>
       </div>
 
-      <section className="relative z-10 pt-48 pb-32 px-6 overflow-hidden">
+      <section className="relative z-10 pt-36 pb-20 px-6 overflow-hidden md:pt-48 md:pb-32">
         <div className="container mx-auto">
           <div className="max-w-6xl">
             <motion.div
@@ -55,23 +45,30 @@ export function LandingPageClient() {
               variants={itemVariants}
               className="space-y-6"
             >
-              <h1 className="text-6xl md:text-[110px] font-black tracking-tight leading-none uppercase italic text-gradient">
-                Your Competitors Are
+              <h1 className="text-5xl md:text-[98px] font-black tracking-tight leading-none uppercase italic text-gradient">
+                Is AI Recommending
                 <br />
-                Stealing Your <span className="bg-white text-black px-4 not-italic inline-block">AI Citations</span>.
+                Your <span className="bg-white text-black px-4 not-italic inline-block">Competitors</span>
+                <br />
+                Instead of You?
               </h1>
-              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-none uppercase italic text-zinc-400 mt-4">
-                Take Them <span className="text-white">Back</span>.
+              <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-none uppercase italic text-zinc-400 mt-4">
+                Find Out In <span className="text-white">60 Seconds</span>.
               </h2>
 
               <div className="flex flex-col md:flex-row items-baseline gap-8 pt-8">
                 <div className="max-w-xl">
                   <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-[0.4em] mb-4">
-                    SEO AGENTIC CLOUD / v2.0
+                    AI VISIBILITY AUDIT / FREE LEAD REPORT
                   </p>
-                  <p className="text-2xl md:text-3xl text-zinc-300 font-light leading-tight uppercase tracking-tighter">
-                    While you focus on Google, AI engines are redirecting your traffic. Stop the bleed. Capture LLM mentions before your market share vanishes.
+                  <p className="text-xl md:text-2xl text-zinc-300 font-light leading-tight uppercase tracking-tight">
+                    Buyers ask Perplexity, Grok, and Gemini what to buy next. We show whether they hear your brand or send pipeline to someone else.
                   </p>
+                  <div className="mt-6 grid gap-2 text-left text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">
+                    <p>01 - We detect your market from your homepage</p>
+                    <p>02 - We run 5 buyer-intent checks across 3 AI engines</p>
+                    <p>03 - You see who AI recommends and what sources it cites</p>
+                  </div>
                 </div>
 
                 <div className="flex-1 flex justify-end items-end">
@@ -79,15 +76,15 @@ export function LandingPageClient() {
                     <Link href="/audit">
                       <Button
                         size="lg"
-                        className="h-16 px-10 text-lg bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-wider group border-4 border-white shadow-[0_24px_60px_rgba(255,255,255,0.08)]"
+                        className="h-14 w-full sm:w-auto px-8 text-base md:h-16 md:px-10 md:text-lg bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-wider group border-4 border-white shadow-[0_24px_60px_rgba(255,255,255,0.08)]"
                       >
-                        Run Free Audit
+                        Audit My AI Visibility
                         <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                       </Button>
                     </Link>
                     <div className="text-center sm:text-left">
-                      <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-600">No signup required</p>
-                      <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">2,847 audits this month</p>
+                      <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-600">Free. No credit card.</p>
+                      <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">Average runtime: about 60 seconds</p>
                     </div>
                   </div>
                 </div>
@@ -96,6 +93,15 @@ export function LandingPageClient() {
           </div>
         </div>
       </section>
+
+      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/15 bg-black/90 p-3 backdrop-blur md:hidden">
+        <Link href="/audit" className="block">
+          <Button className="h-12 w-full rounded-none bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-wider">
+            Audit My AI Visibility
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
 
       {/* Social Proof - Statistics */}
       <section className="relative z-10 py-16 border-b border-white/5">
@@ -119,7 +125,17 @@ export function LandingPageClient() {
 
       <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5 backdrop-blur-sm">
         <div className="container mx-auto px-6 text-center">
-          <AEOAuditor />
+          <div className="mx-auto max-w-3xl space-y-5 rounded-none border border-white/10 bg-black/40 p-10">
+            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Canonical Lead Magnet Flow</p>
+            <h3 className="text-3xl font-black uppercase tracking-tight">Run the full audit at /audit</h3>
+            <p className="text-zinc-400">
+              We moved the full lead-magnet journey to one canonical path for consistent tracking and share-ready reports.
+            </p>
+            <Link href="/audit" className="inline-flex items-center gap-2 border border-white px-6 py-3 text-sm font-black uppercase tracking-[0.18em] hover:bg-white hover:text-black transition-colors">
+              Go To Audit
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -288,4 +304,3 @@ function ValueProp({
     </motion.div>
   )
 }
-

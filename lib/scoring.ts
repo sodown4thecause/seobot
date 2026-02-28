@@ -84,6 +84,9 @@ if (brandToken) {
       if (tokens.some((token) => token === targetBrandName.toLowerCase())) {
         return true
       }
+      if (normalizedName.includes(brandToken) || brandToken.includes(normalizedName)) {
+        return true
+      }
     } else if (normalizedName.includes(brandToken)) {
       return true
     }
@@ -94,6 +97,9 @@ if (brandToken) {
       const domainBase = targetDomain.split('.')[0] || targetDomain
       const tokens = name.toLowerCase().match(/\b\w+\b/g) || []
       if (tokens.some((token) => token === domainBase.toLowerCase())) {
+        return true
+      }
+      if (normalizedName.includes(domainToken) || domainToken.includes(normalizedName)) {
         return true
       }
     } else if (normalizedName.includes(domainToken)) {

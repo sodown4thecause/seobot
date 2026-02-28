@@ -105,7 +105,11 @@ function normalizeStructuredResponse(
 ): LlmStructuredResponse {
   const typed = data as Record<string, unknown>
 
-  const rawRecommendations = Array.isArray(typed.recommendations) ? typed.recommendations : []
+  const rawRecommendations = Array.isArray(typed.recommendations)
+    ? typed.recommendations
+    : Array.isArray(typed.recommended_brands)
+      ? typed.recommended_brands
+      : []
   const recommended_brands = rawRecommendations.map((rec, index) => {
     const r = rec as Record<string, unknown>
     return {

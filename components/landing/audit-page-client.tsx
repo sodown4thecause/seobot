@@ -2,18 +2,8 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { ArrowLeft } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
-
-const AEOAuditor = dynamic(() => import('@/components/aeo-auditor').then((mod) => mod.AEOAuditor), {
-  ssr: false,
-  loading: () => (
-    <div className="mx-auto max-w-4xl border border-white/10 bg-black/60 p-12 text-center">
-      <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Loading audit experience</p>
-    </div>
-  ),
-})
 
 export function AuditPageClient() {
   return (
@@ -45,7 +35,21 @@ export function AuditPageClient() {
           </p>
         </div>
 
-        <AEOAuditor />
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
+            <p className="text-xs font-mono uppercase tracking-[0.35em] text-zinc-500">Canonical Flow</p>
+            <h2 className="mt-3 text-2xl font-bold">Start the full audit on the /audit page</h2>
+            <p className="mt-3 text-zinc-400">
+              The lead magnet now runs in one place so visibility controls and share artifacts stay consistent.
+            </p>
+            <Link
+              href="/audit"
+              className="mt-6 inline-flex items-center justify-center bg-white px-8 py-4 rounded-none font-black uppercase tracking-[0.1em] text-black hover:bg-zinc-200 transition-colors"
+            >
+              Go to /audit
+            </Link>
+          </div>
+        </div>
 
         <motion.div
           initial={{ opacity: 0 }}
@@ -127,4 +131,3 @@ export function AuditPageClient() {
     </div>
   )
 }
-

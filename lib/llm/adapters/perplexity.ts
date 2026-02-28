@@ -61,11 +61,11 @@ export async function runPerplexityAdapter(params: RunPerplexityAdapterParams): 
             }
           : undefined,
       }
-    } catch (error) {
+} catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error')
       console.error(`[Perplexity] Attempt ${attempt + 1} failed:`, lastError.message)
-      
-if (attempt < retries) {
+
+      if (attempt < retries) {
         await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt))
       }
     }

@@ -5,7 +5,6 @@ const nextConfig: NextConfig = {
     reactStrictMode: true,
     // Enable instrumentation for Langfuse OpenTelemetry
     // Note: instrumentationHook is enabled by default in Next.js 15+
-    experimental: {},
     images: {
         remotePatterns: [
             {

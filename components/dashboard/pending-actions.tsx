@@ -5,15 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AlertCircle, Clock, CheckCircle2 } from 'lucide-react'
-import { ActionCard } from '@/components/actions/action-card'
+import { FreshnessIndicator } from '@/components/dashboard/freshness-indicator'
 import type { ActionItem } from '@/types/actions'
 
 interface PendingActionsProps {
   actions: ActionItem[]
   maxDisplay?: number
+  lastUpdated?: Date | string
 }
 
-export function PendingActions({ actions, maxDisplay = 5 }: PendingActionsProps) {
+export function PendingActions({ actions, maxDisplay = 5, lastUpdated }: PendingActionsProps) {
+  const freshnessDate = React.useMemo(() => {
+    if (!lastUpdated) {
+      return undefined
+    }
+
+    const parsed = typeof lastUpdated === 'string' ? new Date(lastUpdated) : lastUpdated
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed
+  }, [lastUpdated])
+
   // Sort by priority and urgency
   const sortedActions = [...actions]
     .filter(action => action.status === 'pending')
@@ -48,7 +58,10 @@ export function PendingActions({ actions, maxDisplay = 5 }: PendingActionsProps)
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Pending Actions</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle>Pending Actions</CardTitle>
+            {freshnessDate ? <FreshnessIndicator lastUpdated={freshnessDate} /> : null}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
@@ -65,7 +78,10 @@ export function PendingActions({ actions, maxDisplay = 5 }: PendingActionsProps)
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-zinc-100">Pending Actions</CardTitle>
-          <Badge variant="outline" className="border-white/10 text-zinc-400">{sortedActions.length} items</Badge>
+          <div className="flex items-center gap-2">
+            {freshnessDate ? <FreshnessIndicator lastUpdated={freshnessDate} /> : null}
+            <Badge variant="outline" className="border-white/10 text-zinc-400">{sortedActions.length} items</Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -109,4 +125,3 @@ export function PendingActions({ actions, maxDisplay = 5 }: PendingActionsProps)
     </Card>
   )
 }
-

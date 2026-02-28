@@ -65,6 +65,14 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
+function requireUuidMessageId(messageId: string, context: string): string {
+  if (!isUuid(messageId)) {
+    throw new Error(`[Chat Persistence] ${context} must be a UUID. Received: ${messageId}`)
+  }
+
+  return messageId
+}
+
 export async function ensureChatForUser(params: {
   userId: string
   requestedChatId?: string | null
@@ -123,13 +131,15 @@ export async function autosaveUserMessage(params: {
   }
 
   const normalized = normalizePersistedMessage(message)
+  const messageId = requireUuidMessageId(normalized.messageId, 'User message id')
   const suggestedTitle = deriveConversationTitle(normalized.content)
 
   const DEFAULT_TITLE = 'New Conversation'
 
-  await db
+await db
     .insert(messages)
     .values({
+      id: messageId,
       conversationId: chatId,
       role: normalized.role,
       content: normalized.content,
@@ -177,7 +187,8 @@ export async function persistAssistantMessages(params: {
     Math.max(...normalizedAssistants.map((msg) => msg.createdAt.getTime()))
   )
 
-  const payloads = normalizedAssistants.map((normalized) => ({
+const payloads = normalizedAssistants.map((normalized) => ({
+    id: requireUuidMessageId(normalized.messageId, 'Assistant message id'),
     conversationId: chatId,
     role: normalized.role,
     content: normalized.content,

@@ -1,34 +1,25 @@
-'use client'
+"use client"
 
 import * as React from 'react'
 import Link from 'next/link'
 import {
-  type LucideIcon,
-  Home,
+  ChevronLeft,
+  ChevronRight,
+  KeyRound,
+  LayoutDashboard,
+  Link as LinkIcon,
+  Menu,
   Search,
-  Command,
-  MoreHorizontal,
-  User,
-  BookOpen,
-  Plus,
-  Pin,
-  Archive,
-  Edit3,
-  Workflow,
-  Rocket,
-  Bot,
-  ImageIcon,
+  Sparkles,
+  TrendingUp,
+  Users,
   FileText,
 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { cn } from '@/lib/utils'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Logo } from '@/components/ui/logo'
-import { usePathname, useRouter } from 'next/navigation'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { useAgent } from '@/components/providers/agent-provider'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
 
 export interface SidebarProps {
   collapsed: boolean
@@ -36,309 +27,94 @@ export interface SidebarProps {
   currentPath: string
 }
 
-const MAIN_NAV = [
-  { name: 'Home', href: '/dashboard', icon: Home },
-  { name: 'Workflows', href: '/dashboard/workflows', icon: Workflow },
-  { name: 'Campaigns', href: '/dashboard/campaigns', icon: Rocket },
-  { name: 'AEO Center', href: '/dashboard/aeo', icon: Bot },
-  { name: 'Content Zone', href: '/dashboard/content-zone', icon: FileText },
-  { name: 'Image Studio', href: '/dashboard/images', icon: ImageIcon },
-  { name: 'Tutorials', href: '/dashboard/tutorials', icon: BookOpen },
-]
-
-const safeFormatDistanceToNow = (date: Date) => {
-  try {
-    return formatDistanceToNow(date, { addSuffix: true })
-  } catch (error) {
-    console.warn('[Sidebar] Failed to format time distance', error)
-    return date.toLocaleString()
-  }
-}
+const DASHBOARD_LINKS = [
+  { name: 'Overview', href: '/dashboard/overview', icon: LayoutDashboard },
+  { name: 'Website Audit', href: '/dashboard/website-audit', icon: Search },
+  { name: 'Rank Tracker', href: '/dashboard/rank-tracker', icon: TrendingUp },
+  { name: 'Competitor Monitor', href: '/dashboard/competitor-monitor', icon: Users },
+  { name: 'Keyword Opportunities', href: '/dashboard/keyword-opportunities', icon: KeyRound },
+  { name: 'Backlink Profile', href: '/dashboard/backlink-profile', icon: LinkIcon },
+  { name: 'Content Performance', href: '/dashboard/content-performance', icon: FileText },
+  { name: 'AEO Insights', href: '/dashboard/aeo-insights', icon: Sparkles },
+] as const
 
 export function Sidebar({ collapsed, onToggle, currentPath }: SidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
-  const { state, actions } = useAgent()
-  const [searchQuery, setSearchQuery] = React.useState('')
-  const [isCreating, setIsCreating] = React.useState(false)
-  const [isMounted, setIsMounted] = React.useState(false)
+  const [mobileOpen, setMobileOpen] = React.useState(false)
 
-  // Prevent hydration mismatch for timestamps
-  React.useEffect(() => {
-    setIsMounted(true)
-  }, [])
+  const resolvedPath = pathname ?? currentPath
 
-  const filteredConversations = React.useMemo(() => {
-    if (!searchQuery.trim()) return state.conversations
-    const query = searchQuery.toLowerCase()
-    return state.conversations.filter((conv) =>
-      conv.title.toLowerCase().includes(query)
-    )
-  }, [state.conversations, searchQuery])
+  const renderLinks = (compact = false) => (
+    <nav className="space-y-1">
+      {DASHBOARD_LINKS.map((item) => {
+        const Icon = item.icon
+        const isActive = resolvedPath === item.href || resolvedPath.startsWith(`${item.href}/`)
 
-  const handleSelectConversation = (conversation: typeof state.conversations[number]) => {
-    actions.setActiveConversation(conversation)
-    actions.clearMessages()
-    actions.loadMessages(conversation.id).catch(() => {
-      // errors handled inside action; keep UI responsive
-    })
-  }
-
-  const handleNewConversation = async () => {
-    if (isCreating) return
-    try {
-      setIsCreating(true)
-      const agentId = state.activeAgent?.id ?? 'general'
-      const conversation = await actions.createConversation(agentId)
-      if (conversation) {
-        actions.setActiveConversation(conversation)
-        actions.clearMessages()
-        // Navigate to dashboard if not already there
-        if (pathname !== '/dashboard') {
-          router.push('/dashboard')
-        }
-      }
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
-  const handleRenameConversation = (conversationId: string, currentTitle: string) => {
-    const nextTitle = window.prompt('Rename conversation', currentTitle)
-    if (!nextTitle || nextTitle.trim() === '' || nextTitle === currentTitle) return
-    actions.updateConversation(conversationId, { title: nextTitle.trim() })
-  }
-
-  const handleUnpinConversation = (conversationId: string) => {
-    actions.updateConversation(conversationId, { status: 'active' })
-  }
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              'flex items-center rounded-lg px-3 py-2 text-sm transition-colors',
+              isActive
+                ? 'bg-emerald-500/15 text-emerald-300'
+                : 'text-zinc-300 hover:bg-zinc-800 hover:text-white',
+              compact && 'justify-center px-2'
+            )}
+            aria-current={isActive ? 'page' : undefined}
+            title={compact ? item.name : undefined}
+          >
+            <Icon className={cn('h-4 w-4 shrink-0', !compact && 'mr-2')} />
+            {!compact && <span>{item.name}</span>}
+          </Link>
+        )
+      })}
+    </nav>
+  )
 
   return (
-    <aside
-      role="navigation"
-      aria-label="Main navigation"
-      className={cn(
-        'fixed left-0 top-0 h-screen z-40',
-        'bg-zinc-950/90 backdrop-blur-xl border-r border-zinc-800/50',
-        'transition-all duration-300 ease-in-out flex flex-col',
-        collapsed ? 'w-[72px]' : 'w-[280px]'
-      )}
-    >
-      {/* Header */}
-      <div className="p-4 pb-2 flex items-center gap-3">
-        <div className="w-8 h-8 bg-white flex items-center justify-center text-black font-black italic text-sm flex-shrink-0">
-          FI
-        </div>
-        {!collapsed && (
-          <span className="font-bold text-xl tracking-tighter text-white uppercase italic">Flow Intent</span>
-        )}
-      </div>
-
-      {/* Search / new chat */}
-      <div className={cn('px-4 py-4', collapsed && 'flex flex-col items-center gap-3')}>
-        {!collapsed ? (
-          <>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" aria-hidden="true" />
-              <Input
-                placeholder="Search chats"
-                aria-label="Search conversations"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                className="bg-zinc-900/50 border-0 h-10 pl-9 pr-9 text-sm rounded-xl text-zinc-300 placeholder:text-zinc-600 focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-950 transition-all"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-zinc-800/80 rounded p-0.5" aria-hidden="true">
-                <Command className="h-3 w-3 text-zinc-500" />
-              </div>
-            </div>
-            <Button
-              onClick={handleNewConversation}
-              disabled={isCreating}
-              aria-label="Create new chat"
-              className="mt-3 w-full rounded-xl bg-white text-black hover:bg-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 transition cursor-pointer"
-            >
-              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-              New chat
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button variant="ghost" size="icon" aria-label="Search conversations" className="h-10 w-10 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/50 focus-visible:ring-2 focus-visible:ring-zinc-500 cursor-pointer">
-              <Search className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNewConversation}
-              disabled={isCreating}
-              aria-label="Create new chat"
-              className="h-10 w-10 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/50 focus-visible:ring-2 focus-visible:ring-zinc-500 cursor-pointer"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
-          </>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <ScrollArea className="flex-1 px-2">
-        <div className="space-y-6 py-2">
-          {/* Main Menu */}
-          <nav className="space-y-1 px-2">
-            {MAIN_NAV.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group cursor-pointer',
-                    isActive
-                      ? 'bg-zinc-800/50 text-white font-medium'
-                      : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500'
-                  )}
-                  title={collapsed ? item.name : undefined}
-                >
-                  <Icon className={cn(
-                    "h-5 w-5 flex-shrink-0 transition-colors",
-                    isActive ? "text-white" : "text-zinc-500 group-hover:text-zinc-300"
-                  )} aria-hidden="true" />
-                  {!collapsed && <span>{item.name}</span>}
-                </Link>
-              )
-            })}
-          </nav>
-
-          {/* Conversations */}
-          <div className="px-2">
-            {!collapsed && (
-              <div className="flex items-center justify-between px-3 mb-3">
-                <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
-                  Conversations
-                </h3>
-                <span className="text-[11px] text-zinc-600">
-                  {filteredConversations.length}
-                </span>
-              </div>
-            )}
-            <div className="space-y-1">
-              {filteredConversations.length === 0 && (
-                <div className="text-center py-8 px-4">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-zinc-800/50 flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-zinc-600" aria-hidden="true" />
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    {searchQuery ? 'No chats match your search.' : 'No conversations yet.'}
-                  </p>
-                  {!searchQuery && (
-                    <p className="text-xs text-zinc-600 mt-1">Start a new chat to begin</p>
-                  )}
-                </div>
-              )}
-              {filteredConversations.map((conversation) => {
-                const isActive = state.activeConversation?.id === conversation.id
-                const isPinned = conversation.status === 'pinned'
-                const subtitle = conversation.lastMessage?.content || 'No messages yet'
-                // Only compute relative time on client to prevent hydration mismatch
-                const timestamp = isMounted && conversation.updatedAt
-                  ? safeFormatDistanceToNow(new Date(conversation.updatedAt))
-                  : ''
-
-                return (
-                  <div
-                    key={conversation.id}
-                    className={cn(
-                      'group relative flex items-start gap-3 rounded-xl px-3 py-3 transition-all cursor-pointer',
-                      isActive
-                        ? 'bg-zinc-800/50 text-white shadow-inner'
-                        : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/30'
-                    )}
-                  >
-                    <button
-                      onClick={() => handleSelectConversation(conversation)}
-                      aria-label={`Open conversation: ${conversation.title}`}
-                      className="flex flex-1 flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded-lg"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium truncate">
-                          {conversation.title}
-                        </span>
-                        {isPinned && <Pin className="h-3 w-3 text-yellow-400" />}
-                      </div>
-                      {!collapsed && (
-                        <>
-                          <p className="text-xs text-zinc-500 line-clamp-2">
-                            {subtitle}
-                          </p>
-                          {timestamp && (
-                            <span className="mt-1 text-[11px] text-zinc-600">
-                              {timestamp}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-zinc-500 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded-lg p-1 transition cursor-pointer"
-                          aria-label="Conversation actions"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={() => handleRenameConversation(conversation.id, conversation.title)}>
-                          <Edit3 className="mr-2 h-4 w-4" />
-                          Rename
-                        </DropdownMenuItem>
-                        {!isPinned ? (
-                          <DropdownMenuItem onClick={() => actions.pinConversation(conversation.id)}>
-                            <Pin className="mr-2 h-4 w-4" />
-                            Pin chat
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem onClick={() => handleUnpinConversation(conversation.id)}>
-                            <Pin className="mr-2 h-4 w-4" />
-                            Unpin chat
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => actions.archiveConversation(conversation.id)}>
-                          <Archive className="mr-2 h-4 w-4" />
-                          Archive
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )
-              })}
-            </div>
+    <>
+      <Collapsible open={mobileOpen} onOpenChange={setMobileOpen} className="md:hidden">
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            className="fixed left-4 top-4 z-50 border-zinc-700 bg-zinc-900 text-zinc-100"
+            aria-label="Toggle dashboard navigation"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="fixed inset-0 z-40 bg-zinc-950/95 p-4 pt-16 backdrop-blur-sm">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-3">
+            {renderLinks(false)}
           </div>
-        </div>
-      </ScrollArea>
+        </CollapsibleContent>
+      </Collapsible>
 
-      {/* User Profile / Footer */}
-      <div className="p-4 border-t border-zinc-800/50">
-        <button className={cn(
-          "flex items-center gap-3 w-full rounded-xl transition-colors hover:bg-zinc-800/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 p-2 cursor-pointer",
-          collapsed ? "justify-center" : ""
+      <aside
+        role="navigation"
+        aria-label="Dashboard navigation"
+        className={cn(
+          'sticky top-0 z-30 hidden h-screen shrink-0 border-r border-zinc-800 bg-zinc-950/95 md:flex md:flex-col',
+          collapsed ? 'w-[72px]' : 'w-[260px]'
         )}
-          aria-label="User account menu"
-        >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white">
-            <User className="w-4 h-4" />
-          </div>
-          {!collapsed && (
-            <div className="flex-1 text-left overflow-hidden">
-              <p className="text-sm font-medium text-white truncate">User Account</p>
-              <p className="text-xs text-zinc-500 truncate">Free Plan</p>
-            </div>
-          )}
-          {!collapsed && <MoreHorizontal className="h-4 w-4 text-zinc-500" aria-hidden="true" />}
-        </button>
-      </div>
-    </aside>
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-4">
+          {!collapsed && <p className="text-sm font-semibold text-zinc-100">Dashboards</p>}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="h-8 w-8 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50"
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
+        </div>
+        <ScrollArea className="flex-1 px-2 py-3">{renderLinks(collapsed)}</ScrollArea>
+      </aside>
+    </>
   )
 }

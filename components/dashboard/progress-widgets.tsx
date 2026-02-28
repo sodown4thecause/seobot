@@ -3,8 +3,9 @@
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { TrendingUp, Target, BookOpen, BarChart3 } from 'lucide-react'
+import { TrendingUp, Target, BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { FreshnessIndicator } from '@/components/dashboard/freshness-indicator'
 
 interface ProgressWidgetsProps {
   campaignProgress?: {
@@ -22,13 +23,24 @@ interface ProgressWidgetsProps {
     totalTutorials: number
     currentTutorial?: string
   }
+  lastUpdated?: Date | string
 }
 
 export function ProgressWidgets({
   campaignProgress,
   rankingProgress,
-  learningProgress
+  learningProgress,
+  lastUpdated,
 }: ProgressWidgetsProps) {
+  const freshnessDate = React.useMemo(() => {
+    if (!lastUpdated) {
+      return undefined
+    }
+
+    const parsed = typeof lastUpdated === 'string' ? new Date(lastUpdated) : lastUpdated
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed
+  }, [lastUpdated])
+
   const campaignCompletion = React.useMemo(() => {
     if (!campaignProgress || campaignProgress.total <= 0) return null
     return (campaignProgress.completed / campaignProgress.total) * 100
@@ -45,10 +57,13 @@ export function ProgressWidgets({
       {campaignProgress && (
         <Card className="glass-card border-none bg-black/20">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-zinc-200">
-              <Target className="w-4 h-4 text-zinc-400" />
-              Active Campaigns
-            </CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-zinc-200">
+                <Target className="w-4 h-4 text-zinc-400" />
+                Active Campaigns
+              </CardTitle>
+              {freshnessDate ? <FreshnessIndicator lastUpdated={freshnessDate} /> : null}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -75,10 +90,13 @@ export function ProgressWidgets({
       {rankingProgress && (
         <Card className="glass-card border-none bg-black/20">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-zinc-200">
-              <TrendingUp className="w-4 h-4 text-zinc-400" />
-              Ranking Progress
-            </CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-zinc-200">
+                <TrendingUp className="w-4 h-4 text-zinc-400" />
+                Ranking Progress
+              </CardTitle>
+              {freshnessDate ? <FreshnessIndicator lastUpdated={freshnessDate} /> : null}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -101,10 +119,13 @@ export function ProgressWidgets({
       {learningProgress && (
         <Card className="glass-card border-none bg-black/20">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-zinc-200">
-              <BookOpen className="w-4 h-4 text-zinc-400" />
-              Learning Progress
-            </CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-zinc-200">
+                <BookOpen className="w-4 h-4 text-zinc-400" />
+                Learning Progress
+              </CardTitle>
+              {freshnessDate ? <FreshnessIndicator lastUpdated={freshnessDate} /> : null}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -133,4 +154,3 @@ export function ProgressWidgets({
     </div>
   )
 }
-
