@@ -31,5 +31,5 @@ CREATE INDEX IF NOT EXISTS idx_ai_visibility_audits_email_domain
 CREATE INDEX IF NOT EXISTS idx_ai_visibility_audits_domain
   ON public.ai_visibility_audits (domain);
 
-CREATE INDEX IF NOT EXISTS idx_ai_visibility_audits_converted
+CREATE INDEX IF NOT EXISTS idx_ai_visibility_audits_converted_created_at
   ON public.ai_visibility_audits (created_at DESC) WHERE converted = true;
