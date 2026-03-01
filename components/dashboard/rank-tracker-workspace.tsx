@@ -167,8 +167,8 @@ export function RankTrackerWorkspace() {
   const movementChartData = useMemo(
     () => [
       { bucket: 'Winners', key: 'winners', count: snapshot?.movements.winners.count ?? 0, fill: '#10b981' },
-      { bucket: 'Losers', key: 'losers', count: snapshot?.movements.losers.count ?? 0, fill: '#ef4444' },
-      { bucket: 'Flat', key: 'unchanged', count: snapshot?.movements.unchanged.count ?? 0, fill: '#94a3b8' },
+      { bucket: 'Losers', key: 'losers', count: snapshot?.movements.losers.count ?? 0, fill: '#71717a' },
+      { bucket: 'Flat', key: 'unchanged', count: snapshot?.movements.unchanged.count ?? 0, fill: '#d4d4d8' },
     ],
     [snapshot?.movements.losers.count, snapshot?.movements.unchanged.count, snapshot?.movements.winners.count]
   )
@@ -347,7 +347,7 @@ export function RankTrackerWorkspace() {
               {runMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run rank tracker'}
             </Button>
           </form>
-          {runMutation.error ? <p className="mt-3 text-sm text-red-300">{runMutation.error.message}</p> : null}
+          {runMutation.error ? <p className="mt-3 text-sm text-zinc-300">{runMutation.error.message}</p> : null}
         </CardContent>
       </Card>
 
@@ -427,8 +427,8 @@ export function RankTrackerWorkspace() {
                           <XAxis dataKey="label" stroke="#a1a1aa" />
                           <YAxis stroke="#a1a1aa" domain={[0, 100]} />
                           <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
-                          <Line type="monotone" dataKey="visibility" stroke="#22d3ee" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="averagePosition" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="visibility" stroke="#22c55e" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="averagePosition" stroke="#d4d4d8" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     )}
@@ -468,7 +468,7 @@ export function RankTrackerWorkspace() {
                         <XAxis dataKey="range" stroke="#a1a1aa" />
                         <YAxis allowDecimals={false} stroke="#a1a1aa" />
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
-                        <Area type="monotone" dataKey="count" stroke="#c084fc" fill="#a855f766" />
+                        <Area type="monotone" dataKey="count" stroke="#22c55e" fill="#22c55e44" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -488,7 +488,7 @@ export function RankTrackerWorkspace() {
                       <p>
                         Winners: <span className="font-medium text-emerald-300">{snapshot?.movements.winners.count ?? 0}</span>
                         {' • '}
-                        Losers: <span className="font-medium text-red-300">{snapshot?.movements.losers.count ?? 0}</span>
+                        Losers: <span className="font-medium text-zinc-300">{snapshot?.movements.losers.count ?? 0}</span>
                       </p>
                       <p className="mt-2 text-zinc-400">
                         Use the Keyword Movements tab to isolate declining terms and prioritize recovery updates.
@@ -550,7 +550,7 @@ export function RankTrackerWorkspace() {
                             {keyword.change > 0 ? (
                               <ArrowUpRight className="h-3.5 w-3.5 text-emerald-300" />
                             ) : keyword.change < 0 ? (
-                              <ArrowDownRight className="h-3.5 w-3.5 text-red-300" />
+                              <ArrowDownRight className="h-3.5 w-3.5 text-zinc-400" />
                             ) : (
                               <Minus className="h-3.5 w-3.5 text-zinc-500" />
                             )}
@@ -594,7 +594,7 @@ export function RankTrackerWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="visibility" radius={[8, 8, 0, 0]}>
                           {competitorRows.map((row) => (
-                            <Cell key={row.domain} fill={row.isYou ? '#22d3ee' : '#6366f1'} />
+                            <Cell key={row.domain} fill={row.isYou ? '#22c55e' : '#71717a'} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -623,7 +623,7 @@ export function RankTrackerWorkspace() {
                     ))}
                   </div>
 
-                  <div className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+                  <div className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
                     <TrendingUp className="mt-0.5 h-4 w-4 shrink-0" />
                     <p>
                       Focus on keywords in positions 11-20 to close the gap faster against competitor visibility.

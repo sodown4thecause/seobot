@@ -74,7 +74,7 @@ function signalBadge(signal: ReturnType<typeof competitorSignal>): { label: stri
     return { label: 'Gaining', variant: 'default' }
   }
   if (signal === 'down') {
-    return { label: 'Losing', variant: 'destructive' }
+    return { label: 'Losing', variant: 'outline' }
   }
   return { label: 'Stable', variant: 'outline' }
 }
@@ -193,7 +193,7 @@ export function CompetitorMonitorWorkspace() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run monitor'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+          {error ? <p className="mt-3 text-sm text-zinc-300">{error}</p> : null}
         </CardContent>
       </Card>
 
@@ -313,7 +313,7 @@ export function CompetitorMonitorWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="traffic" radius={[8, 8, 0, 0]}>
                           {chartData.map((entry) => (
-                            <Cell key={entry.domain} fill="#22d3ee" />
+                            <Cell key={entry.domain} fill="#22c55e" />
                           ))}
                         </Bar>
                       </BarChart>
@@ -360,7 +360,7 @@ export function CompetitorMonitorWorkspace() {
                       <ArrowUpRight className="h-3.5 w-3.5 text-emerald-300" /> Upward momentum
                     </div>
                     <div className="inline-flex items-center gap-1">
-                      <ArrowDownRight className="h-3.5 w-3.5 text-red-300" /> Downward momentum
+                      <ArrowDownRight className="h-3.5 w-3.5 text-zinc-400" /> Downward momentum
                     </div>
                   </div>
                 </div>

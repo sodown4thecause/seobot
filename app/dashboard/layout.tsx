@@ -14,7 +14,6 @@ import { ActionProvider } from '@/components/providers/action-provider'
 import { createDashboardQueryClient } from '@/lib/cache/query-client'
 
 const PAGE_NAMES: Record<string, string> = {
-  overview: 'Overview',
   'website-audit': 'Website Audit',
   'rank-tracker': 'Rank Tracker',
   'competitor-monitor': 'Competitor Monitor',
@@ -30,7 +29,7 @@ const PAGE_NAMES: Record<string, string> = {
 function getCurrentPageName(pathname: string): string {
   const segments = pathname.split('/').filter(Boolean)
   const dashboardSegment = segments[1]
-  if (!dashboardSegment) return 'Overview'
+  if (!dashboardSegment) return 'Dashboard'
   return (
     PAGE_NAMES[dashboardSegment] ??
     dashboardSegment
