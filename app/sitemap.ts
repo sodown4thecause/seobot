@@ -45,7 +45,6 @@ const STATIC_PUBLIC_ROUTES: Array<{
   { path: '/faq', changeFrequency: 'weekly', priority: 0.7 },
   { path: '/docs', changeFrequency: 'weekly', priority: 0.7 },
   { path: '/contact', changeFrequency: 'monthly', priority: 0.5 },
-  { path: '/aeo-vs-seo', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/aeo-auditor', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/privacy', changeFrequency: 'monthly', priority: 0.3 },
   { path: '/terms', changeFrequency: 'monthly', priority: 0.3 },

@@ -1,12 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'FAQ - Answer Engine Optimization & AI SEO Questions | FlowIntent',
-  description: 'Get answers to common questions about Answer Engine Optimization (AEO), intent-based marketing, AI search visibility, LLM mentions, and the FlowIntent platform.',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'FlowIntent FAQ | AEO and AI SEO Questions',
+  description:
+    'Get answers about Answer Engine Optimization, AI search visibility, LLM mentions, and using the FlowIntent platform.',
+  path: '/faq',
   keywords: ['AEO FAQ', 'answer engine optimization questions', 'AI SEO FAQ', 'LLM mentions', 'intent based marketing FAQ'],
-}
+})
 
 export default function FAQPage() {
   type FaqLink = { label: string; href: string }
@@ -206,4 +209,3 @@ export default function FAQPage() {
     </div>
   )
 }
-

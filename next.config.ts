@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
     /* config options here */
@@ -21,8 +21,15 @@ const nextConfig: NextConfig = {
             },
         ],
     },
+    async redirects() {
+        return [
+            {
+                source: '/aeo-vs-seo',
+                destination: '/guides/aeo-vs-geo',
+                permanent: true,
+            },
+        ]
+    },
+}
 
-};
-
-
-export default nextConfig;
+export default nextConfig
