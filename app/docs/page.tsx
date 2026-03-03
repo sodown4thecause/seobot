@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Documentation - How FlowIntent Works | FlowIntent',
-  description: 'Learn how FlowIntent optimizes for traditional search engines and AI answer engines. Platform architecture, features, and technical documentation.',
-}
+export const metadata: Metadata = buildPageMetadata({
+  title: 'FlowIntent Documentation | Platform and Features',
+  description:
+    'Learn how FlowIntent works for SEO and AI search optimization, including platform architecture, features, and workflows.',
+  path: '/docs',
+})
 
 export default function DocsPage() {
   return (
@@ -192,4 +195,3 @@ export default function DocsPage() {
     </div>
   )
 }
-
