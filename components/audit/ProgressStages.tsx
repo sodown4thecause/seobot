@@ -54,8 +54,8 @@ export function ProgressStages({ phase }: ProgressStagesProps) {
         <Progress value={currentStage.progress} />
         <div className="space-y-2">
           {STAGES.map((stage, index) => {
-            const isComplete = index < currentIndex
-            const isActive = index === currentIndex
+            const isComplete = index < currentIndex || (phase === 'done' && index === currentIndex)
+            const isActive = phase !== 'done' && index === currentIndex
 
             return (
               <div key={stage.id} className="flex items-start gap-3 rounded-md border border-border/60 p-3">

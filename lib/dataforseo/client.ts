@@ -123,18 +123,33 @@ async function performJsonRequest(
   } = {}
 ): Promise<{ statusCode: number; data: unknown }> {
   const method = options.method ?? 'POST'
+  const parsedTimeoutMs = Number(process.env.DATAFORSEO_REQUEST_TIMEOUT_MS)
+  const timeoutMs = Number.isFinite(parsedTimeoutMs) && parsedTimeoutMs > 0 ? parsedTimeoutMs : 30000
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    method,
-    headers: {
-      Authorization: getAuthHeader(),
-      'Content-Type': 'application/json',
-    },
-    body: method === 'GET' ? undefined : JSON.stringify(options.body ?? [{}]),
-  })
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method,
+      headers: {
+        Authorization: getAuthHeader(),
+        'Content-Type': 'application/json',
+      },
+      body: method === 'GET' ? undefined : JSON.stringify(options.body ?? [{}]),
+      signal: controller.signal,
+    })
 
-  const payload = (await response.json()) as unknown
-  return { statusCode: response.status, data: payload }
+    const payload = (await response.json()) as unknown
+    return { statusCode: response.status, data: payload }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`DataForSEO request timed out after ${timeoutMs}ms for endpoint: ${endpoint}`)
+    }
+
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 function toApiError(statusCode: number, message: string, code = 'DATAFORSEO_HTTP_ERROR'): ApiError {

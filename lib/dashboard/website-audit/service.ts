@@ -338,7 +338,8 @@ async function runDataforseo(urls: string[], input: RunWebsiteAuditInput): Promi
       `website-audit-dfs-instant-${input.userId}`
     ).catch((error) => {
       dataforseoStatus = 'partial'
-      dataforseoError = error instanceof Error ? error.message : 'on_page_instant_pages failed'
+      const nextError = error instanceof Error ? error.message : 'on_page_instant_pages failed'
+      dataforseoError = dataforseoError ? `${dataforseoError}; ${nextError}` : nextError
       dataforseoIssues.push({ title: 'Instant page metrics unavailable', severity: 'warning' })
       return null
     }),
@@ -348,7 +349,8 @@ async function runDataforseo(urls: string[], input: RunWebsiteAuditInput): Promi
       `website-audit-dfs-content-${input.userId}`
     ).catch((error) => {
       dataforseoStatus = 'partial'
-      dataforseoError = error instanceof Error ? error.message : 'on_page_content_parsing failed'
+      const nextError = error instanceof Error ? error.message : 'on_page_content_parsing failed'
+      dataforseoError = dataforseoError ? `${dataforseoError}; ${nextError}` : nextError
       dataforseoIssues.push({ title: 'Content parsing unavailable', severity: 'info' })
       return null
     }),

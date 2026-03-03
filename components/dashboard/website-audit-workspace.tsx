@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import { AlertTriangle, Loader2, ShieldAlert, TriangleAlert } from 'lucide-react'
+import { AlertTriangle, Loader2, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
@@ -338,7 +338,7 @@ export function WebsiteAuditWorkspace() {
                     </div>
                   ) : (
                     <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
-                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                       <p>No high-severity blockers detected in this snapshot.</p>
                     </div>
                   )}

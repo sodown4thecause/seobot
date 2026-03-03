@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import type { AuditExecutionMeta, AuditResponsePayload, PlatformResult } from '@/lib/audit/types'
@@ -11,6 +12,7 @@ const UUID_REGEX =
 
 interface PersistedAuditRow {
   id: string
+  email?: string | null
   brand_name: string | null
   competitors: unknown
   platform_results: unknown
@@ -86,7 +88,7 @@ export async function GET(
   let queryResult: unknown
   try {
     queryResult = await db.execute(sql`
-      SELECT id, brand_name, competitors, platform_results, public_visibility, created_at
+      SELECT id, email, brand_name, competitors, platform_results, public_visibility, created_at
       FROM ai_visibility_audits
       WHERE id = ${id}
       LIMIT 1
@@ -113,6 +115,34 @@ export async function GET(
       },
       404
     )
+  }
+
+  if ((row.public_visibility || 'unlisted') === 'private') {
+    const user = await currentUser()
+    const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase().trim()
+    const rowEmail = row.email?.toLowerCase().trim()
+
+    if (!userEmail) {
+      return jsonResponse(
+        {
+          ok: false,
+          stage: 'detected',
+          message: 'Unauthorized.',
+        },
+        401
+      )
+    }
+
+    if (!rowEmail || rowEmail !== userEmail) {
+      return jsonResponse(
+        {
+          ok: false,
+          stage: 'detected',
+          message: 'Forbidden.',
+        },
+        403
+      )
+    }
   }
 
   const competitors = asArray<string>(row.competitors)
@@ -144,6 +174,7 @@ export async function GET(
     },
   })
   const topicalMapPayload = buildTopicalMapPayload({
+    brand: row.brand_name || 'Your brand',
     nodes: normalizedTopicalMap.nodes,
     confidence: normalizedTopicalMap.confidence,
     partialData: normalizedTopicalMap.partialData,

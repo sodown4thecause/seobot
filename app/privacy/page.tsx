@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy | FlowIntent',
-  description: 'FlowIntent privacy policy. Learn how we collect, use, and protect your data.',
-}
+export const metadata: Metadata = buildPageMetadata({
+  title: 'FlowIntent Privacy Policy',
+  description: 'Read the FlowIntent privacy policy and how we collect, use, and protect customer data.',
+  path: '/privacy',
+})
 
 export default function PrivacyPage() {
   return (
@@ -168,4 +170,3 @@ export default function PrivacyPage() {
     </div>
   )
 }
-

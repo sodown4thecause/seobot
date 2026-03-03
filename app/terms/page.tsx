@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Terms of Service | FlowIntent',
-  description: 'FlowIntent terms of service. Read our terms and conditions for using the platform.',
-}
+export const metadata: Metadata = buildPageMetadata({
+  title: 'FlowIntent Terms of Service',
+  description: 'Read the terms and conditions for using the FlowIntent platform and services.',
+  path: '/terms',
+})
 
 export default function TermsPage() {
   return (
@@ -193,4 +195,3 @@ export default function TermsPage() {
     </div>
   )
 }
-

@@ -38,7 +38,11 @@ export function AuditForm({ onSubmit, loading }: AuditFormProps) {
         <Button
           className="w-full"
           disabled={loading || !domain || !email}
-          onClick={() => onSubmit({ domain, email })}
+          onClick={() => {
+            void onSubmit({ domain, email }).catch((error) => {
+              console.error('[AuditForm] Submit failed:', error)
+            })
+          }}
         >
           {loading ? 'Detecting your brand...' : 'Audit My AI Visibility'}
         </Button>

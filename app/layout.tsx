@@ -14,6 +14,9 @@ const notoSans = Noto_Sans({
 export const metadata: Metadata = {
   title: "Intent-Based Marketing & AI SEO Platform | FlowIntent",
   description: "FlowIntent is the AI-powered intent marketing platform for answer engine optimization (AEO). Optimize for Google, ChatGPT, Perplexity & Gemini. AI Trust Audits, buyer intent data analysis, and automated content creation. Free trial.",
+  alternates: {
+    canonical: 'https://flowintent.com',
+  },
   keywords: [
     "intent based marketing",
     "answer engine optimization",
@@ -205,4 +208,3 @@ export default function RootLayout({
     </>
   );
 }
-

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import type { AuditConversionEvent, AuditConvertPayload } from '@/lib/audit/types'
@@ -38,6 +39,16 @@ function isValidPayload(payload: unknown): payload is AuditConvertPayload {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await currentUser()
+  if (!user) {
+    return NextResponse.json({ ok: false, message: 'Authentication required.' }, { status: 401 })
+  }
+
+  const userEmail = user.primaryEmailAddress?.emailAddress?.toLowerCase().trim()
+  if (!userEmail) {
+    return NextResponse.json({ ok: false, message: 'Unable to verify account email.' }, { status: 403 })
+  }
+
   let payload: unknown
 
   try {
@@ -56,7 +67,12 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const existingAudit = await db.execute(sql`SELECT id FROM ai_visibility_audits WHERE id = ${payload.auditId} LIMIT 1`)
+  const existingAudit = await db.execute(sql`
+    SELECT id
+    FROM ai_visibility_audits
+    WHERE id = ${payload.auditId} AND lower(email) = ${userEmail}
+    LIMIT 1
+  `)
   if (toRows(existingAudit).length === 0) {
     return NextResponse.json({ ok: false, message: 'Audit not found.' }, { status: 404 })
   }
@@ -64,7 +80,7 @@ export async function POST(request: NextRequest) {
   await db.execute(sql`
     UPDATE ai_visibility_audits
     SET converted = true, updated_at = NOW()
-    WHERE id = ${payload.auditId} AND converted = false
+    WHERE id = ${payload.auditId} AND lower(email) = ${userEmail} AND converted = false
   `)
 
   return NextResponse.json({ ok: true })

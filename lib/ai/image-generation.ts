@@ -223,6 +223,7 @@ export async function generateImageWithGatewayGemini(
     body: JSON.stringify({
       prompt: params.prompt,
       size: params.size || '1024x1024',
+      n: params.n,
     }),
   })
 

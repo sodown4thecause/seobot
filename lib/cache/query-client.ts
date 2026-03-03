@@ -1,16 +1,18 @@
 import { QueryClient } from '@tanstack/react-query'
 
-export const dashboardQueryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 60,
-      retry: 2,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
+export function createDashboardQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 60,
+        retry: 2,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
+      },
     },
-  },
-})
+  })
+}
 
 export function getStaleTimeForDataType(dataType: string): number {
   switch (dataType) {

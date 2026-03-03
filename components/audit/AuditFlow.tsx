@@ -116,7 +116,6 @@ export function AuditFlow() {
     }
 
     setLoading(true)
-    setRunPhase('detecting')
     setError(null)
 
     try {
@@ -177,6 +176,7 @@ export function AuditFlow() {
       })
     } finally {
       setLoading(false)
+      setRunPhase('idle')
     }
   }
 

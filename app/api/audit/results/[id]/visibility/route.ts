@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import type { AuditVisibilityState } from '@/lib/audit/types'
@@ -28,6 +29,16 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const { id } = await context.params
+  const user = await currentUser()
+
+  if (!user) {
+    return NextResponse.json({ ok: false, message: 'Authentication required.' }, { status: 401 })
+  }
+
+  const userEmail = user.primaryEmailAddress?.emailAddress?.toLowerCase().trim()
+  if (!userEmail) {
+    return NextResponse.json({ ok: false, message: 'Unable to verify account email.' }, { status: 403 })
+  }
 
   if (!UUID_REGEX.test(id)) {
     return NextResponse.json({ ok: false, message: 'Invalid audit id format.' }, { status: 400 })
@@ -44,7 +55,7 @@ export async function PATCH(
     const result = await db.execute(sql`
       UPDATE ai_visibility_audits
       SET public_visibility = ${visibility}, updated_at = NOW()
-      WHERE id = ${id}
+      WHERE id = ${id} AND lower(email) = ${userEmail}
       RETURNING id, public_visibility
     `)
 

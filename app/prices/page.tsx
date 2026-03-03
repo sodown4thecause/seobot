@@ -2,13 +2,15 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Pricing - AI SEO & Answer Engine Optimization Platform | FlowIntent',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'FlowIntent Pricing | AI SEO & AEO Platform',
   description:
-    'FlowIntent Pro: $39/month with 1 month free trial. AI Trust Audits, answer engine optimization, buyer intent data analysis, and automated content creation for Google & AI search engines.',
+    'See FlowIntent pricing for AI SEO and AEO: AI Trust Audits, intent analysis, and content workflows for Google and AI search.',
+  path: '/prices',
   keywords: ['AI SEO pricing', 'AEO platform pricing', 'FlowIntent pricing', 'SEO tool pricing'],
-}
+})
 
 export default function PricesPage() {
   const pricingFaqs = [

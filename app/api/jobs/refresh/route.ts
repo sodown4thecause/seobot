@@ -40,8 +40,20 @@ export async function POST(request: Request) {
 
   const jobType = body.jobType ?? 'full-refresh'
 
-  await invalidateDashboardCache(userId)
-  await sendRefreshRequest(userId, websiteUrl, jobType, body.competitorUrls)
+  try {
+    await sendRefreshRequest(userId, websiteUrl, jobType, body.competitorUrls)
+  } catch (error) {
+    console.error('[Jobs Refresh] Failed to enqueue refresh request:', error)
+    return NextResponse.json({ error: 'Failed to start refresh job' }, { status: 500 })
+  }
 
-  return NextResponse.json({ ok: true, invalidatedCache: true })
+  let invalidatedCache = true
+  try {
+    await invalidateDashboardCache(userId)
+  } catch (error) {
+    invalidatedCache = false
+    console.warn('[Jobs Refresh] Cache invalidation skipped after enqueue:', error)
+  }
+
+  return NextResponse.json({ ok: true, invalidatedCache })
 }

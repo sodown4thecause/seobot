@@ -74,7 +74,7 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_clerk_id_unique" UNIQUE("clerk_id")
 );
 --> statement-breakpoint
-ALTER TABLE "ai_usage_events" ALTER COLUMN "metadata" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "api_usage_events" ALTER COLUMN "metadata" DROP NOT NULL;--> statement-breakpoint
 ALTER TABLE "user_roadmap_progress" ALTER COLUMN "discovery_metadata" DROP NOT NULL;--> statement-breakpoint
 ALTER TABLE "user_roadmap_progress" ALTER COLUMN "gap_analysis_metadata" DROP NOT NULL;--> statement-breakpoint
 ALTER TABLE "user_roadmap_progress" ALTER COLUMN "strategy_metadata" DROP NOT NULL;--> statement-breakpoint
@@ -92,7 +92,6 @@ CREATE INDEX "idx_job_history_user_created" ON "job_history" USING btree ("user_
 CREATE INDEX "idx_refresh_jobs_user_status" ON "refresh_jobs" USING btree ("user_id","status");--> statement-breakpoint
 CREATE INDEX "idx_refresh_jobs_started_at" ON "refresh_jobs" USING btree ("started_at");--> statement-breakpoint
 CREATE INDEX "idx_refresh_jobs_status" ON "refresh_jobs" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_users_clerk_id" ON "users" USING btree ("clerk_id");--> statement-breakpoint
 CREATE INDEX "idx_users_email" ON "users" USING btree ("email");--> statement-breakpoint
 CREATE INDEX "idx_users_polar_sub_id" ON "users" USING btree ("polar_subscription_id");--> statement-breakpoint
 ALTER TABLE "user_roadmap_progress" ADD CONSTRAINT "user_roadmap_progress_user_id_unique" UNIQUE("user_id");
