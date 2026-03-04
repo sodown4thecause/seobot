@@ -188,13 +188,13 @@ export function BacklinkProfileWorkspace() {
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Domain Rank</CardDescription>
-            <CardTitle className="text-3xl text-zinc-100">{summary ? summary.domainRank : '--'}</CardTitle>
+            <CardTitle className="text-3xl text-zinc-100">{summary ? asNumber(summary.domainRank) : '--'}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Spam Score</CardDescription>
-            <CardTitle className="text-3xl text-zinc-100">{summary ? summary.spamScore : '--'}</CardTitle>
+            <CardTitle className="text-3xl text-zinc-100">{summary ? asNumber(summary.spamScore) : '--'}</CardTitle>
           </CardHeader>
         </Card>
       </div>
