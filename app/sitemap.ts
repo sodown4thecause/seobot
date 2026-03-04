@@ -85,6 +85,13 @@ const STATIC_PUBLIC_ROUTES: Array<{
 
 // Fetch published slugs from Sanity for sitemap-safe URLs only
 async function getSanitySlugs(type: SanityContentRoute['type']): Promise<SanitySlug[]> {
+  const sanityProjectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
+  const sanityDataset = process.env.NEXT_PUBLIC_SANITY_DATASET
+
+  if (!sanityProjectId || !sanityDataset) {
+    return []
+  }
+
   try {
     const sanityClient = await getSanityClient()
     if (!sanityClient) {
