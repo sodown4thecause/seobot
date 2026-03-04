@@ -1,5 +1,4 @@
 import type { MetadataRoute } from 'next'
-import { client } from '@/sanity/lib/client'
 import { SITE_URL } from '@/lib/seo/site'
 
 const baseUrl = SITE_URL
@@ -17,6 +16,39 @@ type SanitySlug = {
   slug: string
   publishedAt?: string
   updatedAt?: string
+}
+
+type SanityClientLike = {
+  fetch<T>(query: string, params: Record<string, unknown>, options: Record<string, unknown>): Promise<T>
+}
+
+function getSanityConfig(): { projectId: string; dataset: string; apiVersion: string } | null {
+  const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim()
+  if (!projectId) {
+    return null
+  }
+
+  const configuredDataset = process.env.NEXT_PUBLIC_SANITY_DATASET
+  const dataset = configuredDataset === 'preview' ? 'production' : configuredDataset || 'production'
+
+  return {
+    projectId,
+    dataset,
+    apiVersion: process.env.NEXT_PUBLIC_SANITY_API_VERSION || '2026-01-02',
+  }
+}
+
+async function getSanityClient(): Promise<SanityClientLike | null> {
+  const config = getSanityConfig()
+  if (!config) {
+    return null
+  }
+
+  const { createClient } = await import('next-sanity')
+  return createClient({
+    ...config,
+    useCdn: false,
+  })
 }
 
 const SANITY_CONTENT_ROUTES: SanityContentRoute[] = [
@@ -54,7 +86,12 @@ const STATIC_PUBLIC_ROUTES: Array<{
 // Fetch published slugs from Sanity for sitemap-safe URLs only
 async function getSanitySlugs(type: SanityContentRoute['type']): Promise<SanitySlug[]> {
   try {
-    const results = await client.fetch<SanitySlug[]>(
+    const sanityClient = await getSanityClient()
+    if (!sanityClient) {
+      return []
+    }
+
+    const results = await sanityClient.fetch<SanitySlug[]>(
       `*[
         _type == $type &&
         defined(slug.current) &&

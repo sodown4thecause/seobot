@@ -159,9 +159,9 @@ export function RankTrackerWorkspace() {
 
   const keywords = snapshot?.keywords ?? []
   const trackedKeywords = snapshot?.summary.trackedKeywords ?? 0
-  const top3Count = keywords.filter((keyword) => keyword.currentPosition <= 3).length
-  const top10Count = keywords.filter((keyword) => keyword.currentPosition <= 10).length
-  const top20Count = keywords.filter((keyword) => keyword.currentPosition <= 20).length
+  const top3Count = keywords.filter((keyword) => keyword.currentPosition > 0 && keyword.currentPosition <= 3).length
+  const top10Count = keywords.filter((keyword) => keyword.currentPosition > 0 && keyword.currentPosition <= 10).length
+  const top20Count = keywords.filter((keyword) => keyword.currentPosition > 0 && keyword.currentPosition <= 20).length
   const top10Coverage = trackedKeywords > 0 ? Math.round((top10Count / trackedKeywords) * 100) : 0
 
   const movementChartData = useMemo(
@@ -183,19 +183,19 @@ export function RankTrackerWorkspace() {
     }
 
     keywords.forEach((keyword) => {
-      if (keyword.currentPosition <= 3) {
+      if (keyword.currentPosition > 0 && keyword.currentPosition <= 3) {
         ranges['1-3'] += 1
         return
       }
-      if (keyword.currentPosition <= 10) {
+      if (keyword.currentPosition > 0 && keyword.currentPosition <= 10) {
         ranges['4-10'] += 1
         return
       }
-      if (keyword.currentPosition <= 20) {
+      if (keyword.currentPosition > 0 && keyword.currentPosition <= 20) {
         ranges['11-20'] += 1
         return
       }
-      if (keyword.currentPosition <= 50) {
+      if (keyword.currentPosition > 0 && keyword.currentPosition <= 50) {
         ranges['21-50'] += 1
         return
       }

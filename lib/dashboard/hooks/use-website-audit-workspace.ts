@@ -20,10 +20,7 @@ export function useWebsiteAuditWorkspace() {
     queryKey: ['dashboard', 'website-audit', activeJobId],
     queryFn: () => getWebsiteAuditJob(activeJobId as string),
     enabled: Boolean(activeJobId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.status
-      return status === 'completed' ? false : 5_000
-    },
+    refetchInterval: 5_000,
     retry: 1,
   })
 

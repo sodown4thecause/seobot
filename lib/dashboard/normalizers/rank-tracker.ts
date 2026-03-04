@@ -151,13 +151,10 @@ export function normalizeRankTrackerPayload(input: unknown): NormalizedRankTrack
   const unchanged = keywords.filter((keyword) => keyword.change === 0)
 
   const trackedKeywords = keywords.length
-  const rankedKeywords = keywords.filter((keyword) => keyword.currentPosition > 0)
   const averagePosition =
-    rankedKeywords.length === 0
+    trackedKeywords === 0
       ? 0
-      : Number(
-          (rankedKeywords.reduce((total, keyword) => total + keyword.currentPosition, 0) / rankedKeywords.length).toFixed(2)
-        )
+      : Number((keywords.reduce((total, keyword) => total + keyword.currentPosition, 0) / trackedKeywords).toFixed(2))
 
   const topTenCount = keywords.filter((keyword) => keyword.currentPosition > 0 && keyword.currentPosition <= 10).length
   const visibility = trackedKeywords === 0 ? 0 : Number(((topTenCount / trackedKeywords) * 100).toFixed(2))

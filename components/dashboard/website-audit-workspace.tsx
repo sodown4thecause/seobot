@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import { AlertTriangle, Loader2, ShieldAlert, TriangleAlert } from 'lucide-react'
+import { AlertTriangle, Loader2, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
@@ -102,8 +102,6 @@ export function WebsiteAuditWorkspace() {
   const criticalCount = snapshot?.summary.issuesBySeverity.critical ?? 0
   const warningCount = snapshot?.summary.issuesBySeverity.warning ?? 0
   const infoCount = snapshot?.summary.issuesBySeverity.info ?? 0
-  const criticalDisplay = summary ? String(criticalCount) : '--'
-  const warningDisplay = summary ? String(warningCount) : '--'
 
   const severityData = useMemo(
     () => [
@@ -243,13 +241,13 @@ export function WebsiteAuditWorkspace() {
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Critical</CardDescription>
-            <CardTitle className="text-3xl text-red-300">{criticalDisplay}</CardTitle>
+            <CardTitle className="text-3xl text-red-300">{criticalCount}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Warnings</CardDescription>
-            <CardTitle className="text-3xl text-amber-300">{warningDisplay}</CardTitle>
+            <CardTitle className="text-3xl text-amber-300">{warningCount}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -275,7 +273,7 @@ export function WebsiteAuditWorkspace() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="command-center" className="space-y-4">
+            <TabsContent value="command-center" forceMount className="space-y-4">
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-black/20 p-4">
                   <p className="mb-3 text-sm font-medium text-zinc-200">Severity Distribution</p>
@@ -340,7 +338,7 @@ export function WebsiteAuditWorkspace() {
                     </div>
                   ) : (
                     <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
-                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                       <p>No high-severity blockers detected in this snapshot.</p>
                     </div>
                   )}
@@ -378,7 +376,7 @@ export function WebsiteAuditWorkspace() {
               </div>
             </TabsContent>
 
-            <TabsContent value="issue-queue" className="space-y-4">
+            <TabsContent value="issue-queue" forceMount className="space-y-4">
               <div className="rounded-xl border border-white/10 bg-black/20 p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-medium text-zinc-200">Issue Queue</p>
@@ -472,7 +470,7 @@ export function WebsiteAuditWorkspace() {
               </div>
             </TabsContent>
 
-            <TabsContent value="provider-comparison" className="space-y-4">
+            <TabsContent value="provider-comparison" forceMount className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 {providerData.map((provider) => (
                   <div key={provider.provider} className="rounded-xl border border-white/10 bg-black/20 p-4">

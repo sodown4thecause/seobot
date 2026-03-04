@@ -40,7 +40,7 @@ export interface ListDashboardHistoryInput {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  return typeof value === 'object' && value !== null
 }
 
 function toIsoString(value: Date): string {
