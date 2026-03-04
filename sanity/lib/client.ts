@@ -2,15 +2,14 @@ import { createClient } from 'next-sanity'
 
 import { apiVersion, dataset, hasSanityConfig, projectId } from '../env'
 
-const SANITY_CONFIG_ERROR = 'Sanity is not configured. Set NEXT_PUBLIC_SANITY_PROJECT_ID.'
-
 type SanityClient = ReturnType<typeof createClient>
 
-const unavailableClient = new Proxy({} as object, {
-  get() {
-    throw new Error(SANITY_CONFIG_ERROR)
+const unavailableClient = {
+  async fetch<T>(query: string): Promise<T> {
+    const defaultValue = query.includes('[0]') ? null : []
+    return defaultValue as T
   },
-}) as unknown as SanityClient
+} as unknown as SanityClient
 
 export const client: SanityClient = hasSanityConfig
   ? createClient({
