@@ -174,29 +174,31 @@ export function KeywordOpportunitiesWorkspace() {
     return result.type === 'comparison' ? result.data.target : result.data
   }, [result])
 
-  const opportunityRows = useMemo(() => {
+  const allOpportunityRows = useMemo(() => {
     if (!result) return []
 
-    const normalizedRows = buildOpportunityRows(result)
+    return buildOpportunityRows(result)
       .filter((row) => row.keyword)
       .sort((left, right) => right.searchVolume - left.searchVolume)
+  }, [result])
 
+  const filteredOpportunityRows = useMemo(() => {
     const query = search.trim().toLowerCase()
     if (!query) {
-      return normalizedRows
+      return allOpportunityRows
     }
 
-    return normalizedRows.filter((row) => row.keyword.toLowerCase().includes(query))
-  }, [result, search])
+    return allOpportunityRows.filter((row) => row.keyword.toLowerCase().includes(query))
+  }, [allOpportunityRows, search])
 
   const chartData = useMemo(
     () =>
-      opportunityRows.slice(0, 10).map((row) => ({
+      allOpportunityRows.slice(0, 10).map((row) => ({
         keyword: row.keyword,
         volume: row.searchVolume,
         difficulty: row.difficulty,
       })),
-    [opportunityRows]
+    [allOpportunityRows]
   )
 
   const competitorRows = useMemo(() => {
@@ -322,7 +324,7 @@ export function KeywordOpportunitiesWorkspace() {
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Opportunity Queue</CardDescription>
-            <CardTitle className="text-3xl text-zinc-100">{opportunityRows.length || '--'}</CardTitle>
+            <CardTitle className="text-3xl text-zinc-100">{result ? allOpportunityRows.length : '--'}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -366,7 +368,7 @@ export function KeywordOpportunitiesWorkspace() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {opportunityRows.slice(0, 120).map((row) => (
+                  {filteredOpportunityRows.slice(0, 120).map((row) => (
                     <TableRow key={`${row.keyword}-${row.bucket}`}>
                       <TableCell className="text-zinc-200">{row.keyword}</TableCell>
                       <TableCell>
@@ -379,7 +381,7 @@ export function KeywordOpportunitiesWorkspace() {
                       <TableCell className="text-right text-zinc-300">{row.difficulty}</TableCell>
                     </TableRow>
                   ))}
-                  {opportunityRows.length === 0 ? (
+                  {filteredOpportunityRows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-zinc-500">
                         {result ? 'No opportunities match the current filter.' : 'Run an analysis to load opportunities.'}
