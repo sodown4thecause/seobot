@@ -7,15 +7,5 @@ export const dataset = configuredDataset === 'preview'
   ? 'production'
   : configuredDataset || 'production'
 
-export const projectId = assertValue(
-  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
-  'Missing environment variable: NEXT_PUBLIC_SANITY_PROJECT_ID'
-)
-
-function assertValue<T>(v: T | undefined, errorMessage: string): T {
-  if (v === undefined) {
-    throw new Error(errorMessage)
-  }
-
-  return v
-}
+export const hasSanityProjectId = Boolean(process.env.NEXT_PUBLIC_SANITY_PROJECT_ID)
+export const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'missing-project-id'
