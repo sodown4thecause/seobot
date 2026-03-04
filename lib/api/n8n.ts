@@ -39,14 +39,14 @@ export interface BacklinkItem {
 /**
  * Get the base URL for n8n webhooks
  */
-function getWebhookBaseUrl(): string {
+export function getWebhookBaseUrl(): string {
   return serverEnv.N8N_BACKLINKS_WEBHOOK_URL || `${DEFAULT_WEBHOOK_BASE_URL}/domain`
 }
 
 /**
  * Build the full webhook URL for a given endpoint
  */
-function buildWebhookUrl(endpoint: N8nWebhookEndpoint, params?: Record<string, string>): string {
+export function buildWebhookUrl(endpoint: N8nWebhookEndpoint, params?: Record<string, string>): string {
   // For the backlinks endpoint, we use the configured webhook URL directly
   if (endpoint === 'backlinks' || endpoint === 'domain') {
     const baseUrl = getWebhookBaseUrl()

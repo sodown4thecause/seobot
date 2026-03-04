@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { requireUserId } from '@/lib/auth/clerk'
-import { serverEnv } from '@/lib/config/env'
+import { callN8nWebhook } from '@/lib/api/n8n'
 
 export const runtime = 'nodejs'
 
@@ -114,6 +114,10 @@ function normalizeDomainInput(value: string): string {
 
 function toNumber(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+function toNumberOrUndefined(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
 function toStringValue(value: unknown): string {
@@ -264,12 +268,17 @@ function normalizeBacklink(item: BacklinkItemRecord): BacklinkResponseItem {
     targetUrl,
     type: resolvedType,
     domainRank:
-      toNumber(item.domain_from_rank) ||
-      toNumber(item.domainRank) ||
-      toNumber(item.domain_authority) ||
-      toNumber(item.authority) ||
-      toNumber(item.da),
-    spamScore: toNumber(item.backlink_spam_score) || toNumber(item.spam_score) || toNumber(item.spamScore),
+      toNumberOrUndefined(item.domain_from_rank) ??
+      toNumberOrUndefined(item.domainRank) ??
+      toNumberOrUndefined(item.domain_authority) ??
+      toNumberOrUndefined(item.authority) ??
+      toNumberOrUndefined(item.da) ??
+      0,
+    spamScore:
+      toNumberOrUndefined(item.backlink_spam_score) ??
+      toNumberOrUndefined(item.spam_score) ??
+      toNumberOrUndefined(item.spamScore) ??
+      0,
     firstSeen,
     lastSeen,
     isNew: toBoolean(item.is_new) || toBoolean(item.isNew),
@@ -282,10 +291,19 @@ function getSummaryValue(payload: BacklinksPayloadLike | null, key: keyof Backli
   return toNumber(payload[key])
 }
 
+function getSummaryValueOrUndefined(payload: BacklinksPayloadLike | null, key: keyof BacklinksPayloadLike): number | undefined {
+  if (!payload) return undefined
+  return toNumberOrUndefined(payload[key])
+}
+
 export async function POST(request: NextRequest) {
   try {
     await requireUserId()
+  } catch {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
 
+  try {
     let body: unknown
     try {
       body = await request.json()
@@ -305,31 +323,18 @@ export async function POST(request: NextRequest) {
 
     const limit = parsed.data.limit ?? 100
 
-    const baseUrl = serverEnv.N8N_BACKLINKS_WEBHOOK_URL || 'https://zuded9wg.rcld.app/webhook/domain'
-    const webhookUrl = `${baseUrl}?domain=${encodeURIComponent(domain)}`
-
-    const webhookResponse = await fetch(webhookUrl, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    })
-
-    if (!webhookResponse.ok) {
-      const bodyText = await webhookResponse.text().catch(() => '')
+    const webhookResponse = await callN8nWebhook('domain', { domain })
+    if (!webhookResponse.success) {
       return NextResponse.json(
         {
-          error: `Webhook request failed (${webhookResponse.status})`,
-          details: bodyText || webhookResponse.statusText,
+          error: webhookResponse.error || 'Webhook request failed',
+          details: webhookResponse.errorMessage,
         },
         { status: 502 }
       )
     }
 
-    let webhookPayload: unknown
-    try {
-      webhookPayload = await webhookResponse.json()
-    } catch {
-      return NextResponse.json({ error: 'Webhook returned invalid JSON' }, { status: 502 })
-    }
+    const webhookPayload = webhookResponse.data
 
     const payloadLike = isRecord(webhookPayload) ? (webhookPayload as BacklinksPayloadLike) : null
     const providerStatusCode = getSummaryValue(payloadLike, 'status_code')
@@ -351,32 +356,33 @@ export async function POST(request: NextRequest) {
 
     const referringDomains = buildReferringDomains(backlinks)
     const totalBacklinksCandidate =
-      getSummaryValue(payloadLike, 'total_backlinks') ||
-      getSummaryValue(payloadLike, 'backlinks_count') ||
-      getSummaryValue(payloadLike, 'backlinksCount')
+      getSummaryValueOrUndefined(payloadLike, 'total_backlinks') ??
+      getSummaryValueOrUndefined(payloadLike, 'backlinks_count') ??
+      getSummaryValueOrUndefined(payloadLike, 'backlinksCount')
 
     const referringDomainsCandidate =
-      getSummaryValue(payloadLike, 'referring_domains_count') ||
-      getSummaryValue(payloadLike, 'referringDomainsCount') ||
-      getSummaryValue(payloadLike, 'ref_domains_count')
+      getSummaryValueOrUndefined(payloadLike, 'referring_domains_count') ??
+      getSummaryValueOrUndefined(payloadLike, 'referringDomainsCount') ??
+      getSummaryValueOrUndefined(payloadLike, 'ref_domains_count')
 
-    const domainRankCandidate = getSummaryValue(payloadLike, 'domain_rank') || getSummaryValue(payloadLike, 'domainRank')
+    const domainRankCandidate =
+      getSummaryValueOrUndefined(payloadLike, 'domain_rank') ?? getSummaryValueOrUndefined(payloadLike, 'domainRank')
     const spamScoreCandidate =
-      getSummaryValue(payloadLike, 'backlinks_spam_score') ||
-      getSummaryValue(payloadLike, 'spam_score') ||
-      getSummaryValue(payloadLike, 'spamScore')
+      getSummaryValueOrUndefined(payloadLike, 'backlinks_spam_score') ??
+      getSummaryValueOrUndefined(payloadLike, 'spam_score') ??
+      getSummaryValueOrUndefined(payloadLike, 'spamScore')
 
     return NextResponse.json({
       success: true,
       domain,
-      totalBacklinks: totalBacklinksCandidate || rawBacklinks.length,
+      totalBacklinks: totalBacklinksCandidate ?? rawBacklinks.length,
       backlinks,
       referringDomains,
       summary: {
-        domainRank: domainRankCandidate,
-        backlinks: totalBacklinksCandidate || rawBacklinks.length,
-        referringDomains: referringDomainsCandidate || referringDomains.length,
-        spamScore: spamScoreCandidate,
+        domainRank: domainRankCandidate ?? 0,
+        backlinks: totalBacklinksCandidate ?? rawBacklinks.length,
+        referringDomains: referringDomainsCandidate ?? referringDomains.length,
+        spamScore: spamScoreCandidate ?? 0,
       },
       providerStatus: {
         webhook: 'ok',

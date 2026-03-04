@@ -172,13 +172,17 @@ export function BacklinkProfileWorkspace() {
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Total Backlinks</CardDescription>
-            <CardTitle className="text-3xl text-zinc-100">{summary ? summary.backlinks.toLocaleString() : '--'}</CardTitle>
+            <CardTitle className="text-3xl text-zinc-100">
+              {summary ? asNumber(summary.backlinks).toLocaleString() : '--'}
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Referring Domains</CardDescription>
-            <CardTitle className="text-3xl text-zinc-100">{summary ? summary.referringDomains.toLocaleString() : '--'}</CardTitle>
+            <CardTitle className="text-3xl text-zinc-100">
+              {summary ? asNumber(summary.referringDomains).toLocaleString() : '--'}
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card className="glass-card border-none bg-black/30">
