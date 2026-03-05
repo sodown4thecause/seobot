@@ -66,15 +66,15 @@ function competitorSignal(row: CompetitorRow): 'up' | 'down' | 'new' | 'flat' {
   return 'flat'
 }
 
-function signalBadge(signal: ReturnType<typeof competitorSignal>): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
+function signalBadge(signal: ReturnType<typeof competitorSignal>): { label: string; variant: 'outline'; className?: string } {
   if (signal === 'new') {
-    return { label: 'New', variant: 'secondary' }
+    return { label: 'New', variant: 'outline', className: 'border-zinc-500 bg-zinc-700/60 text-zinc-100' }
   }
   if (signal === 'up') {
-    return { label: 'Gaining', variant: 'default' }
+    return { label: 'Gaining', variant: 'outline', className: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' }
   }
   if (signal === 'down') {
-    return { label: 'Losing', variant: 'destructive' }
+    return { label: 'Losing', variant: 'outline', className: 'border-zinc-600 bg-zinc-800/60 text-zinc-200' }
   }
   return { label: 'Stable', variant: 'outline' }
 }
@@ -189,11 +189,15 @@ export function CompetitorMonitorWorkspace() {
               min={1}
               max={25}
             />
-            <Button type="submit" disabled={isLoading} className="md:col-span-1">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="md:col-span-1 bg-emerald-700 text-white hover:bg-emerald-600"
+            >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run monitor'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+          {error ? <p className="mt-3 text-sm text-zinc-300">{error}</p> : null}
         </CardContent>
       </Card>
 
@@ -279,7 +283,7 @@ export function CompetitorMonitorWorkspace() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={signalDisplay.variant}>
+                          <Badge variant={signalDisplay.variant} className={signalDisplay.className}>
                             {signalDisplay.label}
                           </Badge>
                         </TableCell>
@@ -313,7 +317,7 @@ export function CompetitorMonitorWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="traffic" radius={[8, 8, 0, 0]}>
                           {chartData.map((entry) => (
-                            <Cell key={entry.domain} fill="#22d3ee" />
+                            <Cell key={entry.domain} fill="#10b981" />
                           ))}
                         </Bar>
                       </BarChart>
@@ -332,7 +336,7 @@ export function CompetitorMonitorWorkspace() {
                         <div key={`signal-${row.domain}`} className="rounded-lg border border-white/10 bg-black/30 px-3 py-2">
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-sm text-zinc-200">{row.domain}</p>
-                            <Badge variant={signalDisplay.variant}>{signalDisplay.label}</Badge>
+                            <Badge variant={signalDisplay.variant} className={signalDisplay.className}>{signalDisplay.label}</Badge>
                           </div>
                           <p className="mt-1 text-xs text-zinc-500">
                             Traffic {asPositiveNumber(row.monthly_traffic).toLocaleString()} • Shared keywords {asPositiveNumber(row.shared_keywords).toLocaleString()}
@@ -360,7 +364,7 @@ export function CompetitorMonitorWorkspace() {
                       <ArrowUpRight className="h-3.5 w-3.5 text-emerald-300" /> Upward momentum
                     </div>
                     <div className="inline-flex items-center gap-1">
-                      <ArrowDownRight className="h-3.5 w-3.5 text-red-300" /> Downward momentum
+                      <ArrowDownRight className="h-3.5 w-3.5 text-zinc-400" /> Downward momentum
                     </div>
                   </div>
                 </div>

@@ -294,11 +294,15 @@ export function KeywordOpportunitiesWorkspace() {
               min={50}
               max={1000}
             />
-            <Button type="submit" disabled={isLoading} className="md:col-span-1">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="md:col-span-1 bg-emerald-700 text-white hover:bg-emerald-600"
+            >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Find opportunities'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+          {error ? <p className="mt-3 text-sm text-zinc-300">{error}</p> : null}
         </CardContent>
       </Card>
 
@@ -405,7 +409,7 @@ export function KeywordOpportunitiesWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="volume" radius={[8, 8, 0, 0]}>
                           {chartData.map((entry) => (
-                            <Cell key={entry.keyword} fill="#a855f7" />
+                            <Cell key={entry.keyword} fill="#10b981" />
                           ))}
                         </Bar>
                       </BarChart>

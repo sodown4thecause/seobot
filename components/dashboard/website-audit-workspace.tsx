@@ -35,31 +35,19 @@ const STATUS_SCORES: Record<ProviderStatus, number> = {
 
 const STATUS_COLORS: Record<ProviderStatus, string> = {
   ok: '#10b981',
-  partial: '#f59e0b',
-  failed: '#ef4444',
+  partial: '#52525b',
+  failed: '#3f3f46',
 }
 
 type SeverityFilter = 'all' | WebsiteAuditIssueSeverity
 type ProviderFilter = 'all' | WebsiteAuditProviderName
 
-function severityBadgeVariant(severity: WebsiteAuditIssueSeverity): 'default' | 'secondary' | 'destructive' | 'outline' {
-  if (severity === 'critical') {
-    return 'destructive'
-  }
-  if (severity === 'warning') {
-    return 'secondary'
-  }
+function severityBadgeVariant(_severity: WebsiteAuditIssueSeverity): 'outline' {
   return 'outline'
 }
 
-function statusBadgeVariant(status: ProviderStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
-  if (status === 'ok') {
-    return 'default'
-  }
-  if (status === 'partial') {
-    return 'secondary'
-  }
-  return 'destructive'
+function statusBadgeVariant(_status: ProviderStatus): 'outline' {
+  return 'outline'
 }
 
 function severityWeight(severity: WebsiteAuditIssueSeverity): number {
@@ -105,9 +93,9 @@ export function WebsiteAuditWorkspace() {
 
   const severityData = useMemo(
     () => [
-      { severity: 'Critical', count: criticalCount, fill: '#ef4444' },
-      { severity: 'Warning', count: warningCount, fill: '#f59e0b' },
-      { severity: 'Info', count: infoCount, fill: '#38bdf8' },
+      { severity: 'Critical', count: criticalCount, fill: '#3f3f46' },
+      { severity: 'Warning', count: warningCount, fill: '#52525b' },
+      { severity: 'Info', count: infoCount, fill: '#10b981' },
     ],
     [criticalCount, infoCount, warningCount]
   )
@@ -215,13 +203,15 @@ export function WebsiteAuditWorkspace() {
               />
               Include Jina screenshot capture
             </label>
-            <Button type="submit" disabled={runMutation.isPending} className="md:col-span-1">
+            <Button
+              type="submit"
+              disabled={runMutation.isPending}
+              className="md:col-span-1 bg-emerald-700 text-white hover:bg-emerald-600"
+            >
               {runMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run audit'}
             </Button>
           </form>
-          {runMutation.error ? (
-            <p className="mt-3 text-sm text-red-300">{runMutation.error.message}</p>
-          ) : null}
+          {runMutation.error ? <p className="mt-3 text-sm text-zinc-300">{runMutation.error.message}</p> : null}
         </CardContent>
       </Card>
 
@@ -241,13 +231,13 @@ export function WebsiteAuditWorkspace() {
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Critical</CardDescription>
-            <CardTitle className="text-3xl text-red-300">{criticalCount}</CardTitle>
+            <CardTitle className="text-3xl text-zinc-100">{criticalCount}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Warnings</CardDescription>
-            <CardTitle className="text-3xl text-amber-300">{warningCount}</CardTitle>
+            <CardTitle className="text-3xl text-zinc-100">{warningCount}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -327,12 +317,12 @@ export function WebsiteAuditWorkspace() {
                   </div>
 
                   {criticalCount > 0 ? (
-                    <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                    <div className="flex items-start gap-2 rounded-lg border border-zinc-600/60 bg-zinc-800/50 p-3 text-sm text-zinc-200">
                       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
                       <p>Resolve critical issues first to unblock indexing reliability and ranking velocity.</p>
                     </div>
                   ) : warningCount > 0 ? (
-                    <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                    <div className="flex items-start gap-2 rounded-lg border border-zinc-600/60 bg-zinc-800/40 p-3 text-sm text-zinc-200">
                       <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
                       <p>Warnings are medium-impact opportunities worth scheduling this sprint.</p>
                     </div>
@@ -364,7 +354,18 @@ export function WebsiteAuditWorkspace() {
                       >
                         <p className="text-sm text-zinc-200">{issue.title}</p>
                         <div className="flex items-center gap-2">
-                          <Badge variant={severityBadgeVariant(issue.severity)}>{issue.severity}</Badge>
+                          <Badge
+                            variant={severityBadgeVariant(issue.severity)}
+                            className={
+                              issue.severity === 'info'
+                                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                                : issue.severity === 'warning'
+                                  ? 'border-zinc-600 bg-zinc-800/60 text-zinc-200'
+                                  : 'border-zinc-500 bg-zinc-700/60 text-zinc-100'
+                            }
+                          >
+                            {issue.severity}
+                          </Badge>
                           <Badge variant="outline" className="border-white/10 text-zinc-300">
                             {PROVIDER_LABELS[issue.sourceProvider]}
                           </Badge>
@@ -400,6 +401,11 @@ export function WebsiteAuditWorkspace() {
                         type="button"
                         size="sm"
                         variant={severityFilter === value ? 'default' : 'outline'}
+                        className={
+                          severityFilter === value
+                            ? 'bg-emerald-700 text-white hover:bg-emerald-600'
+                            : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                        }
                         onClick={() => setSeverityFilter(value)}
                       >
                         {value}
@@ -413,6 +419,11 @@ export function WebsiteAuditWorkspace() {
                     type="button"
                     size="sm"
                     variant={providerFilter === 'all' ? 'default' : 'outline'}
+                    className={
+                      providerFilter === 'all'
+                        ? 'bg-emerald-700 text-white hover:bg-emerald-600'
+                        : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                    }
                     onClick={() => setProviderFilter('all')}
                   >
                     all providers
@@ -423,6 +434,11 @@ export function WebsiteAuditWorkspace() {
                       type="button"
                       size="sm"
                       variant={providerFilter === provider ? 'default' : 'outline'}
+                      className={
+                        providerFilter === provider
+                          ? 'bg-emerald-700 text-white hover:bg-emerald-600'
+                          : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                      }
                       onClick={() => setProviderFilter(provider)}
                     >
                       {PROVIDER_LABELS[provider]}
@@ -443,7 +459,18 @@ export function WebsiteAuditWorkspace() {
                       <TableRow key={`${issue.title}-${index}`}>
                         <TableCell className="text-zinc-200">{issue.title}</TableCell>
                         <TableCell>
-                          <Badge variant={severityBadgeVariant(issue.severity)}>{issue.severity}</Badge>
+                          <Badge
+                            variant={severityBadgeVariant(issue.severity)}
+                            className={
+                              issue.severity === 'info'
+                                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                                : issue.severity === 'warning'
+                                  ? 'border-zinc-600 bg-zinc-800/60 text-zinc-200'
+                                  : 'border-zinc-500 bg-zinc-700/60 text-zinc-100'
+                            }
+                          >
+                            {issue.severity}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-zinc-400">{PROVIDER_LABELS[issue.sourceProvider]}</TableCell>
                       </TableRow>
@@ -476,7 +503,18 @@ export function WebsiteAuditWorkspace() {
                   <div key={provider.provider} className="rounded-xl border border-white/10 bg-black/20 p-4">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-zinc-200">{provider.label}</p>
-                      <Badge variant={statusBadgeVariant(provider.status)}>{provider.status}</Badge>
+                      <Badge
+                        variant={statusBadgeVariant(provider.status)}
+                        className={
+                          provider.status === 'ok'
+                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                            : provider.status === 'partial'
+                              ? 'border-zinc-600 bg-zinc-800/60 text-zinc-200'
+                              : 'border-zinc-500 bg-zinc-700/60 text-zinc-100'
+                        }
+                      >
+                        {provider.status}
+                      </Badge>
                     </div>
 
                     <p className="text-xs text-zinc-500">Issue contribution</p>

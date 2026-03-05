@@ -167,8 +167,8 @@ export function RankTrackerWorkspace() {
   const movementChartData = useMemo(
     () => [
       { bucket: 'Winners', key: 'winners', count: snapshot?.movements.winners.count ?? 0, fill: '#10b981' },
-      { bucket: 'Losers', key: 'losers', count: snapshot?.movements.losers.count ?? 0, fill: '#ef4444' },
-      { bucket: 'Flat', key: 'unchanged', count: snapshot?.movements.unchanged.count ?? 0, fill: '#94a3b8' },
+      { bucket: 'Losers', key: 'losers', count: snapshot?.movements.losers.count ?? 0, fill: '#3f3f46' },
+      { bucket: 'Flat', key: 'unchanged', count: snapshot?.movements.unchanged.count ?? 0, fill: '#52525b' },
     ],
     [snapshot?.movements.losers.count, snapshot?.movements.unchanged.count, snapshot?.movements.winners.count]
   )
@@ -343,11 +343,15 @@ export function RankTrackerWorkspace() {
               min={1}
               max={100}
             />
-            <Button type="submit" disabled={runMutation.isPending} className="md:col-span-1">
+            <Button
+              type="submit"
+              disabled={runMutation.isPending}
+              className="md:col-span-1 bg-emerald-700 text-white hover:bg-emerald-600"
+            >
               {runMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run rank tracker'}
             </Button>
           </form>
-          {runMutation.error ? <p className="mt-3 text-sm text-red-300">{runMutation.error.message}</p> : null}
+          {runMutation.error ? <p className="mt-3 text-sm text-zinc-300">{runMutation.error.message}</p> : null}
         </CardContent>
       </Card>
 
@@ -427,8 +431,8 @@ export function RankTrackerWorkspace() {
                           <XAxis dataKey="label" stroke="#a1a1aa" />
                           <YAxis stroke="#a1a1aa" domain={[0, 100]} />
                           <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
-                          <Line type="monotone" dataKey="visibility" stroke="#22d3ee" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="averagePosition" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="visibility" stroke="#10b981" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="averagePosition" stroke="#71717a" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     )}
@@ -468,7 +472,7 @@ export function RankTrackerWorkspace() {
                         <XAxis dataKey="range" stroke="#a1a1aa" />
                         <YAxis allowDecimals={false} stroke="#a1a1aa" />
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
-                        <Area type="monotone" dataKey="count" stroke="#c084fc" fill="#a855f766" />
+                        <Area type="monotone" dataKey="count" stroke="#10b981" fill="#065f4655" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -488,7 +492,7 @@ export function RankTrackerWorkspace() {
                       <p>
                         Winners: <span className="font-medium text-emerald-300">{snapshot?.movements.winners.count ?? 0}</span>
                         {' • '}
-                        Losers: <span className="font-medium text-red-300">{snapshot?.movements.losers.count ?? 0}</span>
+                        Losers: <span className="font-medium text-zinc-300">{snapshot?.movements.losers.count ?? 0}</span>
                       </p>
                       <p className="mt-2 text-zinc-400">
                         Use the Keyword Movements tab to isolate declining terms and prioritize recovery updates.
@@ -522,6 +526,11 @@ export function RankTrackerWorkspace() {
                         type="button"
                         size="sm"
                         variant={movementFilter === value ? 'default' : 'outline'}
+                        className={
+                          movementFilter === value
+                            ? 'bg-emerald-700 text-white hover:bg-emerald-600'
+                            : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                        }
                         onClick={() => setMovementFilter(value)}
                       >
                         {value}
@@ -550,7 +559,7 @@ export function RankTrackerWorkspace() {
                             {keyword.change > 0 ? (
                               <ArrowUpRight className="h-3.5 w-3.5 text-emerald-300" />
                             ) : keyword.change < 0 ? (
-                              <ArrowDownRight className="h-3.5 w-3.5 text-red-300" />
+                              <ArrowDownRight className="h-3.5 w-3.5 text-zinc-400" />
                             ) : (
                               <Minus className="h-3.5 w-3.5 text-zinc-500" />
                             )}
@@ -594,7 +603,7 @@ export function RankTrackerWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="visibility" radius={[8, 8, 0, 0]}>
                           {competitorRows.map((row) => (
-                            <Cell key={row.domain} fill={row.isYou ? '#22d3ee' : '#6366f1'} />
+                            <Cell key={row.domain} fill={row.isYou ? '#10b981' : '#3f3f46'} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -612,7 +621,16 @@ export function RankTrackerWorkspace() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm text-zinc-200">{row.domain}</p>
-                          <Badge variant={row.isYou ? 'default' : row.pressure === 'high' ? 'destructive' : 'outline'}>
+                          <Badge
+                            variant="outline"
+                            className={
+                              row.isYou
+                                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                                : row.pressure === 'high'
+                                  ? 'border-zinc-500 bg-zinc-700/60 text-zinc-100'
+                                  : 'border-zinc-600 bg-zinc-800/50 text-zinc-300'
+                            }
+                          >
                             {row.isYou ? 'you' : row.pressure}
                           </Badge>
                         </div>
