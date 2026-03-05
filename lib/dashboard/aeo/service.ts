@@ -22,7 +22,7 @@ export async function buildAeoInsightsSnapshot(input: AeoInsightsRequest) {
   const aiKeywordCount = aiResult.success ? aiResult.data.summary.totalKeywords : 0
   const citationCoverageScore = aiResult.success ? Math.round(aiResult.data.summary.averageAIOpportunityScore) : 0
 
-  await runEnrichment({
+  const enrichment = await runEnrichment({
     domain: 'example.com',
     query: sanitizedKeywords.join(' ') || 'ai answer engine optimization',
   })
@@ -30,5 +30,6 @@ export async function buildAeoInsightsSnapshot(input: AeoInsightsRequest) {
   return normalizeAeoInsightsSnapshot({
     aiKeywordCount,
     citationCoverageScore,
+    enrichment,
   })
 }

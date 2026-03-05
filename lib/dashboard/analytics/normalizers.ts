@@ -21,8 +21,10 @@ export function normalizeContentPerformanceSnapshot(input: {
 export function normalizeAeoInsightsSnapshot(input: {
   aiKeywordCount: number
   citationCoverageScore: number
+  enrichment?: { partial: boolean; evidence: Array<{ provider: string; status: string; summary: string }> }
 }): WorkspaceSnapshot {
   const snapshot = buildWorkspaceSnapshot('aeo-insights')
+  const enrichmentReady = input.enrichment ? !input.enrichment.partial : true
 
   return {
     ...snapshot,
@@ -32,6 +34,9 @@ export function normalizeAeoInsightsSnapshot(input: {
       { id: 'entity-gap', label: 'Entity Gap', value: String(Math.max(0, 25 - Math.round(input.aiKeywordCount / 2))) },
       { id: 'fix-queue', label: 'Fix Queue', value: String(Math.max(0, 18 - Math.round(input.citationCoverageScore / 10))) },
     ],
-    modules: snapshot.modules.map((module) => ({ ...module, status: 'ready' })),
+    modules: snapshot.modules.map((module) => ({
+      ...module,
+      status: enrichmentReady ? 'ready' : 'pending',
+    })),
   }
 }

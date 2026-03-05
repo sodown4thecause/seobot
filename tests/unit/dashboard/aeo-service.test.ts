@@ -42,4 +42,32 @@ describe('buildAeoInsightsSnapshot', () => {
       expect.objectContaining({ keywords: ['seo platform', 'ai visibility'] })
     )
   })
+
+  it('passes enrichment result to normalizer', async () => {
+    const snapshot = await buildAeoInsightsSnapshot({
+      keywords: ['seo platform'],
+    })
+
+    expect(mocks.runEnrichment).toHaveBeenCalledWith(
+      expect.objectContaining({ domain: 'example.com', query: 'seo platform' })
+    )
+    expect(snapshot.modules.every((module) => module.status === 'ready')).toBe(true)
+  })
+
+  it('marks modules as pending when enrichment is partial', async () => {
+    mocks.runEnrichment.mockResolvedValueOnce({
+      partial: true,
+      evidence: [
+        { provider: 'firecrawl', status: 'failed', summary: 'Firecrawl MCP unavailable' },
+        { provider: 'jina', status: 'ready', summary: 'Jina MCP connected (2 tools available)' },
+        { provider: 'perplexity', status: 'ready', summary: 'Perplexity returned 3 citations' },
+      ],
+    })
+
+    const snapshot = await buildAeoInsightsSnapshot({
+      keywords: ['seo platform'],
+    })
+
+    expect(snapshot.modules.every((module) => module.status === 'pending')).toBe(true)
+  })
 })
