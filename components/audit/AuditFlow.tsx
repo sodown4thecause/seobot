@@ -179,7 +179,7 @@ export function AuditFlow() {
   }
 
   const unlockResults = () => {
-    if (!requestState || !results || !sessionId) {
+    if (!requestState || !results || !sessionId || !detected) {
       return
     }
 
@@ -190,7 +190,8 @@ export function AuditFlow() {
       brandName: results.brand,
       properties: {
         source: 'live-audit',
-        category: 'gate-unlock',
+        category: detected.category,
+        gateSource: 'gate-unlock',
       },
     })
 

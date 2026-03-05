@@ -44,7 +44,7 @@ type ProviderFilter = 'all' | WebsiteAuditProviderName
 
 function severityBadgeVariant(severity: WebsiteAuditIssueSeverity): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (severity === 'critical') {
-    return 'outline'
+    return 'destructive'
   }
   if (severity === 'warning') {
     return 'secondary'
@@ -107,9 +107,9 @@ export function WebsiteAuditWorkspace() {
 
   const severityData = useMemo(
     () => [
-      { severity: 'Critical', count: criticalCount, fill: '#22c55e' },
-      { severity: 'Warning', count: warningCount, fill: '#a1a1aa' },
-      { severity: 'Info', count: infoCount, fill: '#e4e4e7' },
+      { severity: 'Critical', count: criticalCount, fill: '#ef4444' },
+      { severity: 'Warning', count: warningCount, fill: '#f59e0b' },
+      { severity: 'Info', count: infoCount, fill: '#22c55e' },
     ],
     [criticalCount, infoCount, warningCount]
   )
