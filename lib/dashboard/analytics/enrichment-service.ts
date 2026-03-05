@@ -43,8 +43,10 @@ export async function runEnrichment(input: EnrichmentInput): Promise<EnrichmentR
     evidence.push(
       settle('perplexity', 'ready', `Perplexity returned ${perplexityResult.value.citations.length} citations`)
     )
-  } else {
+  } else if (perplexityResult.status === 'fulfilled') {
     evidence.push(settle('perplexity', 'partial', 'Perplexity enrichment unavailable or no citations'))
+  } else {
+    evidence.push(settle('perplexity', 'failed', 'Perplexity enrichment request failed'))
   }
 
   return {

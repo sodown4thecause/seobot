@@ -34,15 +34,27 @@ export async function POST(request: NextRequest) {
     ? parsed.data.promptCluster.split(',').map((keyword) => keyword.trim())
     : ['seo reporting']
 
-  const data = await buildAeoInsightsSnapshot({
-    keywords,
-    locationName: parsed.data.location,
-  })
+  try {
+    const data = await buildAeoInsightsSnapshot({
+      domain: parsed.data.domain,
+      keywords,
+      locationName: parsed.data.location,
+    })
 
-  return NextResponse.json({
-    success: true,
-    refreshQueued: true,
-    jobId: crypto.randomUUID(),
-    data,
-  })
+    return NextResponse.json({
+      success: true,
+      refreshed: true,
+      data,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to refresh AEO insights snapshot'
+    if (message === 'At least one keyword is required') {
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    )
+  }
 }

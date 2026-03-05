@@ -35,14 +35,21 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid request payload', issues: parsed.error.issues }, { status: 400 })
   }
 
-  const data = await runDashboardAction({
-    workspace: 'aeo-insights',
-    action: action as DashboardActionName,
-    payload: parsed.data,
-  })
+  try {
+    const data = await runDashboardAction({
+      workspace: 'aeo-insights',
+      action: action as DashboardActionName,
+      payload: parsed.data,
+    })
 
-  return NextResponse.json({
-    success: true,
-    data,
-  })
+    return NextResponse.json({
+      success: true,
+      data,
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to queue dashboard action' },
+      { status: 500 }
+    )
+  }
 }

@@ -1,3 +1,5 @@
+import { cacheGet, cacheSet } from '@/lib/redis/client'
+
 type WorkspaceKey = 'content-performance' | 'aeo-insights'
 
 export type SavedWorkspaceView = {
@@ -10,9 +12,25 @@ export type SavedWorkspaceView = {
 }
 
 const savedViewsStore = new Map<string, SavedWorkspaceView[]>()
+const MAX_SAVED_VIEWS = 20
+const SAVED_VIEWS_TTL_SECONDS = 60 * 60 * 24 * 30
 
 function storeKey(userId: string, workspace: WorkspaceKey) {
   return `${userId}:${workspace}`
+}
+
+function redisKey(userId: string, workspace: WorkspaceKey) {
+  return `dashboard:saved-views:${storeKey(userId, workspace)}`
+}
+
+async function readViews(userId: string, workspace: WorkspaceKey): Promise<SavedWorkspaceView[]> {
+  const key = storeKey(userId, workspace)
+  const persistent = await cacheGet<SavedWorkspaceView[]>(redisKey(userId, workspace))
+  if (Array.isArray(persistent)) {
+    savedViewsStore.set(key, persistent)
+    return persistent
+  }
+  return savedViewsStore.get(key) ?? []
 }
 
 export async function saveWorkspaceView(
@@ -31,12 +49,14 @@ export async function saveWorkspaceView(
   }
 
   const key = storeKey(userId, workspace)
-  const current = savedViewsStore.get(key) ?? []
-  savedViewsStore.set(key, [view, ...current].slice(0, 20))
+  const current = await readViews(userId, workspace)
+  const next = [view, ...current].slice(0, MAX_SAVED_VIEWS)
+  savedViewsStore.set(key, next)
+  await cacheSet(redisKey(userId, workspace), next, SAVED_VIEWS_TTL_SECONDS)
 
   return view
 }
 
 export async function listWorkspaceViews(userId: string, workspace: WorkspaceKey): Promise<SavedWorkspaceView[]> {
-  return savedViewsStore.get(storeKey(userId, workspace)) ?? []
+  return readViews(userId, workspace)
 }

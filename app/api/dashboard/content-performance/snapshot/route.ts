@@ -11,11 +11,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }
 
-  const domain = request.nextUrl.searchParams.get('domain') ?? 'example.com'
-  const data = await buildContentPerformanceSnapshot({ domain })
+  const domain = request.nextUrl.searchParams.get('domain')?.trim()
+  if (!domain) {
+    return NextResponse.json({ error: 'Missing required query parameter: domain' }, { status: 400 })
+  }
 
-  return NextResponse.json({
-    success: true,
-    data,
-  })
+  try {
+    const data = await buildContentPerformanceSnapshot({ domain })
+
+    return NextResponse.json({
+      success: true,
+      data,
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to load content performance snapshot' },
+      { status: 500 }
+    )
+  }
 }

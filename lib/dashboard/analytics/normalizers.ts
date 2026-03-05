@@ -29,8 +29,8 @@ export function normalizeAeoInsightsSnapshot(input: {
   return {
     ...snapshot,
     kpis: [
-      { id: 'llm-visibility', label: 'LLM Visibility Score', value: String(Math.min(100, 30 + input.aiKeywordCount)) },
-      { id: 'citation-share', label: 'Citation Share of Voice', value: `${Math.min(100, input.citationCoverageScore)}%` },
+      { id: 'llm-visibility', label: 'LLM Visibility Score', value: String(Math.max(0, Math.min(100, 30 + input.aiKeywordCount))) },
+      { id: 'citation-share', label: 'Citation Share of Voice', value: `${Math.max(0, Math.min(100, input.citationCoverageScore))}%` },
       { id: 'entity-gap', label: 'Entity Gap', value: String(Math.max(0, 25 - Math.round(input.aiKeywordCount / 2))) },
       { id: 'fix-queue', label: 'Fix Queue', value: String(Math.max(0, 18 - Math.round(input.citationCoverageScore / 10))) },
     ],

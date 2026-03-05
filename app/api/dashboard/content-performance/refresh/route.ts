@@ -7,9 +7,8 @@ import { buildContentPerformanceSnapshot } from '@/lib/dashboard/content-perform
 export const runtime = 'nodejs'
 
 const refreshSchema = z.object({
-  domain: z.string().trim().min(1).optional(),
+  domain: z.string().trim().min(1),
   location: z.string().trim().min(1).optional(),
-  device: z.enum(['desktop', 'mobile']).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -30,15 +29,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request payload', issues: parsed.error.issues }, { status: 400 })
   }
 
-  const data = await buildContentPerformanceSnapshot({
-    domain: parsed.data.domain ?? 'example.com',
-    locationName: parsed.data.location,
-  })
+  try {
+    const data = await buildContentPerformanceSnapshot({
+      domain: parsed.data.domain,
+      locationName: parsed.data.location,
+    })
 
-  return NextResponse.json({
-    success: true,
-    refreshQueued: true,
-    jobId: crypto.randomUUID(),
-    data,
-  })
+    return NextResponse.json({
+      success: true,
+      refreshed: true,
+      data,
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to refresh content performance snapshot' },
+      { status: 500 }
+    )
+  }
 }

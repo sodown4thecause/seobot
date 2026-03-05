@@ -16,12 +16,25 @@ export async function buildContentPerformanceSnapshot(input: ContentPerformanceR
     limit: 100,
   })
 
+  if (!rankedKeywordsResult.success) {
+    console.warn('[Dashboard][ContentPerformance] Ranked keywords analysis failed', {
+      domain: input.domain,
+      error: rankedKeywordsResult.error?.message,
+      code: rankedKeywordsResult.error?.code,
+    })
+  }
+
   const rankedKeywordCount = rankedKeywordsResult.success ? rankedKeywordsResult.data.totalKeywords : 0
   const decayPages = Math.max(0, Math.round(rankedKeywordCount * 0.2))
 
-  await runEnrichment({
+  void runEnrichment({
     domain: input.domain,
     query: 'content performance keyword decay opportunities',
+  }).catch((error) => {
+    console.warn('[Dashboard][ContentPerformance] Enrichment prefetch failed', {
+      domain: input.domain,
+      error: error instanceof Error ? error.message : String(error),
+    })
   })
 
   return normalizeContentPerformanceSnapshot({ rankedKeywordCount, decayPages })

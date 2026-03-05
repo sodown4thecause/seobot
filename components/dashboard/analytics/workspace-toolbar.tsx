@@ -47,12 +47,16 @@ export function WorkspaceToolbar({
             <span>{badge.value}</span>
           </span>
         ))}
-        <Button type="button" size="sm" variant="outline" onClick={onSaveView} className="border-white/10 bg-black/20 text-zinc-200 hover:bg-black/30">
-          Save view
-        </Button>
-        <Button type="button" size="sm" variant="outline" onClick={onExport} className="border-white/10 bg-black/20 text-zinc-200 hover:bg-black/30">
-          Export
-        </Button>
+        {onSaveView ? (
+          <Button type="button" size="sm" variant="outline" onClick={onSaveView} className="border-white/10 bg-black/20 text-zinc-200 hover:bg-black/30">
+            Save view
+          </Button>
+        ) : null}
+        {onExport ? (
+          <Button type="button" size="sm" variant="outline" onClick={onExport} className="border-white/10 bg-black/20 text-zinc-200 hover:bg-black/30">
+            Export
+          </Button>
+        ) : null}
         {actions}
       </div>
     </div>

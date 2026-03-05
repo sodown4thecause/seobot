@@ -12,12 +12,24 @@ export async function GET(request: NextRequest) {
   }
 
   const queryKeywords = request.nextUrl.searchParams.getAll('keyword')
-  const data = await buildAeoInsightsSnapshot({
-    keywords: queryKeywords,
-  })
+  try {
+    const data = await buildAeoInsightsSnapshot({
+      keywords: queryKeywords,
+    })
 
-  return NextResponse.json({
-    success: true,
-    data,
-  })
+    return NextResponse.json({
+      success: true,
+      data,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to load AEO insights snapshot'
+    if (message === 'At least one keyword is required') {
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    )
+  }
 }

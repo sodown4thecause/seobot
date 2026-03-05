@@ -3,6 +3,7 @@ import { normalizeAeoInsightsSnapshot } from '@/lib/dashboard/analytics/normaliz
 import { runEnrichment } from '@/lib/dashboard/analytics/enrichment-service'
 
 type AeoInsightsRequest = {
+  domain?: string
   keywords: string[]
   locationName?: string
   languageCode?: string
@@ -13,8 +14,12 @@ export async function buildAeoInsightsSnapshot(input: AeoInsightsRequest) {
     .map((keyword) => keyword.trim())
     .filter((keyword) => keyword.length > 0)
 
+  if (sanitizedKeywords.length === 0) {
+    throw new Error('At least one keyword is required')
+  }
+
   const aiResult = await analyzeAISearchVolume({
-    keywords: sanitizedKeywords.length > 0 ? sanitizedKeywords : ['seo reporting'],
+    keywords: sanitizedKeywords,
     location_name: input.locationName,
     language_code: input.languageCode,
   })
@@ -23,8 +28,8 @@ export async function buildAeoInsightsSnapshot(input: AeoInsightsRequest) {
   const citationCoverageScore = aiResult.success ? Math.round(aiResult.data.summary.averageAIOpportunityScore) : 0
 
   const enrichment = await runEnrichment({
-    domain: 'example.com',
-    query: sanitizedKeywords.join(' ') || 'ai answer engine optimization',
+    domain: input.domain?.trim() || 'example.com',
+    query: sanitizedKeywords.join(' '),
   })
 
   return normalizeAeoInsightsSnapshot({
