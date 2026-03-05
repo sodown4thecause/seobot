@@ -8,8 +8,6 @@ import { WorkspaceKpiStrip, type WorkspaceKpiItem } from '@/components/dashboard
 import { WorkspaceTabs, type WorkspaceTabItem } from '@/components/dashboard/analytics/workspace-tabs'
 import { WorkspaceToolbar } from '@/components/dashboard/analytics/workspace-toolbar'
 import { workspaceThemeTokens } from '@/components/dashboard/analytics/theme-tokens'
-import { saveWorkspaceView } from '@/lib/dashboard/analytics/saved-views'
-import { enqueueWorkspaceExport } from '@/lib/dashboard/analytics/export-service'
 
 type WorkspaceKey = 'content-performance' | 'aeo-insights'
 
@@ -36,13 +34,28 @@ export function WorkspaceShell({
   history,
   filters = {},
 }: WorkspaceShellProps) {
+  const postWorkspaceAction = useCallback(
+    async (endpoint: string) => {
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          workspace,
+          filters,
+        }),
+      })
+    },
+    [filters, workspace]
+  )
+
   const handleSaveView = useCallback(() => {
-    void saveWorkspaceView('current-user', workspace, filters)
-  }, [filters, workspace])
+    void postWorkspaceAction('/api/dashboard/analytics/saved-views')
+  }, [postWorkspaceAction])
 
   const handleExport = useCallback(() => {
-    void enqueueWorkspaceExport('current-user', workspace, filters)
-  }, [filters, workspace])
+    void postWorkspaceAction('/api/dashboard/analytics/exports')
+  }, [postWorkspaceAction])
 
   return (
     <div className="space-y-6">
