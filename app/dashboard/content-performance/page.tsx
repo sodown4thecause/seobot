@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import { ArrowRight, BarChart3, LineChart, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'

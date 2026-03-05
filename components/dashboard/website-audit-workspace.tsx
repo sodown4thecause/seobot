@@ -93,9 +93,9 @@ export function WebsiteAuditWorkspace() {
 
   const severityData = useMemo(
     () => [
-      { severity: 'Critical', count: criticalCount, fill: '#3f3f46' },
-      { severity: 'Warning', count: warningCount, fill: '#52525b' },
-      { severity: 'Info', count: infoCount, fill: '#10b981' },
+      { severity: 'Critical', count: criticalCount, fill: '#a1a1aa' },
+      { severity: 'Warning', count: warningCount, fill: '#71717a' },
+      { severity: 'Info', count: infoCount, fill: '#3f3f46' },
     ],
     [criticalCount, infoCount, warningCount]
   )
@@ -211,7 +211,12 @@ export function WebsiteAuditWorkspace() {
               {runMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run audit'}
             </Button>
           </form>
-          {runMutation.error ? <p className="mt-3 text-sm text-zinc-300">{runMutation.error.message}</p> : null}
+          {runMutation.error ? (
+            <p role="alert" className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-300">
+              <TriangleAlert className="h-4 w-4" />
+              <span>Error: {runMutation.error.message}</span>
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

@@ -912,13 +912,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     messagesEndRef.current.scrollIntoView({ behavior: isLoading ? 'smooth' : 'auto', block: 'end' })
   }, [messages.length, isLoading])
 
-  useEffect(() => {
-    if (autoSendMessage && autoSendMessage !== lastAutoSentMessage.current && !isBootstrapping && status === 'ready') {
-      lastAutoSentMessage.current = autoSendMessage
-      setTimeout(() => sendMessage({ text: autoSendMessage }), 300)
-    }
-  }, [autoSendMessage, isBootstrapping, status, sendMessage])
-
   // 8. Missing Handlers (Re-added)
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id))

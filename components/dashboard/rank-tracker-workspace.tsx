@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Gauge, Loader2, Minus, TrendingUp, Users } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Gauge, Loader2, Minus, TrendingUp, TriangleAlert, Users } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
@@ -351,7 +351,12 @@ export function RankTrackerWorkspace() {
               {runMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run rank tracker'}
             </Button>
           </form>
-          {runMutation.error ? <p className="mt-3 text-sm text-zinc-300">{runMutation.error.message}</p> : null}
+          {runMutation.error ? (
+            <p role="alert" className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-300">
+              <TriangleAlert className="h-4 w-4" />
+              <span>Error: {runMutation.error.message}</span>
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

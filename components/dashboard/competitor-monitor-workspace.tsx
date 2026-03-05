@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, ExternalLink, Loader2, Users } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, ExternalLink, Loader2, TriangleAlert, Users } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
@@ -197,7 +197,12 @@ export function CompetitorMonitorWorkspace() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run monitor'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-zinc-300">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-300">
+              <TriangleAlert className="h-4 w-4" />
+              <span>Error: {error}</span>
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

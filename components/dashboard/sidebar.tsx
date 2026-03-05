@@ -153,15 +153,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               collapsed={collapsed}
               onClick={handleImageGen}
             />
-            <Link href="/dashboard/workflows">
-              <SidebarBtn
-                id="sidebar-workflows"
-                icon={Workflow}
-                label="Workflows"
-                collapsed={collapsed}
-                isActive={pathname?.startsWith('/dashboard/workflows')}
-              />
-            </Link>
+            <SidebarBtn
+              id="sidebar-workflows"
+              icon={Workflow}
+              label="Workflows"
+              collapsed={collapsed}
+              isActive={pathname?.startsWith('/dashboard/workflows')}
+              onClick={() => router.push('/dashboard/workflows')}
+            />
           </nav>
         </div>
 

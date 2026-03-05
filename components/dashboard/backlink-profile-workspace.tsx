@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import { ExternalLink, Link2, Loader2, ShieldAlert } from 'lucide-react'
+import { ExternalLink, Link2, Loader2, ShieldAlert, TriangleAlert } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
@@ -168,7 +168,12 @@ export function BacklinkProfileWorkspace() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Load profile'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-zinc-300">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-300">
+              <TriangleAlert className="h-4 w-4" />
+              <span>Error: {error}</span>
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
