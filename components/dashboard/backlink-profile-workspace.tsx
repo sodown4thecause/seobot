@@ -235,8 +235,8 @@ export function BacklinkProfileWorkspace() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBacklinks.map((row) => (
-                    <TableRow key={`${row.sourceUrl}-${row.targetUrl}`}>
+                  {filteredBacklinks.map((row, index) => (
+                    <TableRow key={`${row.sourceUrl}-${row.targetUrl}-${row.type}-${row.firstSeen}-${index}`}>
                       <TableCell className="text-zinc-200">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">

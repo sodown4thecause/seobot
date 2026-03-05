@@ -283,7 +283,11 @@ export function CompetitorMonitorWorkspace() {
                             {signalDisplay.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right text-zinc-300">{asPositiveNumber(row.domain_authority) || 'n/a'}</TableCell>
+                        <TableCell className="text-right text-zinc-300">
+                          {typeof row.domain_authority === 'number' && Number.isFinite(row.domain_authority)
+                            ? asPositiveNumber(row.domain_authority)
+                            : 'n/a'}
+                        </TableCell>
                         <TableCell className="text-right text-zinc-300">{asPositiveNumber(row.monthly_traffic).toLocaleString()}</TableCell>
                         <TableCell className="text-right text-zinc-300">{asPositiveNumber(row.shared_keywords).toLocaleString()}</TableCell>
                       </TableRow>
