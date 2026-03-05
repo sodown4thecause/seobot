@@ -47,8 +47,13 @@ export async function POST(
       data,
     })
   } catch (error) {
+    console.error('[Dashboard][AEO][Action] Failed to queue action', {
+      action,
+      error: error instanceof Error ? error.message : String(error),
+    })
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to queue dashboard action' },
+      { error: 'Failed to queue dashboard action' },
       { status: 500 }
     )
   }

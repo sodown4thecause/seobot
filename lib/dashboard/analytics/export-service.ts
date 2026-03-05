@@ -42,14 +42,14 @@ export async function enqueueWorkspaceExport(
     createdAt: new Date().toISOString(),
   }
 
+  const currentWorkspaceJobs = await readWorkspaceExports(userId, workspace)
+  const nextWorkspaceJobs = [job, ...currentWorkspaceJobs].slice(0, MAX_EXPORTS_PER_WORKSPACE)
+  await cacheSet(exportsKey(userId, workspace), nextWorkspaceJobs, EXPORTS_TTL_SECONDS)
+
   exportQueue.unshift(job)
   if (exportQueue.length > MAX_EXPORT_JOBS) {
     exportQueue.length = MAX_EXPORT_JOBS
   }
-
-  const currentWorkspaceJobs = await readWorkspaceExports(userId, workspace)
-  const nextWorkspaceJobs = [job, ...currentWorkspaceJobs].slice(0, MAX_EXPORTS_PER_WORKSPACE)
-  await cacheSet(exportsKey(userId, workspace), nextWorkspaceJobs, EXPORTS_TTL_SECONDS)
 
   return job
 }

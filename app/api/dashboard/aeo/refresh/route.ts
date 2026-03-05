@@ -52,8 +52,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 })
     }
 
+    console.error('[Dashboard][AEO][Refresh] Failed to refresh snapshot', {
+      domain: parsed.data.domain,
+      error: error instanceof Error ? error.message : String(error),
+    })
+
     return NextResponse.json(
-      { error: message },
+      { error: 'Failed to refresh AEO insights snapshot' },
       { status: 500 }
     )
   }

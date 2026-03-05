@@ -11,7 +11,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }
 
-  const queryKeywords = request.nextUrl.searchParams.getAll('keyword')
+  const queryKeywords = request.nextUrl.searchParams
+    .getAll('keyword')
+    .map((keyword) => keyword.trim())
+    .filter((keyword) => keyword.length > 0)
+
+  if (queryKeywords.length === 0) {
+    return NextResponse.json({ error: 'At least one keyword is required' }, { status: 400 })
+  }
+
   try {
     const data = await buildAeoInsightsSnapshot({
       keywords: queryKeywords,
@@ -22,13 +30,12 @@ export async function GET(request: NextRequest) {
       data,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to load AEO insights snapshot'
-    if (message === 'At least one keyword is required') {
-      return NextResponse.json({ error: message }, { status: 400 })
-    }
+    console.error('[Dashboard][AEO][Snapshot] Failed to load snapshot', {
+      error: error instanceof Error ? error.message : String(error),
+    })
 
     return NextResponse.json(
-      { error: message },
+      { error: 'Failed to load AEO insights snapshot' },
       { status: 500 }
     )
   }
