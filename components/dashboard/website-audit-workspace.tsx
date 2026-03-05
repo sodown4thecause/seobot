@@ -34,9 +34,9 @@ const STATUS_SCORES: Record<ProviderStatus, number> = {
 }
 
 const STATUS_COLORS: Record<ProviderStatus, string> = {
-  ok: '#10b981',
-  partial: '#f59e0b',
-  failed: '#ef4444',
+  ok: '#22c55e',
+  partial: '#a1a1aa',
+  failed: '#52525b',
 }
 
 type SeverityFilter = 'all' | WebsiteAuditIssueSeverity
@@ -59,7 +59,7 @@ function statusBadgeVariant(status: ProviderStatus): 'default' | 'secondary' | '
   if (status === 'partial') {
     return 'secondary'
   }
-  return 'destructive'
+  return 'outline'
 }
 
 function severityWeight(severity: WebsiteAuditIssueSeverity): number {
@@ -102,12 +102,14 @@ export function WebsiteAuditWorkspace() {
   const criticalCount = snapshot?.summary.issuesBySeverity.critical ?? 0
   const warningCount = snapshot?.summary.issuesBySeverity.warning ?? 0
   const infoCount = snapshot?.summary.issuesBySeverity.info ?? 0
+  const criticalDisplay = summary ? criticalCount : '--'
+  const warningDisplay = summary ? warningCount : '--'
 
   const severityData = useMemo(
     () => [
       { severity: 'Critical', count: criticalCount, fill: '#ef4444' },
       { severity: 'Warning', count: warningCount, fill: '#f59e0b' },
-      { severity: 'Info', count: infoCount, fill: '#38bdf8' },
+      { severity: 'Info', count: infoCount, fill: '#22c55e' },
     ],
     [criticalCount, infoCount, warningCount]
   )
@@ -220,7 +222,7 @@ export function WebsiteAuditWorkspace() {
             </Button>
           </form>
           {runMutation.error ? (
-            <p className="mt-3 text-sm text-red-300">{runMutation.error.message}</p>
+            <p className="mt-3 text-sm text-zinc-300">{runMutation.error.message}</p>
           ) : null}
         </CardContent>
       </Card>
@@ -241,13 +243,13 @@ export function WebsiteAuditWorkspace() {
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Critical</CardDescription>
-            <CardTitle className="text-3xl text-red-300">{criticalCount}</CardTitle>
+            <CardTitle className="text-3xl text-zinc-100">{criticalDisplay}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="glass-card border-none bg-black/30">
           <CardHeader className="pb-2">
             <CardDescription>Warnings</CardDescription>
-            <CardTitle className="text-3xl text-amber-300">{warningCount}</CardTitle>
+            <CardTitle className="text-3xl text-zinc-100">{warningDisplay}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -327,12 +329,12 @@ export function WebsiteAuditWorkspace() {
                   </div>
 
                   {criticalCount > 0 ? (
-                    <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                    <div className="flex items-start gap-2 rounded-lg border border-white/10 bg-black/30 p-3 text-sm text-zinc-200">
                       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
                       <p>Resolve critical issues first to unblock indexing reliability and ranking velocity.</p>
                     </div>
                   ) : warningCount > 0 ? (
-                    <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                    <div className="flex items-start gap-2 rounded-lg border border-white/10 bg-black/30 p-3 text-sm text-zinc-200">
                       <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
                       <p>Warnings are medium-impact opportunities worth scheduling this sprint.</p>
                     </div>

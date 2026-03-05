@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   KeyRound,
-  LayoutDashboard,
   Link as LinkIcon,
   Menu,
   Search,
@@ -28,7 +27,6 @@ export interface SidebarProps {
 }
 
 const DASHBOARD_LINKS = [
-  { name: 'Overview', href: '/dashboard/overview', icon: LayoutDashboard },
   { name: 'Website Audit', href: '/dashboard/website-audit', icon: Search },
   { name: 'Rank Tracker', href: '/dashboard/rank-tracker', icon: TrendingUp },
   { name: 'Competitor Monitor', href: '/dashboard/competitor-monitor', icon: Users },

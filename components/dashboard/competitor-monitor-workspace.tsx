@@ -55,12 +55,19 @@ function formatCompact(value: number): string {
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
 }
 
-function competitorSignal(row: CompetitorRow): 'up' | 'down' | 'new' | 'flat' {
-  const isUp = asPositiveNumber(row.metadata?.is_up) > 0
-  const isDown = asPositiveNumber(row.metadata?.is_down) > 0
+function competitorSignal(row: CompetitorRow): 'up' | 'down' | 'new' | 'mixed' | 'flat' {
+  const upCount = asPositiveNumber(row.metadata?.is_up)
+  const downCount = asPositiveNumber(row.metadata?.is_down)
+  const isUp = upCount > 0
+  const isDown = downCount > 0
   const isNew = asPositiveNumber(row.metadata?.is_new) > 0
 
   if (isNew) return 'new'
+  if (isUp && isDown) {
+    if (upCount > downCount) return 'up'
+    if (downCount > upCount) return 'down'
+    return 'mixed'
+  }
   if (isUp && !isDown) return 'up'
   if (isDown && !isUp) return 'down'
   return 'flat'
@@ -74,7 +81,10 @@ function signalBadge(signal: ReturnType<typeof competitorSignal>): { label: stri
     return { label: 'Gaining', variant: 'default' }
   }
   if (signal === 'down') {
-    return { label: 'Losing', variant: 'destructive' }
+    return { label: 'Losing', variant: 'outline' }
+  }
+  if (signal === 'mixed') {
+    return { label: 'Mixed', variant: 'secondary' }
   }
   return { label: 'Stable', variant: 'outline' }
 }
@@ -193,7 +203,7 @@ export function CompetitorMonitorWorkspace() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run monitor'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+          {error ? <p className="mt-3 text-sm text-red-400">Error: {error}</p> : null}
         </CardContent>
       </Card>
 
@@ -317,7 +327,7 @@ export function CompetitorMonitorWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="traffic" radius={[8, 8, 0, 0]}>
                           {chartData.map((entry) => (
-                            <Cell key={entry.domain} fill="#22d3ee" />
+                            <Cell key={entry.domain} fill="#22c55e" />
                           ))}
                         </Bar>
                       </BarChart>
@@ -364,7 +374,7 @@ export function CompetitorMonitorWorkspace() {
                       <ArrowUpRight className="h-3.5 w-3.5 text-emerald-300" /> Upward momentum
                     </div>
                     <div className="inline-flex items-center gap-1">
-                      <ArrowDownRight className="h-3.5 w-3.5 text-red-300" /> Downward momentum
+                      <ArrowDownRight className="h-3.5 w-3.5 text-zinc-400" /> Downward momentum
                     </div>
                   </div>
                 </div>

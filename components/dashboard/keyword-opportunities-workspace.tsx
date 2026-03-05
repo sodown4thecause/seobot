@@ -298,7 +298,7 @@ export function KeywordOpportunitiesWorkspace() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Find opportunities'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+          {error ? <p className="mt-3 text-sm text-zinc-300">{error}</p> : null}
         </CardContent>
       </Card>
 
@@ -405,7 +405,7 @@ export function KeywordOpportunitiesWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="volume" radius={[8, 8, 0, 0]}>
                           {chartData.map((entry) => (
-                            <Cell key={entry.keyword} fill="#a855f7" />
+                            <Cell key={entry.keyword} fill="#22c55e" />
                           ))}
                         </Bar>
                       </BarChart>
@@ -421,7 +421,7 @@ export function KeywordOpportunitiesWorkspace() {
                       <span>Start with high-volume terms in positions 11-30 for faster movement.</span>
                     </div>
                   </div>
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
                     <div className="flex items-center gap-2">
                       <Lightbulb className="h-4 w-4" />
                       <span>Low-competition keywords are the fastest path to incremental traffic wins.</span>

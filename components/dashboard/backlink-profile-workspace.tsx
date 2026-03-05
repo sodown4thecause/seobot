@@ -164,7 +164,7 @@ export function BacklinkProfileWorkspace() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Load profile'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+          {error ? <p className="mt-3 text-sm text-zinc-300">{error}</p> : null}
         </CardContent>
       </Card>
 
@@ -286,7 +286,7 @@ export function BacklinkProfileWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                           {topReferringChart.map((entry) => (
-                            <Cell key={entry.domain} fill="#6366f1" />
+                            <Cell key={entry.domain} fill="#22c55e" />
                           ))}
                         </Bar>
                       </BarChart>
@@ -311,7 +311,7 @@ export function BacklinkProfileWorkspace() {
                     ) : null}
                   </div>
 
-                  <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                  <div className="mt-4 rounded-lg border border-white/10 bg-black/30 p-3 text-sm text-zinc-200">
                     <div className="flex items-start gap-2">
                       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
                       <span>
