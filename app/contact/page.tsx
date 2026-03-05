@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Contact Us | FlowIntent',
-  description: 'Get in touch with the FlowIntent team. Questions about AEO, platform features, or enterprise plans? We\'re here to help.',
-}
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Contact FlowIntent | Support and Partnerships',
+  description:
+    'Contact the FlowIntent team for support, AEO strategy questions, enterprise plans, or integration partnerships.',
+  path: '/contact',
+})
 
 export default function ContactPage() {
   return (
@@ -119,4 +122,3 @@ export default function ContactPage() {
     </div>
   )
 }
-

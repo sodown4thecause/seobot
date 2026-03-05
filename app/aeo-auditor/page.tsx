@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Free AEO Auditor: Track ChatGPT & Perplexity Mentions | FlowIntent',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Free AEO Auditor | Track AI Mentions and Citations',
   description:
-    'Run a free AEO (Answer Engine Optimization) audit to understand how AI platforms describe your brand, where you lose citations, and what to fix first.',
+    'Run a free AEO audit to see how AI platforms describe your brand, where citations are lost, and what to fix first.',
+  path: '/aeo-auditor',
   keywords: [
     'AEO auditor',
     'answer engine optimization audit',
@@ -13,7 +15,7 @@ export const metadata: Metadata = {
     'AI trust audit',
     'LLM visibility',
   ],
-}
+})
 
 const faq = [
   {
@@ -137,4 +139,3 @@ export default function AEOAuditorLandingPage() {
     </div>
   )
 }
-

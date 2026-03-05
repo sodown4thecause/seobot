@@ -18,6 +18,39 @@ type SanitySlug = {
   updatedAt?: string
 }
 
+type SanityClientLike = {
+  fetch<T>(query: string, params: Record<string, unknown>, options: Record<string, unknown>): Promise<T>
+}
+
+function getSanityConfig(): { projectId: string; dataset: string; apiVersion: string } | null {
+  const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim()
+  if (!projectId) {
+    return null
+  }
+
+  const configuredDataset = process.env.NEXT_PUBLIC_SANITY_DATASET
+  const dataset = configuredDataset === 'preview' ? 'production' : configuredDataset || 'production'
+
+  return {
+    projectId,
+    dataset,
+    apiVersion: process.env.NEXT_PUBLIC_SANITY_API_VERSION || '2026-01-02',
+  }
+}
+
+async function getSanityClient(): Promise<SanityClientLike | null> {
+  const config = getSanityConfig()
+  if (!config) {
+    return null
+  }
+
+  const { createClient } = await import('next-sanity')
+  return createClient({
+    ...config,
+    useCdn: false,
+  })
+}
+
 const SANITY_CONTENT_ROUTES: SanityContentRoute[] = [
   { type: 'post', pathPrefix: '/blog', changeFrequency: 'weekly', priority: 0.7 },
   { type: 'guide', pathPrefix: '/guides', changeFrequency: 'weekly', priority: 0.8 },
@@ -45,7 +78,6 @@ const STATIC_PUBLIC_ROUTES: Array<{
   { path: '/faq', changeFrequency: 'weekly', priority: 0.7 },
   { path: '/docs', changeFrequency: 'weekly', priority: 0.7 },
   { path: '/contact', changeFrequency: 'monthly', priority: 0.5 },
-  { path: '/aeo-vs-seo', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/aeo-auditor', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/privacy', changeFrequency: 'monthly', priority: 0.3 },
   { path: '/terms', changeFrequency: 'monthly', priority: 0.3 },
@@ -61,8 +93,12 @@ async function getSanitySlugs(type: SanityContentRoute['type']): Promise<SanityS
   }
 
   try {
-    const { client } = await import('@/sanity/lib/client')
-    const results = await client.fetch<SanitySlug[]>(
+    const sanityClient = await getSanityClient()
+    if (!sanityClient) {
+      return []
+    }
+
+    const results = await sanityClient.fetch<SanitySlug[]>(
       `*[
         _type == $type &&
         defined(slug.current) &&
