@@ -59,7 +59,6 @@ export default function DashboardLayout({
                   <Sidebar
                     collapsed={sidebarCollapsed}
                     onToggle={() => setSidebarCollapsed((v) => !v)}
-                    currentPath={pathname ?? ''}
                   />
                   <main className={cn('relative z-10 flex min-h-screen flex-1 flex-col')}>
                     <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">

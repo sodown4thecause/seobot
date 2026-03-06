@@ -899,9 +899,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     if (status === 'streaming' || status === 'submitted') return
     if (isBootstrapping) return
     if (lastAutoSentMessage.current === autoSendMessage) return
-    lastAutoSentMessage.current = autoSendMessage
     // Small delay so the chat is visually ready
     const t = setTimeout(() => {
+      lastAutoSentMessage.current = autoSendMessage
       sendMessage({ text: autoSendMessage })
     }, 400)
     return () => clearTimeout(t)

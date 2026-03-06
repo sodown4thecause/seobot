@@ -30,7 +30,6 @@ import { Logo } from '@/components/ui/logo'
 export interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
-  currentPath: string
 }
 
 // Original dashboard page links — all kept intact
@@ -41,7 +40,7 @@ const DASHBOARD_LINKS = [
   { name: 'Keyword Opportunities', href: '/dashboard/keyword-opportunities', icon: KeyRound },
   { name: 'Backlink Profile', href: '/dashboard/backlink-profile', icon: LinkIcon },
   { name: 'Content Performance', href: '/dashboard/content-performance', icon: FileText },
-  { name: 'AEO Insights', href: '/dashboard/aeo-insights', icon: Sparkles },
+  { name: 'AEO Insights', href: '/dashboard/aeo', icon: Sparkles },
 ] as const
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
@@ -81,7 +80,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const handleDeleteConversation = React.useCallback(async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    await actions.deleteConversation(id)
+    try {
+      await actions.deleteConversation(id)
+    } catch (error) {
+      console.error('[Sidebar] Failed to delete conversation:', error)
+    }
   }, [actions])
 
   return (
