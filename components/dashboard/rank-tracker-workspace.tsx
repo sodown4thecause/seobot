@@ -183,6 +183,10 @@ export function RankTrackerWorkspace() {
     }
 
     keywords.forEach((keyword) => {
+      if (keyword.currentPosition <= 0) {
+        return
+      }
+
       if (keyword.currentPosition > 0 && keyword.currentPosition <= 3) {
         ranges['1-3'] += 1
         return
