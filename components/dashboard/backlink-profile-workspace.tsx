@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import { ExternalLink, Link2, Loader2, ShieldAlert } from 'lucide-react'
+import { ExternalLink, Link2, Loader2, ShieldAlert, TriangleAlert } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
@@ -160,11 +160,20 @@ export function BacklinkProfileWorkspace() {
               min={10}
               max={200}
             />
-            <Button type="submit" disabled={isLoading} className="md:col-span-1">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="md:col-span-1 bg-emerald-700 text-white hover:bg-emerald-600"
+            >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Load profile'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-300">
+              <TriangleAlert className="h-4 w-4" />
+              <span>Error: {error}</span>
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -253,8 +262,8 @@ export function BacklinkProfileWorkspace() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="border-white/10 text-zinc-300">{row.type || 'link'}</Badge>
-                          {row.isNew ? <Badge variant="secondary">new</Badge> : null}
-                          {row.isLost ? <Badge variant="destructive">lost</Badge> : null}
+                          {row.isNew ? <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-200">new</Badge> : null}
+                          {row.isLost ? <Badge variant="outline" className="border-zinc-500 bg-zinc-700/60 text-zinc-100">lost</Badge> : null}
                         </div>
                       </TableCell>
                       <TableCell className="text-right text-zinc-300">{asNumber(row.domainRank)}</TableCell>
@@ -286,7 +295,7 @@ export function BacklinkProfileWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                           {topReferringChart.map((entry) => (
-                            <Cell key={entry.domain} fill="#6366f1" />
+                            <Cell key={entry.domain} fill="#10b981" />
                           ))}
                         </Bar>
                       </BarChart>
@@ -311,7 +320,7 @@ export function BacklinkProfileWorkspace() {
                     ) : null}
                   </div>
 
-                  <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                  <div className="mt-4 rounded-lg border border-zinc-600/60 bg-zinc-800/50 p-3 text-sm text-zinc-200">
                     <div className="flex items-start gap-2">
                       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
                       <span>

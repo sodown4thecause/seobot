@@ -893,17 +893,24 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     }
   }, [conversationId, bootstrapConversation, setMessages])
 
+  // Auto-send workflow messages (from sidebar Content Creation / Workflows)
+  useEffect(() => {
+    if (!autoSendMessage) return
+    if (status === 'streaming' || status === 'submitted') return
+    if (isBootstrapping) return
+    if (lastAutoSentMessage.current === autoSendMessage) return
+    lastAutoSentMessage.current = autoSendMessage
+    // Small delay so the chat is visually ready
+    const t = setTimeout(() => {
+      sendMessage({ text: autoSendMessage })
+    }, 400)
+    return () => clearTimeout(t)
+  }, [autoSendMessage, status, isBootstrapping, sendMessage])
+
   useEffect(() => {
     if (!messagesEndRef.current) return
     messagesEndRef.current.scrollIntoView({ behavior: isLoading ? 'smooth' : 'auto', block: 'end' })
   }, [messages.length, isLoading])
-
-  useEffect(() => {
-    if (autoSendMessage && autoSendMessage !== lastAutoSentMessage.current && !isBootstrapping && status === 'ready') {
-      lastAutoSentMessage.current = autoSendMessage
-      setTimeout(() => sendMessage({ text: autoSendMessage }), 300)
-    }
-  }, [autoSendMessage, isBootstrapping, status, sendMessage])
 
   // 8. Missing Handlers (Re-added)
   const removeToast = useCallback((id: string) => {
@@ -1010,38 +1017,38 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     // Default suggestions with proper category styling for empty state
     const defaultSuggestions: ProactiveSuggestion[] = [
       {
-        taskKey: 'seo-content',
-        category: 'execution',
-        prompt: 'Write a high-quality, SEO-optimized blog post about [topic]',
-        reasoning: 'Create content that ranks well in search engines',
-        icon: 'Write',
-        pillar: 'production',
-        priority: 1
-      },
-      {
-        taskKey: 'competitor-analysis',
+        taskKey: 'competitor-topical-map',
         category: 'deep_dive',
-        prompt: 'Analyze my top competitors and find content gaps',
+        prompt: 'Analyze my top competitors and find content gaps and write me a topical map.',
         reasoning: 'Understand your competitive landscape',
         icon: 'Research',
         pillar: 'gap_analysis',
-        priority: 2
+        priority: 1
       },
       {
-        taskKey: 'content-ideas',
+        taskKey: 'content-pillars',
         category: 'adjacent',
-        prompt: 'Generate 10 content ideas that will rank well for [keyword]',
+        prompt: 'Generate 10 content pillars that will rank well for my website.',
         reasoning: 'Discover new topics to target',
         icon: 'Ideas',
         pillar: 'discovery',
-        priority: 3
+        priority: 2
       },
       {
         taskKey: 'eeat-improvement',
         category: 'deep_dive',
         prompt: 'How can I improve my content for better EEAT?',
-        reasoning: 'Enhance expertise, experience, authority, and trust signals',
+        reasoning: 'Enhance expertise, experience, authority, and trust signals.',
         icon: 'EEAT',
+        pillar: 'strategy',
+        priority: 3
+      },
+      {
+        taskKey: 'link-building-plan',
+        category: 'execution',
+        prompt: 'Write a high-quality, SEO/AEO-optimized link building plan for my website',
+        reasoning: 'Create links that rank well in search engines',
+        icon: 'Link Building',
         pillar: 'strategy',
         priority: 4
       },
@@ -1102,7 +1109,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 <MessageAvatar isUser={false} name="AI" />
                 <MessageContent>
                   <div className="flex items-center gap-2 text-zinc-400" role="status" aria-live="polite" aria-label="AI is thinking">
-                    <Loader2 size={16} className="text-indigo-400 animate-spin" aria-hidden="true" />
+                    <Loader2 size={16} className="text-emerald-400 animate-spin" aria-hidden="true" />
                     <span>Thinking...</span>
                   </div>
                 </MessageContent>
