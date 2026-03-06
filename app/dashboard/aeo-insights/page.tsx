@@ -1,7 +1,5 @@
-'use client'
-
-import { AeoInsightsWorkspace } from '@/components/dashboard/aeo-insights-workspace'
+import { redirect } from 'next/navigation'
 
 export default function AeoInsightsPage() {
-  return <AeoInsightsWorkspace />
+  redirect('/dashboard/aeo')
 }

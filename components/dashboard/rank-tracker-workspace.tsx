@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Gauge, Loader2, Minus, TrendingUp, Users } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Gauge, Loader2, Minus, TrendingUp, TriangleAlert, Users } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
@@ -167,8 +167,8 @@ export function RankTrackerWorkspace() {
   const movementChartData = useMemo(
     () => [
       { bucket: 'Winners', key: 'winners', count: snapshot?.movements.winners.count ?? 0, fill: '#10b981' },
-      { bucket: 'Losers', key: 'losers', count: snapshot?.movements.losers.count ?? 0, fill: '#71717a' },
-      { bucket: 'Flat', key: 'unchanged', count: snapshot?.movements.unchanged.count ?? 0, fill: '#d4d4d8' },
+      { bucket: 'Losers', key: 'losers', count: snapshot?.movements.losers.count ?? 0, fill: '#3f3f46' },
+      { bucket: 'Flat', key: 'unchanged', count: snapshot?.movements.unchanged.count ?? 0, fill: '#52525b' },
     ],
     [snapshot?.movements.losers.count, snapshot?.movements.unchanged.count, snapshot?.movements.winners.count]
   )
@@ -343,11 +343,20 @@ export function RankTrackerWorkspace() {
               min={1}
               max={100}
             />
-            <Button type="submit" disabled={runMutation.isPending} className="md:col-span-1">
+            <Button
+              type="submit"
+              disabled={runMutation.isPending}
+              className="md:col-span-1 bg-emerald-700 text-white hover:bg-emerald-600"
+            >
               {runMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run rank tracker'}
             </Button>
           </form>
-          {runMutation.error ? <p className="mt-3 text-sm text-zinc-300">{runMutation.error.message}</p> : null}
+          {runMutation.error ? (
+            <p role="alert" className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-300">
+              <TriangleAlert className="h-4 w-4" />
+              <span>Error: {runMutation.error.message}</span>
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -427,8 +436,8 @@ export function RankTrackerWorkspace() {
                           <XAxis dataKey="label" stroke="#a1a1aa" />
                           <YAxis stroke="#a1a1aa" domain={[0, 100]} />
                           <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
-                          <Line type="monotone" dataKey="visibility" stroke="#22c55e" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="averagePosition" stroke="#d4d4d8" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="visibility" stroke="#10b981" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="averagePosition" stroke="#71717a" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     )}
@@ -468,7 +477,7 @@ export function RankTrackerWorkspace() {
                         <XAxis dataKey="range" stroke="#a1a1aa" />
                         <YAxis allowDecimals={false} stroke="#a1a1aa" />
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
-                        <Area type="monotone" dataKey="count" stroke="#22c55e" fill="#22c55e44" />
+                        <Area type="monotone" dataKey="count" stroke="#10b981" fill="#065f4655" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -522,6 +531,11 @@ export function RankTrackerWorkspace() {
                         type="button"
                         size="sm"
                         variant={movementFilter === value ? 'default' : 'outline'}
+                        className={
+                          movementFilter === value
+                            ? 'bg-emerald-700 text-white hover:bg-emerald-600'
+                            : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                        }
                         onClick={() => setMovementFilter(value)}
                       >
                         {value}
@@ -594,7 +608,7 @@ export function RankTrackerWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="visibility" radius={[8, 8, 0, 0]}>
                           {competitorRows.map((row) => (
-                            <Cell key={row.domain} fill={row.isYou ? '#22c55e' : '#71717a'} />
+                            <Cell key={row.domain} fill={row.isYou ? '#10b981' : '#3f3f46'} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -612,7 +626,16 @@ export function RankTrackerWorkspace() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm text-zinc-200">{row.domain}</p>
-                          <Badge variant={row.isYou ? 'default' : row.pressure === 'high' ? 'destructive' : 'outline'}>
+                          <Badge
+                            variant="outline"
+                            className={
+                              row.isYou
+                                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                                : row.pressure === 'high'
+                                  ? 'border-zinc-500 bg-zinc-700/60 text-zinc-100'
+                                  : 'border-zinc-600 bg-zinc-800/50 text-zinc-300'
+                            }
+                          >
                             {row.isYou ? 'you' : row.pressure}
                           </Badge>
                         </div>
@@ -623,7 +646,7 @@ export function RankTrackerWorkspace() {
                     ))}
                   </div>
 
-                  <div className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+                  <div className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
                     <TrendingUp className="mt-0.5 h-4 w-4 shrink-0" />
                     <p>
                       Focus on keywords in positions 11-20 to close the gap faster against competitor visibility.

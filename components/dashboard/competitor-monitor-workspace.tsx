@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, ExternalLink, Loader2, Users } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, ExternalLink, Loader2, TriangleAlert, Users } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
@@ -55,36 +55,26 @@ function formatCompact(value: number): string {
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
 }
 
-function competitorSignal(row: CompetitorRow): 'up' | 'down' | 'new' | 'mixed' | 'flat' {
-  const upCount = asPositiveNumber(row.metadata?.is_up)
-  const downCount = asPositiveNumber(row.metadata?.is_down)
-  const isUp = upCount > 0
-  const isDown = downCount > 0
+function competitorSignal(row: CompetitorRow): 'up' | 'down' | 'new' | 'flat' {
+  const isUp = asPositiveNumber(row.metadata?.is_up) > 0
+  const isDown = asPositiveNumber(row.metadata?.is_down) > 0
   const isNew = asPositiveNumber(row.metadata?.is_new) > 0
 
   if (isNew) return 'new'
-  if (isUp && isDown) {
-    if (upCount > downCount) return 'up'
-    if (downCount > upCount) return 'down'
-    return 'mixed'
-  }
   if (isUp && !isDown) return 'up'
   if (isDown && !isUp) return 'down'
   return 'flat'
 }
 
-function signalBadge(signal: ReturnType<typeof competitorSignal>): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
+function signalBadge(signal: ReturnType<typeof competitorSignal>): { label: string; variant: 'outline'; className?: string } {
   if (signal === 'new') {
-    return { label: 'New', variant: 'secondary' }
+    return { label: 'New', variant: 'outline', className: 'border-zinc-500 bg-zinc-700/60 text-zinc-100' }
   }
   if (signal === 'up') {
-    return { label: 'Gaining', variant: 'default' }
+    return { label: 'Gaining', variant: 'outline', className: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' }
   }
   if (signal === 'down') {
-    return { label: 'Losing', variant: 'outline' }
-  }
-  if (signal === 'mixed') {
-    return { label: 'Mixed', variant: 'secondary' }
+    return { label: 'Losing', variant: 'outline', className: 'border-zinc-600 bg-zinc-800/60 text-zinc-200' }
   }
   return { label: 'Stable', variant: 'outline' }
 }
@@ -199,11 +189,20 @@ export function CompetitorMonitorWorkspace() {
               min={1}
               max={25}
             />
-            <Button type="submit" disabled={isLoading} className="md:col-span-1">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="md:col-span-1 bg-emerald-700 text-white hover:bg-emerald-600"
+            >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run monitor'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-red-400">Error: {error}</p> : null}
+          {error ? (
+            <p role="alert" className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-300">
+              <TriangleAlert className="h-4 w-4" />
+              <span>Error: {error}</span>
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -289,15 +288,11 @@ export function CompetitorMonitorWorkspace() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={signalDisplay.variant}>
+                          <Badge variant={signalDisplay.variant} className={signalDisplay.className}>
                             {signalDisplay.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right text-zinc-300">
-                          {typeof row.domain_authority === 'number' && Number.isFinite(row.domain_authority)
-                            ? asPositiveNumber(row.domain_authority)
-                            : 'n/a'}
-                        </TableCell>
+                        <TableCell className="text-right text-zinc-300">{asPositiveNumber(row.domain_authority) || 'n/a'}</TableCell>
                         <TableCell className="text-right text-zinc-300">{asPositiveNumber(row.monthly_traffic).toLocaleString()}</TableCell>
                         <TableCell className="text-right text-zinc-300">{asPositiveNumber(row.shared_keywords).toLocaleString()}</TableCell>
                       </TableRow>
@@ -327,7 +322,7 @@ export function CompetitorMonitorWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="traffic" radius={[8, 8, 0, 0]}>
                           {chartData.map((entry) => (
-                            <Cell key={entry.domain} fill="#22c55e" />
+                            <Cell key={entry.domain} fill="#10b981" />
                           ))}
                         </Bar>
                       </BarChart>
@@ -346,7 +341,7 @@ export function CompetitorMonitorWorkspace() {
                         <div key={`signal-${row.domain}`} className="rounded-lg border border-white/10 bg-black/30 px-3 py-2">
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-sm text-zinc-200">{row.domain}</p>
-                            <Badge variant={signalDisplay.variant}>{signalDisplay.label}</Badge>
+                            <Badge variant={signalDisplay.variant} className={signalDisplay.className}>{signalDisplay.label}</Badge>
                           </div>
                           <p className="mt-1 text-xs text-zinc-500">
                             Traffic {asPositiveNumber(row.monthly_traffic).toLocaleString()} • Shared keywords {asPositiveNumber(row.shared_keywords).toLocaleString()}

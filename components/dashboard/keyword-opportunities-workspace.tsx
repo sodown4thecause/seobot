@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import { Lightbulb, Loader2, Search, Target } from 'lucide-react'
+import { Lightbulb, Loader2, Search, Target, TriangleAlert } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
@@ -294,11 +294,20 @@ export function KeywordOpportunitiesWorkspace() {
               min={50}
               max={1000}
             />
-            <Button type="submit" disabled={isLoading} className="md:col-span-1">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="md:col-span-1 bg-emerald-700 text-white hover:bg-emerald-600"
+            >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Find opportunities'}
             </Button>
           </form>
-          {error ? <p className="mt-3 text-sm text-zinc-300">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-300">
+              <TriangleAlert className="h-4 w-4" />
+              <span>Error: {error}</span>
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -405,7 +414,7 @@ export function KeywordOpportunitiesWorkspace() {
                         <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} />
                         <Bar dataKey="volume" radius={[8, 8, 0, 0]}>
                           {chartData.map((entry) => (
-                            <Cell key={entry.keyword} fill="#22c55e" />
+                            <Cell key={entry.keyword} fill="#10b981" />
                           ))}
                         </Bar>
                       </BarChart>
@@ -421,7 +430,7 @@ export function KeywordOpportunitiesWorkspace() {
                       <span>Start with high-volume terms in positions 11-30 for faster movement.</span>
                     </div>
                   </div>
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
                     <div className="flex items-center gap-2">
                       <Lightbulb className="h-4 w-4" />
                       <span>Low-competition keywords are the fastest path to incremental traffic wins.</span>
