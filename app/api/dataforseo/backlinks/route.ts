@@ -352,9 +352,10 @@ export async function POST(request: NextRequest) {
 
     const rawBacklinks = extractBacklinkRows(webhookPayload)
 
-    const backlinks: BacklinkResponseItem[] = rawBacklinks.slice(0, limit).map(normalizeBacklink)
+    const normalizedBacklinks = rawBacklinks.map(normalizeBacklink)
+    const backlinks: BacklinkResponseItem[] = normalizedBacklinks.slice(0, limit)
 
-    const referringDomains = buildReferringDomains(backlinks)
+    const referringDomains = buildReferringDomains(normalizedBacklinks)
     const totalBacklinksCandidate =
       getSummaryValueOrUndefined(payloadLike, 'total_backlinks') ??
       getSummaryValueOrUndefined(payloadLike, 'backlinks_count') ??

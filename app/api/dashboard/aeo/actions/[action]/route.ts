@@ -1,0 +1,60 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+import { getUserId } from '@/lib/auth/clerk'
+import { runDashboardAction } from '@/lib/dashboard/actions/orchestrator'
+import { dashboardActionPayloadSchema } from '@/lib/dashboard/actions/schemas'
+import type { DashboardActionName } from '@/lib/dashboard/actions/tools'
+
+export const runtime = 'nodejs'
+
+const allowedActions: DashboardActionName[] = ['generate-brief', 'launch-rewrite', 'track-query-set']
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ action: string }> }
+) {
+  const userId = await getUserId()
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
+  const { action } = await context.params
+  if (!allowedActions.includes(action as DashboardActionName)) {
+    return NextResponse.json({ error: 'Unsupported action' }, { status: 404 })
+  }
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+  }
+
+  const parsed = dashboardActionPayloadSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request payload', issues: parsed.error.issues }, { status: 400 })
+  }
+
+  try {
+    const data = await runDashboardAction({
+      workspace: 'aeo-insights',
+      action: action as DashboardActionName,
+      payload: parsed.data,
+    })
+
+    return NextResponse.json({
+      success: true,
+      data,
+    })
+  } catch (error) {
+    console.error('[Dashboard][AEO][Action] Failed to queue action', {
+      action,
+      error: error instanceof Error ? error.message : String(error),
+    })
+
+    return NextResponse.json(
+      { error: 'Failed to queue dashboard action' },
+      { status: 500 }
+    )
+  }
+}

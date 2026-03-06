@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import WebsiteAuditPage from '@/app/dashboard/website-audit/page'
 import RankTrackerPage from '@/app/dashboard/rank-tracker/page'
+import ContentPerformancePage from '@/app/dashboard/content-performance/page'
+import AeoInsightsPage from '@/app/dashboard/aeo-insights/page'
 
 vi.mock('recharts', () => {
   const passthrough = ({ children }: { children?: unknown }) => createElement('div', undefined, children as never)
@@ -46,5 +48,21 @@ describe('dashboard route pages', () => {
     expect(html).toContain('Rank Tracker Workspace')
     expect(html).toContain('Run rank tracker')
     expect(html).toContain('Keyword Movements')
+  })
+
+  it('renders content performance workspace content', () => {
+    const html = renderPage(ContentPerformancePage)
+
+    expect(html).toContain('Content Performance')
+    expect(html).toContain('Content ROI')
+    expect(html).toContain('Action Queue')
+  })
+
+  it('renders aeo insights workspace content', () => {
+    const html = renderPage(AeoInsightsPage)
+
+    expect(html).toContain('AEO Insights')
+    expect(html).toContain('Citation Share of Voice')
+    expect(html).toContain('History')
   })
 })
