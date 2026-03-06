@@ -108,7 +108,7 @@ export default function AEOCommandCenterPage() {
                                     <CardTitle className="text-lg flex items-center gap-2 text-zinc-100">
                                         {workflow.title}
                                         {workflow.isInstant && (
-                                            <Badge variant="secondary" className="text-xs bg-zinc-800 text-zinc-300 border-zinc-700">
+                                            <Badge variant="outline" className="text-xs border-zinc-600 bg-zinc-800/70 text-zinc-200">
                                                 Instant
                                             </Badge>
                                         )}
