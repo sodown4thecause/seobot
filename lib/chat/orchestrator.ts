@@ -32,9 +32,9 @@ import {
 } from './intent-classifier'
 import { assembleTools } from './tool-assembler'
 import { buildStreamResponse, getCoreTools, type StreamOptions } from './stream-builder'
-import { ensureConversationForUser } from './storage'
 import { getCurrentUser } from '@/lib/auth/clerk'
 import { AgentRouter } from '@/lib/agents/agent-router'
+import { ensureChatForUser } from './persistence'
 
 export interface ChatOrchestrationOptions {
   messages: UIMessage[]
@@ -79,19 +79,21 @@ export async function orchestrateChat(
   const user = await getCurrentUser()
   const resolvedAgentType = context?.agentId || context?.agentType || 'general'
   
-  let conversationRecord: Awaited<ReturnType<typeof ensureConversationForUser>> | null = null
   let activeConversationId = chatId || context?.conversationId || null
 
   if (user) {
     try {
-      conversationRecord = await ensureConversationForUser(
-        user.id,
-        resolvedAgentType
-      )
-      activeConversationId = conversationRecord?.id ?? activeConversationId
+      const conversationRecord = await ensureChatForUser({
+        userId: user.id,
+        requestedChatId: activeConversationId,
+        agentType: resolvedAgentType,
+      })
+
+      activeConversationId = conversationRecord.id
     } catch (error) {
       console.error('[Chat Orchestrator] Conversation lookup/creation failed:', error)
       // Continue without conversation persistence
+      activeConversationId = null
     }
   }
 

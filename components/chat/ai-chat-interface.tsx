@@ -47,6 +47,7 @@ interface AIChatInterfaceProps {
   conversationId?: string
   agentId?: string
   autoSendMessage?: string // For workflow prompts that should be sent automatically
+  autoSendKey?: string
 }
 
 const formatToolName = (name: string) => {
@@ -542,6 +543,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   conversationId: conversationIdProp,
   agentId: agentIdProp,
   autoSendMessage,
+  autoSendKey,
 }, ref) => {
   // 1. Initial State & Context
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -553,6 +555,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const [prevFocus, setPrevFocus] = useState<string | null>(null)
   const [showHandoff, setShowHandoff] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
+  const [hydratedConversationId, setHydratedConversationId] = useState<string | null>(conversationIdProp ?? null)
   const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
   const [proactiveSuggestions, setProactiveSuggestions] = useState<ProactiveSuggestion[]>([])
@@ -564,7 +567,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const bootstrapTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const bootstrapAbortControllerRef = useRef<AbortController | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const lastAutoSentMessage = useRef<string | null>(null)
+  const lastAutoSentKey = useRef<string | null>(null)
 
   // 3. Memoized Values
   const agentPreference = useMemo(() => agentIdProp ?? (chatContext as any)?.agentId ?? 'general', [agentIdProp, chatContext])
@@ -632,8 +635,11 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // Sync conversationId from prop
   useEffect(() => {
-    if (conversationIdProp !== undefined && conversationIdProp !== conversationId) {
-      setConversationId(conversationIdProp)
+    const nextConversationId = conversationIdProp ?? null
+
+    if (nextConversationId !== conversationId) {
+      setConversationId(nextConversationId)
+      setHydratedConversationId(null)
     }
   }, [conversationIdProp, conversationId])
 
@@ -826,6 +832,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               }
               if (mountedRef.current && !signal.aborted) {
                 setConversationId(workingConv.id)
+                setHydratedConversationId(workingConv.id)
                 setMessages(hms)
               }
             }
@@ -834,6 +841,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             // Still set the conversation ID even if messages fail to load
             if (mountedRef.current && !signal.aborted) {
               setConversationId(workingConv.id)
+              setHydratedConversationId(workingConv.id)
               setMessages([])
             }
           }
@@ -866,6 +874,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     if (conversationId) {
       if (lastLoadedConversationId.current !== conversationId) {
         lastLoadedConversationId.current = conversationId
+        setHydratedConversationId(null)
         // Clear messages immediately to avoid stale content flash
         setMessages([])
         // Load messages for the switched conversation
@@ -877,6 +886,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               const msgs = data?.messages ?? []
               if (mountedRef.current && lastLoadedConversationId.current === conversationId) {
                 setMessages(msgs)
+                setHydratedConversationId(conversationId)
               }
             } else {
               console.warn('[Chat] Failed to load messages for conversation:', conversationId)
@@ -896,16 +906,19 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   // Auto-send workflow messages (from sidebar Content Creation / Workflows)
   useEffect(() => {
     if (!autoSendMessage) return
+    if (!conversationId) return
+    if (hydratedConversationId !== conversationId) return
     if (status === 'streaming' || status === 'submitted') return
     if (isBootstrapping) return
-    if (lastAutoSentMessage.current === autoSendMessage) return
-    lastAutoSentMessage.current = autoSendMessage
+    const resolvedAutoSendKey = autoSendKey ?? `${conversationId}:${autoSendMessage}`
+    if (lastAutoSentKey.current === resolvedAutoSendKey) return
     // Small delay so the chat is visually ready
     const t = setTimeout(() => {
+      lastAutoSentKey.current = resolvedAutoSendKey
       sendMessage({ text: autoSendMessage })
     }, 400)
     return () => clearTimeout(t)
-  }, [autoSendMessage, status, isBootstrapping, sendMessage])
+  }, [autoSendKey, autoSendMessage, conversationId, hydratedConversationId, status, isBootstrapping, sendMessage])
 
   useEffect(() => {
     if (!messagesEndRef.current) return

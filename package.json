@@ -13,7 +13,7 @@
     "prebuild": "npm run validate:env || echo 'Env validation skipped'",
     "test": "vitest",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration",
+    "test:integration": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "load:test": "k6 run tests/load/k6-rate-limit.js",

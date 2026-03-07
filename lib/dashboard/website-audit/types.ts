@@ -2,7 +2,11 @@ export type ProviderStatus = 'ok' | 'partial' | 'failed'
 
 export type WebsiteAuditProviderName = 'dataforseo' | 'firecrawl' | 'lighthouse'
 
-export type WebsiteAuditProviderStatuses = Record<WebsiteAuditProviderName, ProviderStatus>
+export interface WebsiteAuditProviderStatuses {
+  dataforseo: ProviderStatus
+  firecrawl: ProviderStatus
+  lighthouse: ProviderStatus
+}
 
 export interface WebsiteAuditProviderStatusSummary {
   overall: ProviderStatus

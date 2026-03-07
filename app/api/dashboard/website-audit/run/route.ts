@@ -53,9 +53,8 @@ export async function POST(request: NextRequest) {
       snapshot: saved.snapshot,
     })
   } catch (error) {
-    console.error('[Dashboard Website Audit] Failed to run audit:', error)
     return NextResponse.json(
-      { error: 'Failed to run website audit' },
+      { error: error instanceof Error ? error.message : 'Failed to run website audit' },
       { status: 500 }
     )
   }

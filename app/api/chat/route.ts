@@ -33,7 +33,8 @@ import {
 import { classifyUserIntent, buildAgentSystemPrompt } from '@/lib/chat/intent-classifier'
 import { assembleTools } from '@/lib/chat/tool-assembler'
 import { buildStreamResponse, type StreamOptions } from '@/lib/chat/stream-builder'
-import { ensureConversationForUser, saveUIMessage } from '@/lib/chat/storage'
+import { saveUIMessage } from '@/lib/chat/storage'
+import { ensureChatForUser } from '@/lib/chat/persistence'
 import { detectWorkflowTrigger } from '@/lib/chat/orchestrator'
 
 export const maxDuration = 300 // 5 minutes
@@ -85,21 +86,23 @@ const handler = async (req: Request) => {
     // 5. Resolve conversation
     const requestedConversationId = chatId || context?.conversationId
     const resolvedAgentType = agentId || context?.agentType || 'general'
-    let conversationRecord: Awaited<ReturnType<typeof ensureConversationForUser>> | null = null
+    let activeConversationId = requestedConversationId ?? null
 
     if (user) {
       try {
-        conversationRecord = await ensureConversationForUser(
-          user.id,
-          resolvedAgentType
-        )
+        const conversationRecord = await ensureChatForUser({
+          userId: user.id,
+          requestedChatId: requestedConversationId,
+          agentType: resolvedAgentType,
+        })
+
+        activeConversationId = conversationRecord.id
       } catch (error) {
         console.error('[Chat API] Conversation lookup/creation failed:', error)
         // Continue without conversation persistence
+        activeConversationId = null
       }
     }
-
-    const activeConversationId = conversationRecord?.id ?? requestedConversationId ?? null
 
     // 6. Extract last user message for intent detection and workflow check
     const lastUserMessageContent = extractLastUserMessageContent(incomingMessages!)
@@ -292,3 +295,4 @@ export const POST = observe(handler, {
   name: 'handle-chat-message',
   endOnExit: false, // Don't end observation until stream finishes
 })
+

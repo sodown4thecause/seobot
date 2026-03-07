@@ -30,7 +30,6 @@ import { Logo } from '@/components/ui/logo'
 export interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
-  currentPath: string
 }
 
 // Original dashboard page links — all kept intact
@@ -41,7 +40,7 @@ const DASHBOARD_LINKS = [
   { name: 'Keyword Opportunities', href: '/dashboard/keyword-opportunities', icon: KeyRound },
   { name: 'Backlink Profile', href: '/dashboard/backlink-profile', icon: LinkIcon },
   { name: 'Content Performance', href: '/dashboard/content-performance', icon: FileText },
-  { name: 'AEO Insights', href: '/dashboard/aeo-insights', icon: Sparkles },
+  { name: 'AEO Insights', href: '/dashboard/aeo', icon: Sparkles },
 ] as const
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
@@ -49,6 +48,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const router = useRouter()
   const { state, actions } = useAgent()
   const hasFetchedRef = React.useRef(false)
+  const isContentRoute = pathname === '/dashboard/content' || pathname?.startsWith('/dashboard/content/')
+  const isImageRoute =
+    pathname === '/dashboard/image' ||
+    pathname?.startsWith('/dashboard/image/') ||
+    pathname === '/dashboard/images' ||
+    pathname?.startsWith('/dashboard/images/')
 
   // Load conversation history once on mount — fails silently if 401, history is optional
   React.useEffect(() => {
@@ -59,11 +64,22 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // New Chat — just navigate to /dashboard (chat resets itself)
-  const handleNewChat = React.useCallback(() => {
-    actions.setActiveConversation(null)
-    router.push('/dashboard')
-  }, [actions, router])
+  const handleNewChat = React.useCallback(async () => {
+    const agentId = state.activeAgent?.id ?? 'general'
 
+    try {
+      const conversation = await actions.createConversation(agentId, 'New Conversation')
+      if (!conversation) {
+        console.error('[Sidebar] Failed to create a new conversation')
+        return
+      }
+
+      actions.setActiveConversation(conversation)
+      router.push(`/dashboard?conversationId=${conversation.id}`)
+    } catch (error) {
+      console.error('[Sidebar] Failed to start a new chat:', error)
+    }
+  }, [actions, router, state.activeAgent?.id])
   // Content Creation → dedicated content studio page
   const handleContentCreation = React.useCallback(() => {
     router.push('/dashboard/content')
@@ -76,12 +92,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const handleSelectConversation = React.useCallback((conv: typeof state.conversations[0]) => {
     actions.setActiveConversation(conv)
-    router.push('/dashboard')
+    router.push(`/dashboard?conversationId=${conv.id}`)
   }, [actions, router])
 
   const handleDeleteConversation = React.useCallback(async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    await actions.deleteConversation(id)
+    try {
+      await actions.deleteConversation(id)
+    } catch (error) {
+      console.error('[Sidebar] Failed to delete conversation:', error)
+    }
   }, [actions])
 
   return (
@@ -144,6 +164,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               icon={PenLine}
               label="Content Creation"
               collapsed={collapsed}
+              isActive={isContentRoute}
               onClick={handleContentCreation}
             />
             <SidebarBtn
@@ -151,6 +172,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               icon={Image}
               label="Image Generation"
               collapsed={collapsed}
+              isActive={isImageRoute}
               onClick={handleImageGen}
             />
             <SidebarBtn

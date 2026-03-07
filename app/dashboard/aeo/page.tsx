@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useAgent } from '@/components/providers/agent-provider'
+import { launchWorkflowChat } from '@/lib/workflows/launch-workflow-chat'
+import { useUser } from '@clerk/nextjs'
+import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
 
 const AEO_WORKFLOWS = [
     {
@@ -34,9 +38,44 @@ const AEO_WORKFLOWS = [
 
 export default function AEOCommandCenterPage() {
     const router = useRouter()
+    const { state, actions } = useAgent()
+    const { user, isLoaded } = useUser()
+    const { ready: clerkReady, timedOut: clerkTimedOut } = useClerkLoadGuard(isLoaded, 5000)
 
-    const handleStartWorkflow = (workflowId: string) => {
-        router.push(`/dashboard?workflow=${workflowId}`)
+    const handleStartWorkflow = async (workflowId: string) => {
+        if (!isLoaded || !user) {
+            router.push('/sign-in')
+            return
+        }
+
+        const result = await launchWorkflowChat(workflowId, {
+            activeAgentId: state.activeAgent?.id,
+            createConversation: actions.createConversation,
+            setActiveConversation: actions.setActiveConversation,
+            push: router.push,
+        })
+
+        if (result !== 'launched') {
+            console.error('[AEOCommandCenterPage] Failed to launch workflow:', workflowId, result)
+        }
+    }
+
+    if (!isLoaded && !clerkReady) {
+        return (
+            <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
+                <div className="animate-pulse text-gray-400">Loading...</div>
+            </div>
+        )
+    }
+
+    if (clerkTimedOut && !isLoaded) {
+        return (
+            <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center px-6 text-center">
+                <div className="max-w-xl rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
+                    Clerk auth is not loading in the browser. Verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, then restart `npm run dev`.
+                </div>
+            </div>
+        )
     }
 
     return (

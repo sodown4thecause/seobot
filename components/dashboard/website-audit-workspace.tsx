@@ -36,7 +36,7 @@ const STATUS_SCORES: Record<ProviderStatus, number> = {
 const STATUS_COLORS: Record<ProviderStatus, string> = {
   ok: '#10b981',
   partial: '#52525b',
-  failed: '#3f3f46',
+  failed: '#ef4444',
 }
 
 type SeverityFilter = 'all' | WebsiteAuditIssueSeverity

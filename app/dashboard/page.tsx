@@ -1,32 +1,43 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useMemo, useEffect, useState, useRef } from 'react'
+import { useMemo, useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { useAgent } from '@/components/providers/agent-provider'
-import { useUserMode } from '@/components/providers/user-mode-provider'
 import { useUser } from '@clerk/nextjs'
-import { getWorkflowPrompt } from '@/lib/workflows/guided-prompts'
+import { getWorkflowLaunchConfig } from '@/lib/workflows/launch-config'
 import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
 
-
 export default function DashboardPage() {
-  const { state } = useAgent()
-  const { state: userModeState } = useUserMode()
-  const activeConversationId = state.activeConversation?.id
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
+      <DashboardInner />
+    </Suspense>
+  )
+}
+
+function DashboardInner() {
+  const { state, actions } = useAgent()
   const activeAgentId = state.activeAgent?.id
   const { user, isLoaded } = useUser()
   const { ready: clerkReady, timedOut: clerkTimedOut } = useClerkLoadGuard(isLoaded, 5000)
+  const searchParams = useSearchParams()
+  const workflowId = searchParams?.get('workflow') ?? undefined
+  const explicitConversationId = searchParams?.get('conversationId') ?? undefined
 
   const [isNewUser, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [initialMessage, setInitialMessage] = useState<string | undefined>()
   const [_userName, setUserName] = useState<string>('')
-  const [workflowMessage, setWorkflowMessage] = useState<string | undefined>()
-
-  // Refs to track fetch state and cleanup
-  const _abortControllerRef = useRef<AbortController | null>(null)
-  const _timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const workflowLaunch = useMemo(
+    () => (workflowId ? getWorkflowLaunchConfig(workflowId) : null),
+    [workflowId]
+  )
+  const resolvedConversationId = explicitConversationId ?? state.activeConversation?.id
+  const workflowMessage = workflowLaunch?.initialPrompt
+  const workflowAutoSendKey =
+    workflowId && resolvedConversationId ? `${workflowId}:${resolvedConversationId}` : workflowId
 
   // Check if user has a business profile (first-time user detection)
   useEffect(() => {
@@ -134,35 +145,36 @@ export default function DashboardPage() {
     }
   }, [user, isLoaded])
 
-  const _handleWorkflowSelect = (workflowId: string) => {
-    const workflow = getWorkflowPrompt(workflowId)
-    if (workflow) {
-      // Set the workflow message which will be picked up by the chat
-      setWorkflowMessage(workflow.initialPrompt)
-      // Scroll to chat
-      setTimeout(() => {
-        const chatElement = document.getElementById('dashboard-chat-section')
-        if (chatElement) {
-          chatElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
-      }, 100)
+  useEffect(() => {
+    if (!explicitConversationId) {
+      return
     }
-  }
 
+    if (state.activeConversation?.id === explicitConversationId) {
+      return
+    }
 
+    const matchingConversation = state.conversations.find(
+      (conversation) => conversation.id === explicitConversationId
+    )
+
+    if (matchingConversation) {
+      actions.setActiveConversation(matchingConversation)
+    }
+  }, [actions, explicitConversationId, state.activeConversation?.id, state.conversations])
 
   // Build context with onboarding flag
   const context = useMemo(
     () => ({
       page: isNewUser ? 'onboarding' : 'dashboard',
-      conversationId: activeConversationId,
+      conversationId: resolvedConversationId,
       isNewUser,
-      userMode: userModeState.currentMode?.level || 'beginner',
+      userMode: 'default',
     }),
-    [activeConversationId, isNewUser, userModeState.currentMode?.level]
+    [isNewUser, resolvedConversationId]
   )
 
-  if (!isLoaded || isLoading || userModeState.isLoading) {
+  if (!isLoaded || isLoading) {
     if (!clerkReady && !isLoaded) {
       return (
         <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
@@ -209,11 +221,12 @@ export default function DashboardPage() {
             context={context}
             placeholder={isNewUser ? "Tell me about your business..." : "Ask anything..."}
             className="h-[calc(100vh-12rem)]"
-            conversationId={activeConversationId}
+            conversationId={resolvedConversationId}
             agentId={activeAgentId}
             initialMessage={initialMessage}
             autoSendMessage={workflowMessage}
-            key={workflowMessage}
+            autoSendKey={workflowAutoSendKey}
+            key={`${resolvedConversationId ?? 'no-conversation'}:${workflowId ?? 'no-workflow'}`}
           />
         </div>
       </motion.div>

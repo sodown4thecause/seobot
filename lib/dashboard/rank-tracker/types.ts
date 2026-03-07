@@ -2,7 +2,10 @@ export type ProviderStatus = 'ok' | 'partial' | 'failed'
 
 export type RankTrackerProviderName = 'dataforseo' | 'googleSearchConsole'
 
-export type RankTrackerProviderStatuses = Record<RankTrackerProviderName, ProviderStatus>
+export interface RankTrackerProviderStatuses {
+  dataforseo: ProviderStatus
+  googleSearchConsole: ProviderStatus
+}
 
 export interface RankTrackerProviderStatusSummary {
   overall: ProviderStatus

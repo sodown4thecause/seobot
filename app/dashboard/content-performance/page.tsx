@@ -29,10 +29,16 @@ export default function ContentPerformancePage() {
                 Track what content drives visibility, clicks, and ranking momentum.
               </CardDescription>
             </div>
-            <Badge variant="outline" className="border-white/10 text-zinc-300">
-              Rolling 30 days
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="border-white/10 text-zinc-300">
+                Rolling 30 days
+              </Badge>
+              <Badge variant="outline" className="border-amber-400/50 bg-amber-500/10 text-amber-200">
+                Demo Data
+              </Badge>
+            </div>
           </div>
+          <p className="text-xs text-zinc-500">Preview values only. Live metrics are coming soon.</p>
         </CardHeader>
       </Card>
 

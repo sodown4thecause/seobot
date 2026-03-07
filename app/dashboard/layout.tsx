@@ -14,7 +14,6 @@ import { ActionProvider } from '@/components/providers/action-provider'
 import { createDashboardQueryClient } from '@/lib/cache/query-client'
 
 const PAGE_NAMES: Record<string, string> = {
-  overview: 'Overview',
   'website-audit': 'Website Audit',
   'rank-tracker': 'Rank Tracker',
   'competitor-monitor': 'Competitor Monitor',
@@ -24,13 +23,16 @@ const PAGE_NAMES: Record<string, string> = {
   'aeo-insights': 'AEO Insights',
   'aeo': 'AEO Insights',
   'workflows': 'Workflows',
-  'content': 'Content',
+  'content': 'Content Creation',
+  'content-zone': 'Content Creation',
+  'image': 'Image Generation',
+  'images': 'Image Generation',
 }
 
 function getCurrentPageName(pathname: string): string {
   const segments = pathname.split('/').filter(Boolean)
   const dashboardSegment = segments[1]
-  if (!dashboardSegment) return 'Overview'
+  if (!dashboardSegment) return 'Dashboard'
   return (
     PAGE_NAMES[dashboardSegment] ??
     dashboardSegment
@@ -60,7 +62,6 @@ export default function DashboardLayout({
                   <Sidebar
                     collapsed={sidebarCollapsed}
                     onToggle={() => setSidebarCollapsed((v) => !v)}
-                    currentPath={pathname ?? ''}
                   />
                   <main className={cn('relative z-10 flex min-h-screen flex-1 flex-col')}>
                     <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
