@@ -792,32 +792,20 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         if (signal.aborted) return 'aborted'
         let workingConv = overrideId ? { id: overrideId } : null
 
-        if (!workingConv) {
+        if (!workingConv && !signal.aborted) {
           try {
-            const res = await fetch('/api/conversations?limit=1', { signal })
-            if (res.ok) {
-              const data = await safeParseJSON(res)
-              workingConv = data?.conversations?.[0] ?? null
+            const createRes = await fetch('/api/conversations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ agentId: agentPreference }),
+              signal,
+            })
+            if (createRes.ok) {
+              const cdata = await safeParseJSON(createRes)
+              workingConv = cdata?.conversation ?? null
             }
-          } catch (fetchErr) {
-            console.warn('[Chat] Failed to fetch conversations:', fetchErr)
-          }
-
-          if (!workingConv && !signal.aborted) {
-            try {
-              const createRes = await fetch('/api/conversations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ agentId: agentPreference }),
-                signal,
-              })
-              if (createRes.ok) {
-                const cdata = await safeParseJSON(createRes)
-                workingConv = cdata?.conversation ?? null
-              }
-            } catch (createErr) {
-              console.warn('[Chat] Failed to create conversation:', createErr)
-            }
+          } catch (createErr) {
+            console.warn('[Chat] Failed to create conversation:', createErr)
           }
         }
 
@@ -1000,11 +988,15 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // 10. Main Component Returns
   if (isBootstrapping) {
+    const loadingLabel = conversationIdProp
+      ? 'Loading your chat workspace...'
+      : 'Starting a new chat...'
+
     return (
       <div className={cn('flex h-full items-center justify-center', className)}>
         <div className="flex flex-col items-center gap-3 text-zinc-400" role="status" aria-live="polite" aria-label="Loading chat workspace">
           <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
-          <p className="text-sm">Loading your chat workspace...</p>
+          <p className="text-sm">{loadingLabel}</p>
         </div>
       </div>
     )

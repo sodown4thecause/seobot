@@ -34,7 +34,7 @@ function DashboardInner() {
     () => (workflowId ? getWorkflowLaunchConfig(workflowId) : null),
     [workflowId]
   )
-  const resolvedConversationId = explicitConversationId ?? state.activeConversation?.id
+  const resolvedConversationId = explicitConversationId
   const workflowMessage = workflowLaunch?.initialPrompt
   const workflowAutoSendKey =
     workflowId && resolvedConversationId ? `${workflowId}:${resolvedConversationId}` : workflowId
@@ -144,6 +144,18 @@ function DashboardInner() {
       }
     }
   }, [user, isLoaded])
+
+  useEffect(() => {
+    if (explicitConversationId) {
+      return
+    }
+
+    if (!state.activeConversation?.id) {
+      return
+    }
+
+    actions.setActiveConversation(null)
+  }, [actions, explicitConversationId, state.activeConversation?.id])
 
   useEffect(() => {
     if (!explicitConversationId) {
