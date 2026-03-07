@@ -74,7 +74,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       console.error('[Sidebar] Failed to start a new chat:', error)
     }
   }, [actions, router, state.activeAgent?.id])
-
   // Content Creation → dedicated content studio page
   const handleContentCreation = React.useCallback(() => {
     router.push('/dashboard/content')
