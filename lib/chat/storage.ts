@@ -37,6 +37,15 @@ export interface GenericUIMessage {
   createdAt?: Date
 }
 
+const DEFAULT_CONVERSATION_TITLE = 'New Conversation'
+
+function deriveConversationTitle(content: string): string | null {
+  const normalized = content.replace(/\s+/g, ' ').trim()
+  if (!normalized) return null
+
+  return normalized.length > 80 ? `${normalized.slice(0, 80)}...` : normalized
+}
+
 /**
  * Save a conversation message
  */
@@ -62,7 +71,7 @@ export async function saveConversationMessage(
   try {
     await db
       .update(conversations)
-      .set({ lastMessageAt: new Date() })
+      .set({ lastMessageAt: new Date(), updatedAt: new Date() })
       .where(eq(conversations.id, conversationId))
   } catch (error) {
     console.warn('[Storage] Failed to update conversation lastMessageAt:', error)
@@ -250,9 +259,28 @@ export async function saveUIMessage(
 
   // Update conversation's lastMessageAt timestamp
   try {
+    const titleUpdate =
+      message.role === 'user'
+        ? await db
+            .select({ title: conversations.title })
+            .from(conversations)
+            .where(eq(conversations.id, conversationId))
+            .limit(1)
+        : []
+
+    const nextTitle =
+      message.role === 'user' &&
+      titleUpdate[0]?.title === DEFAULT_CONVERSATION_TITLE
+        ? deriveConversationTitle(content) || DEFAULT_CONVERSATION_TITLE
+        : undefined
+
     await db
       .update(conversations)
-      .set({ lastMessageAt: new Date() })
+      .set({
+        lastMessageAt: new Date(),
+        updatedAt: new Date(),
+        ...(nextTitle ? { title: nextTitle } : {}),
+      })
       .where(eq(conversations.id, conversationId))
   } catch (error) {
     console.warn('[Storage] Failed to update conversation lastMessageAt:', error)

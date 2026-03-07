@@ -9,9 +9,16 @@ import { Clock, Play, Search } from 'lucide-react'
 import { getAllWorkflows } from '@/lib/workflows/registry'
 import type { Workflow } from '@/lib/workflows/types'
 import { useRouter } from 'next/navigation'
+import { useAgent } from '@/components/providers/agent-provider'
+import { launchWorkflowChat } from '@/lib/workflows/launch-workflow-chat'
+import { useUser } from '@clerk/nextjs'
+import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
 
 export default function CampaignsPage() {
     const router = useRouter()
+    const { state, actions } = useAgent()
+    const { user, isLoaded } = useUser()
+    const { ready: clerkReady, timedOut: clerkTimedOut } = useClerkLoadGuard(isLoaded, 5000)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
@@ -30,8 +37,40 @@ export default function CampaignsPage() {
         return matchesSearch && matchesCategory
     })
 
-    const handleStartCampaign = (workflow: Workflow) => {
-        router.push(`/dashboard?workflow=${workflow.id}`)
+    const handleStartCampaign = async (workflow: Workflow) => {
+        if (!isLoaded || !user) {
+            router.push('/sign-in')
+            return
+        }
+
+        const result = await launchWorkflowChat(workflow.id, {
+            activeAgentId: state.activeAgent?.id,
+            createConversation: actions.createConversation,
+            setActiveConversation: actions.setActiveConversation,
+            push: router.push,
+        })
+
+        if (result !== 'launched') {
+            console.error('[CampaignsPage] Failed to launch workflow:', workflow.id, result)
+        }
+    }
+
+    if (!isLoaded && !clerkReady) {
+        return (
+            <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
+                <div className="animate-pulse text-gray-400">Loading...</div>
+            </div>
+        )
+    }
+
+    if (clerkTimedOut && !isLoaded) {
+        return (
+            <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center px-6 text-center">
+                <div className="max-w-xl rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
+                    Clerk auth is not loading in the browser. Verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, then restart `npm run dev`.
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -139,4 +178,3 @@ export default function CampaignsPage() {
         </div>
     )
 }
-

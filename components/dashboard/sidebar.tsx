@@ -58,10 +58,22 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // New Chat — just navigate to /dashboard (chat resets itself)
-  const handleNewChat = React.useCallback(() => {
-    actions.setActiveConversation(null)
-    router.push('/dashboard')
-  }, [actions, router])
+  const handleNewChat = React.useCallback(async () => {
+    const agentId = state.activeAgent?.id ?? 'general'
+
+    try {
+      const conversation = await actions.createConversation(agentId, 'New Conversation')
+      if (!conversation) {
+        console.error('[Sidebar] Failed to create a new conversation')
+        return
+      }
+
+      actions.setActiveConversation(conversation)
+      router.push(`/dashboard?conversationId=${conversation.id}`)
+    } catch (error) {
+      console.error('[Sidebar] Failed to start a new chat:', error)
+    }
+  }, [actions, router, state.activeAgent?.id])
 
   // Content Creation → dedicated content studio page
   const handleContentCreation = React.useCallback(() => {
@@ -75,7 +87,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const handleSelectConversation = React.useCallback((conv: typeof state.conversations[0]) => {
     actions.setActiveConversation(conv)
-    router.push('/dashboard')
+    router.push(`/dashboard?conversationId=${conv.id}`)
   }, [actions, router])
 
   const handleDeleteConversation = React.useCallback(async (e: React.MouseEvent, id: string) => {

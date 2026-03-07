@@ -4,6 +4,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
+import { useUser } from '@clerk/nextjs'
 import { agentRegistry } from '@/lib/agents/registry'
 
 // Types
@@ -313,6 +314,7 @@ const AgentContext = createContext<{
 // Provider component
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(agentReducer, initialState)
+  const { user, isLoaded } = useUser()
 
   // Initialize with default agent
   useEffect(() => {
@@ -414,26 +416,38 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
     createConversation: async (agentId: string, title?: string): Promise<Conversation | null> => {
       try {
+        if (!isLoaded) {
+          dispatch({ type: 'SET_ERROR', payload: 'Authentication is still loading. Please try again.' })
+          return null
+        }
+
+        if (!user) {
+          dispatch({ type: 'SET_ERROR', payload: 'Authentication required. Please sign in and try again.' })
+          return null
+        }
+
         dispatch({ type: 'LOADING_START' })
 
-        const agent = agentRegistry.getAgent(agentId)
+        const agent = agentRegistry.getAgent(agentId) || agentRegistry.getAgent('general')
         if (!agent) {
-          throw new Error(`Agent '${agentId}' not found`)
+          throw new Error(`Agent '${agentId}' not found and no default agent is available`)
         }
 
         const response = await fetch('/api/conversations', {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            agentId,
-            title: title || `${agent.name} Chat`,
+            agentId: agent.id,
+            title: title || 'New Conversation',
           }),
         })
 
         if (!response.ok) {
-          throw new Error('Failed to create conversation')
+          const errorText = await response.text().catch(() => '')
+          throw new Error(`Failed to create conversation (${response.status}): ${errorText || response.statusText}`)
         }
 
         const { conversation: conv } = await response.json()
@@ -441,7 +455,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         // Transform to match Conversation type
         const conversation: Conversation = {
           id: conv.id,
-          agentId: conv.agent_type,
+          agentId: conv.agentType || conv.agent_type || agent.id,
           title: conv.title,
           status: conv.status,
           agent: conv.agent ? {
@@ -460,14 +474,15 @@ export function AgentProvider({ children }: { children: ReactNode }) {
             })),
             ragConfig: agent.ragConfig,
           } : null as any,
-          createdAt: conv.created_at,
-          updatedAt: conv.updated_at,
+          createdAt: conv.createdAt || conv.created_at,
+          updatedAt: conv.updatedAt || conv.updated_at,
         }
 
         dispatch({ type: 'ADD_CONVERSATION', payload: conversation })
 
         return conversation
       } catch (error) {
+        console.error('[AgentProvider] createConversation failed:', error)
         dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' })
         return null
       } finally {
@@ -477,9 +492,15 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
     loadConversations: async () => {
       try {
+        if (!isLoaded || !user) {
+          return
+        }
+
         dispatch({ type: 'LOADING_START' })
 
-        const response = await fetch('/api/conversations?status=active&limit=50')
+        const response = await fetch('/api/conversations?status=active&limit=50', {
+          credentials: 'include',
+        })
 
         if (!response.ok) {
           throw new Error('Failed to load conversations')
@@ -490,7 +511,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         // Transform conversations to match our Conversation type
         const transformedConversations: Conversation[] = conversations.map((conv: any) => ({
           id: conv.id,
-          agentId: conv.agent_type,
+          agentId: conv.agentType || conv.agent_type || 'general',
           title: conv.title,
           status: conv.status,
           agent: conv.agent ? {
@@ -508,8 +529,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
               maxContextLength: 4000,
             },
           } : null as any,
-          createdAt: conv.created_at,
-          updatedAt: conv.updated_at,
+          createdAt: conv.createdAt || conv.created_at,
+          updatedAt: conv.updatedAt || conv.updated_at,
           messageCount: conv.messageCount,
           lastMessage: conv.lastMessage,
         }))
@@ -891,12 +912,16 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   // Load conversations after actions are defined
   useEffect(() => {
+    if (!isLoaded || !user) {
+      return
+    }
+
     if (state.activeAgent && state.conversations.length === 0) {
       actions.loadConversations().catch(err => {
         console.warn('[AgentProvider] Failed to load conversations:', err)
       })
     }
-  }, [state.activeAgent?.id])
+  }, [isLoaded, user?.id, state.activeAgent?.id, state.conversations.length])
 
   return (
     <AgentContext.Provider value={{ state, dispatch, actions }}>
