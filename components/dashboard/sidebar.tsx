@@ -48,6 +48,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const router = useRouter()
   const { state, actions } = useAgent()
   const hasFetchedRef = React.useRef(false)
+  const isContentRoute = pathname === '/dashboard/content' || pathname?.startsWith('/dashboard/content/')
+  const isImageRoute =
+    pathname === '/dashboard/image' ||
+    pathname?.startsWith('/dashboard/image/') ||
+    pathname === '/dashboard/images' ||
+    pathname?.startsWith('/dashboard/images/')
 
   // Load conversation history once on mount — fails silently if 401, history is optional
   React.useEffect(() => {
@@ -159,6 +165,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               icon={PenLine}
               label="Content Creation"
               collapsed={collapsed}
+              isActive={isContentRoute}
               onClick={handleContentCreation}
             />
             <SidebarBtn
@@ -166,6 +173,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               icon={Image}
               label="Image Generation"
               collapsed={collapsed}
+              isActive={isImageRoute}
               onClick={handleImageGen}
             />
             <SidebarBtn

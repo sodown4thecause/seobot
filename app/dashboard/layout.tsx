@@ -23,7 +23,10 @@ const PAGE_NAMES: Record<string, string> = {
   'aeo-insights': 'AEO Insights',
   'aeo': 'AEO Insights',
   'workflows': 'Workflows',
-  'content': 'Content',
+  'content': 'Content Creation',
+  'content-zone': 'Content Creation',
+  'image': 'Image Generation',
+  'images': 'Image Generation',
 }
 
 function getCurrentPageName(pathname: string): string {
