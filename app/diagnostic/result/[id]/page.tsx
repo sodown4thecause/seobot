@@ -1,14 +1,9 @@
 import type { Metadata } from 'next'
-import { buildPageMetadata } from '@/lib/seo/metadata'
-
 import { ResultPageClient } from '../result-page-client'
 
 export const metadata: Metadata = {
-  ...buildPageMetadata({
-    title: 'AI Influence Diagnostic Result | FlowIntent',
-    description: 'Step 1 AI Influence Diagnostic snapshot result.',
-    path: '/diagnostic',
-  }),
+  title: 'AI Influence Diagnostic Result | FlowIntent',
+  description: 'Step 1 AI Influence Diagnostic snapshot result.',
   robots: {
     index: false,
     follow: false,

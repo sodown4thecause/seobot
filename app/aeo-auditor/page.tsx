@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { buildPageMetadata } from '@/lib/seo/metadata'
+import { absoluteUrl } from '@/lib/seo/site'
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Free AEO Auditor | Track AI Mentions and Citations',
@@ -44,12 +45,12 @@ const auditorSchema = {
       name: 'Free AEO Auditor',
       description:
         'Run a free AEO audit to see how AI platforms describe your brand, where citations are lost, and what to fix first.',
-      url: 'https://flowintent.com/aeo-auditor',
-      mainEntity: { '@id': 'https://flowintent.com/aeo-auditor#faq' },
+      url: absoluteUrl('/aeo-auditor'),
+      mainEntity: { '@id': absoluteUrl('/aeo-auditor#faq') },
     },
     {
       '@type': 'FAQPage',
-      '@id': 'https://flowintent.com/aeo-auditor#faq',
+      '@id': absoluteUrl('/aeo-auditor#faq'),
       mainEntity: faq.map((item) => ({
         '@type': 'Question',
         name: item.q,
@@ -64,43 +65,44 @@ const auditorSchema = {
 
 export default function AEOAuditorLandingPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(auditorSchema) }}
       />
-      <div className="container mx-auto px-6 py-16 max-w-6xl">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-200">
-            Free AEO Auditor
-          </div>
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic mt-8">
-            See how AI describes your brand
-          </h1>
-          <p className="text-zinc-400 text-lg md:text-xl mt-6 leading-tight">
-            Track mention signals (proxy), identify hallucinations, and get a step-by-step plan to earn more citations in
-            ChatGPT and Perplexity.
-          </p>
+      <div className="min-h-screen bg-[#0a0a0a] text-white">
+        <div className="container mx-auto px-6 py-16 max-w-6xl">
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-200">
+              Free AEO Auditor
+            </div>
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic mt-8">
+              See how AI describes your brand
+            </h1>
+            <p className="text-zinc-400 text-lg md:text-xl mt-6 leading-tight">
+              Track mention signals (proxy), identify hallucinations, and get a step-by-step plan to earn more citations in
+              ChatGPT and Perplexity.
+            </p>
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/audit"
-              className="inline-block bg-white text-black px-8 py-4 rounded-none font-black uppercase tracking-[0.1em] hover:bg-zinc-200 transition-colors"
-            >
-              Run Free Audit
-            </Link>
-            <Link
-              href="/prices"
-              className="inline-block bg-white/5 border border-white/10 text-white px-8 py-4 rounded-none font-black uppercase tracking-[0.1em] hover:bg-white/10 transition-colors"
-            >
-              Pricing
-            </Link>
-          </div>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+              <Link
+                href="/audit"
+                className="inline-block bg-white text-black px-8 py-4 rounded-none font-black uppercase tracking-[0.1em] hover:bg-zinc-200 transition-colors"
+              >
+                Run Free Audit
+              </Link>
+              <Link
+                href="/prices"
+                className="inline-block bg-white/5 border border-white/10 text-white px-8 py-4 rounded-none font-black uppercase tracking-[0.1em] hover:bg-white/10 transition-colors"
+              >
+                Pricing
+              </Link>
+            </div>
 
-          <div className="mt-10 text-xs font-mono text-zinc-500 uppercase tracking-[0.35em]">
-            No credit card • Results in ~30 seconds • Actionable fixes
+            <div className="mt-10 text-xs font-mono text-zinc-500 uppercase tracking-[0.35em]">
+              No credit card • Results in ~30 seconds • Actionable fixes
+            </div>
           </div>
-        </div>
 
         <div className="max-w-5xl mx-auto mt-16 grid md:grid-cols-3 gap-6">
           {[
@@ -165,7 +167,8 @@ export default function AEOAuditorLandingPage() {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
