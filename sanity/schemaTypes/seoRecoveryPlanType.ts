@@ -45,7 +45,10 @@ export const seoRecoveryPlanType = defineType({
       name: 'phaseScope',
       title: 'In Scope Phases',
       type: 'array',
-      of: [{ type: 'string', options: { list: PHASE_OPTIONS } }],
+      of: [{ type: 'string' }],
+      options: {
+        list: PHASE_OPTIONS,
+      },
     }),
     defineField({
       name: 'executiveSnapshot',
