@@ -247,11 +247,23 @@ export function LandingPageClient() {
             <Link href="/guides" className="hover:text-white transition-colors">
               Guides
             </Link>
+            <Link href="/aeo-auditor" className="hover:text-white transition-colors">
+              AEO Auditor
+            </Link>
             <Link href="/faq" className="hover:text-white transition-colors">
               FAQ
             </Link>
+            <Link href="/docs" className="hover:text-white transition-colors">
+              Docs
+            </Link>
             <Link href="/resources" className="hover:text-white transition-colors">
               Resources
+            </Link>
+            <Link href="/case-studies" className="hover:text-white transition-colors">
+              Case Studies
+            </Link>
+            <Link href="/contact" className="hover:text-white transition-colors">
+              Contact
             </Link>
             <Link href="/privacy" className="hover:text-white transition-colors">
               Privacy

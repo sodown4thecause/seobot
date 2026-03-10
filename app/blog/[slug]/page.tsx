@@ -183,6 +183,24 @@ export default async function BlogPostPage({
                             <PortableText value={post.body} components={portableTextComponents} />
                         )}
                     </article>
+
+                    <section className="mt-12 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Explore next</h2>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <Link href="/guides/answer-engine-optimization" className="text-zinc-300 hover:text-white transition-colors">
+                                What is Answer Engine Optimization?
+                            </Link>
+                            <Link href="/guides/llm-mentions" className="text-zinc-300 hover:text-white transition-colors">
+                                Why LLM Mentions Matter
+                            </Link>
+                            <Link href="/case-studies" className="text-zinc-300 hover:text-white transition-colors">
+                                Real Case Studies
+                            </Link>
+                            <Link href="/audit" className="text-zinc-300 hover:text-white transition-colors">
+                                Run an AI Visibility Audit
+                            </Link>
+                        </div>
+                    </section>
                 </div>
             </main>
         </div>

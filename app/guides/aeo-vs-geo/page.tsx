@@ -1,12 +1,16 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'AEO vs GEO: Understanding the Difference | FlowIntent',
-  description: 'Learn the key differences between Answer Engine Optimization (AEO) and Generative Engine Optimization (GEO), and when to use each strategy.',
+  description:
+    'Learn the key differences between Answer Engine Optimization (AEO) and Generative Engine Optimization (GEO), and when to use each strategy.',
+  path: '/guides/aeo-vs-geo',
+  type: 'article',
   keywords: ['AEO vs GEO', 'answer engine optimization', 'generative engine optimization', 'AI search optimization'],
-}
+})
 
 export default function AEOvsGEOPage() {
   return (
@@ -160,4 +164,3 @@ export default function AEOvsGEOPage() {
     </div>
   )
 }
-
