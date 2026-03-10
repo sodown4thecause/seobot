@@ -36,9 +36,39 @@ const faq = [
   },
 ]
 
+const auditorSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebPage',
+      name: 'Free AEO Auditor',
+      description:
+        'Run a free AEO audit to see how AI platforms describe your brand, where citations are lost, and what to fix first.',
+      url: 'https://flowintent.com/aeo-auditor',
+      mainEntity: { '@id': 'https://flowintent.com/aeo-auditor#faq' },
+    },
+    {
+      '@type': 'FAQPage',
+      '@id': 'https://flowintent.com/aeo-auditor#faq',
+      mainEntity: faq.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.a,
+        },
+      })),
+    },
+  ],
+}
+
 export default function AEOAuditorLandingPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(auditorSchema) }}
+      />
       <div className="container mx-auto px-6 py-16 max-w-6xl">
         <div className="max-w-3xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-200">

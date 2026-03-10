@@ -1,12 +1,16 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'Answer Engine Optimization (AEO) Guide | FlowIntent',
-  description: 'Complete guide to Answer Engine Optimization. Learn how to optimize content for ChatGPT, Perplexity, Claude, and other AI search engines.',
+  description:
+    'Complete guide to Answer Engine Optimization. Learn how to optimize content for ChatGPT, Perplexity, Claude, and other AI search engines.',
+  path: '/guides/answer-engine-optimization',
+  type: 'article',
   keywords: ['answer engine optimization', 'AEO', 'AI search optimization', 'ChatGPT SEO', 'Perplexity optimization'],
-}
+})
 
 export default function AEOGuidePage() {
   return (
@@ -159,4 +163,3 @@ export default function AEOGuidePage() {
     </div>
   )
 }
-

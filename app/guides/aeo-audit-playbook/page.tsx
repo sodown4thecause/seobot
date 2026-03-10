@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'AEO Audit Playbook (2026): Earn More ChatGPT & Perplexity Mentions | FlowIntent',
   description:
     'A practical guide to increasing LLM mentions and citations using entity clarity, source-first content, schema, and repeatable monitoring. Includes a 30-day plan.',
+  path: '/guides/aeo-audit-playbook',
+  type: 'article',
   keywords: [
     'AEO audit',
     'answer engine optimization',
@@ -16,7 +19,7 @@ export const metadata: Metadata = {
     'schema',
     'EEAT',
   ],
-}
+})
 
 const faqs = [
   {

@@ -186,6 +186,24 @@ export default async function GuidePage({
                             <PortableText value={guide.body} components={portableTextComponents} />
                         )}
                     </article>
+
+                    <section className="mt-12 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Related resources</h2>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <Link href="/guides/aeo-audit-playbook" className="text-zinc-300 hover:text-white transition-colors">
+                                AEO Audit Playbook
+                            </Link>
+                            <Link href="/guides/chatgpt-seo" className="text-zinc-300 hover:text-white transition-colors">
+                                ChatGPT SEO Guide
+                            </Link>
+                            <Link href="/blog" className="text-zinc-300 hover:text-white transition-colors">
+                                Latest Blog Articles
+                            </Link>
+                            <Link href="/audit" className="text-zinc-300 hover:text-white transition-colors">
+                                Run an AI Visibility Audit
+                            </Link>
+                        </div>
+                    </section>
                 </div>
             </main>
         </div>

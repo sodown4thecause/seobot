@@ -3,6 +3,7 @@ import { Noto_Sans } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
 import { AIStateProvider } from '@/lib/context/ai-state-context';
+import { SITE_URL } from '@/lib/seo/site';
 
 const notoSans = Noto_Sans({
   subsets: ["latin"],
@@ -12,6 +13,7 @@ const notoSans = Noto_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Intent-Based Marketing & AI SEO Platform | FlowIntent",
   description: "FlowIntent is the AI-powered intent marketing platform for answer engine optimization (AEO). Optimize for Google, ChatGPT, Perplexity & Gemini. AI Trust Audits, buyer intent data analysis, and automated content creation. Free trial.",
   keywords: [
