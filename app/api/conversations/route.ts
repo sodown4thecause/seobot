@@ -1,5 +1,5 @@
 import { getUserId } from '@/lib/auth/clerk'
-import { db, conversations } from '@/lib/db'
+import { db, conversations, messages } from '@/lib/db'
 import { eq, desc, and } from 'drizzle-orm'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -83,6 +83,24 @@ export async function POST(request: NextRequest) {
         { error: 'agentId is required' },
         { status: 400 }
       )
+    }
+
+    const [latestConversation] = await db
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.userId, userId), eq(conversations.status, 'active')))
+      .orderBy(desc(conversations.updatedAt))
+      .limit(1)
+
+    if (latestConversation) {
+      const latestConversationMessages = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, latestConversation.id))
+
+      if (latestConversationMessages.length === 0) {
+        return NextResponse.json({ conversation: latestConversation })
+      }
     }
 
     // Create conversation

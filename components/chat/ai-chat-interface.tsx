@@ -21,6 +21,7 @@ import { FirecrawlResults } from './tool-ui/firecrawl-results'
 import { CompetitorAnalysisTable } from './tool-ui/competitor-analysis-table'
 import type { ProactiveSuggestion } from '@/lib/proactive/types'
 import { useArtifactStore } from '@/lib/artifacts/artifact-store'
+import { bootstrapConversationRecord } from '@/lib/chat/conversation-bootstrap'
 import { KeywordArtifact } from './artifacts/keyword-artifact'
 import { BacklinkArtifact } from './artifacts/backlink-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
@@ -790,24 +791,47 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     const bootstrapPromise = (async () => {
       try {
         if (signal.aborted) return 'aborted'
-        let workingConv = overrideId ? { id: overrideId } : null
+        const workingConv = await bootstrapConversationRecord({
+          overrideId,
+          createConversation: async () => {
+            if (signal.aborted) return null
 
-        if (!workingConv && !signal.aborted) {
-          try {
-            const createRes = await fetch('/api/conversations', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ agentId: agentPreference }),
-              signal,
-            })
-            if (createRes.ok) {
+            try {
+              const createRes = await fetch('/api/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agentId: agentPreference }),
+                signal,
+              })
+
+              if (!createRes.ok) {
+                return null
+              }
+
               const cdata = await safeParseJSON(createRes)
-              workingConv = cdata?.conversation ?? null
+              return cdata?.conversation ?? null
+            } catch (createErr) {
+              console.warn('[Chat] Failed to create conversation:', createErr)
+              throw createErr
             }
-          } catch (createErr) {
-            console.warn('[Chat] Failed to create conversation:', createErr)
-          }
-        }
+          },
+          listConversations: async () => {
+            if (signal.aborted) return []
+
+            try {
+              const res = await fetch('/api/conversations?limit=1', { signal })
+              if (!res.ok) {
+                return []
+              }
+
+              const data = await safeParseJSON(res)
+              return data?.conversations ?? []
+            } catch (fetchErr) {
+              console.warn('[Chat] Failed to fetch conversations:', fetchErr)
+              return []
+            }
+          },
+        })
 
         if (workingConv?.id) {
           try {

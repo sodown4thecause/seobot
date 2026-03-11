@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
+import { SITE_URL } from '@/lib/seo/site'
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://flowintent.com'
+const baseUrl = SITE_URL
 
 export default function robots(): MetadataRoute.Robots {
   const disallowPaths = [
@@ -10,6 +11,9 @@ export default function robots(): MetadataRoute.Robots {
     '/onboarding/',
     '/login/',
     '/signup/',
+    '/sign-in/',
+    '/sign-up/',
+    '/user-profile/',
     '/auth/',
     '/test-tailwind/',
   ]
@@ -29,6 +33,11 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: 'ChatGPT-User',
+        allow: '/',
+        disallow: disallowPaths,
+      },
+      {
+        userAgent: 'OAI-SearchBot',
         allow: '/',
         disallow: disallowPaths,
       },
@@ -56,4 +65,3 @@ export default function robots(): MetadataRoute.Robots {
     sitemap: `${baseUrl}/sitemap.xml`,
   }
 }
-

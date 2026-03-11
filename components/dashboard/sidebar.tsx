@@ -24,8 +24,9 @@ import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
-import { useAgent } from '@/components/providers/agent-provider'
+import { useAgent, type Conversation } from '@/components/providers/agent-provider'
 import { Logo } from '@/components/ui/logo'
+import { isContentDashboardRoute, isImageDashboardRoute } from '@/lib/dashboard/sidebar-routes'
 
 export interface SidebarProps {
   collapsed: boolean
@@ -48,12 +49,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const router = useRouter()
   const { state, actions } = useAgent()
   const hasFetchedRef = React.useRef(false)
-  const isContentRoute = pathname === '/dashboard/content' || pathname?.startsWith('/dashboard/content/')
-  const isImageRoute =
-    pathname === '/dashboard/image' ||
-    pathname?.startsWith('/dashboard/image/') ||
-    pathname === '/dashboard/images' ||
-    pathname?.startsWith('/dashboard/images/')
+  const isContentRoute = isContentDashboardRoute(pathname)
+  const isImageRoute = isImageDashboardRoute(pathname)
 
   // Load conversation history once on mount — fails silently if 401, history is optional
   React.useEffect(() => {
@@ -90,7 +87,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     router.push('/dashboard/image')
   }, [router])
 
-  const handleSelectConversation = React.useCallback((conv: typeof state.conversations[0]) => {
+  const handleSelectConversation = React.useCallback((conv: Conversation) => {
     actions.setActiveConversation(conv)
     router.push(`/dashboard?conversationId=${conv.id}`)
   }, [actions, router])

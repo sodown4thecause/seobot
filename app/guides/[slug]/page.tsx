@@ -24,6 +24,13 @@ const difficultyColors: Record<string, string> = {
     advanced: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
+const relatedResources = [
+    { href: '/guides/aeo-audit-playbook', label: 'AEO Audit Playbook' },
+    { href: '/guides/chatgpt-seo', label: 'ChatGPT SEO Guide' },
+    { href: '/blog', label: 'Latest Blog Articles' },
+    { href: '/audit', label: 'Run an AI Visibility Audit' },
+]
+
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
     const guide = await client.fetch<SanityDocument | null>(GUIDE_META_QUERY, { slug: params.slug }, options)
     const title = guide?.title ? `${guide.title} | FlowIntent Guides` : 'Guide | FlowIntent'
@@ -68,6 +75,7 @@ export default async function GuidePage({
     const imageUrl = guide.image
         ? urlFor(guide.image).width(1200).height(630).url()
         : null;
+    const visibleRelatedResources = relatedResources.filter((resource) => resource.href !== `/guides/${slug}`)
 
     // Article structured data + BreadcrumbList for guides
     const articleSchema = {
@@ -186,6 +194,17 @@ export default async function GuidePage({
                             <PortableText value={guide.body} components={portableTextComponents} />
                         )}
                     </article>
+
+                    <section className="mt-12 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Related resources</h2>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            {visibleRelatedResources.map((resource) => (
+                                <Link key={resource.href} href={resource.href} className="text-zinc-300 hover:text-white transition-colors">
+                                    {resource.label}
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
                 </div>
             </main>
         </div>

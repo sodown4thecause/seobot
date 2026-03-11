@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { useAgent } from '@/components/providers/agent-provider'
 import { useUser } from '@clerk/nextjs'
+import { buildWorkflowAutoSendKey } from '@/lib/chat/conversation-bootstrap'
 import { getWorkflowLaunchConfig } from '@/lib/workflows/launch-config'
 import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
 
@@ -36,8 +37,7 @@ function DashboardInner() {
   )
   const resolvedConversationId = explicitConversationId
   const workflowMessage = workflowLaunch?.initialPrompt
-  const workflowAutoSendKey =
-    workflowId && resolvedConversationId ? `${workflowId}:${resolvedConversationId}` : workflowId
+  const workflowAutoSendKey = buildWorkflowAutoSendKey(workflowId, resolvedConversationId)
 
   // Check if user has a business profile (first-time user detection)
   useEffect(() => {

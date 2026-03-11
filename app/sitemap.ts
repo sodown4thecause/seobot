@@ -63,7 +63,7 @@ const STATIC_PUBLIC_ROUTES: Array<{
   changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency']
   priority: number
 }> = [
-  { path: '', changeFrequency: 'daily', priority: 1.0 },
+  { path: '/', changeFrequency: 'daily', priority: 1.0 },
   { path: '/prices', changeFrequency: 'weekly', priority: 0.9 },
   { path: '/audit', changeFrequency: 'weekly', priority: 0.9 },
   { path: '/blog', changeFrequency: 'daily', priority: 0.8 },

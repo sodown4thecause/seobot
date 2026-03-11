@@ -1,12 +1,16 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'ChatGPT SEO: How to Optimize for ChatGPT Search | FlowIntent',
-  description: 'Learn how to optimize your content for ChatGPT search, ensure accurate citations, and improve visibility in ChatGPT-generated answers.',
+  description:
+    'Learn how to optimize your content for ChatGPT search, ensure accurate citations, and improve visibility in ChatGPT-generated answers.',
+  path: '/guides/chatgpt-seo',
+  type: 'article',
   keywords: ['ChatGPT SEO', 'ChatGPT optimization', 'OpenAI search', 'GPT citations', 'AI search optimization'],
-}
+})
 
 export default function ChatGPTSEOPage() {
   return (
@@ -189,4 +193,3 @@ export default function ChatGPTSEOPage() {
     </div>
   )
 }
-

@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'Why LLM Mentions Matter (2026): The New SEO KPI | FlowIntent',
   description:
     'A practical guide to why LLM mentions and citations matter, how to measure them, and the levers that increase your visibility in AI answers.',
+  path: '/guides/llm-mentions',
+  type: 'article',
   keywords: [
     'LLM mentions',
     'AI citations',
@@ -16,7 +19,7 @@ export const metadata: Metadata = {
     'AI Overviews',
     'brand visibility',
   ],
-}
+})
 
 export default function LLMMentionsGuidePage() {
   return (
@@ -158,4 +161,3 @@ export default function LLMMentionsGuidePage() {
     </div>
   )
 }
-

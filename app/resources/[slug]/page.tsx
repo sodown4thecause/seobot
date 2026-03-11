@@ -178,6 +178,24 @@ export default async function ResourcePage({
                     <article className="prose prose-invert prose-lg max-w-none prose-headings:font-bold prose-headings:text-white prose-p:text-zinc-300 prose-a:text-indigo-400 prose-a:no-underline hover:prose-a:underline prose-img:rounded-xl prose-img:border prose-img:border-white/10 prose-hr:border-white/10">
                         {Array.isArray(resource.body) && <PortableText value={resource.body} />}
                     </article>
+
+                    <section className="mt-12 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Use this resource with</h2>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <Link href="/guides/answer-engine-optimization" className="text-zinc-300 hover:text-white transition-colors">
+                                AEO Foundations Guide
+                            </Link>
+                            <Link href="/guides/aeo-audit-playbook" className="text-zinc-300 hover:text-white transition-colors">
+                                30-Day AEO Audit Playbook
+                            </Link>
+                            <Link href="/case-studies" className="text-zinc-300 hover:text-white transition-colors">
+                                Case Studies and Results
+                            </Link>
+                            <Link href="/audit" className="text-zinc-300 hover:text-white transition-colors">
+                                Run an AI Visibility Audit
+                            </Link>
+                        </div>
+                    </section>
                 </div>
             </main>
         </div>
