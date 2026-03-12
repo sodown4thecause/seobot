@@ -33,7 +33,7 @@ export function computeAuditResults(
     }
   })
 
-  const competitorAdvantage = `${topCompetitor} was recommended ${topCompetitorFoundCount} out of ${TOTAL_CHECKS} times. ${context.brand} was recommended ${brandFoundCount} out of ${TOTAL_CHECKS} times.`
+  const competitorAdvantage = `${context.brand} appeared ${brandFoundCount} out of ${TOTAL_CHECKS} times in this sample, while ${topCompetitor} appeared ${topCompetitorFoundCount} times. That gives you a clear benchmark and visible room to grow.`
 
   const citationUrls = unique(platformResults.flatMap((result) => result.citationUrls))
   const competitorDomainCounter = new Map<string, number>()

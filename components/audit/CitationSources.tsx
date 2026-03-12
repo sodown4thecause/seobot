@@ -15,28 +15,28 @@ function isSafeUrl(value: string): boolean {
 
 export function CitationSources({ urls }: CitationSourcesProps) {
   return (
-    <Card>
+    <Card className="glass-card rounded-[1.75rem] border-white/8 bg-white/[0.03]">
       <CardHeader>
-        <CardTitle>What AI Is Reading Instead of Your Website</CardTitle>
+        <CardTitle className="text-xl text-white">Source landscape</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          These are the pages Perplexity cited while answering buyer-intent queries in your niche.
+      <CardContent className="space-y-4">
+        <p className="text-sm leading-7 text-zinc-300">
+          These are the sources AI systems leaned on in this run. If your domain is not here yet, this becomes a clear blueprint for the kind of evidence they already trust.
         </p>
         {urls.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No citation URLs were returned in this run. Try again later for fresh source coverage.
+          <p className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-zinc-300">
+            No citation URLs were returned in this run. That usually means this category still has room for stronger source patterns, which makes fresh proof assets even more valuable.
           </p>
         ) : (
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-3 text-sm">
             {urls.map((url) => (
-              <li key={url} className="rounded-md border p-2">
+              <li key={url} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
                 {isSafeUrl(url) ? (
-                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="break-all text-cyan-200 hover:text-cyan-100 hover:underline">
                     {url}
                   </a>
                 ) : (
-                  <span className="text-muted-foreground">{url}</span>
+                  <span className="text-zinc-400">{url}</span>
                 )}
               </li>
             ))}

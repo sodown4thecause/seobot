@@ -18,6 +18,7 @@ import { runHomepageExtraction } from '@/lib/audit/extraction-agent'
 import { sendAuditReportEmail } from '@/lib/audit/report-email'
 import { normalizeTopicalMap } from '@/lib/audit/topical-map-normalizer'
 import { buildTopicalMapPayload } from '@/lib/audit/topical-map-payload'
+import { buildAuditScorecard } from '@/lib/audit/scorecard'
 
 const RATE_LIMIT_PER_DAY = 2
 const inMemoryLimiter = new Map<string, number[]>()
@@ -132,7 +133,15 @@ async function enforceBudgetGuards(): Promise<{ allowed: boolean; message?: stri
   return { allowed: true }
 }
 
-function validateBasePayload(payload: AuditRequestPayload): string | null {
+function validateDetectPayload(payload: AuditDetectPayload): string | null {
+  if (!payload.domain) {
+    return 'Domain is required.'
+  }
+
+  return null
+}
+
+function validateRunPayload(payload: AuditRunPayload): string | null {
   if (!payload.domain || !payload.email) {
     return 'Domain and email are required.'
   }
@@ -226,13 +235,13 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = rawPayload as AuditRequestPayload
-    const baseError = validateBasePayload(payload)
-    if (baseError) {
-      return jsonResponse({ ok: false, stage: 'detected', message: baseError }, 400)
-    }
 
     if (payload.action === 'detect') {
       const detectPayload = payload as AuditDetectPayload
+      const detectError = validateDetectPayload(detectPayload)
+      if (detectError) {
+        return jsonResponse({ ok: false, stage: 'detected', message: detectError }, 400)
+      }
       const budget = await enforceBudgetGuards()
       if (!budget.allowed) {
         return jsonResponse({ ok: false, stage: 'detected', message: budget.message }, 503)
@@ -254,12 +263,18 @@ export async function POST(request: NextRequest) {
               fallbackReason: extracted.error || 'Homepage extraction unavailable for this site.',
             },
         message: extracted.success
-          ? 'Review and confirm your detected brand profile.'
-          : 'We could not confidently extract your homepage profile, so we generated a safe editable draft.',
+          ? 'Preview your AI visibility scorecard inputs, then unlock the full report.'
+          : 'We could not confidently extract your homepage profile, so we generated a safe editable draft you can refine before unlocking the full report.',
       })
     }
 
-    if (!payload.confirmedContext) {
+    const runPayload = payload as AuditRunPayload
+    const runError = validateRunPayload(runPayload)
+    if (runError) {
+      return jsonResponse({ ok: false, stage: 'detected', message: runError }, 400)
+    }
+
+    if (!runPayload.confirmedContext) {
       return jsonResponse(
         {
           ok: false,
@@ -288,7 +303,6 @@ export async function POST(request: NextRequest) {
       return jsonResponse({ ok: false, stage: 'detected', message: budget.message }, 503)
     }
 
-    const runPayload = payload as AuditRunPayload
     const prompts = buildBuyerIntentPrompts(runPayload.confirmedContext)
     const workflowExecution = await executeAiVisibilityAuditWorkflow({
       prompts,
@@ -334,6 +348,16 @@ export async function POST(request: NextRequest) {
       partialData: normalizedTopicalMap.partialData,
       providerStatus: normalizedTopicalMap.providerStatus,
     })
+    const scorecard = buildAuditScorecard({
+      results,
+      platformResults,
+      topicalMapPayload,
+      executionMeta: workflowExecution.meta,
+    })
+    const hydratedResults = {
+      ...results,
+      scorecard,
+    }
     const completedAt = new Date().toISOString()
 
     let auditId: string | undefined
@@ -353,7 +377,7 @@ export async function POST(request: NextRequest) {
       void sendAuditReportEmail({
         auditId,
         email: runPayload.email,
-        results,
+        results: hydratedResults,
         executionMeta: workflowExecution.meta,
       }).catch((error) => {
         console.warn('[AI Visibility Audit] Email recap failed (non-blocking):', error)
@@ -363,12 +387,12 @@ export async function POST(request: NextRequest) {
     return jsonResponse({
       ok: true,
       stage: 'completed',
-      results,
+      results: hydratedResults,
       platformResults,
       executionMeta: workflowExecution.meta,
       auditId,
       completedAt,
-      citationUrls: results.citationUrls,
+      citationUrls: hydratedResults.citationUrls,
       totalChecks: 5,
       publicVisibility: topicalMapPayload.publicVisibility,
       topicalMapPayload,

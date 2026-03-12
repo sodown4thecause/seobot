@@ -14,6 +14,10 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
+vi.mock('@/lib/auth/clerk', () => ({
+  getUserId: vi.fn(async () => 'user_test'),
+}))
+
 vi.mock('@/lib/redis/client', () => ({
   getRedisClient: vi.fn(() => null),
 }))
@@ -159,7 +163,7 @@ describe('audit report delivery', () => {
 
     expect(payload.to).toBe('founder@flowintent.com')
     expect(payload.reportUrl).toBe('https://flowintent.com/audit/results/8d5f4305-abd4-42c5-ac95-61f969f09077')
-    expect(payload.text).toContain('Flow Intent was recommended 2 times while Semrush was recommended 4 times.')
+    expect(payload.text).toContain('Flow Intent surfaced 2 times while Semrush surfaced 4 times.')
     expect(payload.text).toContain('View your report: https://flowintent.com/audit/results/8d5f4305-abd4-42c5-ac95-61f969f09077')
 
     process.env.NEXT_PUBLIC_SITE_URL = previousSiteUrl

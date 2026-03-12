@@ -44,7 +44,12 @@ export async function PATCH(
     return NextResponse.json({ ok: false, message: 'Invalid audit id format.' }, { status: 400 })
   }
 
-  const body = (await request.json()) as { visibility?: AuditVisibilityState }
+  let body: { visibility?: AuditVisibilityState }
+  try {
+    body = (await request.json()) as { visibility?: AuditVisibilityState }
+  } catch {
+    return NextResponse.json({ ok: false, message: 'Invalid JSON body.' }, { status: 400 })
+  }
   const visibility = body.visibility
 
   if (visibility !== 'unlisted' && visibility !== 'public' && visibility !== 'private') {

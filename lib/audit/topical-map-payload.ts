@@ -37,7 +37,7 @@ function buildPriorityActions(nodes: TopicalMapNode[]): string[] {
       return a.topic.localeCompare(b.topic)
     })
     .slice(0, 3)
-    .map((node) => `Improve ${node.topic} with cited proof assets and source-backed comparisons.`)
+    .map((node) => `Build source-backed coverage around ${node.topic} to strengthen visibility, citations, and buying-intent trust.`)
 }
 
 export function buildTopicalMapPayload(input: BuildTopicalMapPayloadInput): TopicalMapResultPayload {

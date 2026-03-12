@@ -48,6 +48,81 @@ export interface TopicalMapProviderStatus {
   aiDiagnostics: 'ok' | 'partial' | 'failed'
 }
 
+export type AuditMomentumCategoryKey =
+  | 'early-signal'
+  | 'untapped-upside'
+  | 'emerging-presence'
+  | 'category-builder'
+  | 'reference-brand'
+
+export interface AuditMomentumCategory {
+  key: AuditMomentumCategoryKey
+  label: string
+  summary: string
+}
+
+export interface AuditBenchmarkBand {
+  label: string
+  summary: string
+}
+
+export interface AuditStrength {
+  title: string
+  detail: string
+}
+
+export type AuditInsightEffort = 'Low' | 'Medium' | 'High'
+export type AuditInsightTimeframe = '7 days' | '30 days' | '90 days'
+
+export interface AuditOpportunity {
+  id: string
+  title: string
+  detail: string
+  action: string
+  effort: AuditInsightEffort
+  timeframe: AuditInsightTimeframe
+  expectedLift: string
+}
+
+export type AuditShareFormat = 'linkedin' | 'x' | 'story' | 'pdf' | 'team'
+
+export interface AuditShareModule {
+  key: string
+  format: AuditShareFormat
+  title: string
+  subtitle: string
+  summary: string
+  shareText: string
+  ctaLabel: string
+}
+
+export interface AuditTeamSummary {
+  headline: string
+  summary: string
+  bullets: string[]
+}
+
+export interface AuditScorecard {
+  overallScore: number
+  visibilityScore: number
+  aeoReadinessScore: number
+  topicalAuthorityScore: number
+  unlockPotentialScore: number
+  momentumCategory: AuditMomentumCategory
+  benchmarkBand: AuditBenchmarkBand
+  strengths: AuditStrength[]
+  opportunities: AuditOpportunity[]
+  fastestWin: AuditOpportunity
+  biggestOpportunity: AuditOpportunity
+  actionPlan: {
+    next7Days: string[]
+    next30Days: string[]
+    next90Days: string[]
+  }
+  shareModules: AuditShareModule[]
+  teamSummary: AuditTeamSummary
+}
+
 export interface TopicalMapResultPayload {
   auditVersion: string
   publicVisibility: AuditVisibilityState
@@ -101,6 +176,7 @@ export interface AuditResults {
   citationUrls: string[]
   userDomainCited: boolean
   competitorDomainsCited: Array<{ domain: string; count: number }>
+  scorecard?: AuditScorecard
   platformResults: {
     perplexity: Array<{ mentioned: boolean; position: number | null }>
     grok: { mentioned: boolean; position: number | null }
@@ -121,7 +197,7 @@ export interface AuditRunPayload {
 export interface AuditDetectPayload {
   action: 'detect'
   domain: string
-  email: string
+  email?: string
 }
 
 export type AuditRequestPayload = AuditRunPayload | AuditDetectPayload

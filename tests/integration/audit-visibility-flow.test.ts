@@ -12,6 +12,14 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
+vi.mock('@clerk/nextjs/server', () => ({
+  currentUser: vi.fn(async () => ({
+    primaryEmailAddress: {
+      emailAddress: 'founder@flowintent.com',
+    },
+  })),
+}))
+
 function buildRequest(visibility: 'unlisted' | 'public' | 'private') {
   return new NextRequest('http://localhost:3000/api/audit/results/31f729ef-f64c-4a56-aedd-e0b66373fd07/visibility', {
     method: 'PATCH',
