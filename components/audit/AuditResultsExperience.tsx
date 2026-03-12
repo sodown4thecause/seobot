@@ -94,12 +94,53 @@ export function AuditResultsExperience({
 }: AuditResultsExperienceProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const scorecard = results.scorecard
+  const reportUrl = buildReportUrl(auditId)
 
   if (!scorecard) {
-    return null
+    return (
+      <div className="space-y-8">
+        {executionMeta?.message ? (
+          <div className="rounded-3xl border border-amber-200/20 bg-amber-500/10 px-5 py-4 text-sm text-amber-50">
+            {executionMeta.message}
+          </div>
+        ) : null}
+
+        <section className="glass-panel rounded-[2rem] p-6 md:p-8">
+          <div className="max-w-3xl space-y-4">
+            <Badge className="border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-emerald-200" variant="outline">
+              AI Visibility Scorecard
+            </Badge>
+            <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">
+              Your model checks are here, but the scorecard layer needs a fresh run.
+            </h1>
+            <p className="text-base leading-7 text-zinc-300">
+              We captured the underlying audit signals, but the shareable scorecard package did not finish assembling. Run
+              the scorecard again to restore the benchmark band, roadmap, and share cards.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {onRunAnother ? (
+                <Button className="bg-white text-black hover:bg-zinc-100" onClick={onRunAnother}>
+                  Run another scorecard
+                </Button>
+              ) : null}
+              {reportUrl ? (
+                <Button
+                  variant="outline"
+                  className="border-white/10 bg-white/5 hover:bg-white/10"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(reportUrl).catch(() => {})
+                  }}
+                >
+                  Copy report link
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      </div>
+    )
   }
 
-  const reportUrl = buildReportUrl(auditId)
   const engineCards = buildEngineCards(platformResults)
   const pdfModule = scorecard.shareModules.find((module) => module.format === 'pdf')
   const teamModule = scorecard.shareModules.find((module) => module.format === 'team')
@@ -125,6 +166,17 @@ export function AuditResultsExperience({
       if (reportUrl) {
         url.searchParams.set('url', reportUrl)
       }
+      window.open(url.toString(), '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    if (module.format === 'linkedin') {
+      if (!reportUrl) {
+        void copyText(module.key, module.shareText)
+        return
+      }
+      const url = new URL('https://www.linkedin.com/sharing/share-offsite/')
+      url.searchParams.set('url', reportUrl)
       window.open(url.toString(), '_blank', 'noopener,noreferrer')
       return
     }

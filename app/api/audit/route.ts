@@ -242,6 +242,18 @@ export async function POST(request: NextRequest) {
       if (detectError) {
         return jsonResponse({ ok: false, stage: 'detected', message: detectError }, 400)
       }
+      const ipAddress = getRequestIp(request)
+      const allowedByRateLimit = await enforceRateLimit(ipAddress)
+      if (!allowedByRateLimit) {
+        return jsonResponse(
+          {
+            ok: false,
+            stage: 'detected',
+            message: 'You reached the free audit limit for today. Please try again tomorrow.',
+          },
+          429
+        )
+      }
       const budget = await enforceBudgetGuards()
       if (!budget.allowed) {
         return jsonResponse({ ok: false, stage: 'detected', message: budget.message }, 503)

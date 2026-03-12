@@ -11,8 +11,11 @@ function sanitizeCompetitiveLanguage(input: string): string {
     .replace(/destroy\s+your\s+competitors/gi, 'outperform your baseline')
     .replace(/competitor\s*x\s+is\s+bad/gi, 'competition analysis identified gaps')
     .replace(/crush\s+the\s+competition/gi, 'improve your visibility')
-    .replace(/invisible/gi, 'high-headroom')
-    .replace(/not ranking/gi, 'still building presence')
+    .replace(/brand\s+is\s+invisible/gi, 'brand has high headroom')
+    .replace(/you(?:'re| are)\s+invisible/gi, 'you are still early in visibility')
+    .replace(/currently\s+invisible/gi, 'currently in a high-headroom position')
+    .replace(/not\s+ranking\s+yet/gi, 'still building presence')
+    .replace(/not\s+ranking\s+in\s+ai\s+search/gi, 'still building presence in AI search')
 }
 
 export function buildShareCopy(input: BuildShareCopyInput): string {

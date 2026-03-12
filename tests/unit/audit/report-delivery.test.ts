@@ -6,6 +6,7 @@ import { buildAuditReportEmailPayload, sendAuditReportEmail } from '@/lib/audit/
 import { executeAiVisibilityAuditWorkflow } from '@/lib/workflows/definitions/ai-visibility-audit'
 import { parsePlatformResponse } from '@/lib/audit/parser'
 import { computeAuditResults } from '@/lib/audit/scorer'
+import { runHomepageExtraction } from '@/lib/audit/extraction-agent'
 import { getRedisClient } from '@/lib/redis/client'
 
 vi.mock('@/lib/db', () => ({
@@ -55,6 +56,7 @@ const mockWorkflow = vi.mocked(executeAiVisibilityAuditWorkflow)
 const mockParsePlatformResponse = vi.mocked(parsePlatformResponse)
 const mockComputeAuditResults = vi.mocked(computeAuditResults)
 const mockSendAuditReportEmail = vi.mocked(sendAuditReportEmail)
+const mockRunHomepageExtraction = vi.mocked(runHomepageExtraction)
 const mockGetRedisClient = vi.mocked(getRedisClient)
 
 function createRunRequest(): NextRequest {
@@ -80,10 +82,34 @@ function createRunRequest(): NextRequest {
   })
 }
 
+function createDetectRequest(): NextRequest {
+  return new NextRequest('http://localhost:3000/api/audit', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-forwarded-for': '10.0.0.60',
+    },
+    body: JSON.stringify({
+      action: 'detect',
+      domain: 'flowintent.com',
+    }),
+  })
+}
+
 describe('audit report delivery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetRedisClient.mockReturnValue(null)
+    mockRunHomepageExtraction.mockResolvedValue({
+      success: true,
+      detected: {
+        brand: 'Flow Intent',
+        category: 'SEO software',
+        icp: 'marketing teams',
+        competitors: ['Semrush', 'Ahrefs'],
+        vertical: 'Digital Marketing',
+      },
+    } as never)
 
     mockWorkflow.mockResolvedValue({
       checks: [
@@ -206,5 +232,19 @@ describe('audit report delivery', () => {
     expect(payload.ok).toBe(true)
     expect(payload.auditId).toBeUndefined()
     expect(mockSendAuditReportEmail).not.toHaveBeenCalled()
+  })
+
+  it('rate limits the detect preview before homepage extraction runs', async () => {
+    mockGetRedisClient.mockReturnValue({
+      incr: vi.fn().mockResolvedValue(3),
+      expire: vi.fn(),
+    } as never)
+
+    const response = await POST(createDetectRequest())
+    const payload = await response.json()
+
+    expect(response.status).toBe(429)
+    expect(payload.message).toBe('You reached the free audit limit for today. Please try again tomorrow.')
+    expect(mockRunHomepageExtraction).not.toHaveBeenCalled()
   })
 })

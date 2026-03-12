@@ -59,9 +59,9 @@ function pickTopGapNode(payload?: TopicalMapResultPayload | null): TopicalMapNod
   return payload.topicalMap.nodes
     .slice()
     .sort((a, b) => {
-      const deltaA = b.competitorCoverage - b.youCoverage
-      const deltaB = a.competitorCoverage - a.youCoverage
-      if (deltaA !== deltaB) return deltaA - deltaB
+      const gapA = a.competitorCoverage - a.youCoverage
+      const gapB = b.competitorCoverage - b.youCoverage
+      if (gapA !== gapB) return gapB - gapA
       return a.topic.localeCompare(b.topic)
     })[0] || null
 }
@@ -207,7 +207,8 @@ function buildOpportunities(
   unlockPotentialScore: number
 ): AuditOpportunity[] {
   const opportunities: AuditOpportunity[] = []
-  const proofGapScore = input.topicalMapPayload?.topicalMap.scores.proofGap ?? 55
+  const proofGapScore = input.topicalMapPayload?.topicalMap.scores.proofGap ?? 0
+  const hasProofGapScore = typeof input.topicalMapPayload?.topicalMap.scores.proofGap === 'number'
   const missingModels = Math.max(0, 3 - modelCoverageCount)
 
   if (missingModels > 0) {
@@ -247,7 +248,7 @@ function buildOpportunities(
     })
   }
 
-  if (proofGapScore >= 55 || unlockPotentialScore >= 60) {
+  if (hasProofGapScore && (proofGapScore >= 55 || unlockPotentialScore >= 60)) {
     opportunities.push({
       id: 'proof-gap',
       title: 'Turn proof gaps into credibility gains',

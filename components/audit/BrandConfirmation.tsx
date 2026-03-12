@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import type { BrandDetectionPayload } from '@/lib/audit/types'
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 interface BrandConfirmationProps {
   detected: BrandDetectionPayload
   onConfirm: (input: { context: BrandDetectionPayload; email: string }) => Promise<void>
@@ -17,6 +19,8 @@ export function BrandConfirmation({ detected, onConfirm, loading }: BrandConfirm
   const [email, setEmail] = useState('')
 
   const competitorsText = useMemo(() => context.competitors.join(', '), [context.competitors])
+  const trimmedEmail = email.trim()
+  const isEmailValid = EMAIL_PATTERN.test(trimmedEmail)
 
   return (
     <Card className="glass-panel rounded-[2rem] border-white/10 bg-white/[0.03]">
@@ -85,8 +89,20 @@ export function BrandConfirmation({ detected, onConfirm, loading }: BrandConfirm
           className="glass-input h-12 border-white/10 bg-black/20 text-white placeholder:text-zinc-500"
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@company.com"
+          aria-invalid={trimmedEmail.length > 0 && !isEmailValid}
         />
-        <Button className="w-full bg-white text-black hover:bg-zinc-100" disabled={loading || !email} onClick={() => onConfirm({ context, email })}>
+        {trimmedEmail.length > 0 && !isEmailValid ? (
+          <p className="text-sm text-amber-200">Add a valid work email to unlock the saved scorecard link.</p>
+        ) : null}
+        <Button
+          className="w-full bg-white text-black hover:bg-zinc-100"
+          disabled={loading || !isEmailValid}
+          onClick={() => {
+            void onConfirm({ context, email: trimmedEmail }).catch((error) => {
+              console.error('[BrandConfirmation] Confirm failed:', error)
+            })
+          }}
+        >
           {loading ? 'Building your scorecard...' : 'Unlock Full Scorecard'}
         </Button>
       </CardContent>

@@ -148,4 +148,15 @@ describe('buildAuditScorecard', () => {
     expect(scorecard.shareModules.some((module) => module.format === 'linkedin')).toBe(true)
     expect(scorecard.teamSummary.summary.toLowerCase()).not.toContain('invisible')
   })
+
+  it('does not invent a proof-gap opportunity when topical map proof data is missing', () => {
+    const scorecard = buildAuditScorecard({
+      results,
+      platformResults,
+      topicalMapPayload: null,
+      executionMeta: { fallbackApplied: false, citationAvailability: 'full' },
+    })
+
+    expect(scorecard.opportunities.some((opportunity) => opportunity.id === 'proof-gap')).toBe(false)
+  })
 })
