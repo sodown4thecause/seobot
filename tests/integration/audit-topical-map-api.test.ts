@@ -12,10 +12,6 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
-vi.mock('@/lib/auth/clerk', () => ({
-  getUserId: vi.fn(async () => 'user_test'),
-}))
-
 vi.mock('@/lib/redis/client', () => ({
   getRedisClient: vi.fn(() => null),
 }))

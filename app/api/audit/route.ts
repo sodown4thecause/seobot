@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { getRedisClient } from '@/lib/redis/client'
-import { getUserId } from '@/lib/auth/clerk'
 import type {
   AuditDetectPayload,
   AuditRequestPayload,
@@ -122,7 +121,14 @@ async function enforceBudgetGuards(): Promise<{ allowed: boolean; message?: stri
     return { allowed: true }
   }
 
-  const todayCount = Number((result as unknown as Array<{ count: number }>)[0]?.count || 0)
+  const todayCount = Array.isArray(result)
+    ? Number((result[0] as { count?: number } | undefined)?.count || 0)
+    : result &&
+        typeof result === 'object' &&
+        'rows' in result &&
+        Array.isArray((result as { rows?: Array<{ count?: number }> }).rows)
+      ? Number((result as { rows: Array<{ count?: number }> }).rows[0]?.count || 0)
+      : 0
   if (todayCount >= dailyLimit) {
     return {
       allowed: false,
@@ -222,11 +228,6 @@ function jsonResponse(payload: AuditResponsePayload, status = 200): NextResponse
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserId()
-    if (!userId) {
-      return jsonResponse({ ok: false, stage: 'detected', message: 'Unauthorized' }, 401)
-    }
-
     let rawPayload: unknown
     try {
       rawPayload = await request.json()

@@ -15,10 +15,6 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
-vi.mock('@/lib/auth/clerk', () => ({
-  getUserId: vi.fn(async () => 'user_test'),
-}))
-
 vi.mock('@/lib/redis/client', () => ({
   getRedisClient: vi.fn(() => null),
 }))
@@ -246,5 +242,18 @@ describe('audit report delivery', () => {
     expect(response.status).toBe(429)
     expect(payload.message).toBe('You reached the free audit limit for today. Please try again tomorrow.')
     expect(mockRunHomepageExtraction).not.toHaveBeenCalled()
+  })
+
+  it('returns a detect preview without requiring a signed-in user', async () => {
+    const response = await POST(createDetectRequest())
+    const payload = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.stage).toBe('detected')
+    expect(payload.detected.brand).toBe('Flow Intent')
+    expect(mockRunHomepageExtraction).toHaveBeenCalledWith({
+      domain: 'flowintent.com',
+    })
   })
 })
