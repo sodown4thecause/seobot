@@ -147,6 +147,11 @@ export function AuditResultsExperience({
   const executiveSummary = `${scorecard.teamSummary.headline}\n\n${scorecard.teamSummary.summary}\n${formatBullets(
     scorecard.teamSummary.bullets
   )}`
+  const roadmapGroups = [
+    { label: 'Next 7 days', items: scorecard.actionPlan.next7Days, tone: 'from-emerald-400/15 to-cyan-400/10' },
+    { label: 'Next 30 days', items: scorecard.actionPlan.next30Days, tone: 'from-cyan-400/15 to-sky-400/10' },
+    { label: 'Next 90 days', items: scorecard.actionPlan.next90Days, tone: 'from-fuchsia-400/10 to-rose-400/10' },
+  ]
 
   const copyText = async (key: string, value: string) => {
     if (!value) return
@@ -350,11 +355,13 @@ export function AuditResultsExperience({
         </div>
 
         <div className="glass-card rounded-[1.75rem] p-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <Presentation className="h-5 w-5 text-cyan-100" />
-            <div>
+            <div className="space-y-1">
               <h2 className="text-xl font-semibold text-white">Model-by-model snapshot</h2>
-              <p className="text-sm text-zinc-400">Show which engines already surface you and where expansion is cleanest.</p>
+              <p className="max-w-xl text-sm leading-6 text-zinc-400">
+                Show which engines already surface you and where expansion is cleanest.
+              </p>
             </div>
           </div>
 
@@ -491,36 +498,31 @@ export function AuditResultsExperience({
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="glass-card rounded-[1.75rem] p-6">
-        <div className="flex items-center gap-3">
-          <Target className="h-5 w-5 text-emerald-200" />
-          <div>
-            <h2 className="text-xl font-semibold text-white">7 / 30 / 90 day roadmap</h2>
-            <p className="text-sm text-zinc-400">A low score still leaves with a real plan, not a dead end.</p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {[
-            { label: 'Next 7 days', items: scorecard.actionPlan.next7Days, tone: 'from-emerald-400/15 to-cyan-400/10' },
-            { label: 'Next 30 days', items: scorecard.actionPlan.next30Days, tone: 'from-cyan-400/15 to-sky-400/10' },
-            { label: 'Next 90 days', items: scorecard.actionPlan.next90Days, tone: 'from-fuchsia-400/10 to-rose-400/10' },
-          ].map((group) => (
-            <div key={group.label} className={`rounded-[1.5rem] border border-white/8 bg-gradient-to-br ${group.tone} p-5`}>
-              <p className="text-sm font-medium text-white">{group.label}</p>
-              <ul className="mt-4 space-y-3">
-                {group.items.map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm leading-7 text-zinc-200">
-                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-white/60" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
+          <div className="glass-card rounded-[1.75rem] p-6">
+            <div className="flex items-center gap-3">
+              <Target className="h-5 w-5 text-emerald-200" />
+              <div>
+                <h2 className="text-xl font-semibold text-white">7 / 30 / 90 day roadmap</h2>
+                <p className="text-sm text-zinc-400">A low score still leaves with a real plan, not a dead end.</p>
+              </div>
             </div>
-          ))}
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              {roadmapGroups.map((group) => (
+                <div key={group.label} className={`rounded-[1.5rem] border border-white/8 bg-gradient-to-br ${group.tone} p-5`}>
+                  <p className="text-sm font-medium text-white">{group.label}</p>
+                  <ul className="mt-4 space-y-3">
+                    {group.items.map((item) => (
+                      <li key={item} className="flex items-start gap-3 text-sm leading-7 text-zinc-200">
+                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-white/60" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
