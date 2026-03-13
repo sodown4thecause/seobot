@@ -3,11 +3,8 @@
 import { useState } from 'react'
 import { AuditForm } from '@/components/audit/AuditForm'
 import { BrandConfirmation } from '@/components/audit/BrandConfirmation'
-import { CitationSources } from '@/components/audit/CitationSources'
-import { PlatformBreakdown } from '@/components/audit/PlatformBreakdown'
+import { AuditResultsExperience } from '@/components/audit/AuditResultsExperience'
 import { ProgressStages } from '@/components/audit/ProgressStages'
-import { ResultsHero } from '@/components/audit/ResultsHero'
-import { UpsellGate } from '@/components/audit/UpsellGate'
 import {
   generateSessionId,
   trackAuditCompleted,
@@ -20,6 +17,7 @@ import type {
   AuditResults,
   BrandDetectionPayload,
   PlatformResult,
+  TopicalMapResultPayload,
 } from '@/lib/audit/types'
 
 type Stage = 'form' | 'confirm' | 'results'
@@ -27,7 +25,6 @@ type RunPhase = 'idle' | 'detecting' | 'running-checks' | 'scoring' | 'done'
 
 interface RequestState {
   domain: string
-  email: string
 }
 
 export function AuditFlow() {
@@ -37,6 +34,7 @@ export function AuditFlow() {
   const [results, setResults] = useState<AuditResults | null>(null)
   const [platformResults, setPlatformResults] = useState<PlatformResult[]>([])
   const [executionMeta, setExecutionMeta] = useState<AuditExecutionMeta | null>(null)
+  const [topicalMapPayload, setTopicalMapPayload] = useState<TopicalMapResultPayload | null>(null)
   const [auditId, setAuditId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -54,7 +52,6 @@ export function AuditFlow() {
     trackAuditStarted({
       sessionId: nextSessionId,
       url: input.domain,
-      email: input.email,
       properties: {
         source: 'live-audit',
       },
@@ -74,19 +71,10 @@ export function AuditFlow() {
 
       setRequestState(input)
       setDetected(payload.detected)
+      setTopicalMapPayload(null)
       setAuditId(null)
       setStage('confirm')
 
-      trackEmailCaptured({
-        sessionId: nextSessionId,
-        url: input.domain,
-        email: input.email,
-        brandName: payload.detected.brand,
-        properties: {
-          source: 'live-audit',
-          category: payload.detected.category,
-        },
-      })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Detection failed'
 
@@ -94,7 +82,6 @@ export function AuditFlow() {
       trackAuditFailed({
         sessionId: nextSessionId,
         url: input.domain,
-        email: input.email,
         properties: {
           source: 'live-audit',
           phase: 'detect',
@@ -107,8 +94,9 @@ export function AuditFlow() {
     }
   }
 
-  const handleConfirm = async (context: BrandDetectionPayload) => {
+  const handleConfirm = async (input: { context: BrandDetectionPayload; email: string }) => {
     if (!requestState) return
+    const { context, email } = input
 
     const activeSessionId = sessionId || generateSessionId()
     if (!sessionId) {
@@ -125,7 +113,8 @@ export function AuditFlow() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'run',
-          ...requestState,
+          domain: requestState.domain,
+          email,
           confirmedContext: context,
         }),
       })
@@ -139,17 +128,29 @@ export function AuditFlow() {
       setResults(payload.results)
       setPlatformResults(payload.platformResults || [])
       setExecutionMeta(payload.executionMeta || null)
+      setTopicalMapPayload(payload.topicalMapPayload || null)
       const resolvedAuditId = typeof payload.auditId === 'string' ? payload.auditId : null
 
       setAuditId(resolvedAuditId)
       setRunPhase('done')
       setStage('results')
 
+      trackEmailCaptured({
+        sessionId: activeSessionId,
+        url: requestState.domain,
+        email,
+        brandName: context.brand,
+        properties: {
+          source: 'live-audit',
+          category: context.category,
+        },
+      })
+
       trackAuditCompleted({
         sessionId: activeSessionId,
         auditId: resolvedAuditId || undefined,
         url: requestState.domain,
-        email: requestState.email,
+        email,
         brandName: context.brand,
         properties: {
           source: 'live-audit',
@@ -165,7 +166,7 @@ export function AuditFlow() {
       trackAuditFailed({
         sessionId: activeSessionId,
         url: requestState.domain,
-        email: requestState.email,
+        email,
         brandName: context.brand,
         properties: {
           source: 'live-audit',
@@ -182,15 +183,17 @@ export function AuditFlow() {
 
   return (
     <section className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10 md:px-8">
-      <header className="space-y-2 text-center">
-        <p className="text-sm font-semibold uppercase tracking-wide text-red-600">Free AI Visibility Audit</p>
-        <h1 className="text-3xl font-bold tracking-tight">Is AI Recommending Your Competitors Instead of You?</h1>
-        <p className="text-muted-foreground">
-          Submit your domain, confirm your market context, and get a 5-check competitor visibility readout in under a minute.
+      <header className="space-y-4 text-center">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">Free AI Visibility Scorecard</p>
+        <h1 className="text-4xl font-semibold tracking-tight text-white md:text-6xl">
+          Discover how your brand shows up in AI search and where the next upside lives.
+        </h1>
+        <p className="mx-auto max-w-3xl text-base leading-7 text-zinc-300 md:text-lg">
+          Check your presence across Perplexity, Grok, and Gemini, then leave with a polished scorecard, topical opportunity map, and a 7 / 30 / 90 day action plan.
         </p>
       </header>
 
-      {error ? <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-50">{error}</p> : null}
 
       {stage === 'form' ? <AuditForm onSubmit={handleDetect} loading={loading} /> : null}
 
@@ -203,19 +206,24 @@ export function AuditFlow() {
 
       {stage === 'results' && results ? (
         <div className="space-y-6">
-          {executionMeta?.message ? (
-            <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-              {executionMeta.message}
-            </p>
-          ) : null}
-          <ResultsHero results={results} />
-          <PlatformBreakdown summary={results.platformResults} rawResults={platformResults} />
-          <CitationSources urls={results.citationUrls} />
-          <UpsellGate
+          <AuditResultsExperience
+            results={results}
+            platformResults={platformResults}
+            topicalMapPayload={topicalMapPayload}
+            executionMeta={executionMeta}
             auditId={auditId}
-            brand={results.brand}
-            visibilityRate={results.visibilityRate}
-            topCompetitor={results.topCompetitor}
+            onRunAnother={() => {
+              setStage('form')
+              setRequestState(null)
+              setDetected(null)
+              setResults(null)
+              setPlatformResults([])
+              setExecutionMeta(null)
+              setTopicalMapPayload(null)
+              setAuditId(null)
+              setError(null)
+              setRunPhase('idle')
+            }}
           />
         </div>
       ) : null}

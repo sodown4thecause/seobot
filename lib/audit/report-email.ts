@@ -32,7 +32,7 @@ export function buildAuditReportEmailPayload(input: AuditReportEmailInput): Audi
 
   return {
     to: input.email.trim().toLowerCase(),
-    subject: `${input.results.brand} AI Visibility Audit Results`,
+    subject: `${input.results.brand} AI Visibility Scorecard`,
     reportUrl,
     summary: {
       brand: input.results.brand,
@@ -42,16 +42,19 @@ export function buildAuditReportEmailPayload(input: AuditReportEmailInput): Audi
       citationAvailability,
     },
     text: [
-      `Your AI Visibility Audit for ${input.results.brand} is complete.`,
-      `Across 5 checks, ${input.results.brand} was recommended ${input.results.brandFoundCount} times while ${input.results.topCompetitor} was recommended ${input.results.topCompetitorFoundCount} times.`,
-      `Visibility rate: ${input.results.visibilityRate}%`,
+      `Your AI Visibility Scorecard for ${input.results.brand} is ready.`,
+      `Across 5 checks, ${input.results.brand} surfaced ${input.results.brandFoundCount} times while ${input.results.topCompetitor} surfaced ${input.results.topCompetitorFoundCount} times.`,
+      `Visibility score: ${input.results.visibilityRate}%`,
+      input.results.scorecard
+        ? `Momentum category: ${input.results.scorecard.momentumCategory.label}`
+        : 'Momentum category: Building your AI visibility baseline',
       `Top competitor: ${input.results.topCompetitor}`,
-      `Competitive summary: ${input.results.competitorAdvantage}`,
+      `Benchmark summary: ${input.results.competitorAdvantage}`,
       citationAvailability === 'degraded'
         ? 'Citation depth was temporarily limited during this run due to provider fallback.'
         : 'Citation analysis was fully available during this run.',
       `View your report: ${reportUrl}`,
-      'Book a strategy call: https://cal.com/flowintent',
+      'Use the scorecard to align your team, then decide which fast wins to ship first.',
     ].join('\n'),
   }
 }

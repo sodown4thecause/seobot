@@ -2,12 +2,7 @@
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CitationSources } from '@/components/audit/CitationSources'
-import { PlatformBreakdown } from '@/components/audit/PlatformBreakdown'
-import { ResultsHero } from '@/components/audit/ResultsHero'
-import { SharePanel } from '@/components/audit/SharePanel'
-import { TopicalAuthorityMap } from '@/components/audit/TopicalAuthorityMap'
-import { UpsellGate } from '@/components/audit/UpsellGate'
+import { AuditResultsExperience } from '@/components/audit/AuditResultsExperience'
 import { trackResultsViewed } from '@/lib/analytics/audit-tracker'
 import type { AuditResponsePayload } from '@/lib/audit/types'
 
@@ -165,8 +160,8 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
   if (state.loading) {
     return (
       <section className="mx-auto w-full max-w-5xl space-y-4 px-4 py-10 md:px-8">
-        <p className="text-sm font-semibold uppercase tracking-wide text-red-600">AI Visibility Audit Report</p>
-        <h1 className="text-3xl font-bold tracking-tight">Loading your completed report...</h1>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">AI Visibility Scorecard</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-white">Loading your saved scorecard...</h1>
       </section>
     )
   }
@@ -176,12 +171,12 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
 
     return (
       <section className="mx-auto w-full max-w-3xl space-y-4 px-4 py-10 md:px-8">
-        <p className="text-sm font-semibold uppercase tracking-wide text-red-600">AI Visibility Audit Report</p>
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-        <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">AI Visibility Scorecard</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-white">{title}</h1>
+        <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-50">
           {state.message || 'This audit report could not be loaded.'}
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-zinc-300">
           Need a fresh report? <Link href="/audit" className="underline">Run a new AI visibility audit.</Link>
         </p>
       </section>
@@ -193,56 +188,48 @@ export default function AuditResultsPage({ params }: AuditResultsPageProps) {
   return (
     <section className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10 md:px-8">
       <header className="space-y-2 text-center">
-        <p className="text-sm font-semibold uppercase tracking-wide text-red-600">AI Visibility Audit Report</p>
-        <h1 className="text-3xl font-bold tracking-tight">Re-opened audit for {results.brand}</h1>
-        <p className="text-muted-foreground">Shared report links stay stable so your team can review findings later.</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">AI Visibility Scorecard</p>
+        <h1 className="text-4xl font-semibold tracking-tight text-white md:text-5xl">Saved scorecard for {results.brand}</h1>
+        <p className="text-zinc-300">Shared report links stay stable so your team can review, export, and benchmark progress later.</p>
       </header>
 
-      {executionMeta?.message ? (
-        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">{executionMeta.message}</p>
-      ) : null}
-
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Share Visibility</p>
-        <p className="mt-1 text-sm text-zinc-700">Current: {visibility}</p>
+      <div className="glass-card rounded-[1.5rem] border-white/8 bg-white/[0.03] p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Share visibility</p>
+        <p className="mt-1 text-sm text-zinc-300">Current: {visibility}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => updateVisibility('unlisted')}
-            className="rounded border border-zinc-300 bg-white px-3 py-1 text-sm"
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-zinc-200"
           >
             Unlisted
           </button>
           <button
             type="button"
             onClick={() => updateVisibility('public')}
-            className="rounded border border-zinc-300 bg-white px-3 py-1 text-sm"
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-zinc-200"
           >
             Publish
           </button>
           <button
             type="button"
             onClick={() => updateVisibility('private')}
-            className="rounded border border-zinc-300 bg-white px-3 py-1 text-sm"
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-zinc-200"
           >
             Private
           </button>
         </div>
         {state.message ? (
-          <p className="mt-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{state.message}</p>
+          <p className="mt-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 p-3 text-sm text-rose-50">{state.message}</p>
         ) : null}
       </div>
 
-      <ResultsHero results={results} />
-      <PlatformBreakdown summary={results.platformResults} rawResults={platformResults} />
-      <CitationSources urls={results.citationUrls} />
-      {topicalMapPayload ? <TopicalAuthorityMap payload={topicalMapPayload} /> : null}
-      {topicalMapPayload ? <SharePanel artifacts={topicalMapPayload.shareArtifacts} /> : null}
-      <UpsellGate
+      <AuditResultsExperience
+        results={results}
+        platformResults={platformResults}
+        topicalMapPayload={topicalMapPayload}
+        executionMeta={executionMeta}
         auditId={typeof auditId === 'string' ? auditId : null}
-        brand={results.brand}
-        visibilityRate={results.visibilityRate}
-        topCompetitor={results.topCompetitor}
       />
     </section>
   )

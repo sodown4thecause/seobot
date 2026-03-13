@@ -33,7 +33,13 @@ export function computeAuditResults(
     }
   })
 
-  const competitorAdvantage = `${topCompetitor} was recommended ${topCompetitorFoundCount} out of ${TOTAL_CHECKS} times. ${context.brand} was recommended ${brandFoundCount} out of ${TOTAL_CHECKS} times.`
+  const competitorComparison =
+    topCompetitorFoundCount === 0
+      ? 'That means the category benchmark is still open, and you have room to define it.'
+      : brandFoundCount >= topCompetitorFoundCount
+        ? 'That puts you at or above the strongest observed benchmark in this sample, which is a solid base to compound.'
+        : 'That gives you a clear benchmark and visible room to grow.'
+  const competitorAdvantage = `${context.brand} appeared ${brandFoundCount} out of ${TOTAL_CHECKS} times in this sample, while ${topCompetitor} appeared ${topCompetitorFoundCount} times. ${competitorComparison}`
 
   const citationUrls = unique(platformResults.flatMap((result) => result.citationUrls))
   const competitorDomainCounter = new Map<string, number>()

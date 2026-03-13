@@ -38,7 +38,6 @@ export function Navbar() {
                         { label: 'Docs', href: '/docs' },
                         { label: 'Resources', href: '/resources' },
                         { label: 'Case Studies', href: '/case-studies' },
-                        { label: 'AEO Auditor', href: '/aeo-auditor' },
                     ].map((item) => (
                         <Link
                             key={item.label}

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { getRedisClient } from '@/lib/redis/client'
-import { getUserId } from '@/lib/auth/clerk'
 import type {
   AuditDetectPayload,
   AuditRequestPayload,
@@ -18,8 +17,10 @@ import { runHomepageExtraction } from '@/lib/audit/extraction-agent'
 import { sendAuditReportEmail } from '@/lib/audit/report-email'
 import { normalizeTopicalMap } from '@/lib/audit/topical-map-normalizer'
 import { buildTopicalMapPayload } from '@/lib/audit/topical-map-payload'
+import { buildAuditScorecard } from '@/lib/audit/scorecard'
 
 const RATE_LIMIT_PER_DAY = 2
+type AuditRateLimitScope = 'detect' | 'run'
 const inMemoryLimiter = new Map<string, number[]>()
 const MAX_IN_MEMORY_LIMIT_KEYS = 2000
 let hasLoggedRedisFallback = false
@@ -53,9 +54,9 @@ function getRequestIp(request: NextRequest): string {
   return forwarded?.split(',')[0].trim() || real || 'ip:unknown'
 }
 
-async function enforceRateLimit(ipAddress: string): Promise<boolean> {
+async function enforceRateLimit(ipAddress: string, scope: AuditRateLimitScope): Promise<boolean> {
   const redis = getRedisClient()
-  const key = `ai-visibility-audit:${ipAddress}:${new Date().toISOString().slice(0, 10)}`
+  const key = `ai-visibility-audit:${scope}:${ipAddress}:${new Date().toISOString().slice(0, 10)}`
 
   if (redis) {
     const count = await redis.incr(key)
@@ -121,7 +122,14 @@ async function enforceBudgetGuards(): Promise<{ allowed: boolean; message?: stri
     return { allowed: true }
   }
 
-  const todayCount = Number((result as unknown as Array<{ count: number }>)[0]?.count || 0)
+  const todayCount = Array.isArray(result)
+    ? Number((result[0] as { count?: number } | undefined)?.count || 0)
+    : result &&
+        typeof result === 'object' &&
+        'rows' in result &&
+        Array.isArray((result as { rows?: Array<{ count?: number }> }).rows)
+      ? Number((result as { rows: Array<{ count?: number }> }).rows[0]?.count || 0)
+      : 0
   if (todayCount >= dailyLimit) {
     return {
       allowed: false,
@@ -132,7 +140,15 @@ async function enforceBudgetGuards(): Promise<{ allowed: boolean; message?: stri
   return { allowed: true }
 }
 
-function validateBasePayload(payload: AuditRequestPayload): string | null {
+function validateDetectPayload(payload: AuditDetectPayload): string | null {
+  if (!payload.domain) {
+    return 'Domain is required.'
+  }
+
+  return null
+}
+
+function validateRunPayload(payload: AuditRunPayload): string | null {
   if (!payload.domain || !payload.email) {
     return 'Domain and email are required.'
   }
@@ -213,11 +229,6 @@ function jsonResponse(payload: AuditResponsePayload, status = 200): NextResponse
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserId()
-    if (!userId) {
-      return jsonResponse({ ok: false, stage: 'detected', message: 'Unauthorized' }, 401)
-    }
-
     let rawPayload: unknown
     try {
       rawPayload = await request.json()
@@ -226,13 +237,25 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = rawPayload as AuditRequestPayload
-    const baseError = validateBasePayload(payload)
-    if (baseError) {
-      return jsonResponse({ ok: false, stage: 'detected', message: baseError }, 400)
-    }
 
     if (payload.action === 'detect') {
       const detectPayload = payload as AuditDetectPayload
+      const detectError = validateDetectPayload(detectPayload)
+      if (detectError) {
+        return jsonResponse({ ok: false, stage: 'detected', message: detectError }, 400)
+      }
+      const ipAddress = getRequestIp(request)
+      const allowedByRateLimit = await enforceRateLimit(ipAddress, 'detect')
+      if (!allowedByRateLimit) {
+        return jsonResponse(
+          {
+            ok: false,
+            stage: 'detected',
+            message: 'You reached the free audit limit for today. Please try again tomorrow.',
+          },
+          429
+        )
+      }
       const budget = await enforceBudgetGuards()
       if (!budget.allowed) {
         return jsonResponse({ ok: false, stage: 'detected', message: budget.message }, 503)
@@ -254,12 +277,18 @@ export async function POST(request: NextRequest) {
               fallbackReason: extracted.error || 'Homepage extraction unavailable for this site.',
             },
         message: extracted.success
-          ? 'Review and confirm your detected brand profile.'
-          : 'We could not confidently extract your homepage profile, so we generated a safe editable draft.',
+          ? 'Preview your AI visibility scorecard inputs, then unlock the full report.'
+          : 'We could not confidently extract your homepage profile, so we generated a safe editable draft you can refine before unlocking the full report.',
       })
     }
 
-    if (!payload.confirmedContext) {
+    const runPayload = payload as AuditRunPayload
+    const runError = validateRunPayload(runPayload)
+    if (runError) {
+      return jsonResponse({ ok: false, stage: 'detected', message: runError }, 400)
+    }
+
+    if (!runPayload.confirmedContext) {
       return jsonResponse(
         {
           ok: false,
@@ -271,7 +300,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ipAddress = getRequestIp(request)
-    const allowedByRateLimit = await enforceRateLimit(ipAddress)
+    const allowedByRateLimit = await enforceRateLimit(ipAddress, 'run')
     if (!allowedByRateLimit) {
       return jsonResponse(
         {
@@ -288,7 +317,6 @@ export async function POST(request: NextRequest) {
       return jsonResponse({ ok: false, stage: 'detected', message: budget.message }, 503)
     }
 
-    const runPayload = payload as AuditRunPayload
     const prompts = buildBuyerIntentPrompts(runPayload.confirmedContext)
     const workflowExecution = await executeAiVisibilityAuditWorkflow({
       prompts,
@@ -334,6 +362,16 @@ export async function POST(request: NextRequest) {
       partialData: normalizedTopicalMap.partialData,
       providerStatus: normalizedTopicalMap.providerStatus,
     })
+    const scorecard = buildAuditScorecard({
+      results,
+      platformResults,
+      topicalMapPayload,
+      executionMeta: workflowExecution.meta,
+    })
+    const hydratedResults = {
+      ...results,
+      scorecard,
+    }
     const completedAt = new Date().toISOString()
 
     let auditId: string | undefined
@@ -353,7 +391,7 @@ export async function POST(request: NextRequest) {
       void sendAuditReportEmail({
         auditId,
         email: runPayload.email,
-        results,
+        results: hydratedResults,
         executionMeta: workflowExecution.meta,
       }).catch((error) => {
         console.warn('[AI Visibility Audit] Email recap failed (non-blocking):', error)
@@ -363,12 +401,12 @@ export async function POST(request: NextRequest) {
     return jsonResponse({
       ok: true,
       stage: 'completed',
-      results,
+      results: hydratedResults,
       platformResults,
       executionMeta: workflowExecution.meta,
       auditId,
       completedAt,
-      citationUrls: results.citationUrls,
+      citationUrls: hydratedResults.citationUrls,
       totalChecks: 5,
       publicVisibility: topicalMapPayload.publicVisibility,
       topicalMapPayload,

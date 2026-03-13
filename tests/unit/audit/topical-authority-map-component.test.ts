@@ -54,6 +54,6 @@ describe('TopicalAuthorityMap', () => {
     expect(html).toContain('Topical Authority')
     expect(html).toContain('AEO Citation')
     expect(html).toContain('technical seo audit')
-    expect(html).toContain('Priority Actions')
+    expect(html).toContain('Priority actions')
   })
 })
