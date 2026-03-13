@@ -55,12 +55,12 @@ const mockSendAuditReportEmail = vi.mocked(sendAuditReportEmail)
 const mockRunHomepageExtraction = vi.mocked(runHomepageExtraction)
 const mockGetRedisClient = vi.mocked(getRedisClient)
 
-function createRunRequest(): NextRequest {
+function createRunRequest(ipAddress = '10.0.0.50'): NextRequest {
   return new NextRequest('http://localhost:3000/api/audit', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-forwarded-for': '10.0.0.50',
+      'x-forwarded-for': ipAddress,
     },
     body: JSON.stringify({
       action: 'run',
@@ -78,12 +78,12 @@ function createRunRequest(): NextRequest {
   })
 }
 
-function createDetectRequest(): NextRequest {
+function createDetectRequest(ipAddress = '10.0.0.60'): NextRequest {
   return new NextRequest('http://localhost:3000/api/audit', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-forwarded-for': '10.0.0.60',
+      'x-forwarded-for': ipAddress,
     },
     body: JSON.stringify({
       action: 'detect',
@@ -242,6 +242,46 @@ describe('audit report delivery', () => {
     expect(response.status).toBe(429)
     expect(payload.message).toBe('You reached the free audit limit for today. Please try again tomorrow.')
     expect(mockRunHomepageExtraction).not.toHaveBeenCalled()
+  })
+
+  it('tracks detect and run rate limits independently for the same IP', async () => {
+    const counts = new Map<string, number>()
+    const incr = vi.fn().mockImplementation(async (key: string) => {
+      const next = (counts.get(key) ?? 0) + 1
+      counts.set(key, next)
+      return next
+    })
+    const expire = vi.fn().mockResolvedValue(1)
+
+    mockGetRedisClient.mockReturnValue({
+      incr,
+      expire,
+    } as never)
+    mockExecute.mockResolvedValue([{ count: 0 }] as never)
+
+    const sharedIp = '10.0.0.90'
+
+    const firstDetect = await POST(createDetectRequest(sharedIp))
+    const firstDetectPayload = await firstDetect.json()
+    expect(firstDetect.status).toBe(200)
+    expect(firstDetectPayload.ok).toBe(true)
+
+    const firstRun = await POST(createRunRequest(sharedIp))
+    const firstRunPayload = await firstRun.json()
+    expect(firstRun.status).toBe(200)
+    expect(firstRunPayload.ok).toBe(true)
+
+    const secondDetect = await POST(createDetectRequest(sharedIp))
+    const secondDetectPayload = await secondDetect.json()
+    expect(secondDetect.status).toBe(200)
+    expect(secondDetectPayload.ok).toBe(true)
+
+    expect(Array.from(counts.entries())).toEqual(
+      expect.arrayContaining([
+        [expect.stringContaining('ai-visibility-audit:detect:10.0.0.90'), 2],
+        [expect.stringContaining('ai-visibility-audit:run:10.0.0.90'), 1],
+      ])
+    )
   })
 
   it('returns a detect preview without requiring a signed-in user', async () => {

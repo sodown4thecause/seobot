@@ -20,6 +20,7 @@ import { buildTopicalMapPayload } from '@/lib/audit/topical-map-payload'
 import { buildAuditScorecard } from '@/lib/audit/scorecard'
 
 const RATE_LIMIT_PER_DAY = 2
+type AuditRateLimitScope = 'detect' | 'run'
 const inMemoryLimiter = new Map<string, number[]>()
 const MAX_IN_MEMORY_LIMIT_KEYS = 2000
 let hasLoggedRedisFallback = false
@@ -53,9 +54,9 @@ function getRequestIp(request: NextRequest): string {
   return forwarded?.split(',')[0].trim() || real || 'ip:unknown'
 }
 
-async function enforceRateLimit(ipAddress: string): Promise<boolean> {
+async function enforceRateLimit(ipAddress: string, scope: AuditRateLimitScope): Promise<boolean> {
   const redis = getRedisClient()
-  const key = `ai-visibility-audit:${ipAddress}:${new Date().toISOString().slice(0, 10)}`
+  const key = `ai-visibility-audit:${scope}:${ipAddress}:${new Date().toISOString().slice(0, 10)}`
 
   if (redis) {
     const count = await redis.incr(key)
@@ -244,7 +245,7 @@ export async function POST(request: NextRequest) {
         return jsonResponse({ ok: false, stage: 'detected', message: detectError }, 400)
       }
       const ipAddress = getRequestIp(request)
-      const allowedByRateLimit = await enforceRateLimit(ipAddress)
+      const allowedByRateLimit = await enforceRateLimit(ipAddress, 'detect')
       if (!allowedByRateLimit) {
         return jsonResponse(
           {
@@ -299,7 +300,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ipAddress = getRequestIp(request)
-    const allowedByRateLimit = await enforceRateLimit(ipAddress)
+    const allowedByRateLimit = await enforceRateLimit(ipAddress, 'run')
     if (!allowedByRateLimit) {
       return jsonResponse(
         {
