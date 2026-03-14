@@ -34,7 +34,7 @@ Our platform combines specialized AI agents with 70+ DataForSEO API endpoints to
 - [AEO vs GEO](https://flowintent.com/guides/aeo-vs-geo): Understanding the difference between Answer Engine and Generative Engine Optimization
 - [ChatGPT SEO](https://flowintent.com/guides/chatgpt-seo): How to optimize for ChatGPT search and citations
 
-### Guides
+### Resources
 
 - [Guides](https://flowintent.com/guides): How FlowIntent works and practical walkthroughs
 - [Knowledge Hub](https://flowintent.com/blog): Latest articles on SEO, AEO, and AI search

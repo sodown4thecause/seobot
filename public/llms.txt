@@ -16,7 +16,7 @@ FlowIntent is the first SEO platform built for both traditional search engines a
 - [Pricing](https://flowintent.com/prices): Plans and features
 - [FAQ](https://flowintent.com/#faq): Frequently asked questions about AEO and FlowIntent
 
-## Guides
+## Resources
 
 - [Answer Engine Optimization (AEO)](https://flowintent.com/guides/answer-engine-optimization): What is AEO and why it matters
 - [AEO vs GEO](https://flowintent.com/guides/aeo-vs-geo): Understanding the difference between Answer Engine and Generative Engine Optimization

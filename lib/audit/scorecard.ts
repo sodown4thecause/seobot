@@ -35,6 +35,15 @@ function unique<T>(values: T[]): T[] {
   return Array.from(new Set(values))
 }
 
+function opportunityActionsForTimeframe(
+  opportunities: AuditOpportunity[],
+  timeframe: AuditOpportunity['timeframe']
+): string[] {
+  return opportunities
+    .filter((opportunity) => opportunity.timeframe === timeframe)
+    .map((opportunity) => opportunity.action)
+}
+
 function positionToScore(position: number | null): number {
   if (!position || position < 1) return 0
   if (position === 1) return 100
@@ -237,15 +246,17 @@ function buildOpportunities(
 
   if (topGapNode) {
     const gap = Math.max(0, topGapNode.competitorCoverage - topGapNode.youCoverage)
-    opportunities.push({
-      id: 'topic-gap',
-      title: `Own ${topGapNode.topic} as your fastest authority win`,
-      detail: `Competitors currently lead this topic by ${gap} coverage points. Closing even part of that gap can move both visibility and topical authority on the next rerun.`,
-      action: `Publish or expand a source-backed page for ${topGapNode.topic}, then link it from your highest-authority pages.`,
-      effort: gap > 24 ? 'Medium' : 'Low',
-      timeframe: '7 days',
-      expectedLift: '+6 to +9 pts',
-    })
+    if (gap > 0) {
+      opportunities.push({
+        id: 'topic-gap',
+        title: `Own ${topGapNode.topic} as your fastest authority win`,
+        detail: `Competitors currently lead this topic by ${gap} coverage points. Closing even part of that gap can move both visibility and topical authority on the next rerun.`,
+        action: `Publish or expand a source-backed page for ${topGapNode.topic}, then link it from your highest-authority pages.`,
+        effort: gap > 24 ? 'Medium' : 'Low',
+        timeframe: '7 days',
+        expectedLift: '+6 to +9 pts',
+      })
+    }
   }
 
   if (hasProofGapScore && (proofGapScore >= 55 || unlockPotentialScore >= 60)) {
@@ -274,23 +285,22 @@ function buildOpportunities(
 }
 
 function buildActionPlan(opportunities: AuditOpportunity[]): AuditScorecard['actionPlan'] {
-  const first = opportunities[0]
-  const second = opportunities[1] || first
-  const third = opportunities[2] || second || first
-
   return {
     next7Days: unique([
-      first?.action || 'Publish one page aimed at your strongest topic opportunity.',
+      ...opportunityActionsForTimeframe(opportunities, '7 days'),
+      'Publish one page aimed at your strongest topic opportunity.',
       'Turn your clearest buyer-intent question into a source-backed page with clean headings and proof.',
       'Capture this scorecard and share it internally so ownership is visible.',
     ]).slice(0, 3),
     next30Days: unique([
-      second?.action || 'Expand your strongest topic into a small cluster of supporting pages.',
+      ...opportunityActionsForTimeframe(opportunities, '30 days'),
+      'Expand your strongest topic into a small cluster of supporting pages.',
       'Refresh your comparison and solution pages so AI systems have explicit language to quote.',
       'Add schema, author proof, and internal links to the pages you want cited.',
     ]).slice(0, 3),
     next90Days: unique([
-      third?.action || 'Turn your scorecard into a monthly benchmark and planning ritual.',
+      ...opportunityActionsForTimeframe(opportunities, '90 days'),
+      'Turn your scorecard into a monthly benchmark and planning ritual.',
       'Build a repeatable content cadence around your top two opportunity themes.',
       'Review score movement monthly and keep shipping pages that strengthen citations, comparisons, and original proof.',
     ]).slice(0, 3),

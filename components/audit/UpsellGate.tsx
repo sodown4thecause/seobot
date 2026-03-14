@@ -61,18 +61,18 @@ export function UpsellGate({ auditId, brand, visibilityRate, topCompetitor }: Up
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <EmailLink className="w-full sm:w-auto" onClick={() => trackConversion('strategy-call')}>
-            <Button className="w-full bg-white text-black hover:bg-zinc-100">
+          <Button asChild className="w-full bg-white text-black hover:bg-zinc-100 sm:w-auto" onClick={() => trackConversion('strategy-call')}>
+            <EmailLink>
               Book Strategy Review
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </EmailLink>
-          <Link href="/sign-up" className="w-full sm:w-auto" onClick={() => trackConversion('full-audit')}>
-            <Button variant="outline" className="w-full border-white/10 bg-white/5 text-zinc-100 hover:bg-white/10">
+            </EmailLink>
+          </Button>
+          <Button asChild variant="outline" className="w-full border-white/10 bg-white/5 text-zinc-100 hover:bg-white/10 sm:w-auto" onClick={() => trackConversion('full-audit')}>
+            <Link href="/sign-up">
               <Sparkles className="mr-2 h-4 w-4" />
               Unlock Deep Scan
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </CardContent>
     </Card>

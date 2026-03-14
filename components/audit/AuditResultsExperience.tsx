@@ -282,12 +282,12 @@ export function AuditResultsExperience({
                 Print / PDF
               </Button>
               {auditId ? (
-                <Link href={`/audit/results/${auditId}`}>
-                  <Button variant="ghost" className="text-zinc-300 hover:bg-white/5 hover:text-white">
+                <Button asChild variant="ghost" className="text-zinc-300 hover:bg-white/5 hover:text-white">
+                  <Link href={`/audit/results/${auditId}`}>
                     Open shareable report
                     <ExternalLink className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               ) : null}
             </div>
           </div>
@@ -546,12 +546,12 @@ export function AuditResultsExperience({
             Run another scorecard
           </Button>
         ) : (
-          <Link href="/audit">
-            <Button variant="ghost" className="text-zinc-300 hover:bg-white/5 hover:text-white">
+          <Button asChild variant="ghost" className="text-zinc-300 hover:bg-white/5 hover:text-white">
+            <Link href="/audit">
               <ArrowRight className="mr-2 h-4 w-4" />
               Run another scorecard
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         )}
       </div>
     </div>
