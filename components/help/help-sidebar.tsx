@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { X, BookOpen, HelpCircle, FileText, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EmailLink } from '@/components/email-link'
 
 interface HelpSidebarProps {
   isOpen: boolean
@@ -76,8 +77,7 @@ export function HelpSidebar({ isOpen, onClose, currentContext }: HelpSidebarProp
                   key={topic.id}
                   className="w-full flex items-center gap-3 p-3 rounded-md hover:bg-zinc-800 transition-colors text-left"
                   onClick={() => {
-                    // Navigate to help topic
-                    window.open(`/docs/guides/${topic.id}.md`, '_blank')
+                    window.open('/guides', '_blank')
                   }}
                 >
                   <Icon className="h-5 w-5 text-zinc-400" />
@@ -91,12 +91,11 @@ export function HelpSidebar({ isOpen, onClose, currentContext }: HelpSidebarProp
         {/* Footer */}
         <div className="p-4 border-t border-zinc-800">
           <p className="text-xs text-zinc-500 mb-2">Need more help?</p>
-          <Button variant="outline" size="sm" className="w-full">
-            Contact Support
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <EmailLink>Send an Email</EmailLink>
           </Button>
         </div>
       </div>
     </div>
   )
 }
-

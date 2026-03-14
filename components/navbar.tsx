@@ -1,19 +1,7 @@
 "use client"
 
-import * as React from "react"
 import Link from "next/link"
-import { cn } from "@/lib/utils"
-import { Logo } from "@/components/ui/logo"
 import { Button } from "@/components/ui/button"
-import {
-    NavigationMenu,
-    NavigationMenuContent,
-    NavigationMenuItem,
-    NavigationMenuLink,
-    NavigationMenuList,
-    NavigationMenuTrigger,
-    navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu"
 
 export function Navbar() {
     return (
@@ -35,7 +23,6 @@ export function Navbar() {
                         { label: 'Pricing', href: '/prices' },
                         { label: 'Blog', href: '/blog' },
                         { label: 'Guides', href: '/guides' },
-                        { label: 'Docs', href: '/docs' },
                         { label: 'Resources', href: '/resources' },
                         { label: 'Case Studies', href: '/case-studies' },
                     ].map((item) => (

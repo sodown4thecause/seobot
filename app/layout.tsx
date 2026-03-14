@@ -125,8 +125,7 @@ export default function RootLayout({
         "contactPoint": {
           "@type": "ContactPoint",
           "contactType": "customer support",
-          "email": "support@flowintent.com",
-          "url": "https://flowintent.com/contact",
+          "email": "liam@flowintent.com",
         },
         "sameAs": [
           "https://twitter.com/flowintent",

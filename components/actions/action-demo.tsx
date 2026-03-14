@@ -54,7 +54,7 @@ export function ActionDemo() {
           type: 'mobile_optimization',
           severity: 'medium',
           description: 'Mobile viewport not properly configured',
-          pages: ['/contact', '/services'],
+          pages: ['/prices', '/services'],
           impact: 'Poor mobile user experience',
           fixComplexity: 'easy'
         }

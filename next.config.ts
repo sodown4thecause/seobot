@@ -25,6 +25,16 @@ const nextConfig: NextConfig = {
         destination: '/guides/aeo-vs-geo',
         permanent: true,
       },
+      {
+        source: '/docs',
+        destination: '/guides',
+        permanent: true,
+      },
+      {
+        source: '/faq',
+        destination: '/#faq',
+        permanent: true,
+      },
     ]
   },
 }

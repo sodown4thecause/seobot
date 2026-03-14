@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { EmailLink } from '@/components/email-link'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 
 export const metadata: Metadata = buildPageMetadata({
@@ -56,7 +57,7 @@ export default function TermsPage() {
             <li><strong>Account pause:</strong> Accounts exceeding the limit are paused for 7 days</li>
             <li><strong>IP blocking:</strong> Repeated limit violations may result in IP blocking</li>
             <li><strong>Character limit:</strong> Chat responses limited to 4,000 characters during beta</li>
-            <li><strong>Upgrade path:</strong> Email support@flowintent.com to request early Premium access</li>
+            <li><strong>Upgrade path:</strong> Email liam@flowintent.com to request early Premium access</li>
           </ul>
 
           <h2 className="text-2xl font-bold mt-8 mb-4">4. User Accounts</h2>
@@ -88,7 +89,7 @@ export default function TermsPage() {
           </ul>
 
           <h2 className="text-2xl font-bold mt-8 mb-4">6. Content and Intellectual Property</h2>
-          
+
           <h3 className="text-xl font-semibold mt-6 mb-3">Your Content</h3>
           <p className="text-gray-300 mb-6">
             You retain ownership of content you input into FlowIntent. You grant us a license to use, store, and process your content solely to provide the service.
@@ -101,7 +102,7 @@ export default function TermsPage() {
 
           <h3 className="text-xl font-semibold mt-6 mb-3">Our Platform</h3>
           <p className="text-gray-300 mb-6">
-            FlowIntent's code, design, features, and branding are our intellectual property. You may not copy, reproduce, or create derivative works without written permission.
+            FlowIntent&apos;s code, design, features, and branding are our intellectual property. You may not copy, reproduce, or create derivative works without written permission.
           </p>
 
           <h2 className="text-2xl font-bold mt-8 mb-4">7. Third-Party Services</h2>
@@ -123,7 +124,7 @@ export default function TermsPage() {
 
           <h2 className="text-2xl font-bold mt-8 mb-4">9. Disclaimers</h2>
           <p className="text-gray-300 mb-4">
-            FlowIntent is provided "as is" without warranties of any kind. We do not guarantee:
+            FlowIntent is provided &quot;as is&quot; without warranties of any kind. We do not guarantee:
           </p>
           <ul className="text-gray-300 space-y-2 mb-6">
             <li>Uninterrupted or error-free service</li>
@@ -169,12 +170,12 @@ export default function TermsPage() {
             These terms are governed by the laws of the United States. Disputes will be resolved in the appropriate courts of that jurisdiction.
           </p>
 
-          <h2 className="text-2xl font-bold mt-8 mb-4">15. Contact</h2>
+          <h2 className="text-2xl font-bold mt-8 mb-4">15. Email</h2>
           <p className="text-gray-300 mb-4">
             Questions about these terms?
           </p>
           <p className="text-gray-300 mb-6">
-            Email: <a href="mailto:legal@flowintent.com" className="text-blue-400 hover:text-blue-300">legal@flowintent.com</a>
+            Email: <EmailLink className="text-blue-400 hover:text-blue-300">liam@flowintent.com</EmailLink>
           </p>
 
           <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 mt-8">
@@ -183,11 +184,11 @@ export default function TermsPage() {
             </p>
             <div className="flex gap-4 flex-wrap">
               <Link href="/privacy" className="text-blue-400 hover:text-blue-300">
-                Privacy Policy →
+                Privacy Policy -&gt;
               </Link>
-              <Link href="/contact" className="text-blue-400 hover:text-blue-300">
-                Contact Us →
-              </Link>
+              <EmailLink className="text-blue-400 hover:text-blue-300">
+                Send an Email -&gt;
+              </EmailLink>
             </div>
           </div>
         </div>
