@@ -51,10 +51,10 @@ export default async function PricesPage() {
         name: 'FlowIntent Pro',
         description: 'AI-powered intent marketing platform for answer engine optimization. Includes AI Trust Audits, buyer intent data analysis, competitor analysis, and automated content creation.',
         brand: { '@type': 'Brand', name: 'FlowIntent' },
-          offers: {
-            '@type': 'Offer',
-            price: FLOWINTENT_PRO_PRICE_VALUE,
-            priceCurrency: 'USD',
+        offers: {
+          '@type': 'Offer',
+          price: FLOWINTENT_PRO_PRICE_VALUE,
+          priceCurrency: 'USD',
           priceValidUntil: '2026-12-31',
           availability: 'https://schema.org/InStock',
           url: 'https://flowintent.com/prices',

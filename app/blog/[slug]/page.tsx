@@ -180,7 +180,7 @@ export default async function BlogPostPage({
                                 src={postImageUrl}
                                 alt={post.title}
                                 fill
-                                sizes="(min-width: 1280px) 1024px, (min-width: 768px) 80vw, 100vw"
+                                sizes="(min-width: 1024px) 768px, calc(100vw - 3rem)"
                                 className="object-cover"
                             />
                         </div>
