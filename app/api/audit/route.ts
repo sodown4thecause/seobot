@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { getRedisClient } from '@/lib/redis/client'
@@ -286,6 +287,18 @@ export async function POST(request: NextRequest) {
     const runError = validateRunPayload(runPayload)
     if (runError) {
       return jsonResponse({ ok: false, stage: 'detected', message: runError }, 400)
+    }
+
+    const { userId } = await auth()
+    if (!userId) {
+      return jsonResponse(
+        {
+          ok: false,
+          stage: 'detected',
+          message: 'Please sign in to unlock the full AI visibility report.',
+        },
+        401
+      )
     }
 
     if (!runPayload.confirmedContext) {

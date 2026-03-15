@@ -16,7 +16,9 @@ export const metadata: Metadata = buildPageMetadata({
 
 export default async function PricesPage() {
   const { userId } = await auth()
-  const primaryCtaHref = userId ? '/billing/checkout' : '/sign-up'
+  const primaryCtaHref = userId
+    ? 'https://buy.polar.sh/polar_cl_Fs9CxUkM7bzvADJLGBl3kCE2x9KcfndfYEwF10UXNgW'
+    : '/sign-up'
   const primaryCtaLabel = userId ? 'Continue to Polar Checkout' : 'Create Account to Start Trial'
 
   const pricingFaqs = [
