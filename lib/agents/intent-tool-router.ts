@@ -341,7 +341,7 @@ export class IntentToolRouter {
      * Tier 1: Classify user intent using lightweight LLM
      * Returns the intent category and relevant tool subset
      */
-    static async classifyIntent(query: string): Promise<IntentClassification> {
+    static async classifyIntent(query: string, abortSignal?: AbortSignal): Promise<IntentClassification> {
         const intentList = Object.entries(INTENT_DESCRIPTIONS)
             .map(([intent, desc]) => `- ${intent}: ${desc}`)
             .join('\n')
@@ -350,8 +350,9 @@ export class IntentToolRouter {
             // Use generateObject with PERMISSIVE schema to allow for LLM formatting issues
             // Then sanitize the result to handle cases like ":backlinks" instead of "backlinks"
             const { object: rawResult } = await generateObject({
-                model: vercelGateway.languageModel('moonshotai/kimi-k2.5' as GatewayModelId),
+                model: vercelGateway.languageModel('google/gemini-3-flash' as GatewayModelId),
                 schema: RawIntentClassificationSchema,
+                abortSignal,
                 prompt: `You are an SEO/AEO intent classifier. Analyze the user query and classify their intent.
 
 IMPORTANT: Return EXACT enum values without any prefixes like colons. For example, use "backlinks" NOT ":backlinks".
@@ -433,12 +434,12 @@ Classify this query with appropriate intent, agent recommendation, and confidenc
      * Tier 1 + 2 Combined: Classify intent and return focused tool subset
      * This is the main entry point for the chat API
      */
-    static async classifyAndGetTools(query: string): Promise<{
+    static async classifyAndGetTools(query: string, abortSignal?: AbortSignal): Promise<{
         classification: IntentClassification
         tools: string[]
         allIntents: IntentCategory[]
     }> {
-        const classification = await this.classifyIntent(query)
+        const classification = await this.classifyIntent(query, abortSignal)
 
         // Combine primary + secondary intents
         const allIntents: IntentCategory[] = [

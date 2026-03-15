@@ -1,9 +1,9 @@
 /**
  * Chat API Route
- * 
+ *
  * Handles chat messages by orchestrating intent classification, tool assembly,
  * and streaming responses. Uses the lib/chat modules for all core logic.
- * 
+ *
  * Flow:
  * 1. Rate limiting
  * 2. Parse and validate request body
@@ -123,7 +123,7 @@ const handler = async (req: Request) => {
     }
 
     // 8. Classify user intent and route to agent
-    // Has a 5s internal timeout — falls back to keyword-based routing if LLM is slow
+    // Has a 5s internal timeout - falls back to keyword-based routing if LLM is slow
     const classification = await classifyUserIntent({
       query: lastUserMessageContent,
       context,
@@ -163,9 +163,10 @@ const handler = async (req: Request) => {
     )
 
     // 11. Assemble tools + (for seo-aeo) fetch RAG context in parallel
-    // RAG is time-boxed to 6s — slow embedding/vector-search must NOT block streaming.
+    // RAG is time-boxed to 6s - slow embedding/vector-search must NOT block streaming.
     // Each DataForSEO live call is fast (~5-15s), so delaying the stream start for RAG
     // that might take 60s+ is the key source of latency.
+    const emptyRagContext = { systemPromptAddendum: '', ragDocsFound: 0 }
     const [tools, ragContext] = await Promise.all([
       assembleTools({
         agent: classification.agent,
@@ -174,19 +175,26 @@ const handler = async (req: Request) => {
         request: req,
       }),
       classification.agent === 'seo-aeo'
-        ? Promise.race([
-            buildSeoAeoContext(lastUserMessageContent, user?.id),
-            new Promise<{ systemPromptAddendum: string; ragDocsFound: number }>(resolve =>
-              setTimeout(() => {
-                console.warn('[Chat API] SEO-AEO RAG timed out after 6s — skipping to avoid blocking stream')
-                resolve({ systemPromptAddendum: '', ragDocsFound: 0 })
-              }, 6000)
-            ),
-          ]).catch(err => {
-            console.warn('[Chat API] SEO-AEO context fetch failed:', err.message)
-            return { systemPromptAddendum: '', ragDocsFound: 0 }
-          })
-        : Promise.resolve({ systemPromptAddendum: '', ragDocsFound: 0 }),
+        ? (async () => {
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => {
+              console.warn('[Chat API] SEO-AEO RAG timed out after 6s; skipping to avoid blocking stream')
+              controller.abort(new Error('SEO-AEO RAG timed out after 6s'))
+            }, 6000)
+
+            try {
+              return await buildSeoAeoContext(lastUserMessageContent, user?.id, {
+                signal: controller.signal,
+              })
+            } catch (err) {
+              const message = err instanceof Error ? err.message : String(err)
+              console.warn('[Chat API] SEO-AEO context fetch failed:', message)
+              return emptyRagContext
+            } finally {
+              clearTimeout(timeoutId)
+            }
+          })()
+        : Promise.resolve(emptyRagContext),
     ])
 
     if (ragContext.ragDocsFound > 0) {
@@ -300,7 +308,6 @@ const handler = async (req: Request) => {
     }
 
     return streamResponse
-
   } catch (error) {
     console.error('Chat API error:', error)
 
