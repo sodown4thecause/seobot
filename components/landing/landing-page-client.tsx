@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { motion, type Variants } from 'framer-motion'
 import { Navbar } from '@/components/navbar'
 import { SymbolBackground } from '@/components/landing/symbol-background'
+import { LandingFaqSection } from '@/components/landing/landing-faq-section'
+import { EmailLink } from '@/components/email-link'
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -193,7 +195,7 @@ export function LandingPageClient() {
               <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Content</p>
               <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Become cite-worthy</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Generate "answer assets" (definitions, comparisons, checklists) with EEAT signals and retrieval-friendly structure.
+                Generate &quot;answer assets&quot; (definitions, comparisons, checklists) with EEAT signals and retrieval-friendly structure.
               </p>
             </div>
             <div className="bg-black/40 border border-white/10 p-8 rounded-none">
@@ -207,10 +209,12 @@ export function LandingPageClient() {
         </div>
       </section>
 
+      <LandingFaqSection />
+
       <section className="relative z-10 py-48 px-6 bg-gradient-to-b from-transparent to-zinc-900/50">
         <div className="container mx-auto text-center border-t border-white/10 pt-32">
           <h2 className="text-5xl md:text-8xl font-bold tracking-tighter mb-12 uppercase italic">
-            Don't Lose <span className="text-zinc-500">Market Share</span> to AI.
+            Don&apos;t Lose <span className="text-zinc-500">Market Share</span> to AI.
           </h2>
           <Link href="/audit">
             <Button
@@ -221,7 +225,7 @@ export function LandingPageClient() {
             </Button>
           </Link>
           <p className="mt-6 text-sm font-mono uppercase tracking-wider text-zinc-600">
-            30-second scan - No signup - See what you're losing
+            30-second scan - No signup - See what you&apos;re losing
           </p>
           <div className="mt-10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">
             Prefer to learn first?{' '}
@@ -250,11 +254,8 @@ export function LandingPageClient() {
             <Link href="/aeo-auditor" className="hover:text-white transition-colors">
               AEO Auditor
             </Link>
-            <Link href="/faq" className="hover:text-white transition-colors">
+            <Link href="/#faq" className="hover:text-white transition-colors">
               FAQ
-            </Link>
-            <Link href="/docs" className="hover:text-white transition-colors">
-              Docs
             </Link>
             <Link href="/resources" className="hover:text-white transition-colors">
               Resources
@@ -262,9 +263,9 @@ export function LandingPageClient() {
             <Link href="/case-studies" className="hover:text-white transition-colors">
               Case Studies
             </Link>
-            <Link href="/contact" className="hover:text-white transition-colors">
-              Contact
-            </Link>
+            <EmailLink className="hover:text-white transition-colors">
+              Send an Email
+            </EmailLink>
             <Link href="/privacy" className="hover:text-white transition-colors">
               Privacy
             </Link>

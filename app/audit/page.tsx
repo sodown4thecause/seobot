@@ -3,9 +3,9 @@ import { buildPageMetadata } from '@/lib/seo/metadata'
 import Link from 'next/link'
 
 export const metadata = buildPageMetadata({
-  title: 'AI Visibility Audit | FlowIntent',
+  title: 'AI Visibility Scorecard | FlowIntent',
   description:
-    'Find out whether AI buyers are seeing your brand or your competitors across Perplexity, Grok, and Gemini.',
+    'See how your brand shows up across Perplexity, Grok, and Gemini, then unlock a shareable AI visibility scorecard with clear next actions.',
   path: '/audit',
   keywords: ['AI visibility audit', 'LLM competitor audit', 'Perplexity citation audit', 'brand visibility'],
 })

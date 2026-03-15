@@ -107,6 +107,76 @@ describe('AI visibility audit utilities', () => {
     expect(results.topCompetitor).toBe('Semrush')
   })
 
+  it('uses positive benchmark copy when the brand matches the strongest competitor sample', () => {
+    const platformResults = [
+      {
+        platform: 'perplexity' as const,
+        prompt: 'p1',
+        brandMentioned: true,
+        brandPosition: 1,
+        brandContext: 'Flow Intent leads.',
+        competitorsMentioned: ['Semrush'],
+        citationUrls: [],
+        userDomainCited: false,
+        competitorDomainsCited: [],
+        rawResponse: 'x',
+      },
+      {
+        platform: 'perplexity' as const,
+        prompt: 'p2',
+        brandMentioned: true,
+        brandPosition: 2,
+        brandContext: 'Flow Intent appears.',
+        competitorsMentioned: ['Semrush'],
+        citationUrls: [],
+        userDomainCited: false,
+        competitorDomainsCited: [],
+        rawResponse: 'x',
+      },
+      {
+        platform: 'perplexity' as const,
+        prompt: 'p3',
+        brandMentioned: false,
+        brandPosition: null,
+        brandContext: null,
+        competitorsMentioned: ['Semrush'],
+        citationUrls: [],
+        userDomainCited: false,
+        competitorDomainsCited: [],
+        rawResponse: 'x',
+      },
+      {
+        platform: 'grok' as const,
+        prompt: 'p1',
+        brandMentioned: true,
+        brandPosition: 2,
+        brandContext: 'Flow Intent appears.',
+        competitorsMentioned: ['Ahrefs'],
+        citationUrls: [],
+        userDomainCited: false,
+        competitorDomainsCited: [],
+        rawResponse: 'x',
+      },
+      {
+        platform: 'gemini' as const,
+        prompt: 'p1',
+        brandMentioned: false,
+        brandPosition: null,
+        brandContext: null,
+        competitorsMentioned: ['Ahrefs'],
+        citationUrls: [],
+        userDomainCited: false,
+        competitorDomainsCited: [],
+        rawResponse: 'x',
+      },
+    ]
+
+    const results = computeAuditResults(context, platformResults)
+
+    expect(results.competitorAdvantage).toContain('at or above the strongest observed benchmark')
+    expect(results.competitorAdvantage).not.toContain('visible room to grow')
+  })
+
   it('handles fallback-style responses without citations', () => {
     const parsed = parsePlatformResponse({
       platform: 'perplexity',

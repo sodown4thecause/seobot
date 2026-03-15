@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { LandingPageClient } from '@/components/landing/landing-page-client'
 import { buildPageMetadata } from '@/lib/seo/metadata'
+import { faqSchema } from '@/lib/faq'
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Intent-Based Marketing & AI SEO Platform | FlowIntent',
@@ -24,5 +25,13 @@ export const metadata: Metadata = buildPageMetadata({
 })
 
 export default function LandingPage() {
-  return <LandingPageClient />
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      <LandingPageClient />
+    </>
+  )
 }

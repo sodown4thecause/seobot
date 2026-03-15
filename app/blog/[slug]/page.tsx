@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from "next/image";
 import { PortableText, type SanityDocument } from "next-sanity";
 import imageUrlBuilder, { type SanityImageSource } from "@sanity/image-url";
 import { client } from "@/sanity/lib/client";
@@ -21,8 +22,13 @@ const urlFor = (source: SanityImageSource) => builder.image(source);
 
 const options = { next: { revalidate: 30 } };
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-    const post = await client.fetch<SanityDocument | null>(POST_META_QUERY, { slug: params.slug }, options)
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+    const { slug } = await params
+    const post = await client.fetch<SanityDocument | null>(POST_META_QUERY, { slug }, options)
     const title = post?.title ? `${post.title} | FlowIntent Blog` : 'Blog Post | FlowIntent'
     const description =
         post?.excerpt ||
@@ -33,7 +39,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return buildPageMetadata({
         title,
         description,
-        path: `/blog/${params.slug}`,
+        path: `/blog/${slug}`,
         type: 'article',
         imagePath: imageUrl,
     })
@@ -42,9 +48,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function BlogPostPage({
     params,
 }: {
-    params: { slug: string };
+    params: Promise<{ slug: string }>;
 }) {
-    const { slug } = params;
+    const { slug } = await params;
     const post = await client.fetch<SanityDocument>(POST_QUERY, { slug }, options);
 
     if (!post) {
@@ -170,10 +176,12 @@ export default async function BlogPostPage({
 
                     {postImageUrl && (
                         <div className="aspect-[16/9] relative rounded-3xl overflow-hidden mb-12 border border-white/10">
-                            <img
+                            <Image
                                 src={postImageUrl}
                                 alt={post.title}
-                                className="w-full h-full object-cover"
+                                fill
+                                sizes="(min-width: 1024px) 768px, calc(100vw - 3rem)"
+                                className="object-cover"
                             />
                         </div>
                     )}

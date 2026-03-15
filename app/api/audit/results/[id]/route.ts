@@ -6,6 +6,7 @@ import type { AuditExecutionMeta, AuditResponsePayload, PlatformResult } from '@
 import { computeAuditResults } from '@/lib/audit/scorer'
 import { normalizeTopicalMap } from '@/lib/audit/topical-map-normalizer'
 import { buildTopicalMapPayload } from '@/lib/audit/topical-map-payload'
+import { buildAuditScorecard } from '@/lib/audit/scorecard'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -181,6 +182,15 @@ export async function GET(
     providerStatus: normalizedTopicalMap.providerStatus,
     visibility: row.public_visibility || 'unlisted',
   })
+  const hydratedResults = {
+    ...results,
+    scorecard: buildAuditScorecard({
+      results,
+      platformResults,
+      topicalMapPayload,
+      executionMeta,
+    }),
+  }
 
   return jsonResponse(
     {
@@ -188,10 +198,10 @@ export async function GET(
       stage: 'completed',
       auditId: row.id,
       completedAt: new Date(row.created_at).toISOString(),
-      results,
+      results: hydratedResults,
       platformResults,
       executionMeta,
-      citationUrls: results.citationUrls,
+      citationUrls: hydratedResults.citationUrls,
       totalChecks: 5,
       publicVisibility: topicalMapPayload.publicVisibility,
       topicalMapPayload,

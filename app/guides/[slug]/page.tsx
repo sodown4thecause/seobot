@@ -31,8 +31,13 @@ const relatedResources = [
     { href: '/audit', label: 'Run an AI Visibility Audit' },
 ]
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-    const guide = await client.fetch<SanityDocument | null>(GUIDE_META_QUERY, { slug: params.slug }, options)
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+    const { slug } = await params
+    const guide = await client.fetch<SanityDocument | null>(GUIDE_META_QUERY, { slug }, options)
     const title = guide?.title ? `${guide.title} | FlowIntent Guides` : 'Guide | FlowIntent'
     const description =
         guide?.excerpt ||
@@ -43,7 +48,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return buildPageMetadata({
         title,
         description,
-        path: `/guides/${params.slug}`,
+        path: `/guides/${slug}`,
         type: 'article',
         imagePath: imageUrl,
     })
@@ -52,9 +57,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function GuidePage({
     params,
 }: {
-    params: { slug: string };
+    params: Promise<{ slug: string }>;
 }) {
-    const { slug } = params;
+    const { slug } = await params;
     const guide = await client.fetch<SanityDocument>(GUIDE_QUERY, { slug }, options);
 
     if (!guide) {

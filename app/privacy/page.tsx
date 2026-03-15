@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { EmailLink } from '@/components/email-link'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 
 export const metadata: Metadata = buildPageMetadata({
@@ -118,7 +119,7 @@ export default function PrivacyPage() {
             <li><strong>Opt-out:</strong> Unsubscribe from marketing communications</li>
           </ul>
           <p className="text-gray-300 mb-6">
-            To exercise these rights, contact us at <a href="mailto:privacy@flowintent.com" className="text-blue-400 hover:text-blue-300">privacy@flowintent.com</a>.
+            To exercise these rights, contact us at <EmailLink className="text-blue-400 hover:text-blue-300">liam@flowintent.com</EmailLink>.
           </p>
 
           <h2 className="text-2xl font-bold mt-8 mb-4">Cookies and Tracking</h2>
@@ -134,7 +135,7 @@ export default function PrivacyPage() {
             We do not use third-party advertising or tracking cookies.
           </p>
 
-          <h2 className="text-2xl font-bold mt-8 mb-4">Children's Privacy</h2>
+          <h2 className="text-2xl font-bold mt-8 mb-4">Children&apos;s Privacy</h2>
           <p className="text-gray-300 mb-6">
             FlowIntent is not intended for users under 13. We do not knowingly collect information from children. If you believe we have inadvertently collected data from a child, contact us immediately.
           </p>
@@ -144,12 +145,12 @@ export default function PrivacyPage() {
             We may update this privacy policy as our service evolves. Material changes will be announced via email and prominently on our website. Continued use after changes constitutes acceptance.
           </p>
 
-          <h2 className="text-2xl font-bold mt-8 mb-4">Contact Us</h2>
+          <h2 className="text-2xl font-bold mt-8 mb-4">Email Us</h2>
           <p className="text-gray-300 mb-4">
             Questions about this privacy policy or your data?
           </p>
           <p className="text-gray-300 mb-6">
-            Email: <a href="mailto:privacy@flowintent.com" className="text-blue-400 hover:text-blue-300">privacy@flowintent.com</a>
+            Email: <EmailLink className="text-blue-400 hover:text-blue-300">liam@flowintent.com</EmailLink>
           </p>
 
           <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 mt-8">
@@ -158,11 +159,11 @@ export default function PrivacyPage() {
             </p>
             <div className="flex gap-4 flex-wrap">
               <Link href="/terms" className="text-blue-400 hover:text-blue-300">
-                Terms of Service →
+                Terms of Service -&gt;
               </Link>
-              <Link href="/contact" className="text-blue-400 hover:text-blue-300">
-                Contact Us →
-              </Link>
+              <EmailLink className="text-blue-400 hover:text-blue-300">
+                Send an Email -&gt;
+              </EmailLink>
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { buildAuditReportEmailPayload, sendAuditReportEmail } from '@/lib/audit/
 import { executeAiVisibilityAuditWorkflow } from '@/lib/workflows/definitions/ai-visibility-audit'
 import { parsePlatformResponse } from '@/lib/audit/parser'
 import { computeAuditResults } from '@/lib/audit/scorer'
+import { runHomepageExtraction } from '@/lib/audit/extraction-agent'
 import { getRedisClient } from '@/lib/redis/client'
 
 vi.mock('@/lib/db', () => ({
@@ -51,14 +52,15 @@ const mockWorkflow = vi.mocked(executeAiVisibilityAuditWorkflow)
 const mockParsePlatformResponse = vi.mocked(parsePlatformResponse)
 const mockComputeAuditResults = vi.mocked(computeAuditResults)
 const mockSendAuditReportEmail = vi.mocked(sendAuditReportEmail)
+const mockRunHomepageExtraction = vi.mocked(runHomepageExtraction)
 const mockGetRedisClient = vi.mocked(getRedisClient)
 
-function createRunRequest(): NextRequest {
+function createRunRequest(ipAddress = '10.0.0.50'): NextRequest {
   return new NextRequest('http://localhost:3000/api/audit', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-forwarded-for': '10.0.0.50',
+      'x-forwarded-for': ipAddress,
     },
     body: JSON.stringify({
       action: 'run',
@@ -76,10 +78,34 @@ function createRunRequest(): NextRequest {
   })
 }
 
+function createDetectRequest(ipAddress = '10.0.0.60'): NextRequest {
+  return new NextRequest('http://localhost:3000/api/audit', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-forwarded-for': ipAddress,
+    },
+    body: JSON.stringify({
+      action: 'detect',
+      domain: 'flowintent.com',
+    }),
+  })
+}
+
 describe('audit report delivery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetRedisClient.mockReturnValue(null)
+    mockRunHomepageExtraction.mockResolvedValue({
+      success: true,
+      detected: {
+        brand: 'Flow Intent',
+        category: 'SEO software',
+        icp: 'marketing teams',
+        competitors: ['Semrush', 'Ahrefs'],
+        vertical: 'Digital Marketing',
+      },
+    } as never)
 
     mockWorkflow.mockResolvedValue({
       checks: [
@@ -159,7 +185,7 @@ describe('audit report delivery', () => {
 
     expect(payload.to).toBe('founder@flowintent.com')
     expect(payload.reportUrl).toBe('https://flowintent.com/audit/results/8d5f4305-abd4-42c5-ac95-61f969f09077')
-    expect(payload.text).toContain('Flow Intent was recommended 2 times while Semrush was recommended 4 times.')
+    expect(payload.text).toContain('Flow Intent surfaced 2 times while Semrush surfaced 4 times.')
     expect(payload.text).toContain('View your report: https://flowintent.com/audit/results/8d5f4305-abd4-42c5-ac95-61f969f09077')
 
     process.env.NEXT_PUBLIC_SITE_URL = previousSiteUrl
@@ -202,5 +228,72 @@ describe('audit report delivery', () => {
     expect(payload.ok).toBe(true)
     expect(payload.auditId).toBeUndefined()
     expect(mockSendAuditReportEmail).not.toHaveBeenCalled()
+  })
+
+  it('rate limits the detect preview before homepage extraction runs', async () => {
+    mockGetRedisClient.mockReturnValue({
+      incr: vi.fn().mockResolvedValue(3),
+      expire: vi.fn(),
+    } as never)
+
+    const response = await POST(createDetectRequest())
+    const payload = await response.json()
+
+    expect(response.status).toBe(429)
+    expect(payload.message).toBe('You reached the free audit limit for today. Please try again tomorrow.')
+    expect(mockRunHomepageExtraction).not.toHaveBeenCalled()
+  })
+
+  it('tracks detect and run rate limits independently for the same IP', async () => {
+    const counts = new Map<string, number>()
+    const incr = vi.fn().mockImplementation(async (key: string) => {
+      const next = (counts.get(key) ?? 0) + 1
+      counts.set(key, next)
+      return next
+    })
+    const expire = vi.fn().mockResolvedValue(1)
+
+    mockGetRedisClient.mockReturnValue({
+      incr,
+      expire,
+    } as never)
+    mockExecute.mockResolvedValue([{ count: 0 }] as never)
+
+    const sharedIp = '10.0.0.90'
+
+    const firstDetect = await POST(createDetectRequest(sharedIp))
+    const firstDetectPayload = await firstDetect.json()
+    expect(firstDetect.status).toBe(200)
+    expect(firstDetectPayload.ok).toBe(true)
+
+    const firstRun = await POST(createRunRequest(sharedIp))
+    const firstRunPayload = await firstRun.json()
+    expect(firstRun.status).toBe(200)
+    expect(firstRunPayload.ok).toBe(true)
+
+    const secondDetect = await POST(createDetectRequest(sharedIp))
+    const secondDetectPayload = await secondDetect.json()
+    expect(secondDetect.status).toBe(200)
+    expect(secondDetectPayload.ok).toBe(true)
+
+    expect(Array.from(counts.entries())).toEqual(
+      expect.arrayContaining([
+        [expect.stringContaining('ai-visibility-audit:detect:10.0.0.90'), 2],
+        [expect.stringContaining('ai-visibility-audit:run:10.0.0.90'), 1],
+      ])
+    )
+  })
+
+  it('returns a detect preview without requiring a signed-in user', async () => {
+    const response = await POST(createDetectRequest())
+    const payload = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.stage).toBe('detected')
+    expect(payload.detected.brand).toBe('Flow Intent')
+    expect(mockRunHomepageExtraction).toHaveBeenCalledWith({
+      domain: 'flowintent.com',
+    })
   })
 })

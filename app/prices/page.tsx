@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
+import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
+import { EmailLink } from '@/components/email-link'
 import { Navbar } from '@/components/navbar'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 
@@ -12,11 +14,17 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ['AI SEO pricing', 'AEO platform pricing', 'FlowIntent pricing', 'SEO tool pricing'],
 })
 
-export default function PricesPage() {
+export default async function PricesPage() {
+  const { userId } = await auth()
+  const primaryCtaHref = userId
+    ? 'https://buy.polar.sh/polar_cl_Fs9CxUkM7bzvADJLGBl3kCE2x9KcfndfYEwF10UXNgW'
+    : '/sign-up'
+  const primaryCtaLabel = userId ? 'Continue to Polar Checkout' : 'Create Account to Start Trial'
+
   const pricingFaqs = [
     {
       q: "What's included in the free trial?",
-      a: "You get full access to all Pro features for 30 days. No credit card required to start. After the trial, you'll be charged $39/month unless you cancel.",
+      a: 'You get full access to all Pro features for 30 days. Billing is handled through Polar, and you can cancel before the trial ends.',
     },
     {
       q: 'Can I cancel anytime?',
@@ -89,12 +97,11 @@ export default function PricesPage() {
             Simple, Transparent Pricing
           </h1>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-            Start with a 1 month free trial. No credit card required.
+            Start with a 30-day free trial. Billing is handled by Polar.
           </p>
         </div>
 
         <div className="max-w-xl mx-auto mb-16">
-          {/* Pro Plan */}
           <div className="bg-gradient-to-br from-gray-800/50 to-gray-700/50 rounded-lg p-8 border border-gray-600 relative overflow-hidden">
             <div className="mb-6">
               <h2 className="text-2xl font-bold mb-2">Pro</h2>
@@ -104,7 +111,7 @@ export default function PricesPage() {
               </div>
               <p className="text-sm text-gray-400 mt-1">1 month free trial</p>
             </div>
-            
+
             <ul className="space-y-3 mb-8 text-gray-300">
               <li className="flex items-start gap-2">
                 <Check className="text-green-400 mt-1 h-4 w-4" />
@@ -140,12 +147,12 @@ export default function PricesPage() {
               </li>
             </ul>
 
-            <a
-              href="https://buy.polar.sh/polar_cl_Fs9CxUkM7bzvADJLGBl3kCE2x9KcfndfYEwF10UXNgW"
+            <Link
+              href={primaryCtaHref}
               className="block w-full bg-gray-900 hover:bg-gray-800 text-white text-center px-6 py-3 rounded-lg font-semibold transition-colors"
             >
-              Start Free Trial
-            </a>
+              {primaryCtaLabel}
+            </Link>
           </div>
         </div>
 
@@ -154,40 +161,37 @@ export default function PricesPage() {
           <p className="text-gray-400 mb-6">
             Contact us about Enterprise plans with custom limits, dedicated support, and white-label options.
           </p>
-          <Link
-            href="/contact"
-            className="inline-block bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-          >
-            Contact Sales
-          </Link>
+          <EmailLink className="inline-block bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+            Send an Email
+          </EmailLink>
         </div>
 
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 text-center">Frequently Asked Questions</h2>
           <div className="space-y-6">
             <div className="bg-gray-800/30 rounded-lg p-6">
-              <h3 className="text-lg font-bold mb-2">What's included in the free trial?</h3>
+              <h3 className="text-lg font-bold mb-2">What&apos;s included in the free trial?</h3>
               <p className="text-gray-300">
-                You get full access to all Pro features for 30 days. No credit card required to start. After the trial, you'll be charged $39/month unless you cancel.
+                You get full access to all Pro features for 30 days. Billing is handled through Polar, and you can cancel before the trial ends.
               </p>
             </div>
 
             <div className="bg-gray-800/30 rounded-lg p-6">
               <h3 className="text-lg font-bold mb-2">Can I cancel anytime?</h3>
               <p className="text-gray-300">
-                Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period.
+                Yes, you can cancel your subscription at any time. You&apos;ll continue to have access until the end of your billing period.
               </p>
             </div>
 
             <div className="bg-gray-800/30 rounded-lg p-6">
               <h3 className="text-lg font-bold mb-2">Do you offer refunds?</h3>
               <p className="text-gray-300">
-                We offer a 7-day money-back guarantee if you're not satisfied with the service.
+                We offer a 7-day money-back guarantee if you&apos;re not satisfied with the service.
               </p>
             </div>
 
             <div className="bg-gray-800/30 rounded-lg p-6">
-              <h3 className="text-lg font-bold mb-2">Why do LLM “mentions” matter?</h3>
+              <h3 className="text-lg font-bold mb-2">Why do LLM &quot;mentions&quot; matter?</h3>
               <p className="text-gray-300">
                 Mentions and citations influence trust, clicks, and brand preference in zero-click AI answers. Read the guide:{' '}
                 <Link className="underline hover:text-white" href="/guides/llm-mentions">
@@ -203,9 +207,9 @@ export default function PricesPage() {
           <p className="text-gray-400 mb-4">
             Questions about pricing or need a custom plan?
           </p>
-          <Link href="/contact" className="text-gray-400 hover:text-white">
-            Get in touch →
-          </Link>
+          <EmailLink className="text-gray-400 hover:text-white">
+            Send an Email -&gt;
+          </EmailLink>
         </div>
       </div>
     </div>
