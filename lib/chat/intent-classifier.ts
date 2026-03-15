@@ -7,6 +7,7 @@
 
 import { IntentToolRouter, type IntentClassification } from '@/lib/agents/intent-tool-router'
 import { AgentRouter } from '@/lib/agents/agent-router'
+import { AbortError } from '@/lib/errors/types'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import type { OnboardingData, OnboardingStep } from '@/lib/onboarding/state'
 
@@ -57,7 +58,7 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
   const CLASSIFICATION_TIMEOUT_MS = 5000
   const controller = new AbortController()
   const timeoutId = setTimeout(() => {
-    controller.abort(new Error('Intent classification timed out after 5s'))
+    controller.abort(new AbortError('Intent classification timed out after 5s'))
   }, CLASSIFICATION_TIMEOUT_MS)
 
   try {
