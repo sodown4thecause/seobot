@@ -33,6 +33,8 @@ export interface SidebarProps {
   onToggle: () => void
 }
 
+const DEFAULT_VISIBLE_RECENT_CHATS = 5
+
 // Original dashboard page links — all kept intact
 const DASHBOARD_LINKS = [
   { name: 'Website Audit', href: '/dashboard/website-audit', icon: Search },
@@ -49,8 +51,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const router = useRouter()
   const { state, actions } = useAgent()
   const hasFetchedRef = React.useRef(false)
+  const [showAllConversations, setShowAllConversations] = React.useState(false)
   const isContentRoute = isContentDashboardRoute(pathname)
   const isImageRoute = isImageDashboardRoute(pathname)
+  const visibleConversations = showAllConversations
+    ? state.conversations
+    : state.conversations.slice(0, DEFAULT_VISIBLE_RECENT_CHATS)
+  const hasHiddenConversations = state.conversations.length > DEFAULT_VISIBLE_RECENT_CHATS
 
   // Load conversation history once on mount — fails silently if 401, history is optional
   React.useEffect(() => {
@@ -183,8 +190,41 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </nav>
         </div>
 
-        {/* ── Conversation history ── */}
+        {/* ── Dashboard pages (all original links) ── */}
         <div className="py-2 border-b border-zinc-800/60">
+          {!collapsed && (
+            <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-600 flex items-center gap-1">
+              Dashboard
+            </p>
+          )}
+          <nav className="space-y-0.5">
+            {DASHBOARD_LINKS.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center rounded-lg px-2 py-1.5 text-sm transition-colors',
+                    isActive
+                      ? 'bg-emerald-500/10 text-emerald-300'
+                      : 'text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200',
+                    collapsed && 'justify-center px-2'
+                  )}
+                  aria-current={isActive ? 'page' : undefined}
+                  title={collapsed ? item.name : undefined}
+                >
+                  <Icon className={cn('h-4 w-4 shrink-0', !collapsed && 'mr-2')} />
+                  {!collapsed && <span className="text-sm">{item.name}</span>}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+
+        {/* ── Conversation history ── */}
+        <div className="py-2">
           {!collapsed && (
             <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-600 flex items-center gap-1">
               <Clock className="h-3 w-3" /> Recent Chats
@@ -197,7 +237,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             )
           ) : (
             <nav className="space-y-0.5">
-              {state.conversations.slice(0, 20).map((conv) => {
+              {visibleConversations.map((conv) => {
                 const isActive = state.activeConversation?.id === conv.id
                 return (
                   <div
@@ -243,41 +283,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   </div>
                 )
               })}
+              {!collapsed && hasHiddenConversations && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllConversations((value) => !value)}
+                  className="w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-800/70 hover:text-zinc-200"
+                >
+                  {showAllConversations ? 'Less' : 'More'}
+                </button>
+              )}
             </nav>
           )}
-        </div>
-
-        {/* ── Dashboard pages (all original links) ── */}
-        <div className="py-2">
-          {!collapsed && (
-            <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
-              Dashboard
-            </p>
-          )}
-          <nav className="space-y-0.5">
-            {DASHBOARD_LINKS.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center rounded-lg px-2 py-1.5 text-sm transition-colors',
-                    isActive
-                      ? 'bg-emerald-500/10 text-emerald-300'
-                      : 'text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200',
-                    collapsed && 'justify-center px-2'
-                  )}
-                  aria-current={isActive ? 'page' : undefined}
-                  title={collapsed ? item.name : undefined}
-                >
-                  <Icon className={cn('h-4 w-4 shrink-0', !collapsed && 'mr-2')} />
-                  {!collapsed && <span className="text-sm">{item.name}</span>}
-                </Link>
-              )
-            })}
-          </nav>
         </div>
       </ScrollArea>
 
