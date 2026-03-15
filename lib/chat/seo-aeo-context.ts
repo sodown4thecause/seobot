@@ -10,6 +10,7 @@ import { generateEmbedding } from '@/lib/ai/embeddings'
 import { searchAgentDocuments } from '@/lib/db/vector-search'
 import { db } from '@/lib/db'
 import { businessProfiles } from '@/lib/db/schema'
+import { isAbortError } from '@/lib/errors/types'
 import { eq } from 'drizzle-orm'
 
 interface SeoAeoContext {
@@ -25,6 +26,31 @@ function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
     throw signal.reason instanceof Error ? signal.reason : new Error('SEO-AEO context generation aborted')
   }
+}
+
+function raceWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise
+
+  throwIfAborted(signal)
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(signal.reason instanceof Error ? signal.reason : new Error('SEO-AEO context generation aborted'))
+    }
+
+    signal.addEventListener('abort', onAbort, { once: true })
+
+    promise.then(
+      value => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      error => {
+        signal.removeEventListener('abort', onAbort)
+        reject(error)
+      }
+    )
+  })
 }
 
 /**
@@ -44,13 +70,20 @@ export async function buildSeoAeoContext(
     // Run embedding generation and user profile fetch in parallel.
     const [queryEmbedding, userProfile] = await Promise.all([
       generateEmbedding(query, signal).catch(err => {
+        if (isAbortError(err)) throw err
         console.warn('[SEO-AEO Context] Embedding generation failed:', err.message)
         return null
       }),
       userId
-        ? db.select().from(businessProfiles).where(eq(businessProfiles.userId, userId)).limit(1)
-          .then(rows => rows[0] ?? null)
-          .catch(() => null)
+        ? raceWithAbort(
+            db.select().from(businessProfiles).where(eq(businessProfiles.userId, userId)).limit(1)
+              .then(rows => rows[0] ?? null),
+            signal
+          )
+          .catch(err => {
+            if (isAbortError(err)) throw err
+            return null
+          })
         : Promise.resolve(null),
     ])
 
@@ -59,10 +92,14 @@ export async function buildSeoAeoContext(
     // Retrieve relevant RAG docs if embedding succeeded.
     let ragDocs: Awaited<ReturnType<typeof searchAgentDocuments>> = []
     if (queryEmbedding) {
-      ragDocs = await searchAgentDocuments(queryEmbedding, 'seo_aeo', {
-        threshold: 0.3,
-        limit: 3,
-      }).catch(err => {
+      ragDocs = await raceWithAbort(
+        searchAgentDocuments(queryEmbedding, 'seo_aeo', {
+          threshold: 0.3,
+          limit: 3,
+        }),
+        signal
+      ).catch(err => {
+        if (isAbortError(err)) throw err
         console.warn('[SEO-AEO Context] RAG retrieval failed:', err.message)
         return []
       })

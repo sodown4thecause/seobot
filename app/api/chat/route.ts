@@ -177,21 +177,30 @@ const handler = async (req: Request) => {
       classification.agent === 'seo-aeo'
         ? (async () => {
             const controller = new AbortController()
-            const timeoutId = setTimeout(() => {
-              console.warn('[Chat API] SEO-AEO RAG timed out after 6s; skipping to avoid blocking stream')
-              controller.abort(new Error('SEO-AEO RAG timed out after 6s'))
-            }, 6000)
+            let timeoutId: ReturnType<typeof setTimeout> | undefined
 
-            try {
-              return await buildSeoAeoContext(lastUserMessageContent, user?.id, {
-                signal: controller.signal,
-              })
-            } catch (err) {
+            const ragPromise = buildSeoAeoContext(lastUserMessageContent, user?.id, {
+              signal: controller.signal,
+            }).catch(err => {
               const message = err instanceof Error ? err.message : String(err)
               console.warn('[Chat API] SEO-AEO context fetch failed:', message)
               return emptyRagContext
+            })
+
+            try {
+              return await Promise.race([
+                ragPromise,
+                new Promise<typeof emptyRagContext>(resolve => {
+                  timeoutId = setTimeout(() => {
+                    console.warn('[Chat API] SEO-AEO RAG timed out after 6s; skipping to avoid blocking stream')
+                    controller.abort(new Error('SEO-AEO RAG timed out after 6s'))
+                    resolve(emptyRagContext)
+                  }, 6000)
+                })
+              ])
             } finally {
-              clearTimeout(timeoutId)
+              if (timeoutId) clearTimeout(timeoutId)
+              controller.abort()
             }
           })()
         : Promise.resolve(emptyRagContext),

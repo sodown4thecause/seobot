@@ -11,6 +11,7 @@
 import { generateObject } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
+import { isAbortError } from '@/lib/errors/types'
 import { z } from 'zod'
 
 // =============================================================================
@@ -404,6 +405,10 @@ Classify this query with appropriate intent, agent recommendation, and confidenc
 
             return result
         } catch (error) {
+            if (isAbortError(error)) {
+                throw error
+            }
+
             console.error('[Intent Router] Classification failed:', error)
             // Fallback to general intent
             return {
