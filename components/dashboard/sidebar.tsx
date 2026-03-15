@@ -297,17 +297,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
       </ScrollArea>
 
-      {/* AEO Audit footer link */}
-      {!collapsed && (
-        <div className="px-3 py-3 border-t border-zinc-800/50">
-          <Link
-            href="/audit"
-            className="block text-xs text-zinc-500 hover:text-emerald-400 transition-colors font-medium"
-          >
-            🔍 Free AEO Audit
-          </Link>
-        </div>
-      )}
     </aside>
   )
 }
