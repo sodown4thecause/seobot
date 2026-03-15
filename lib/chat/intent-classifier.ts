@@ -1,12 +1,14 @@
 /**
  * Intent Classification Module
- * 
+ *
  * Handles LLM-based intent classification for routing user queries
  * to the appropriate agent (seo-aeo, content, general, onboarding).
  */
 
 import { IntentToolRouter, type IntentClassification } from '@/lib/agents/intent-tool-router'
 import { AgentRouter } from '@/lib/agents/agent-router'
+import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
+import type { OnboardingData, OnboardingStep } from '@/lib/onboarding/state'
 
 export type AgentType = 'seo-aeo' | 'content' | 'general' | 'onboarding' | 'image'
 
@@ -52,17 +54,14 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
   // Run keyword-based routing immediately (synchronous, 0ms) as a fallback
   // This ensures we always have a result, even if the LLM classification times out
   const keywordRouting = AgentRouter.routeQuery(query, context)
+  const CLASSIFICATION_TIMEOUT_MS = 5000
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    controller.abort(new Error('Intent classification timed out after 5s'))
+  }, CLASSIFICATION_TIMEOUT_MS)
 
   try {
-    // Tier 1: LLM classifies intent AND recommends agent
-    // Race against a 5s timeout — if the LLM is slow, use keyword routing immediately
-    const CLASSIFICATION_TIMEOUT_MS = 5000
-    const intentResult = await Promise.race([
-      IntentToolRouter.classifyAndGetTools(query),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Intent classification timed out after 5s')), CLASSIFICATION_TIMEOUT_MS)
-      ),
-    ])
+    const intentResult = await IntentToolRouter.classifyAndGetTools(query, controller.signal)
 
     console.log('[Intent Classifier] LLM Classification:', {
       primary: intentResult.classification.primaryIntent,
@@ -82,9 +81,9 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
       allIntents: intentResult.allIntents,
     }
   } catch (error) {
-    const isTimeout = error instanceof Error && error.message.includes('timed out')
+    const isTimeout = isTimeoutAbort(error)
     if (isTimeout) {
-      console.warn('[Intent Classifier] LLM classification timed out — using keyword router fallback')
+      console.warn('[Intent Classifier] LLM classification timed out; using keyword router fallback')
     } else {
       console.error('[Intent Classifier] LLM classification failed, falling back to keyword routing:', error)
     }
@@ -98,7 +97,25 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
       classification: null,
       allIntents: [keywordRouting.agent],
     }
+  } finally {
+    clearTimeout(timeoutId)
   }
+}
+
+function isTimeoutAbort(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+
+  return error.name === 'AbortError'
+    || error.message.includes('timed out')
+    || error.message.includes('aborted')
+}
+
+function normalizeOnboardingStep(step?: number): OnboardingStep {
+  if (step === 2 || step === 3 || step === 4 || step === 5 || step === 6) {
+    return step
+  }
+
+  return 1
 }
 
 /**
@@ -109,17 +126,14 @@ export function buildAgentSystemPrompt(
   context: ClassifyOptions['context'],
   allIntents: string[]
 ): string {
-  // Import here to avoid circular dependency issues
-  const { buildOnboardingSystemPrompt } = require('@/lib/onboarding/prompts')
-
   const isOnboarding = context?.page === 'onboarding' || !!context?.onboarding
 
   if (isOnboarding && context?.onboarding) {
     const onboardingContext = context.onboarding as {
       currentStep?: number
-      data?: Record<string, unknown>
+      data?: OnboardingData
     }
-    const currentStep = onboardingContext.currentStep || 1
+    const currentStep = normalizeOnboardingStep(onboardingContext.currentStep)
     const onboardingData = onboardingContext.data || {}
     return buildOnboardingSystemPrompt(currentStep, onboardingData)
   }

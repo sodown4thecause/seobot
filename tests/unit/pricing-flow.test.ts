@@ -114,11 +114,43 @@ describe('pricing page flow', () => {
     expect(response.headers.get('location')).toBe('https://polar.sh/checkout/session_123')
   })
 
-  it('resolves Polar webhook users from reference_id when metadata.userId is missing', async () => {
+  it('falls back to the hosted Polar link when checkout session creation fails', async () => {
+    process.env.POLAR_ACCESS_TOKEN = 'polar_test_token'
+    process.env.POLAR_PRODUCT_ID = 'prod_123'
+    createCheckoutMock.mockRejectedValue(new Error('polar unavailable'))
+
+    authMock.mockResolvedValue({ userId: 'user_123' })
+    currentUserMock.mockResolvedValue({
+      firstName: 'Test',
+      lastName: 'User',
+      username: 'test-user',
+      primaryEmailAddress: {
+        emailAddress: 'test@example.com',
+      },
+      emailAddresses: [{ emailAddress: 'test@example.com' }],
+    })
+
+    const { GET } = await import('@/app/billing/checkout/route')
+    const response = await GET(new NextRequest('http://localhost:3000/billing/checkout'))
+    const location = response.headers.get('location')
+
+    expect(location).not.toBeNull()
+
+    const redirectUrl = new URL(location ?? 'https://buy.polar.sh')
+    expect(`${redirectUrl.origin}${redirectUrl.pathname}`).toBe(
+      'https://buy.polar.sh/polar_cl_03BxHIAE3KpoGAZaeC4oTlrwl3FCa89iB1Cw80Ncp60',
+    )
+    expect(redirectUrl.searchParams.get('customer_email')).toBe('test@example.com')
+    expect(redirectUrl.searchParams.get('customer_name')).toBe('Test User')
+    expect(redirectUrl.searchParams.get('reference_id')).toBe('user_123')
+  })
+
+  it('trims metadata IDs before resolving Polar webhook users', async () => {
     const { resolvePolarUserId } = await import('@/lib/billing/polar-metadata')
 
     expect(resolvePolarUserId({ reference_id: 'user_123' })).toBe('user_123')
     expect(resolvePolarUserId({ userId: 'user_456', reference_id: 'user_123' })).toBe('user_456')
+    expect(resolvePolarUserId({ userId: '   ', reference_id: ' user_789 ' })).toBe('user_789')
     expect(resolvePolarUserId(undefined)).toBeNull()
   })
 })

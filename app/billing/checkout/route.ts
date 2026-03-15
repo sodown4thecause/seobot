@@ -28,24 +28,28 @@ export async function GET(request: NextRequest) {
   const polarProductId = process.env.POLAR_PRODUCT_ID
 
   if (polarAccessToken && polarProductId) {
-    const polar = new Polar({ accessToken: polarAccessToken })
+    try {
+      const polar = new Polar({ accessToken: polarAccessToken })
 
-    const checkout = await polar.checkouts.create({
-      products: [polarProductId],
-      successUrl:
-        process.env.POLAR_SUCCESS_URL ||
-        new URL('/dashboard?billing=success', request.url).toString(),
-      returnUrl:
-        process.env.POLAR_RETURN_URL || new URL('/prices', request.url).toString(),
-      externalCustomerId: userId,
-      customerEmail: email || undefined,
-      customerName: customerName || undefined,
-      metadata: {
-        userId,
-      },
-    })
+      const checkout = await polar.checkouts.create({
+        products: [polarProductId],
+        successUrl:
+          process.env.POLAR_SUCCESS_URL ||
+          new URL('/dashboard?billing=success', request.url).toString(),
+        returnUrl:
+          process.env.POLAR_RETURN_URL || new URL('/prices', request.url).toString(),
+        externalCustomerId: userId,
+        customerEmail: email || undefined,
+        customerName: customerName || undefined,
+        metadata: {
+          userId,
+        },
+      })
 
-    return NextResponse.redirect(checkout.url)
+      return NextResponse.redirect(checkout.url)
+    } catch (error) {
+      console.error('[Billing Checkout] Falling back to hosted Polar link', error)
+    }
   }
 
   if (email) {
