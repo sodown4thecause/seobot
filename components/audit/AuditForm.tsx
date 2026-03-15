@@ -25,21 +25,13 @@ export function AuditForm({ onSubmit, loading }: AuditFormProps) {
         <Input
           type="url"
           placeholder="yourdomain.com"
-          className="glass-input h-12 border-white/10 bg-black/20 text-white placeholder:text-zinc-500"
           value={domain}
           onChange={(event) => setDomain(event.target.value)}
           className="border-white/15 bg-zinc-900 text-white"
         />
-        <Input
-          type="email"
-          placeholder="you@company.com"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className="border-white/15 bg-zinc-900 text-white"
-        />
         <Button
           className="w-full bg-white text-black hover:bg-zinc-200"
-          disabled={loading || !domain || !email}
+          disabled={loading || !domain}
           onClick={() => {
             void onSubmit({ domain }).catch((error) => {
               console.error('[AuditForm] Submit failed:', error)

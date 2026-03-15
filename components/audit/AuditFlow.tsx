@@ -6,7 +6,8 @@ import { Loader2 } from 'lucide-react'
 
 import { AuditForm } from '@/components/audit/AuditForm'
 import { BrandConfirmation } from '@/components/audit/BrandConfirmation'
-import { AuditResultsExperience } from '@/components/audit/AuditResultsExperience'
+import { CitationSources } from '@/components/audit/CitationSources'
+import { PlatformBreakdown } from '@/components/audit/PlatformBreakdown'
 import { ProgressStages } from '@/components/audit/ProgressStages'
 import { ResultsHero } from '@/components/audit/ResultsHero'
 import { UpsellGate } from '@/components/audit/UpsellGate'
@@ -24,7 +25,6 @@ import type {
   AuditResults,
   BrandDetectionPayload,
   PlatformResult,
-  TopicalMapResultPayload,
 } from '@/lib/audit/types'
 
 type Stage = 'form' | 'confirm' | 'loading' | 'gate' | 'results'
@@ -41,7 +41,6 @@ export function AuditFlow() {
   const [results, setResults] = useState<AuditResults | null>(null)
   const [platformResults, setPlatformResults] = useState<PlatformResult[]>([])
   const [executionMeta, setExecutionMeta] = useState<AuditExecutionMeta | null>(null)
-  const [topicalMapPayload, setTopicalMapPayload] = useState<TopicalMapResultPayload | null>(null)
   const [auditId, setAuditId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -79,7 +78,6 @@ export function AuditFlow() {
 
       setRequestState(input)
       setDetected(payload.detected)
-      setGateEmail(input.email)
       setAuditId(null)
       setStage('confirm')
     } catch (err) {
@@ -136,7 +134,7 @@ export function AuditFlow() {
       setResults(payload.results)
       setPlatformResults(payload.platformResults || [])
       setExecutionMeta(payload.executionMeta || null)
-      setTopicalMapPayload(payload.topicalMapPayload || null)
+      setGateEmail(email)
       const resolvedAuditId = typeof payload.auditId === 'string' ? payload.auditId : null
 
       setAuditId(resolvedAuditId)

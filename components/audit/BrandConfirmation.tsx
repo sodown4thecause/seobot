@@ -47,35 +47,30 @@ export function BrandConfirmation({ detected, onConfirm, loading }: BrandConfirm
         </div>
         <Input
           value={context.brand}
-          className="glass-input h-12 border-white/10 bg-black/20 text-white placeholder:text-zinc-500"
           onChange={(event) => setContext((prev) => ({ ...prev, brand: event.target.value }))}
           placeholder="Brand"
           className="border-white/15 bg-zinc-900 text-white"
         />
         <Input
           value={context.category}
-          className="glass-input h-12 border-white/10 bg-black/20 text-white placeholder:text-zinc-500"
           onChange={(event) => setContext((prev) => ({ ...prev, category: event.target.value }))}
           placeholder="Category"
           className="border-white/15 bg-zinc-900 text-white"
         />
         <Input
           value={context.icp}
-          className="glass-input h-12 border-white/10 bg-black/20 text-white placeholder:text-zinc-500"
           onChange={(event) => setContext((prev) => ({ ...prev, icp: event.target.value }))}
           placeholder="ICP"
           className="border-white/15 bg-zinc-900 text-white"
         />
         <Input
           value={context.vertical}
-          className="glass-input h-12 border-white/10 bg-black/20 text-white placeholder:text-zinc-500"
           onChange={(event) => setContext((prev) => ({ ...prev, vertical: event.target.value }))}
           placeholder="Vertical"
           className="border-white/15 bg-zinc-900 text-white"
         />
         <Input
           value={competitorsText}
-          className="glass-input h-12 border-white/10 bg-black/20 text-white placeholder:text-zinc-500"
           onChange={(event) =>
             setContext((prev) => ({
               ...prev,
@@ -88,7 +83,26 @@ export function BrandConfirmation({ detected, onConfirm, loading }: BrandConfirm
           placeholder="Competitor 1, Competitor 2"
           className="border-white/15 bg-zinc-900 text-white"
         />
-        <Button className="w-full bg-white text-black hover:bg-zinc-200" disabled={loading} onClick={() => onConfirm(context)}>
+        <Input
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="you@company.com"
+          aria-invalid={trimmedEmail.length > 0 && !isEmailValid}
+          className="border-white/15 bg-zinc-900 text-white"
+        />
+        {trimmedEmail.length > 0 && !isEmailValid ? (
+          <p className="text-sm text-amber-200">Add a valid work email to unlock the saved scorecard link.</p>
+        ) : null}
+        <Button
+          className="w-full bg-white text-black hover:bg-zinc-200"
+          disabled={loading || !isEmailValid}
+          onClick={() => {
+            void onConfirm({ context, email: trimmedEmail }).catch((error) => {
+              console.error('[BrandConfirmation] Confirm failed:', error)
+            })
+          }}
+        >
           {loading ? 'Running 5 checks...' : 'Looks Right, Run Audit'}
         </Button>
       </CardContent>

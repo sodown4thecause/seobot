@@ -4,14 +4,7 @@ import { apiVersion, dataset, projectId } from '../env'
 
 type SanityClient = ReturnType<typeof createClient>
 
-const unavailableClient = {
-  async fetch<T>(query: string): Promise<T> {
-    const defaultValue = query.includes('[0]') ? null : []
-    return defaultValue as T
-  },
-} as unknown as SanityClient
-
-export const client: SanityClient = projectId
+const baseClient: SanityClient | null = projectId
   ? createClient({
       projectId,
       dataset,
