@@ -2,11 +2,7 @@ import { SignUp } from '@clerk/nextjs'
 import Link from 'next/link'
 import { SymbolBackground } from '@/components/landing/symbol-background'
 
-export default function SignupPage({
-  params,
-}: {
-  params: Promise<{ rest?: string[] }>
-}) {
+export default function SignupPage() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-black text-white relative overflow-hidden">
       <SymbolBackground />
@@ -32,7 +28,7 @@ export default function SignupPage({
 
         <div className="flex items-center justify-center">
           <SignUp
-            afterSignUpUrl="/dashboard"
+            fallbackRedirectUrl="/billing/checkout"
             appearance={{
               variables: {
                 colorPrimary: '#ffffff',

@@ -6,12 +6,12 @@
  * in recent industry data and user-specific context.
  */
 
+import { eq } from 'drizzle-orm'
 import { generateEmbedding } from '@/lib/ai/embeddings'
-import { searchAgentDocuments } from '@/lib/db/vector-search'
 import { db } from '@/lib/db'
 import { businessProfiles } from '@/lib/db/schema'
 import { isAbortError } from '@/lib/errors/types'
-import { eq } from 'drizzle-orm'
+import { searchAgentDocuments } from '@/lib/db/vector-search'
 
 interface SeoAeoContext {
   systemPromptAddendum: string
@@ -41,14 +41,14 @@ function raceWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T>
     signal.addEventListener('abort', onAbort, { once: true })
 
     promise.then(
-      value => {
+      (value) => {
         signal.removeEventListener('abort', onAbort)
         resolve(value)
       },
-      error => {
+      (error) => {
         signal.removeEventListener('abort', onAbort)
         reject(error)
-      }
+      },
     )
   })
 }
@@ -60,28 +60,26 @@ function raceWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T>
 export async function buildSeoAeoContext(
   query: string,
   userId?: string,
-  options: BuildSeoAeoContextOptions = {}
+  options: BuildSeoAeoContextOptions = {},
 ): Promise<SeoAeoContext> {
   const { signal } = options
 
   try {
     throwIfAborted(signal)
 
-    // Run embedding generation and user profile fetch in parallel.
     const [queryEmbedding, userProfile] = await Promise.all([
-      generateEmbedding(query, signal).catch(err => {
-        if (isAbortError(err)) throw err
-        console.warn('[SEO-AEO Context] Embedding generation failed:', err.message)
+      generateEmbedding(query, signal).catch((error) => {
+        if (isAbortError(error)) throw error
+        console.warn('[SEO-AEO Context] Embedding generation failed:', error.message)
         return null
       }),
       userId
         ? raceWithAbort(
             db.select().from(businessProfiles).where(eq(businessProfiles.userId, userId)).limit(1)
-              .then(rows => rows[0] ?? null),
-            signal
-          )
-          .catch(err => {
-            if (isAbortError(err)) throw err
+              .then((rows) => rows[0] ?? null),
+            signal,
+          ).catch((error) => {
+            if (isAbortError(error)) throw error
             return null
           })
         : Promise.resolve(null),
@@ -89,7 +87,6 @@ export async function buildSeoAeoContext(
 
     throwIfAborted(signal)
 
-    // Retrieve relevant RAG docs if embedding succeeded.
     let ragDocs: Awaited<ReturnType<typeof searchAgentDocuments>> = []
     if (queryEmbedding) {
       ragDocs = await raceWithAbort(
@@ -97,10 +94,10 @@ export async function buildSeoAeoContext(
           threshold: 0.3,
           limit: 3,
         }),
-        signal
-      ).catch(err => {
-        if (isAbortError(err)) throw err
-        console.warn('[SEO-AEO Context] RAG retrieval failed:', err.message)
+        signal,
+      ).catch((error) => {
+        if (isAbortError(error)) throw error
+        console.warn('[SEO-AEO Context] RAG retrieval failed:', error.message)
         return []
       })
     }
@@ -113,18 +110,31 @@ export async function buildSeoAeoContext(
 
     if (userProfile) {
       const parts: string[] = []
-      if (userProfile.websiteUrl) parts.push(`USER WEBSITE (already known; do not ask for it): ${userProfile.websiteUrl}`)
-      if (userProfile.industry) parts.push(`Industry: ${userProfile.industry}`)
-      if (userProfile.goals) parts.push(`Goals: ${Array.isArray(userProfile.goals) ? (userProfile.goals as string[]).join(', ') : String(userProfile.goals)}`)
+
+      if (userProfile.websiteUrl) {
+        parts.push(`USER WEBSITE (already known; do not ask for it): ${userProfile.websiteUrl}`)
+      }
+
+      if (userProfile.industry) {
+        parts.push(`Industry: ${userProfile.industry}`)
+      }
+
+      if (userProfile.goals) {
+        parts.push(
+          `Goals: ${Array.isArray(userProfile.goals) ? (userProfile.goals as string[]).join(', ') : String(userProfile.goals)}`,
+        )
+      }
+
       if (parts.length > 0) {
         sections.push(`## User Business Context\n${parts.join('\n')}`)
       }
     }
 
     if (ragDocs.length > 0) {
-      const docSections = ragDocs.map((doc, index) =>
-        `### Source ${index + 1}: ${doc.title}\n${doc.content}`
-      ).join('\n\n')
+      const docSections = ragDocs
+        .map((doc, index) => `### Source ${index + 1}: ${doc.title}\n${doc.content}`)
+        .join('\n\n')
+
       sections.push(`## Industry Research\nUse this data to give specific, cited answers:\n\n${docSections}`)
     }
 
@@ -136,13 +146,13 @@ export async function buildSeoAeoContext(
       systemPromptAddendum: `\n\n---\n${sections.join('\n\n')}`,
       ragDocsFound: ragDocs.length,
     }
-  } catch (err) {
+  } catch (error) {
     if (signal?.aborted) {
       console.warn('[SEO-AEO Context] Context generation aborted')
       return { systemPromptAddendum: '', ragDocsFound: 0 }
     }
 
-    console.error('[SEO-AEO Context] Unexpected error:', err)
+    console.error('[SEO-AEO Context] Unexpected error:', error)
     return { systemPromptAddendum: '', ragDocsFound: 0 }
   }
 }
