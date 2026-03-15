@@ -100,6 +100,25 @@ npm run mcp:generate:jina       # Generate Jina MCP bindings
 npm run mcp:generate:dataforseo # Generate DataForSEO bindings
 ```
 
+## DEPLOYMENT (Vercel)
+
+**Critical:** Always sync local main before assuming production is up to date.
+
+```bash
+# After merging PRs on GitHub, sync local main
+git checkout main
+git pull origin main
+
+# If production hasn't deployed, trigger it with empty commit
+git commit --allow-empty -m "chore: trigger production deployment"
+git push origin main
+```
+
+**Vercel Settings:**
+- Production deploys from `main` branch only
+- Preview deploys from all other branches/PRs
+- Dashboard: https://vercel.com/dashboard
+
 ## DEPENDENCIES (Key)
 
 | Package | Purpose |
