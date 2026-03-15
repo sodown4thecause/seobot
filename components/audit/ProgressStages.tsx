@@ -46,9 +46,9 @@ export function ProgressStages({ phase }: ProgressStagesProps) {
   const currentStage = STAGES[Math.max(0, currentIndex)]
 
   return (
-    <Card className="glass-card rounded-[1.75rem] border-white/8 bg-white/[0.03]">
+    <Card className="border-white/10 bg-zinc-950 text-white">
       <CardHeader>
-        <CardTitle className="text-lg text-white">Building your scorecard</CardTitle>
+        <CardTitle className="text-lg uppercase tracking-wide">Audit In Progress</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Progress value={currentStage.progress} className="bg-white/5" indicatorClassName="bg-gradient-to-r from-emerald-400 to-cyan-300" />
@@ -58,16 +58,16 @@ export function ProgressStages({ phase }: ProgressStagesProps) {
             const isActive = phase !== 'done' && index === currentIndex
 
             return (
-              <div key={stage.id} className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+              <div key={stage.id} className="flex items-start gap-3 rounded-md border border-white/10 bg-zinc-900/60 p-3">
                 {isComplete ? (
                   <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
                 ) : isActive ? (
-                  <Loader2 className="mt-0.5 h-4 w-4 animate-spin text-cyan-200" />
+                  <Loader2 className="mt-0.5 h-4 w-4 animate-spin text-emerald-400" />
                 ) : (
-                  <div className="mt-1 h-3 w-3 rounded-full bg-white/15" />
+                  <div className="mt-1 h-3 w-3 rounded-full bg-zinc-700" />
                 )}
                 <div>
-                  <p className="text-sm font-semibold text-white">{stage.label}</p>
+                  <p className="text-sm font-semibold text-zinc-100">{stage.label}</p>
                   <p className="text-xs text-zinc-400">{stage.description}</p>
                 </div>
               </div>

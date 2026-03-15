@@ -32,7 +32,7 @@ export function CitationSources({ urls }: CitationSourcesProps) {
             {urls.map((url) => (
               <li key={url} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
                 {isSafeUrl(url) ? (
-                  <a href={url} target="_blank" rel="noopener noreferrer" className="break-all text-cyan-200 hover:text-cyan-100 hover:underline">
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
                     {url}
                   </a>
                 ) : (

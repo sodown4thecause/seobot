@@ -1,10 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Loader2 } from 'lucide-react'
+
 import { AuditForm } from '@/components/audit/AuditForm'
 import { BrandConfirmation } from '@/components/audit/BrandConfirmation'
 import { AuditResultsExperience } from '@/components/audit/AuditResultsExperience'
 import { ProgressStages } from '@/components/audit/ProgressStages'
+import { ResultsHero } from '@/components/audit/ResultsHero'
+import { UpsellGate } from '@/components/audit/UpsellGate'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   generateSessionId,
   trackAuditCompleted,
@@ -20,7 +27,7 @@ import type {
   TopicalMapResultPayload,
 } from '@/lib/audit/types'
 
-type Stage = 'form' | 'confirm' | 'results'
+type Stage = 'form' | 'confirm' | 'loading' | 'gate' | 'results'
 type RunPhase = 'idle' | 'detecting' | 'running-checks' | 'scoring' | 'done'
 
 interface RequestState {
@@ -40,6 +47,7 @@ export function AuditFlow() {
   const [loading, setLoading] = useState(false)
   const [runPhase, setRunPhase] = useState<RunPhase>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [gateEmail, setGateEmail] = useState('')
 
   const handleDetect = async (input: RequestState) => {
     const nextSessionId = generateSessionId()
@@ -71,10 +79,9 @@ export function AuditFlow() {
 
       setRequestState(input)
       setDetected(payload.detected)
-      setTopicalMapPayload(null)
+      setGateEmail(input.email)
       setAuditId(null)
       setStage('confirm')
-
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Detection failed'
 
@@ -104,6 +111,7 @@ export function AuditFlow() {
     }
 
     setLoading(true)
+    setStage('loading')
     setError(null)
 
     try {
@@ -133,7 +141,7 @@ export function AuditFlow() {
 
       setAuditId(resolvedAuditId)
       setRunPhase('done')
-      setStage('results')
+      setStage('gate')
 
       trackEmailCaptured({
         sessionId: activeSessionId,
@@ -163,6 +171,7 @@ export function AuditFlow() {
       const message = err instanceof Error ? err.message : 'Audit failed'
 
       setError(message)
+      setStage('confirm')
       trackAuditFailed({
         sessionId: activeSessionId,
         url: requestState.domain,
@@ -181,52 +190,136 @@ export function AuditFlow() {
     }
   }
 
+  const unlockResults = () => {
+    if (!requestState || !results || !sessionId || !detected) {
+      return
+    }
+
+    trackEmailCaptured({
+      sessionId,
+      url: requestState.domain,
+      email: gateEmail,
+      brandName: results.brand,
+      properties: {
+        source: 'live-audit',
+        category: detected.category,
+        gateSource: 'gate-unlock',
+      },
+    })
+
+    setStage('results')
+  }
+
   return (
-    <section className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10 md:px-8">
-      <header className="space-y-4 text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">Free AI Visibility Scorecard</p>
-        <h1 className="text-4xl font-semibold tracking-tight text-white md:text-6xl">
-          Discover how your brand shows up in AI search and where the next upside lives.
+    <section className="mx-auto w-full max-w-6xl space-y-6 px-4 py-10 md:px-8">
+      <header className="space-y-3 text-center">
+        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-zinc-300">Free AI Visibility Audit</p>
+        <h1 className="text-3xl font-black uppercase italic tracking-tight text-white md:text-5xl">
+          Is AI Recommending Your Competitors Instead Of You?
         </h1>
-        <p className="mx-auto max-w-3xl text-base leading-7 text-zinc-300 md:text-lg">
-          Check your presence across Perplexity, Grok, and Gemini, then leave with a polished scorecard, topical opportunity map, and a 7 / 30 / 90 day action plan.
+        <p className="mx-auto max-w-3xl text-zinc-400">
+          Run the live 5-check audit, watch analysis load in real time, then unlock your full report.
         </p>
       </header>
 
-      {error ? <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-50">{error}</p> : null}
+      {error ? <p className="rounded-md border border-zinc-700 bg-zinc-900 p-3 text-sm text-zinc-200">{error}</p> : null}
 
-      {stage === 'form' ? <AuditForm onSubmit={handleDetect} loading={loading} /> : null}
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 p-6 md:p-8">
+        <AnimatePresence mode="wait">
+          {stage === 'form' ? (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+            >
+              <AuditForm onSubmit={handleDetect} loading={loading} />
+            </motion.div>
+          ) : null}
 
-      {stage === 'confirm' && detected ? (
-        <div className="space-y-4">
-          {loading ? <ProgressStages phase={runPhase === 'idle' ? 'detecting' : runPhase} /> : null}
-          <BrandConfirmation detected={detected} onConfirm={handleConfirm} loading={loading} />
-        </div>
-      ) : null}
+          {stage === 'confirm' && detected ? (
+            <motion.div
+              key="confirm"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              className="space-y-4"
+            >
+              <BrandConfirmation detected={detected} onConfirm={handleConfirm} loading={loading} />
+            </motion.div>
+          ) : null}
 
-      {stage === 'results' && results ? (
-        <div className="space-y-6">
-          <AuditResultsExperience
-            results={results}
-            platformResults={platformResults}
-            topicalMapPayload={topicalMapPayload}
-            executionMeta={executionMeta}
-            auditId={auditId}
-            onRunAnother={() => {
-              setStage('form')
-              setRequestState(null)
-              setDetected(null)
-              setResults(null)
-              setPlatformResults([])
-              setExecutionMeta(null)
-              setTopicalMapPayload(null)
-              setAuditId(null)
-              setError(null)
-              setRunPhase('idle')
-            }}
-          />
-        </div>
-      ) : null}
+          {stage === 'loading' ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              className="space-y-6"
+            >
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-white/20">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+              </div>
+              <ProgressStages phase={runPhase === 'idle' ? 'running-checks' : runPhase} />
+            </motion.div>
+          ) : null}
+
+          {stage === 'gate' && results ? (
+            <motion.div
+              key="gate"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              className="mx-auto max-w-xl space-y-5 text-center"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-400">Report ready</p>
+              <h2 className="text-3xl font-black uppercase italic text-white">Unlock your full audit</h2>
+              <p className="text-zinc-400">
+                Your analysis is complete. Confirm where we should send your recap and action plan.
+              </p>
+              <Input
+                value={gateEmail}
+                onChange={(event) => setGateEmail(event.target.value)}
+                type="email"
+                placeholder="you@company.com"
+                className="border-white/15 bg-zinc-900 text-white"
+              />
+              <Button
+                onClick={unlockResults}
+                className="w-full bg-white text-black hover:bg-zinc-200"
+                disabled={!gateEmail.includes('@')}
+              >
+                Show full results
+              </Button>
+            </motion.div>
+          ) : null}
+
+          {stage === 'results' && results ? (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              className="space-y-6"
+            >
+              {executionMeta?.message ? (
+                <p className="rounded-md border border-zinc-700 bg-zinc-900 p-3 text-sm text-zinc-200">
+                  {executionMeta.message}
+                </p>
+              ) : null}
+              <ResultsHero results={results} />
+              <PlatformBreakdown summary={results.platformResults} rawResults={platformResults} />
+              <CitationSources urls={results.citationUrls} />
+              <UpsellGate
+                auditId={auditId}
+                brand={results.brand}
+                visibilityRate={results.visibilityRate}
+                topCompetitor={results.topCompetitor}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </section>
   )
 }

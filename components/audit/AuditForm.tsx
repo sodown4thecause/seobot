@@ -14,11 +14,11 @@ export function AuditForm({ onSubmit, loading }: AuditFormProps) {
   const [domain, setDomain] = useState('')
 
   return (
-    <Card className="glass-panel overflow-hidden rounded-[2rem] border-white/10 bg-white/[0.03]">
+    <Card className="border-white/10 bg-zinc-950 text-white">
       <CardHeader>
-        <CardTitle className="text-white">Get your AI visibility scorecard</CardTitle>
-        <CardDescription>
-          Start with your domain to preview how your brand is being evaluated across AI search. You can unlock the full scorecard after the preview.
+        <CardTitle className="text-2xl font-black uppercase italic tracking-tight">Start Your AI Visibility Audit</CardTitle>
+        <CardDescription className="text-zinc-400">
+          Enter your domain and email to see whether AI buyers are being sent to competitors.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -28,15 +28,18 @@ export function AuditForm({ onSubmit, loading }: AuditFormProps) {
           className="glass-input h-12 border-white/10 bg-black/20 text-white placeholder:text-zinc-500"
           value={domain}
           onChange={(event) => setDomain(event.target.value)}
+          className="border-white/15 bg-zinc-900 text-white"
         />
-        <div className="grid gap-2 rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4 text-sm text-zinc-300 md:grid-cols-3">
-          <div>AI visibility score</div>
-          <div>Model-by-model snapshot</div>
-          <div>Topical opportunity map</div>
-        </div>
+        <Input
+          type="email"
+          placeholder="you@company.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          className="border-white/15 bg-zinc-900 text-white"
+        />
         <Button
-          className="w-full bg-white text-black hover:bg-zinc-100"
-          disabled={loading || !domain}
+          className="w-full bg-white text-black hover:bg-zinc-200"
+          disabled={loading || !domain || !email}
           onClick={() => {
             void onSubmit({ domain }).catch((error) => {
               console.error('[AuditForm] Submit failed:', error)
