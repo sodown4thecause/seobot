@@ -36,6 +36,7 @@ import { buildStreamResponse, type StreamOptions } from '@/lib/chat/stream-build
 import { saveUIMessage } from '@/lib/chat/storage'
 import { ensureChatForUser } from '@/lib/chat/persistence'
 import { detectWorkflowTrigger } from '@/lib/chat/orchestrator'
+import { buildSeoAeoContext } from '@/lib/chat/seo-aeo-context'
 
 export const maxDuration = 300 // 5 minutes
 
@@ -122,6 +123,7 @@ const handler = async (req: Request) => {
     }
 
     // 8. Classify user intent and route to agent
+    // Has a 5s internal timeout — falls back to keyword-based routing if LLM is slow
     const classification = await classifyUserIntent({
       query: lastUserMessageContent,
       context,
@@ -160,13 +162,36 @@ const handler = async (req: Request) => {
       classification.allIntents
     )
 
-    // 11. Assemble tools for the agent
-    const tools = await assembleTools({
-      agent: classification.agent,
-      intentTools: classification.tools,
-      userId: user?.id,
-      request: req,
-    })
+    // 11. Assemble tools + (for seo-aeo) fetch RAG context in parallel
+    // RAG is time-boxed to 6s — slow embedding/vector-search must NOT block streaming.
+    // Each DataForSEO live call is fast (~5-15s), so delaying the stream start for RAG
+    // that might take 60s+ is the key source of latency.
+    const [tools, ragContext] = await Promise.all([
+      assembleTools({
+        agent: classification.agent,
+        intentTools: classification.tools,
+        userId: user?.id,
+        request: req,
+      }),
+      classification.agent === 'seo-aeo'
+        ? Promise.race([
+            buildSeoAeoContext(lastUserMessageContent, user?.id),
+            new Promise<{ systemPromptAddendum: string; ragDocsFound: number }>(resolve =>
+              setTimeout(() => {
+                console.warn('[Chat API] SEO-AEO RAG timed out after 6s — skipping to avoid blocking stream')
+                resolve({ systemPromptAddendum: '', ragDocsFound: 0 })
+              }, 6000)
+            ),
+          ]).catch(err => {
+            console.warn('[Chat API] SEO-AEO context fetch failed:', err.message)
+            return { systemPromptAddendum: '', ragDocsFound: 0 }
+          })
+        : Promise.resolve({ systemPromptAddendum: '', ragDocsFound: 0 }),
+    ])
+
+    if (ragContext.ragDocsFound > 0) {
+      console.log(`[Chat API] Injecting ${ragContext.ragDocsFound} RAG docs into system prompt`)
+    }
 
     console.log('[Chat API] Final validated tools for streamText:', {
       count: Object.keys(tools).length,
@@ -186,6 +211,7 @@ const handler = async (req: Request) => {
             id?: string
             role: 'user' | 'assistant' | 'system'
             content?: string
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             parts?: any[]
           })
           console.log('[Chat API] User message saved successfully')
@@ -196,10 +222,11 @@ const handler = async (req: Request) => {
       }
     }
 
-    // 13. Build stream options
+    // 13. Build stream options (append RAG context to system prompt if available)
+    const enrichedSystemPrompt = systemPrompt + ragContext.systemPromptAddendum
     const streamOptions: StreamOptions = {
       modelMessages,
-      systemPrompt,
+      systemPrompt: enrichedSystemPrompt,
       tools,
       userId: user?.id,
       conversationId: activeConversationId || undefined,
@@ -251,7 +278,9 @@ const handler = async (req: Request) => {
             id?: string
             role: 'user' | 'assistant' | 'system'
             content?: string
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             parts?: any[]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             toolInvocations?: any[]
           })
           console.log('[Chat API] Assistant message saved successfully')
@@ -295,4 +324,3 @@ export const POST = observe(handler, {
   name: 'handle-chat-message',
   endOnExit: false, // Don't end observation until stream finishes
 })
-

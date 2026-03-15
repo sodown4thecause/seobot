@@ -49,9 +49,20 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
     }
   }
 
+  // Run keyword-based routing immediately (synchronous, 0ms) as a fallback
+  // This ensures we always have a result, even if the LLM classification times out
+  const keywordRouting = AgentRouter.routeQuery(query, context)
+
   try {
     // Tier 1: LLM classifies intent AND recommends agent
-    const intentResult = await IntentToolRouter.classifyAndGetTools(query)
+    // Race against a 5s timeout — if the LLM is slow, use keyword routing immediately
+    const CLASSIFICATION_TIMEOUT_MS = 5000
+    const intentResult = await Promise.race([
+      IntentToolRouter.classifyAndGetTools(query),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Intent classification timed out after 5s')), CLASSIFICATION_TIMEOUT_MS)
+      ),
+    ])
 
     console.log('[Intent Classifier] LLM Classification:', {
       primary: intentResult.classification.primaryIntent,
@@ -63,7 +74,7 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
     })
 
     return {
-        agent: intentResult.classification.recommendedAgent as AgentType,
+      agent: intentResult.classification.recommendedAgent as AgentType,
       confidence: intentResult.classification.confidence,
       reasoning: intentResult.classification.reasoning,
       tools: intentResult.tools,
@@ -71,18 +82,21 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
       allIntents: intentResult.allIntents,
     }
   } catch (error) {
-    console.error('[Intent Classifier] LLM classification failed, falling back to keyword routing:', error)
+    const isTimeout = error instanceof Error && error.message.includes('timed out')
+    if (isTimeout) {
+      console.warn('[Intent Classifier] LLM classification timed out — using keyword router fallback')
+    } else {
+      console.error('[Intent Classifier] LLM classification failed, falling back to keyword routing:', error)
+    }
 
-    // Fallback to keyword-based routing
-    const keywordRouting = AgentRouter.routeQuery(query, context)
-
+    // Fallback to keyword-based routing (already computed above, zero cost here)
     return {
       agent: keywordRouting.agent as AgentType,
       confidence: 0.7,
-      reasoning: 'Keyword-based routing fallback',
-      tools: [],
+      reasoning: isTimeout ? 'Keyword-based routing (LLM timeout fallback)' : 'Keyword-based routing fallback',
+      tools: keywordRouting.tools as string[],
       classification: null,
-      allIntents: [],
+      allIntents: [keywordRouting.agent],
     }
   }
 }
