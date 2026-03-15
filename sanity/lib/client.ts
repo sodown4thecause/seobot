@@ -1,6 +1,6 @@
 import { createClient } from 'next-sanity'
 
-import { apiVersion, dataset, hasSanityConfig, projectId } from '../env'
+import { apiVersion, dataset, projectId } from '../env'
 
 type SanityClient = ReturnType<typeof createClient>
 
@@ -11,7 +11,7 @@ const unavailableClient = {
   },
 } as unknown as SanityClient
 
-export const client: SanityClient = hasSanityConfig
+export const client: SanityClient = projectId
   ? createClient({
       projectId,
       dataset,

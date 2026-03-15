@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { WebhookVerificationError, validateEvent } from '@polar-sh/sdk/webhooks'
 import { db } from '@/lib/db'
+import { resolvePolarUserId } from '@/lib/billing/polar-metadata'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+
+type PolarSubscriptionPayload = {
+  metadata?: Record<string, unknown>
+  customer_id?: string | null
+  id?: string | null
+  status?: string | null
+  current_period_end?: string | null
+}
+
+type PolarOrderPayload = {
+  id?: string | null
+  amount?: number | null
+  customer_id?: string | null
+  metadata?: Record<string, unknown>
+}
 
 export async function POST(req: NextRequest) {
     const body = await req.text()
@@ -64,8 +80,8 @@ export async function POST(req: NextRequest) {
     }
 }
 
-async function handleSubscriptionUpdate(data: any) {
-    const userId = data.metadata?.userId
+async function handleSubscriptionUpdate(data: PolarSubscriptionPayload) {
+    const userId = resolvePolarUserId(data.metadata)
     const polarCustomerId = data.customer_id
     const polarSubscriptionId = data.id
     const status = data.status
@@ -95,7 +111,7 @@ async function handleSubscriptionUpdate(data: any) {
     }
 }
 
-async function handleOrderEvent(data: any, eventType: string) {
+async function handleOrderEvent(data: PolarOrderPayload, eventType: string) {
     console.log(`Processing Order Event: ${eventType}`, {
         orderId: data.id,
         amount: data.amount,
