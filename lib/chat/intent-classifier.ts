@@ -8,6 +8,7 @@
 import { IntentToolRouter, type IntentClassification } from '@/lib/agents/intent-tool-router'
 import { AgentRouter } from '@/lib/agents/agent-router'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
+import type { OnboardingData, OnboardingStep } from '@/lib/onboarding/state'
 
 export type AgentType = 'seo-aeo' | 'content' | 'general' | 'onboarding' | 'image'
 
@@ -109,6 +110,14 @@ function isTimeoutAbort(error: unknown): boolean {
     || error.message.includes('aborted')
 }
 
+function normalizeOnboardingStep(step?: number): OnboardingStep {
+  if (step === 2 || step === 3 || step === 4 || step === 5 || step === 6) {
+    return step
+  }
+
+  return 1
+}
+
 /**
  * Build system prompt for the selected agent with intent-specific addendum.
  */
@@ -122,9 +131,9 @@ export function buildAgentSystemPrompt(
   if (isOnboarding && context?.onboarding) {
     const onboardingContext = context.onboarding as {
       currentStep?: number
-      data?: Record<string, unknown>
+      data?: OnboardingData
     }
-    const currentStep = onboardingContext.currentStep || 1
+    const currentStep = normalizeOnboardingStep(onboardingContext.currentStep)
     const onboardingData = onboardingContext.data || {}
     return buildOnboardingSystemPrompt(currentStep, onboardingData)
   }
