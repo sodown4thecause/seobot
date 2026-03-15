@@ -21,12 +21,11 @@ import { createTelemetryConfig } from '@/lib/observability/langfuse'
 import type { AgentType } from './intent-classifier'
 import type { Tool } from 'ai'
 
-// Primary chat model - Gemini 2.5 Flash Lite for fast inference with large context
-// Note: MiniMax M2.1 and Moonshot Kimi K2 had reliability issues
-const CHAT_MODEL_ID = 'moonshotai/kimi-k2.5'
-
-// Fallback models if primary fails (used via providerOptions)
-const FALLBACK_MODELS = ['google/gemini-2.0-flash', 'openai/gpt-4o-mini', 'google/gemini-2.0-flash-lite']
+// Primary chat model — claude-haiku-4-5: fast, excellent tool call reliability,
+// Anthropic models issue parallel tool calls in a single step.
+const CHAT_MODEL_ID = 'anthropic/claude-haiku-4-5'
+// Fallbacks: gpt-4o-mini (parallel tool calls), gemini-3-flash (large context)
+const FALLBACK_MODELS = ['openai/gpt-4o-mini', 'google/gemini-3-flash']
 
 export interface StreamOptions {
   modelMessages: ModelMessage[]
@@ -236,6 +235,18 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
     ...tools,
   }
 
+  // Per-agent max steps — prevents excessive sequential tool calls which multiply latency.
+  // NOTE: 'content' agent uses /api/content/stream (RAGWriterOrchestrator), NOT this route.
+  // These limits only apply to seo-aeo, general, and onboarding via /api/chat.
+  const MAX_STEPS_BY_AGENT: Record<string, number> = {
+    'seo-aeo': 4,
+    'content': 10, // Uses separate route, kept for safety
+    'image': 2,
+    'general': 2,
+    'onboarding': 2,
+  }
+  const maxSteps = MAX_STEPS_BY_AGENT[agentType] ?? 4
+
   console.log('[Stream Builder] Starting streamText with tools:', {
     count: Object.keys(allTools).length,
     tools: Object.keys(allTools),
@@ -254,8 +265,9 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
       },
     },
     // AI SDK 6: Use stopWhen instead of maxSteps
+    // Per-agent step limits prevent excessive sequential tool calls (each DataForSEO call = 5-30s)
     stopWhen: [
-      stepCountIs(10),
+      stepCountIs(maxSteps),
     ],
     experimental_telemetry: createTelemetryConfig('chat-stream', {
       userId,

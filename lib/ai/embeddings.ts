@@ -1,15 +1,22 @@
 /**
  * Embeddings - Generate embeddings for vector search
- * 
- * Uses OpenAI text-embedding-3-small (1536 dimensions) via Vercel AI Gateway
- * Cost: $0.02 per 1M tokens (6.5x cheaper than text-embedding-3-large)
- * 
+ *
+ * Uses cohere/embed-v4.0 (1536 dimensions) via Vercel AI Gateway REST API.
+ * IMPORTANT: Must match the model used when seeding agent_documents.
+ * The @ai-sdk/gateway textEmbeddingModel() routes to /v1/ai (broken for embeddings);
+ * we call /v1/embeddings directly instead.
+ *
  * Includes LRU cache to reduce API calls for repeated embeddings
  */
 
-import { embed } from 'ai'
-import { vercelGateway } from './gateway-provider'
 import { LRUCache } from 'lru-cache'
+import { createLinkedAbortController } from '@/lib/agents/utils/abort-handler'
+
+// Use Vercel AI Gateway OpenAI-compat REST endpoint
+// cohere/embed-v4.0 -> 1536 dims, matches vector(1536) columns
+const GATEWAY_BASE = (process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh').replace(/\/v1\/ai$/, '')
+const EMBED_URL = `${GATEWAY_BASE}/v1/embeddings`
+const EMBED_MODEL = 'cohere/embed-v4.0'
 
 // LRU Cache for embeddings - stores up to 1000 embeddings for 24 hours
 const embeddingCache = new LRUCache<string, number[]>({
@@ -22,13 +29,13 @@ let cacheHits = 0
 let cacheMisses = 0
 
 /**
- * Generate embedding for text using OpenAI (1536 dimensions) via Vercel AI Gateway
- * Using text-embedding-3-small for cost-effectiveness and performance
- * Used for all vector search operations (content_chunks, agent_documents, etc.)
- * 
- * Includes caching to reduce API costs and latency
+ * Generate embedding for text using Cohere (1536 dimensions) via Vercel AI Gateway.
+ * Uses cohere/embed-v4.0 via the REST /v1/embeddings endpoint.
+ * Used for all vector search operations (content_chunks, agent_documents, etc.).
+ *
+ * Includes caching to reduce API costs and latency.
  */
-export async function generateEmbedding(text: string): Promise<number[]> {
+export async function generateEmbedding(text: string, abortSignal?: AbortSignal): Promise<number[]> {
   try {
     // Validate input
     if (!text || text.trim().length === 0) {
@@ -38,7 +45,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
     // Normalize text for cache key (trim and lowercase for better hit rate)
     const cacheKey = text.trim().toLowerCase().slice(0, 8000) // Limit key size
-    
+
     // Check cache first
     const cached = embeddingCache.get(cacheKey)
     if (cached) {
@@ -51,10 +58,25 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
     cacheMisses++
 
-    const { embedding } = await embed({
-      model: vercelGateway.textEmbeddingModel('openai/text-embedding-3-small'),
-      value: text,
+    const apiKey = process.env.AI_GATEWAY_API_KEY
+    if (!apiKey) throw new Error('AI_GATEWAY_API_KEY not set')
+
+    // 5s timeout - if gateway/Cohere is slow, fail fast so RAG is skipped
+    // rather than blocking the entire chat response for 60+ seconds
+    const embedTimeout = AbortSignal.timeout(5000)
+    const embedAbort = createLinkedAbortController([abortSignal, embedTimeout]).signal
+    const resp = await fetch(EMBED_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: EMBED_MODEL, input: text.trim().slice(0, 8000) }),
+      signal: embedAbort,
     })
+    if (!resp.ok) throw new Error(`Embedding API error ${resp.status}: ${await resp.text()}`)
+    const data = await resp.json() as { data: { embedding: number[] }[] }
+    if (!data.data?.[0]?.embedding) {
+      throw new Error('Embedding API returned no data')
+    }
+    const embedding = data.data[0].embedding
 
     // Store in cache
     embeddingCache.set(cacheKey, embedding)
@@ -71,8 +93,8 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  * Processes all texts in parallel for better performance
  * Uses cache when available
  */
-export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
-  return Promise.all(texts.map(text => generateEmbedding(text)))
+export async function generateEmbeddings(texts: string[], abortSignal?: AbortSignal): Promise<number[][]> {
+  return Promise.all(texts.map(text => generateEmbedding(text, abortSignal)))
 }
 
 /**
@@ -97,12 +119,3 @@ export function clearEmbeddingCache(): void {
   cacheMisses = 0
   console.log('[Embeddings] Cache cleared')
 }
-
-
-
-
-
-
-
-
-

@@ -3,6 +3,11 @@ import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { EmailLink } from '@/components/email-link'
+import {
+  FLOWINTENT_PRO_PRICE,
+  FLOWINTENT_PRO_PRICE_VALUE,
+  FLOWINTENT_TRIAL_LABEL,
+} from '@/lib/billing/pricing'
 import { Navbar } from '@/components/navbar'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 
@@ -16,10 +21,8 @@ export const metadata: Metadata = buildPageMetadata({
 
 export default async function PricesPage() {
   const { userId } = await auth()
-  const primaryCtaHref = userId
-    ? 'https://buy.polar.sh/polar_cl_Fs9CxUkM7bzvADJLGBl3kCE2x9KcfndfYEwF10UXNgW'
-    : '/sign-up'
-  const primaryCtaLabel = userId ? 'Continue to Polar Checkout' : 'Create Account to Start Trial'
+  const primaryCtaHref = userId ? '/billing/checkout' : '/sign-up'
+  const primaryCtaLabel = userId ? 'Continue to checkout' : 'Start 30-day free trial'
 
   const pricingFaqs = [
     {
@@ -50,7 +53,7 @@ export default async function PricesPage() {
         brand: { '@type': 'Brand', name: 'FlowIntent' },
         offers: {
           '@type': 'Offer',
-          price: '39',
+          price: FLOWINTENT_PRO_PRICE_VALUE,
           priceCurrency: 'USD',
           priceValidUntil: '2026-12-31',
           availability: 'https://schema.org/InStock',
@@ -84,35 +87,42 @@ export default async function PricesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+    <div className="min-h-screen bg-black text-white selection:bg-primary/30">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingSchema) }}
       />
       <Navbar />
 
-      <div className="container mx-auto px-4 py-16 pt-32">
+      <main className="container mx-auto px-6 pt-32 pb-20">
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Simple, Transparent Pricing
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+            Simple Pricing for AI Visibility
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-            Start with a 30-day free trial. Billing is handled by Polar.
+          <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
+            {FLOWINTENT_TRIAL_LABEL}, then {FLOWINTENT_PRO_PRICE}/month. Billing is handled by Polar.
           </p>
         </div>
 
         <div className="max-w-xl mx-auto mb-16">
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-700/50 rounded-lg p-8 border border-gray-600 relative overflow-hidden">
+          <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-8 relative overflow-hidden">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold mb-2">Pro</h2>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold">$39</span>
-                <span className="text-gray-400">/month</span>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="px-3 py-1 text-xs font-semibold bg-white/10 text-zinc-300 rounded-full uppercase tracking-wider">
+                  Pro
+                </span>
+                <span className="text-xs text-zinc-500">{FLOWINTENT_TRIAL_LABEL}</span>
               </div>
-              <p className="text-sm text-gray-400 mt-1">1 month free trial</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-bold">{FLOWINTENT_PRO_PRICE}</span>
+                <span className="text-zinc-400">/month</span>
+              </div>
+              <p className="text-sm text-zinc-400 mt-2">
+                Start your free trial now, then keep full access for {FLOWINTENT_PRO_PRICE} per month.
+              </p>
             </div>
 
-            <ul className="space-y-3 mb-8 text-gray-300">
+            <ul className="space-y-3 mb-8 text-zinc-300">
               <li className="flex items-start gap-2">
                 <Check className="text-green-400 mt-1 h-4 w-4" />
                 <span>AI Trust Audits</span>
@@ -149,7 +159,7 @@ export default async function PricesPage() {
 
             <Link
               href={primaryCtaHref}
-              className="block w-full bg-gray-900 hover:bg-gray-800 text-white text-center px-6 py-3 rounded-lg font-semibold transition-colors"
+              className="block w-full rounded-full bg-white text-black text-center px-6 py-3 font-semibold transition-colors hover:bg-zinc-200"
             >
               {primaryCtaLabel}
             </Link>
@@ -158,10 +168,10 @@ export default async function PricesPage() {
 
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold mb-4">Need More?</h2>
-          <p className="text-gray-400 mb-6">
+          <p className="text-zinc-400 mb-6">
             Contact us about Enterprise plans with custom limits, dedicated support, and white-label options.
           </p>
-          <EmailLink className="inline-block bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+          <EmailLink className="inline-block rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 font-semibold text-white transition-colors hover:bg-white/[0.08]">
             Send an Email
           </EmailLink>
         </div>
@@ -169,30 +179,30 @@ export default async function PricesPage() {
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 text-center">Frequently Asked Questions</h2>
           <div className="space-y-6">
-            <div className="bg-gray-800/30 rounded-lg p-6">
+            <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-6">
               <h3 className="text-lg font-bold mb-2">What&apos;s included in the free trial?</h3>
-              <p className="text-gray-300">
+              <p className="text-zinc-300">
                 You get full access to all Pro features for 30 days. Billing is handled through Polar, and you can cancel before the trial ends.
               </p>
             </div>
 
-            <div className="bg-gray-800/30 rounded-lg p-6">
+            <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-6">
               <h3 className="text-lg font-bold mb-2">Can I cancel anytime?</h3>
-              <p className="text-gray-300">
+              <p className="text-zinc-300">
                 Yes, you can cancel your subscription at any time. You&apos;ll continue to have access until the end of your billing period.
               </p>
             </div>
 
-            <div className="bg-gray-800/30 rounded-lg p-6">
+            <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-6">
               <h3 className="text-lg font-bold mb-2">Do you offer refunds?</h3>
-              <p className="text-gray-300">
+              <p className="text-zinc-300">
                 We offer a 7-day money-back guarantee if you&apos;re not satisfied with the service.
               </p>
             </div>
 
-            <div className="bg-gray-800/30 rounded-lg p-6">
+            <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-6">
               <h3 className="text-lg font-bold mb-2">Why do LLM &quot;mentions&quot; matter?</h3>
-              <p className="text-gray-300">
+              <p className="text-zinc-300">
                 Mentions and citations influence trust, clicks, and brand preference in zero-click AI answers. Read the guide:{' '}
                 <Link className="underline hover:text-white" href="/guides/llm-mentions">
                   Why LLM mentions matter
@@ -204,14 +214,14 @@ export default async function PricesPage() {
         </div>
 
         <div className="mt-16 text-center">
-          <p className="text-gray-400 mb-4">
+          <p className="text-zinc-400 mb-4">
             Questions about pricing or need a custom plan?
           </p>
-          <EmailLink className="text-gray-400 hover:text-white">
+          <EmailLink className="text-zinc-400 hover:text-white">
             Send an Email -&gt;
           </EmailLink>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

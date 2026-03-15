@@ -164,7 +164,7 @@ Format as JSON.`
         schema: SEOAEOStrategySchema,
         prompt,
         temperature: 0.4,
-        maxRetries: 3,
+        maxRetries: 1,
         abortSignal: controller.signal,
         experimental_telemetry: createTelemetryConfig('seo-aeo', {
           userId: params.userId,

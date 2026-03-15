@@ -28,7 +28,7 @@ export default function SignUpPage() {
 
                 <div className="flex items-center justify-center">
                     <SignUp
-                        afterSignUpUrl="/dashboard"
+                        fallbackRedirectUrl="/billing/checkout"
                         appearance={{
                             variables: {
                                 colorPrimary: '#ffffff',
