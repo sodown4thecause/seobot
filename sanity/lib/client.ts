@@ -34,10 +34,16 @@ const safeFetch = async <T>(
     return response as unknown as T
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown Sanity fetch error'
-    console.warn('[Sanity] Falling back to empty result:', {
+    console.error('[Sanity] Query failed:', {
       message,
       queryPreview: query.trim().slice(0, 120),
+      projectId: projectId || 'NOT_SET',
+      dataset: dataset || 'NOT_SET',
     })
+    // Throw error in development to catch issues early
+    if (process.env.NODE_ENV === 'development') {
+      throw new Error(`Sanity query failed: ${message}`)
+    }
     return fallbackForQuery<T>(query)
   }
 }
