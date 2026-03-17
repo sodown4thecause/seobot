@@ -1107,7 +1107,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     <div className="flex w-full h-full overflow-hidden bg-zinc-950">
       <div className={cn("flex flex-col h-full transition-all duration-500", activeArtifact ? "w-1/2 border-r border-zinc-800" : "w-full")}>
         <Conversation className="flex-1 overflow-hidden">
-          <ConversationContent className="px-4 py-8 max-w-3xl mx-auto space-y-8">
+          <ConversationContent className="px-4 py-4 max-w-3xl mx-auto space-y-4">
             {messages.map((m, idx) => (
               <AIMessage key={m.id || idx} from={m.role as any}>
                 <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
@@ -1115,7 +1115,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   {renderMessageContent(m, getMessageText(m), idx === messages.length - 1)}
                   {/* Only show regenerate button on last assistant message */}
                   {m.role === 'assistant' && idx === messages.length - 1 && !isLoading && (
-                    <div className="mt-2">
+                    <div className="mt-1">
                       <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
                     </div>
                   )}

@@ -93,48 +93,48 @@ function ResponseInner({
     };
   }, []);
 
-  // Article-style prose classes - mimicking the clean article layout
+  // Article-style prose classes - COMPACT SPACING
   const proseClassName = cn(
     "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
     "prose prose-invert max-w-none",
     
-    // Headings - Article style with larger, bolder text
+    // Headings - Tighter spacing
     "prose-headings:font-semibold prose-headings:text-zinc-100 prose-headings:tracking-tight",
-    "prose-h1:text-4xl prose-h1:font-bold prose-h1:mb-6 prose-h1:mt-8",
-    "prose-h2:text-2xl prose-h2:font-semibold prose-h2:mb-4 prose-h2:mt-8",
-    "prose-h3:text-xl prose-h3:font-semibold prose-h3:mb-3 prose-h3:mt-6",
-    "prose-h4:text-lg prose-h4:font-medium prose-h4:mb-3 prose-h4:mt-4",
+    "prose-h1:text-2xl prose-h1:font-bold prose-h1:mb-3 prose-h1:mt-5",
+    "prose-h2:text-xl prose-h2:font-semibold prose-h2:mb-2 prose-h2:mt-5",
+    "prose-h3:text-lg prose-h3:font-semibold prose-h3:mb-2 prose-h3:mt-4",
+    "prose-h4:text-base prose-h4:font-medium prose-h4:mb-2 prose-h4:mt-3",
     
-    // Paragraphs - Clean, readable body text
-    "prose-p:text-base prose-p:text-zinc-300 prose-p:leading-7 prose-p:mb-4",
+    // Paragraphs - Tighter spacing
+    "prose-p:text-sm prose-p:text-zinc-300 prose-p:leading-6 prose-p:mb-2",
     
-    // Lists - Clean formatting
-    "prose-ul:my-4 prose-ul:space-y-2",
-    "prose-ol:my-4 prose-ol:space-y-2",
-    "prose-li:text-zinc-300 prose-li:leading-7",
+    // Lists - Compact formatting
+    "prose-ul:my-2 prose-ul:space-y-1",
+    "prose-ol:my-2 prose-ol:space-y-1",
+    "prose-li:text-sm prose-li:leading-6",
     "prose-li:marker:text-zinc-500",
     
-    // Code - Subtle inline code
-    "prose-code:text-emerald-400 prose-code:bg-zinc-800/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-medium",
-    "prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-700/50 prose-pre:rounded-xl prose-pre:p-4",
-    "prose-pre:my-4",
+    // Code - Compact
+    "prose-code:text-emerald-400 prose-code:bg-zinc-800/50 prose-code:px-1 prose-code:py-0 prose-code:rounded prose-code:text-xs prose-code:font-medium",
+    "prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-700/50 prose-pre:rounded-lg prose-pre:p-2",
+    "prose-pre:my-2",
     
-    // Links - Subtle but visible
+    // Links
     "prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline hover:prose-a:text-blue-300 prose-a:transition-colors",
     
     // Strong and emphasis
     "prose-strong:text-zinc-100 prose-strong:font-semibold",
     "prose-em:text-zinc-200 prose-em:italic",
     
-    // Blockquotes
-    "prose-blockquote:border-l-4 prose-blockquote:border-zinc-700 prose-blockquote:pl-4 prose-blockquote:my-4 prose-blockquote:text-zinc-400",
+    // Blockquotes - Compact
+    "prose-blockquote:border-l-2 prose-blockquote:border-zinc-700 prose-blockquote:pl-3 prose-blockquote:my-2 prose-blockquote:text-zinc-400 prose-blockquote:text-sm",
     
-    // Horizontal rule
-    "prose-hr:border-zinc-800 prose-hr:my-8",
+    // Horizontal rule - Tight
+    "prose-hr:border-zinc-800 prose-hr:my-4",
     
-    // Tables
-    "prose-table:my-4 prose-thead:border-zinc-800 prose-th:text-zinc-200 prose-th:font-semibold",
-    "prose-td:text-zinc-300 prose-tr:border-zinc-800",
+    // Tables - Compact
+    "prose-table:my-2 prose-thead:border-zinc-800 prose-th:text-zinc-200 prose-th:font-semibold prose-th:text-sm",
+    "prose-td:text-zinc-300 prose-td:text-sm prose-tr:border-zinc-800",
     
     className
   );
@@ -152,17 +152,17 @@ function ResponseInner({
 
   return (
     <div className="article-response">
-      {/* Sources at the top - Article style */}
+      {/* Sources at the top - Tighter margin */}
       {sources && sources.length > 0 && (
-        <Sources sources={sources} className="mb-4" />
+        <Sources sources={sources} className="mb-2" />
       )}
       
-      {/* Reasoning section */}
+      {/* Reasoning section - Tighter margin */}
       {reasoningSteps && reasoningSteps.length > 0 && (
-        <Reasoning steps={reasoningSteps} isActive={isReasoning} className="mb-2" />
+        <Reasoning steps={reasoningSteps} isActive={isReasoning} className="mb-1" />
       )}
       
-      {/* Main content */}
+      {/* Main content - NO copy/download icons */}
       <div className={cn("response-container", isStreaming && "is-streaming")}>
         {Streamdown ? (
           <Streamdown className={proseClassName} {...props}>
@@ -181,8 +181,8 @@ function ResponseInner({
         .response-container.is-streaming .prose > *:last-child::after {
           content: '';
           display: inline-block;
-          width: 3px;
-          height: 1.1em;
+          width: 2px;
+          height: 1em;
           background-color: rgb(129, 140, 248);
           margin-left: 2px;
           vertical-align: text-bottom;
@@ -193,15 +193,6 @@ function ResponseInner({
         @keyframes cursor-blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0; }
-        }
-        
-        /* Article-style scroll button */
-        .scroll-button {
-          position: fixed;
-          bottom: 100px;
-          right: 50%;
-          transform: translateX(50%);
-          z-index: 50;
         }
       `}</style>
     </div>
