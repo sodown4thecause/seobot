@@ -1,12 +1,12 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "sanity": {
+    "directus-mcp": {
       "type": "remote",
-      "url": "https://mcp.sanity.io",
+      "url": "https://massive-smilodon.pikapod.net/mcp",
       "headers": {
-        "Authorization": "Bearer sk5STK3nfCGVPwtL59J40hFmeQq1mPrEVduV4RBJaT1FNVQOo05SR1wV8kTS3RhK96Zef2kKH4irUBiZhUB9HJ5WGTcpRK2NUYw1gF8ySmaOCIwjChAjpxTwk5nRWOlTHv90fXNJA2om1jKoqgWaPBuhnw5x9rpkfyy1AI6KC3MnAGXzrmyI"
-      },
+        "Authorization": "Bearer CcQvJt2nUAC40RA9Si9--u5Ze79KaL-a"
+},
       "enabled": true
     },
     "auggie": {
@@ -56,9 +56,9 @@
       },
       "enabled": true
     },
-    "ref": {
+    "directus": {
       "type": "remote",
-      "url": "https://api.ref.tools/mcp?apiKey=ref-83fe0b8bf7feff9596a2",
+      "url": "https://massive-smilodon.pikapod.net/mcp?access_token=CcQvJt2nUAC40RA9Si9--u5Ze79KaL-a",
       "enabled": true
     },
     "neon": {

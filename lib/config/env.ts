@@ -42,7 +42,6 @@ const serverEnvSchema = z.object({
   FIRECRAWL_API_KEY: z.string().min(1).optional(),
   EXA_API_KEY: z.string().min(1).optional(),
   REF_API_KEY: z.string().min(1).optional(),
-  SANITY_MCP_TOKEN: z.string().min(1).optional(),
 
   // N8N Webhooks
   N8N_BACKLINKS_WEBHOOK_URL: z.string().url().optional(),
@@ -77,7 +76,6 @@ const serverEnvSchema = z.object({
   FIRECRAWL_MCP_URL: z.string().url().optional(),
   JINA_MCP_URL: z.string().url().optional(),
   DEEPWIKI_MCP_URL: z.string().url().optional(),
-  SANITY_MCP_URL: z.string().url().optional(),
 
   // Redis (optional for caching)
   UPSTASH_REDIS_REST_URL: z.preprocess(

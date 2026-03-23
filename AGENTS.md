@@ -28,7 +28,6 @@ seobot/
 │   └── external-apis/      # Third-party API services
 ├── mcps/                   # Auto-generated MCP bindings (mcp-to-ai-sdk)
 ├── supabase/               # Database migrations (24 files)
-├── sanity/                 # CMS schema types
 ├── scripts/                # Seed scripts, env validation
 └── tests/                  # Vitest unit tests
 ```
@@ -128,7 +127,7 @@ git push origin main
 | `@clerk/nextjs` | Authentication |
 | `drizzle-orm` | Database ORM (Neon) |
 | `langfuse` | Observability/tracing |
-| `sanity` | CMS integration |
+| `@directus/sdk` | CMS integration (Directus) |
 | `zod` | Schema validation |
 
 ## NOTES

@@ -1,92 +1,38 @@
-import Link from "next/link";
-import { type SanityDocument } from "next-sanity";
-import { client } from "@/sanity/lib/client";
-import { Navbar } from '@/components/navbar';
-import { buildPageMetadata } from '@/lib/seo/metadata'
+import Link from 'next/link'
+import { Metadata } from 'next'
+import { Navbar } from '@/components/navbar'
 
-const CASE_STUDIES_QUERY = `*[
-  _type == "caseStudy"
-  && defined(slug.current)
-]|order(publishedAt desc){_id, title, slug, publishedAt, client, industry, excerpt, results}`;
+export const metadata: Metadata = {
+  title: 'Case Studies | FlowIntent',
+  description: 'Real-world SEO and AEO case studies showcasing results and strategies.',
+}
 
-const options = { next: { revalidate: 30 } };
-
-export const metadata = buildPageMetadata({
-    title: 'SEO Case Studies & Results | FlowIntent',
-    description:
-        'See how teams improved rankings, traffic, and AI visibility with FlowIntent strategies across industries.',
-    path: '/case-studies',
-    keywords: ['SEO case studies', 'AEO results', 'GEO case study', 'AI visibility examples'],
-})
-
-export default async function CaseStudiesPage() {
-    const caseStudies = await client.fetch<SanityDocument[]>(CASE_STUDIES_QUERY, {}, options);
-
-    return (
-        <div className="min-h-screen bg-black text-white selection:bg-primary/30">
-            <Navbar />
-
-            <main className="container mx-auto px-6 pt-32 pb-20">
-                <div className="mb-16 text-center">
-                    <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
-                        Case Studies
-                    </h1>
-                    <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-                        See how businesses achieved remarkable results with our AI-powered SEO solutions.
-                    </p>
-                </div>
-
-                {caseStudies.length === 0 ? (
-                    <div className="text-center py-20">
-                        <p className="text-zinc-400 text-lg mb-4">No case studies found.</p>
-                        <Link href="/studio" className="text-indigo-400 hover:underline">
-                            Create your first case study in Sanity Studio →
-                        </Link>
-                    </div>
-                ) : (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {caseStudies.map((study) => (
-                            <Link
-                                key={study._id}
-                                href={`/case-studies/${study.slug.current}`}
-                                className="group block bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden hover:bg-white/[0.05] transition-all duration-300 hover:-translate-y-1"
-                            >
-                                <div className="p-8">
-                                    <div className="flex items-center gap-4 text-xs text-zinc-500 mb-4 font-medium uppercase tracking-wider">
-                                        {study.industry && <span className="text-indigo-400">{study.industry}</span>}
-                                        {study.client && <span>• {study.client}</span>}
-                                    </div>
-
-                                    <h2 className="text-2xl font-bold mb-3 leading-tight group-hover:text-indigo-300 transition-colors">
-                                        {study.title}
-                                    </h2>
-
-                                    {study.excerpt && (
-                                        <p className="text-zinc-400 text-sm mb-4 line-clamp-2">{study.excerpt}</p>
-                                    )}
-
-                                    {study.results && study.results.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mb-4">
-                                            {study.results.slice(0, 2).map((result: string, i: number) => (
-                                                <span key={i} className="text-xs bg-green-500/10 text-green-400 px-2 py-1 rounded-full">
-                                                    {result}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <div className="mt-6 flex items-center text-sm font-medium text-white group-hover:text-indigo-300 transition-colors">
-                                        Read Case Study
-                                        <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                )}
-            </main>
+export default function CaseStudiesPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+      <Navbar />
+      <div className="container mx-auto px-4 py-16 pt-32 max-w-4xl">
+        <div className="mb-12">
+          <Link href="/" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">
+            ← Back to Home
+          </Link>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            Case Studies
+          </h1>
+          <p className="text-xl text-gray-400">
+            Real-world results and success stories
+          </p>
         </div>
-    );
+
+        <div className="bg-gray-800/50 rounded-lg p-8 text-center">
+          <p className="text-gray-300 mb-4">
+            Case studies coming soon. We're setting up our content management system.
+          </p>
+          <p className="text-gray-400 text-sm">
+            Check back later for detailed case studies showcasing SEO and AEO results.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 }
