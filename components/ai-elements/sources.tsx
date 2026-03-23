@@ -21,14 +21,28 @@ interface SourcesProps {
   variant?: 'compact' | 'expanded'
 }
 
+const getSafeUrl = (url?: string) => {
+  if (!url) return null
+
+  try {
+    const parsedUrl = new URL(url)
+    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' ? parsedUrl : null
+  } catch {
+    return null
+  }
+}
+
 export function Sources({ sources, className, variant = 'compact' }: SourcesProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   if (!sources || sources.length === 0) return null
 
-  const uniqueSources = sources.filter((source, index, self) => 
-    index === self.findIndex((s) => s.url === source.url || s.title === source.title)
-  )
+  const uniqueSources = sources.filter((source, index, self) => {
+    const sourceKey = source.url ?? source.title
+    if (!sourceKey) return true
+
+    return index === self.findIndex((candidate) => (candidate.url ?? candidate.title) === sourceKey)
+  })
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -64,15 +78,11 @@ export function Sources({ sources, className, variant = 'compact' }: SourcesProp
 
 function SourceItemComponent({ source, index }: { source: SourceItem; index: number }) {
   const [imageError, setImageError] = useState(false)
+  const safeUrl = getSafeUrl(source.url)
   
   const getFaviconUrl = (url?: string) => {
-    if (!url) return null
-    try {
-      const domain = new URL(url).hostname
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
-    } catch {
-      return null
-    }
+    const parsedUrl = getSafeUrl(url)
+    return parsedUrl ? `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=32` : null
   }
 
   const faviconUrl = source.favicon || getFaviconUrl(source.url)
@@ -85,9 +95,9 @@ function SourceItemComponent({ source, index }: { source: SourceItem; index: num
       </div>
       
       <div className="flex-1 min-w-0">
-        {source.url ? (
+        {safeUrl ? (
           <a
-            href={source.url}
+            href={safeUrl.toString()}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-start gap-2 group/link"
@@ -105,7 +115,7 @@ function SourceItemComponent({ source, index }: { source: SourceItem; index: num
             
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-zinc-200 group-hover/link:text-blue-400 transition-colors line-clamp-1">
-                {source.title || source.url}
+                {source.title || safeUrl.toString()}
               </p>
               {source.description && (
                 <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">

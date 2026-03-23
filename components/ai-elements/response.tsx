@@ -55,7 +55,8 @@ export const Response = memo(
     prevProps.isStreaming === nextProps.isStreaming &&
     prevProps.isReasoning === nextProps.isReasoning &&
     JSON.stringify(prevProps.sources) === JSON.stringify(nextProps.sources) &&
-    JSON.stringify(prevProps.reasoningSteps) === JSON.stringify(nextProps.reasoningSteps)
+    JSON.stringify(prevProps.reasoningSteps) === JSON.stringify(nextProps.reasoningSteps) &&
+    JSON.stringify(prevProps.citations) === JSON.stringify(nextProps.citations)
 );
 
 Response.displayName = "Response";
@@ -150,6 +151,9 @@ function ResponseInner({
     return children;
   };
 
+  const renderedContent = renderContent();
+  const shouldUseStreamdown = Streamdown && !(citations && citations.length > 0);
+
   return (
     <div className="article-response">
       {/* Sources at the top - Tighter margin */}
@@ -164,12 +168,12 @@ function ResponseInner({
       
       {/* Main content - NO copy/download icons */}
       <div className={cn("response-container", isStreaming && "is-streaming")}>
-        {Streamdown ? (
+        {shouldUseStreamdown ? (
           <Streamdown className={proseClassName} {...props}>
             {children ?? ""}
           </Streamdown>
         ) : (
-          <div className={proseClassName}>{renderContent() ?? ""}</div>
+          <div className={proseClassName}>{renderedContent ?? ""}</div>
         )}
       </div>
       

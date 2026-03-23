@@ -37,9 +37,7 @@ import { AgentHandoffCard } from './agent-handoff-card'
 import { Response } from '@/components/ai-elements/response'
 import { Loader } from '@/components/ai-elements/loader'
 import { Shimmer } from '@/components/ai-elements/shimmer'
-import { Sources } from '@/components/ai-elements/sources'
 import type { SourceItem } from '@/components/ai-elements/sources'
-import { Reasoning } from '@/components/ai-elements/reasoning'
 import type { ReasoningStep } from '@/components/ai-elements/reasoning'
 import { Suggestions } from '@/components/ai-elements/suggestions'
 
@@ -430,15 +428,17 @@ const extractSources = (message: any): SourceItem[] => {
   if (!Array.isArray(sources)) return []
 
   return sources
-    .map((source: any): SourceItem | null => {
+    .map((source: any, index: number): SourceItem | null => {
       if (typeof source === 'string') {
-        return { url: source, title: source }
+        return { id: source, url: source, title: source }
       }
       if (source && typeof source === 'object') {
+        const title = source.title ?? source.name
+        const url = source.url ?? source.link
         return {
-          id: source.id || String(Math.random()),
-          title: source.title ?? source.name,
-          url: source.url ?? source.link,
+          id: source.id ?? url ?? title ?? `source-${index}`,
+          title,
+          url,
           description: source.description ?? source.summary ?? source.snippet,
           type: source.type || 'website',
         }
@@ -463,6 +463,8 @@ const extractReasoning = (message: any): ReasoningStep[] => {
   }
   
   if (typeof reasoning === 'object' && reasoning.steps) {
+    if (!Array.isArray(reasoning.steps)) return []
+
     return reasoning.steps.map((step: any, index: number) => ({
       id: step.id || `step-${index}`,
       title: step.title || step.name || `Step ${index + 1}`,
@@ -472,6 +474,42 @@ const extractReasoning = (message: any): ReasoningStep[] => {
   }
   
   return []
+}
+
+const extractCitations = (message: any): Array<{
+  number: number
+  title?: string
+  url?: string
+  description?: string
+}> => {
+  const citations =
+    message.citations ||
+    message.metadata?.citations ||
+    message.annotations?.citations ||
+    []
+
+  if (!Array.isArray(citations)) return []
+
+  return citations
+    .map((citation: any, index: number) => {
+      if (!citation || typeof citation !== 'object') return null
+
+      const rawNumber = citation.number ?? citation.id ?? index + 1
+      const parsedNumber = Number(rawNumber)
+
+      return {
+        number: Number.isFinite(parsedNumber) ? parsedNumber : index + 1,
+        title: citation.title ?? citation.name,
+        url: citation.url ?? citation.link,
+        description: citation.description ?? citation.summary ?? citation.snippet,
+      }
+    })
+    .filter((citation): citation is {
+      number: number
+      title?: string
+      url?: string
+      description?: string
+    } => citation !== null)
 }
 
 const extractPlanSteps = (message: any): PlanStep[] => {
@@ -953,6 +991,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     const imageSources: { src: string; alt?: string }[] = []
     const sources = extractSources(message)
     const reasoningSteps = extractReasoning(message)
+    const citations = extractCitations(message)
     const planSteps = extractPlanSteps(message)
     const timestamp = getMessageTimestamp(message)
     const status = getMessageStatus(message)
@@ -986,6 +1025,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               sources={sources.length > 0 ? sources : undefined}
               reasoningSteps={reasoningSteps.length > 0 ? reasoningSteps : undefined}
               isReasoning={isStreaming && reasoningSteps.length > 0}
+              citations={citations.length > 0 ? citations : undefined}
             >
               {textContent}
             </Response>
