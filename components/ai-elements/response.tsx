@@ -151,6 +151,9 @@ function ResponseInner({
     return children;
   };
 
+  const renderedContent = renderContent();
+  const shouldUseStreamdown = Streamdown && !(citations && citations.length > 0);
+
   return (
     <div className="article-response">
       {/* Sources at the top - Tighter margin */}
@@ -165,12 +168,12 @@ function ResponseInner({
       
       {/* Main content - NO copy/download icons */}
       <div className={cn("response-container", isStreaming && "is-streaming")}>
-        {Streamdown && (!citations || citations.length === 0) ? (
+        {shouldUseStreamdown ? (
           <Streamdown className={proseClassName} {...props}>
             {children ?? ""}
           </Streamdown>
         ) : (
-          <div className={proseClassName}>{renderContent() ?? ""}</div>
+          <div className={proseClassName}>{renderedContent ?? ""}</div>
         )}
       </div>
       
