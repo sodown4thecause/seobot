@@ -1,14 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "sanity": {
-      "type": "remote",
-      "url": "https://mcp.sanity.io",
-      "headers": {
-        "Authorization": "Bearer sk5STK3nfCGVPwtL59J40hFmeQq1mPrEVduV4RBJaT1FNVQOo05SR1wV8kTS3RhK96Zef2kKH4irUBiZhUB9HJ5WGTcpRK2NUYw1gF8ySmaOCIwjChAjpxTwk5nRWOlTHv90fXNJA2om1jKoqgWaPBuhnw5x9rpkfyy1AI6KC3MnAGXzrmyI"
-      },
-      "enabled": true
-    },
     "auggie": {
       "type": "local",
       "command": [
@@ -56,16 +48,20 @@
       },
       "enabled": true
     },
-    "ref": {
+    "directus": {
       "type": "remote",
-      "url": "https://api.ref.tools/mcp?apiKey=ref-83fe0b8bf7feff9596a2",
+      "url": "https://massive-smilodon.pikapod.net/mcp",
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {env:DIRECTUS_MCP_TOKEN}"
+      },
       "enabled": true
     },
     "neon": {
       "type": "remote",
       "url": "https://mcp.neon.tech/mcp",
       "headers": {
-        "Authorization": "Bearer napi_h48bgcfaflgfege888kcr7bsw9ulp4xbu7034jahibtgf765x0vcwco58u8zub1v"
+        "Authorization": "Bearer {env:NEON_API_KEY}"
       },
       "enabled": true
     }

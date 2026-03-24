@@ -13,7 +13,6 @@ import { renderMessageComponent } from './message-types'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Logo } from '@/components/ui/logo'
-import { ProactiveSuggestions } from '@/components/chat/proactive-suggestions'
 import { KeywordSuggestionsTable } from './tool-ui/keyword-suggestions-table'
 import { BacklinksTable } from './tool-ui/backlinks-table'
 import { SERPTable } from './tool-ui/serp-table'
@@ -38,6 +37,12 @@ import { AgentHandoffCard } from './agent-handoff-card'
 import { Response } from '@/components/ai-elements/response'
 import { Loader } from '@/components/ai-elements/loader'
 import { Shimmer } from '@/components/ai-elements/shimmer'
+import { Suggestions } from '@/components/ai-elements/suggestions'
+import {
+  extractCitations,
+  extractReasoning,
+  extractSources,
+} from '@/lib/chat/message-metadata'
 
 interface AIChatInterfaceProps {
   context?: Record<string, unknown>
@@ -344,46 +349,11 @@ const ToolPartInvocation = ({
   )
 }
 
-type SourceItem = {
-  title?: string
-  url?: string
-  description?: string
-}
-
 type PlanStep = {
   title?: string
   description?: string
   status?: string
 }
-
-const SourcesList = ({ sources }: { sources: SourceItem[] }) => (
-  <div className="mt-3 rounded-2xl border border-white/5 bg-black/30 p-3 text-xs text-zinc-400">
-    <p className="mb-2 text-sm font-semibold text-zinc-100">Sources</p>
-    <ul className="space-y-2">
-      {sources.map((source, index) => (
-        <li key={`${source.url ?? source.title ?? index}-${index}`} className="flex flex-col gap-1">
-          {source.url ? (
-            <a
-              href={source.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-300 hover:text-blue-200 font-medium"
-            >
-              {source.title || source.url}
-            </a>
-          ) : (
-            <span className="text-zinc-100 font-medium">
-              {source.title || `Source ${index + 1}`}
-            </span>
-          )}
-          {source.description && (
-            <span className="text-zinc-500">{source.description}</span>
-          )}
-        </li>
-      ))}
-    </ul>
-  </div>
-)
 
 const PlanList = ({ steps }: { steps: PlanStep[] }) => (
   <div className="mt-3 rounded-2xl border border-white/5 bg-black/30 p-3 text-xs text-zinc-400">
@@ -448,32 +418,6 @@ const getMessageText = (message: any): string => {
   }
 
   return ''
-}
-
-const extractSources = (message: any): SourceItem[] => {
-  const sources =
-    message.sources ||
-    message.metadata?.sources ||
-    message.metadata?.citations ||
-    []
-
-  if (!Array.isArray(sources)) return []
-
-  return sources
-    .map((source: any): SourceItem | null => {
-      if (typeof source === 'string') {
-        return { url: source }
-      }
-      if (source && typeof source === 'object') {
-        return {
-          title: source.title ?? source.name,
-          url: source.url ?? source.link,
-          description: source.description ?? source.summary,
-        }
-      }
-      return null
-    })
-    .filter((source): source is SourceItem => source !== null)
 }
 
 const extractPlanSteps = (message: any): PlanStep[] => {
@@ -954,9 +898,12 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     const toolInvocations = message.toolInvocations || []
     const imageSources: { src: string; alt?: string }[] = []
     const sources = extractSources(message)
+    const reasoningSteps = extractReasoning(message)
+    const citations = extractCitations(message)
     const planSteps = extractPlanSteps(message)
     const timestamp = getMessageTimestamp(message)
     const status = getMessageStatus(message)
+    const isStreaming = isLast && isLoading
 
     // Extracting images (Logic preserved from previous view)
     parts.filter((p: any) => p?.type === 'file' && p?.mediaType?.startsWith('image/') && p?.url)
@@ -981,7 +928,13 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         ))}
         {textContent && (
           message.role === 'assistant' ? (
-            <Response isStreaming={isLast && isLoading} className="prose prose-invert prose-sm max-w-none text-zinc-100">
+            <Response 
+              isStreaming={isStreaming} 
+              sources={sources.length > 0 ? sources : undefined}
+              reasoningSteps={reasoningSteps.length > 0 ? reasoningSteps : undefined}
+              isReasoning={isStreaming && reasoningSteps.length > 0}
+              citations={citations.length > 0 ? citations : undefined}
+            >
               {textContent}
             </Response>
           ) : (
@@ -990,7 +943,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             </div>
           )
         )}
-        {sources.length > 0 && <SourcesList sources={sources} />}
+        {/* Legacy plan steps (kept for backward compatibility) */}
         {planSteps.length > 0 && <PlanList steps={planSteps} />}
         <MessageMeta timestamp={timestamp} status={status} />
         {parts.map((part: any, idx: number) => {
@@ -1043,43 +996,27 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // Empty State View - with styled ProactiveSuggestions
   if (messages.length === 0) {
-    // Default suggestions with proper category styling for empty state
-    const defaultSuggestions: ProactiveSuggestion[] = [
+    // Default suggestions for empty state - using new Suggestions format
+    const defaultSuggestions = [
       {
-        taskKey: 'competitor-topical-map',
-        category: 'deep_dive',
-        prompt: 'Analyze my top competitors and find content gaps and write me a topical map.',
-        reasoning: 'Understand your competitive landscape',
-        icon: 'Research',
-        pillar: 'gap_analysis',
-        priority: 1
+        id: 'competitor-topical-map',
+        text: 'Analyze my top competitors and find content gaps and write me a topical map.',
+        icon: 'target' as const,
       },
       {
-        taskKey: 'content-pillars',
-        category: 'adjacent',
-        prompt: 'Generate 10 content pillars that will rank well for my website.',
-        reasoning: 'Discover new topics to target',
-        icon: 'Ideas',
-        pillar: 'discovery',
-        priority: 2
+        id: 'content-pillars',
+        text: 'Generate 10 content pillars that will rank well for my website.',
+        icon: 'lightbulb' as const,
       },
       {
-        taskKey: 'eeat-improvement',
-        category: 'deep_dive',
-        prompt: 'How can I improve my content for better EEAT?',
-        reasoning: 'Enhance expertise, experience, authority, and trust signals.',
-        icon: 'EEAT',
-        pillar: 'strategy',
-        priority: 3
+        id: 'eeat-improvement',
+        text: 'How can I improve my content for better EEAT?',
+        icon: 'sparkles' as const,
       },
       {
-        taskKey: 'link-building-plan',
-        category: 'execution',
-        prompt: 'Write a high-quality, SEO/AEO-optimized link building plan for my website',
-        reasoning: 'Create links that rank well in search engines',
-        icon: 'Link Building',
-        pillar: 'strategy',
-        priority: 4
+        id: 'link-building-plan',
+        text: 'Write a high-quality, SEO/AEO-optimized link building plan for my website',
+        icon: 'zap' as const,
       },
     ]
 
@@ -1100,12 +1037,12 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               className="bg-transparent"
             />
           </div>
-          {/* Styled ProactiveSuggestions component in empty state */}
+          {/* New Suggestions component in empty state */}
           <div className="max-w-3xl mx-auto">
-            <ProactiveSuggestions
+            <Suggestions
               suggestions={defaultSuggestions}
               onSuggestionClick={(prompt) => handleSendMessage({ text: prompt })}
-              isLoading={isLoading}
+              title="Try asking"
             />
           </div>
         </div>
@@ -1118,7 +1055,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     <div className="flex w-full h-full overflow-hidden bg-zinc-950">
       <div className={cn("flex flex-col h-full transition-all duration-500", activeArtifact ? "w-1/2 border-r border-zinc-800" : "w-full")}>
         <Conversation className="flex-1 overflow-hidden">
-          <ConversationContent className="px-4 py-8 max-w-3xl mx-auto space-y-8">
+          <ConversationContent className="px-4 py-4 max-w-3xl mx-auto space-y-4">
             {messages.map((m, idx) => (
               <AIMessage key={m.id || idx} from={m.role as any}>
                 <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
@@ -1126,7 +1063,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   {renderMessageContent(m, getMessageText(m), idx === messages.length - 1)}
                   {/* Only show regenerate button on last assistant message */}
                   {m.role === 'assistant' && idx === messages.length - 1 && !isLoading && (
-                    <div className="mt-2">
+                    <div className="mt-1">
                       <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
                     </div>
                   )}
@@ -1151,7 +1088,21 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
         <div className="p-4">
           <div className="max-w-3xl mx-auto space-y-3">
-            <ProactiveSuggestions suggestions={proactiveSuggestions} onSuggestionClick={(p) => handleSendMessage({ text: p })} isLoading={isLoading} />
+            {/* Convert proactiveSuggestions to new format */}
+            {proactiveSuggestions.length > 0 && (
+              <Suggestions 
+                suggestions={proactiveSuggestions.map(s => ({
+                  id: s.taskKey,
+                  text: s.prompt,
+                  icon: s.icon?.toLowerCase().includes('research') ? 'search' :
+                        s.icon?.toLowerCase().includes('idea') ? 'lightbulb' :
+                        s.icon?.toLowerCase().includes('link') ? 'zap' :
+                        s.icon?.toLowerCase().includes('eeat') ? 'sparkles' : 'sparkles',
+                }))}
+                onSuggestionClick={(prompt) => handleSendMessage({ text: prompt })}
+                title="Suggested next steps"
+              />
+            )}
             <div className="flex items-center gap-3">
               <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />
               {isLoading && (
