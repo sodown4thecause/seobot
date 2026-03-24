@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Quote, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { getSafeHostname, toSafeExternalUrl } from '@/lib/utils/safe-external-url'
 
 export interface InlineCitationProps {
   number: number
@@ -14,27 +15,11 @@ export interface InlineCitationProps {
   className?: string
 }
 
-const getSafeUrl = (url?: string) => {
-  if (!url) return null
-
-  try {
-    const parsedUrl = new URL(url)
-    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' ? parsedUrl : null
-  } catch {
-    return null
-  }
-}
-
 export function InlineCitation({ number, title, url, description, className }: InlineCitationProps) {
   const [imageError, setImageError] = useState(false)
-  const safeUrl = getSafeUrl(url)
-
-  const getFaviconUrl = (url?: string) => {
-    const parsedUrl = getSafeUrl(url)
-    return parsedUrl ? `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=16` : null
-  }
-
-  const faviconUrl = getFaviconUrl(url)
+  const safeUrl = toSafeExternalUrl(url)
+  const hostname = getSafeHostname(url)
+  const faviconUrl = hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=16` : null
 
   const CitationButton = (
     <Button
@@ -90,7 +75,7 @@ export function InlineCitation({ number, title, url, description, className }: I
             
             {safeUrl && (
               <a
-                href={safeUrl.toString()}
+                href={safeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors mt-2 group"
@@ -106,7 +91,7 @@ export function InlineCitation({ number, title, url, description, className }: I
                   <Link2 className="w-3 h-3" />
                 )}
                 <span className="line-clamp-1 group-hover:underline">
-                  {safeUrl.hostname}
+                  {hostname || safeUrl}
                 </span>
               </a>
             )}

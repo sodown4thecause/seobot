@@ -37,9 +37,12 @@ import { AgentHandoffCard } from './agent-handoff-card'
 import { Response } from '@/components/ai-elements/response'
 import { Loader } from '@/components/ai-elements/loader'
 import { Shimmer } from '@/components/ai-elements/shimmer'
-import type { SourceItem } from '@/components/ai-elements/sources'
-import type { ReasoningStep } from '@/components/ai-elements/reasoning'
 import { Suggestions } from '@/components/ai-elements/suggestions'
+import {
+  extractCitations,
+  extractReasoning,
+  extractSources,
+} from '@/lib/chat/message-metadata'
 
 interface AIChatInterfaceProps {
   context?: Record<string, unknown>
@@ -415,101 +418,6 @@ const getMessageText = (message: any): string => {
   }
 
   return ''
-}
-
-const extractSources = (message: any): SourceItem[] => {
-  const sources =
-    message.sources ||
-    message.metadata?.sources ||
-    message.metadata?.citations ||
-    message.annotations?.sources ||
-    []
-
-  if (!Array.isArray(sources)) return []
-
-  return sources
-    .map((source: any, index: number): SourceItem | null => {
-      if (typeof source === 'string') {
-        return { id: source, url: source, title: source }
-      }
-      if (source && typeof source === 'object') {
-        const title = source.title ?? source.name
-        const url = source.url ?? source.link
-        return {
-          id: source.id ?? url ?? title ?? `source-${index}`,
-          title,
-          url,
-          description: source.description ?? source.summary ?? source.snippet,
-          type: source.type || 'website',
-        }
-      }
-      return null
-    })
-    .filter((source): source is SourceItem => source !== null)
-}
-
-const extractReasoning = (message: any): ReasoningStep[] => {
-  const reasoning = message.reasoning || message.metadata?.reasoning || message.annotations?.reasoning
-  
-  if (!reasoning) return []
-  
-  if (Array.isArray(reasoning)) {
-    return reasoning.map((step: any, index: number) => ({
-      id: step.id || `step-${index}`,
-      title: step.title || step.step || `Step ${index + 1}`,
-      description: step.description || step.detail || step.thought,
-      status: step.status || (step.completed ? 'completed' : step.inProgress ? 'in-progress' : 'pending'),
-    }))
-  }
-  
-  if (typeof reasoning === 'object' && reasoning.steps) {
-    if (!Array.isArray(reasoning.steps)) return []
-
-    return reasoning.steps.map((step: any, index: number) => ({
-      id: step.id || `step-${index}`,
-      title: step.title || step.name || `Step ${index + 1}`,
-      description: step.description || step.detail,
-      status: step.status || (step.completed ? 'completed' : step.inProgress ? 'in-progress' : 'pending'),
-    }))
-  }
-  
-  return []
-}
-
-const extractCitations = (message: any): Array<{
-  number: number
-  title?: string
-  url?: string
-  description?: string
-}> => {
-  const citations =
-    message.citations ||
-    message.metadata?.citations ||
-    message.annotations?.citations ||
-    []
-
-  if (!Array.isArray(citations)) return []
-
-  return citations
-    .map((citation: any, index: number) => {
-      if (!citation || typeof citation !== 'object') return null
-
-      const rawNumber = citation.number ?? citation.id ?? index + 1
-      const parsedNumber = Number(rawNumber)
-
-      return {
-        number: Number.isFinite(parsedNumber) ? parsedNumber : index + 1,
-        title: citation.title ?? citation.name,
-        url: citation.url ?? citation.link,
-        description: citation.description ?? citation.summary ?? citation.snippet,
-      }
-    })
-    .filter((citation): citation is {
-      number: number
-      title?: string
-      url?: string
-      description?: string
-    } => citation !== null)
 }
 
 const extractPlanSteps = (message: any): PlanStep[] => {

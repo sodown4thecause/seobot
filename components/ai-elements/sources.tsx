@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { ChevronDown, ExternalLink, BookOpen, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { getSafeHostname, toSafeExternalUrl } from '@/lib/utils/safe-external-url'
 
 export interface SourceItem {
   id?: string
@@ -21,27 +22,20 @@ interface SourcesProps {
   variant?: 'compact' | 'expanded'
 }
 
-const getSafeUrl = (url?: string) => {
-  if (!url) return null
-
-  try {
-    const parsedUrl = new URL(url)
-    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' ? parsedUrl : null
-  } catch {
-    return null
-  }
-}
-
 export function Sources({ sources, className, variant = 'compact' }: SourcesProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   if (!sources || sources.length === 0) return null
 
-  const uniqueSources = sources.filter((source, index, self) => {
-    const sourceKey = source.url ?? source.title
-    if (!sourceKey) return true
+  const seen = new Set<string>()
+  const uniqueSources = sources.filter((source, index) => {
+    const safeUrl = toSafeExternalUrl(source.url)
+    const title = source.title?.trim()
+    const key = safeUrl ? `url:${safeUrl}` : title ? `title:${title}` : `index:${index}`
 
-    return index === self.findIndex((candidate) => (candidate.url ?? candidate.title) === sourceKey)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
   })
 
   return (
@@ -78,14 +72,9 @@ export function Sources({ sources, className, variant = 'compact' }: SourcesProp
 
 function SourceItemComponent({ source, index }: { source: SourceItem; index: number }) {
   const [imageError, setImageError] = useState(false)
-  const safeUrl = getSafeUrl(source.url)
-  
-  const getFaviconUrl = (url?: string) => {
-    const parsedUrl = getSafeUrl(url)
-    return parsedUrl ? `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=32` : null
-  }
-
-  const faviconUrl = source.favicon || getFaviconUrl(source.url)
+  const safeUrl = toSafeExternalUrl(source.url)
+  const hostname = getSafeHostname(source.url)
+  const faviconUrl = source.favicon || (hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=32` : null)
   const Icon = source.type === 'document' ? FileText : ExternalLink
 
   return (
@@ -97,7 +86,7 @@ function SourceItemComponent({ source, index }: { source: SourceItem; index: num
       <div className="flex-1 min-w-0">
         {safeUrl ? (
           <a
-            href={safeUrl.toString()}
+            href={safeUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-start gap-2 group/link"
@@ -115,7 +104,7 @@ function SourceItemComponent({ source, index }: { source: SourceItem; index: num
             
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-zinc-200 group-hover/link:text-blue-400 transition-colors line-clamp-1">
-                {source.title || safeUrl.toString()}
+                {source.title || safeUrl}
               </p>
               {source.description && (
                 <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">

@@ -18,9 +18,8 @@ app/
 │   ├── content/create/
 │   └── analytics/
 ├── admin/                 # Admin dashboard (protected)
-├── studio/                # Sanity CMS studio
 ├── (auth pages)           # sign-in/, sign-up/, user-profile/
-└── (marketing)            # blog/, guides/, resources/
+└── (marketing)            # blog/, guides/, resources/, case-studies/ (Directus-powered)
 ```
 
 ## API ROUTES

@@ -271,7 +271,7 @@ export default function TemplatesPage() {
             },
             {
               title: 'Sync to CMS block library',
-              description: 'Create portable blocks in Webflow, Notion, or Sanity.',
+              description: 'Create portable blocks in Webflow, Notion, or Directus.',
               icon: FileText,
             },
             {
