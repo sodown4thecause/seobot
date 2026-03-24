@@ -92,6 +92,8 @@ const serverEnvSchema = z.object({
 
   // Site Configuration
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
+  DIRECTUS_URL: z.string().url().optional(),
+  DIRECTUS_TOKEN: z.string().min(1).optional(),
 
   // Quality Thresholds (optional, with defaults)
   MIN_DATAFORSEO_SCORE: z.preprocess(

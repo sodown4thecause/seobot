@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { ChevronDown, ExternalLink, BookOpen, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { getSafeHostname, toSafeExternalUrl } from '@/lib/utils/safe-external-url'
 
 export interface SourceItem {
   id?: string
@@ -26,9 +27,16 @@ export function Sources({ sources, className, variant = 'compact' }: SourcesProp
 
   if (!sources || sources.length === 0) return null
 
-  const uniqueSources = sources.filter((source, index, self) => 
-    index === self.findIndex((s) => s.url === source.url || s.title === source.title)
-  )
+  const seen = new Set<string>()
+  const uniqueSources = sources.filter((source, index) => {
+    const safeUrl = toSafeExternalUrl(source.url)
+    const title = source.title?.trim()
+    const key = safeUrl ? `url:${safeUrl}` : title ? `title:${title}` : `index:${index}`
+
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -64,18 +72,9 @@ export function Sources({ sources, className, variant = 'compact' }: SourcesProp
 
 function SourceItemComponent({ source, index }: { source: SourceItem; index: number }) {
   const [imageError, setImageError] = useState(false)
-  
-  const getFaviconUrl = (url?: string) => {
-    if (!url) return null
-    try {
-      const domain = new URL(url).hostname
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
-    } catch {
-      return null
-    }
-  }
-
-  const faviconUrl = source.favicon || getFaviconUrl(source.url)
+  const safeUrl = toSafeExternalUrl(source.url)
+  const hostname = getSafeHostname(source.url)
+  const faviconUrl = source.favicon || (hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=32` : null)
   const Icon = source.type === 'document' ? FileText : ExternalLink
 
   return (
@@ -85,9 +84,9 @@ function SourceItemComponent({ source, index }: { source: SourceItem; index: num
       </div>
       
       <div className="flex-1 min-w-0">
-        {source.url ? (
+        {safeUrl ? (
           <a
-            href={source.url}
+            href={safeUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-start gap-2 group/link"
@@ -105,7 +104,7 @@ function SourceItemComponent({ source, index }: { source: SourceItem; index: num
             
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-zinc-200 group-hover/link:text-blue-400 transition-colors line-clamp-1">
-                {source.title || source.url}
+                {source.title || safeUrl}
               </p>
               {source.description && (
                 <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">

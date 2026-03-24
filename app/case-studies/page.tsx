@@ -1,11 +1,14 @@
 import Link from 'next/link'
-import { Metadata } from 'next'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Case Studies | FlowIntent',
-  description: 'Real-world SEO and AEO case studies showcasing results and strategies.',
-}
+export const metadata = buildPageMetadata({
+  title: 'SEO Case Studies & Results | FlowIntent',
+  description:
+    'See how teams improved rankings, traffic, and AI visibility with FlowIntent strategies across industries.',
+  path: '/case-studies',
+  keywords: ['SEO case studies', 'AEO results', 'GEO case study', 'AI visibility examples'],
+})
 
 export default function CaseStudiesPage() {
   return (

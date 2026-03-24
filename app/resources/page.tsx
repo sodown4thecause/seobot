@@ -1,11 +1,14 @@
 import Link from 'next/link'
-import { Metadata } from 'next'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Resources | FlowIntent',
-  description: 'Free SEO and AEO resources, templates, and tools to help you grow.',
-}
+export const metadata = buildPageMetadata({
+  title: 'SEO Resources, Templates & Checklists | FlowIntent',
+  description:
+    'Access downloadable SEO resources, checklists, and templates for AEO, GEO, and AI search optimization workflows.',
+  path: '/resources',
+  keywords: ['SEO templates', 'AEO checklist', 'GEO resources', 'AI SEO toolkit'],
+})
 
 export default function ResourcesPage() {
   return (

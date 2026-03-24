@@ -1,11 +1,14 @@
 import Link from 'next/link'
-import { Metadata } from 'next'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Guides | FlowIntent',
-  description: 'SEO and AEO guides to help you optimize your content for search engines and AI answer engines.',
-}
+export const metadata = buildPageMetadata({
+  title: 'AEO & GEO Guides | FlowIntent',
+  description:
+    'Learn Answer Engine Optimization and Generative Engine Optimization with practical, step-by-step guides for AI visibility.',
+  path: '/guides',
+  keywords: ['AEO guides', 'GEO guides', 'AI SEO tutorials', 'LLM mentions'],
+})
 
 export default function GuidesPage() {
   return (

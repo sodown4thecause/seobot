@@ -46,6 +46,7 @@
     "@aws-sdk/s3-request-presigner": "^3.958.0",
     "@clerk/backend": "^2.29.5",
     "@clerk/nextjs": "^6.36.10",
+    "@directus/sdk": "^19.0.0",
     "@google/genai": "^1.31.0",
     "@google/generative-ai": "^0.24.1",
     "@langfuse/otel": "^4.4.9",
@@ -125,10 +126,7 @@
     "use-stick-to-bottom": "^1.1.1",
     "write-good": "^1.0.8",
     "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.24.6",
-    "@directus/sdk": "^19.0.0",
-    "@portabletext/to-html": "^2.0.14",
-    "@portabletext/types": "^2.0.13"
+    "zod-to-json-schema": "^3.24.6"
   },
   "overrides": {
     "jws": "4.0.1",

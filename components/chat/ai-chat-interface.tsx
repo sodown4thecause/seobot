@@ -37,11 +37,12 @@ import { AgentHandoffCard } from './agent-handoff-card'
 import { Response } from '@/components/ai-elements/response'
 import { Loader } from '@/components/ai-elements/loader'
 import { Shimmer } from '@/components/ai-elements/shimmer'
-import { Sources } from '@/components/ai-elements/sources'
-import type { SourceItem } from '@/components/ai-elements/sources'
-import { Reasoning } from '@/components/ai-elements/reasoning'
-import type { ReasoningStep } from '@/components/ai-elements/reasoning'
 import { Suggestions } from '@/components/ai-elements/suggestions'
+import {
+  extractCitations,
+  extractReasoning,
+  extractSources,
+} from '@/lib/chat/message-metadata'
 
 interface AIChatInterfaceProps {
   context?: Record<string, unknown>
@@ -417,61 +418,6 @@ const getMessageText = (message: any): string => {
   }
 
   return ''
-}
-
-const extractSources = (message: any): SourceItem[] => {
-  const sources =
-    message.sources ||
-    message.metadata?.sources ||
-    message.metadata?.citations ||
-    message.annotations?.sources ||
-    []
-
-  if (!Array.isArray(sources)) return []
-
-  return sources
-    .map((source: any): SourceItem | null => {
-      if (typeof source === 'string') {
-        return { url: source, title: source }
-      }
-      if (source && typeof source === 'object') {
-        return {
-          id: source.id || String(Math.random()),
-          title: source.title ?? source.name,
-          url: source.url ?? source.link,
-          description: source.description ?? source.summary ?? source.snippet,
-          type: source.type || 'website',
-        }
-      }
-      return null
-    })
-    .filter((source): source is SourceItem => source !== null)
-}
-
-const extractReasoning = (message: any): ReasoningStep[] => {
-  const reasoning = message.reasoning || message.metadata?.reasoning || message.annotations?.reasoning
-  
-  if (!reasoning) return []
-  
-  if (Array.isArray(reasoning)) {
-    return reasoning.map((step: any, index: number) => ({
-      id: step.id || `step-${index}`,
-      title: step.title || step.step || `Step ${index + 1}`,
-      description: step.description || step.detail || step.thought,
-      status: step.status || (step.completed ? 'completed' : step.inProgress ? 'in-progress' : 'pending'),
-    }))
-  }
-  
-  if (typeof reasoning === 'object' && reasoning.steps) {
-    return reasoning.steps.map((step: any, index: number) => ({
-      id: step.id || `step-${index}`,
-      title: step.title || step.name || `Step ${index + 1}`,
-      description: step.description || step.detail,
-      status: step.status || (step.completed ? 'completed' : step.inProgress ? 'in-progress' : 'pending'),
-    }))
-  }
-  
-  return []
 }
 
 const extractPlanSteps = (message: any): PlanStep[] => {
@@ -953,6 +899,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     const imageSources: { src: string; alt?: string }[] = []
     const sources = extractSources(message)
     const reasoningSteps = extractReasoning(message)
+    const citations = extractCitations(message)
     const planSteps = extractPlanSteps(message)
     const timestamp = getMessageTimestamp(message)
     const status = getMessageStatus(message)
@@ -986,6 +933,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               sources={sources.length > 0 ? sources : undefined}
               reasoningSteps={reasoningSteps.length > 0 ? reasoningSteps : undefined}
               isReasoning={isStreaming && reasoningSteps.length > 0}
+              citations={citations.length > 0 ? citations : undefined}
             >
               {textContent}
             </Response>

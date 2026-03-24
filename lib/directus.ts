@@ -1,46 +1,65 @@
-import { createDirectus, rest, staticToken } from '@directus/sdk';
+import { createDirectus, rest, staticToken } from '@directus/sdk'
+import { serverEnv } from '@/lib/config/env'
 
-const BACKEND_URL = process.env.DIRECTUS_URL || "http://localhost:8055/";
-const TOKEN = process.env.DIRECTUS_TOKEN;
-
-if (!BACKEND_URL) {
-  throw new Error('DIRECTUS_URL environment variable is required');
+type AssetOptions = {
+  width?: number
+  height?: number
+  fit?: string
 }
 
-// Create Directus client
-let client = createDirectus(BACKEND_URL);
-
-// Add authentication if token is available
-if (TOKEN) {
-  client = client.with(staticToken(TOKEN));
+export function normalizeDirectusBaseUrl(baseUrl: string): string {
+  return baseUrl.replace(/\/+$/, '')
 }
 
-// Add REST client with caching disabled for fresh data
-client = client.with(rest({
-  onRequest: (options: RequestInit) => ({ 
-    ...options, 
-    cache: 'no-store'
-  }),
-}));
+export function buildDirectusAssetUrl(
+  baseUrl: string,
+  assetId: string,
+  options?: AssetOptions
+): string | null {
+  if (!assetId) return null
 
-export default client;
+  let url = `${normalizeDirectusBaseUrl(baseUrl)}/assets/${assetId}`
 
-// Helper function to get asset URL
-export function getAssetUrl(assetId: string, options?: { width?: number; height?: number; fit?: string }): string | null {
-  if (!assetId) return null;
-  
-  let url = `${BACKEND_URL}assets/${assetId}`;
-  
   if (options) {
-    const params = new URLSearchParams();
-    if (options.width) params.append('width', options.width.toString());
-    if (options.height) params.append('height', options.height.toString());
-    if (options.fit) params.append('fit', options.fit);
-    
+    const params = new URLSearchParams()
+    if (options.width) params.append('width', options.width.toString())
+    if (options.height) params.append('height', options.height.toString())
+    if (options.fit) params.append('fit', options.fit)
+
     if (params.toString()) {
-      url += `?${params.toString()}`;
+      url += `?${params.toString()}`
     }
   }
-  
-  return url;
+
+  return url
+}
+
+const directusUrl = serverEnv.DIRECTUS_URL
+
+if (!directusUrl) {
+  throw new Error('DIRECTUS_URL environment variable is required')
+}
+
+const BACKEND_URL = normalizeDirectusBaseUrl(directusUrl)
+const TOKEN = serverEnv.DIRECTUS_TOKEN
+
+let client = createDirectus(BACKEND_URL)
+
+if (TOKEN) {
+  client = client.with(staticToken(TOKEN))
+}
+
+client = client.with(
+  rest({
+    onRequest: (options: RequestInit) => ({
+      ...options,
+      cache: 'no-store',
+    }),
+  })
+)
+
+export default client
+
+export function getAssetUrl(assetId: string, options?: AssetOptions): string | null {
+  return buildDirectusAssetUrl(BACKEND_URL, assetId, options)
 }

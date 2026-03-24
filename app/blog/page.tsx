@@ -1,11 +1,13 @@
 import Link from 'next/link'
-import { Metadata } from 'next'
 import { Navbar } from '@/components/navbar'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: 'Blog | FlowIntent',
-  description: 'SEO and AEO insights, tips, and strategies from the FlowIntent team.',
-}
+  description: 'Insights, strategies, and updates on AEO, AI SEO, and building cite-worthy content.',
+  path: '/blog',
+  type: 'website',
+})
 
 export default function BlogPage() {
   return (

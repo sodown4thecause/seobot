@@ -2,9 +2,10 @@
 
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
-import { Quote, Link2, X } from 'lucide-react'
+import { Quote, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { getSafeHostname, toSafeExternalUrl } from '@/lib/utils/safe-external-url'
 
 export interface InlineCitationProps {
   number: number
@@ -15,32 +16,21 @@ export interface InlineCitationProps {
 }
 
 export function InlineCitation({ number, title, url, description, className }: InlineCitationProps) {
-  const [showDetails, setShowDetails] = useState(false)
   const [imageError, setImageError] = useState(false)
-
-  const getFaviconUrl = (url?: string) => {
-    if (!url) return null
-    try {
-      const domain = new URL(url).hostname
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`
-    } catch {
-      return null
-    }
-  }
-
-  const faviconUrl = getFaviconUrl(url)
+  const safeUrl = toSafeExternalUrl(url)
+  const hostname = getSafeHostname(url)
+  const faviconUrl = hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=16` : null
 
   const CitationButton = (
     <Button
       variant="ghost"
       size="sm"
-      onClick={() => url && setShowDetails(!showDetails)}
       className={cn(
         'inline-flex items-center justify-center w-5 h-5 p-0 mx-0.5',
         'rounded-full bg-blue-500/10 hover:bg-blue-500/20',
         'text-blue-400 hover:text-blue-300 text-xs font-medium',
         'transition-colors duration-150',
-        !url && 'cursor-default',
+        !safeUrl && 'cursor-default',
         className
       )}
     >
@@ -83,9 +73,9 @@ export function InlineCitation({ number, title, url, description, className }: I
               </p>
             )}
             
-            {url && (
+            {safeUrl && (
               <a
-                href={url}
+                href={safeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors mt-2 group"
@@ -101,7 +91,7 @@ export function InlineCitation({ number, title, url, description, className }: I
                   <Link2 className="w-3 h-3" />
                 )}
                 <span className="line-clamp-1 group-hover:underline">
-                  {new URL(url).hostname}
+                  {hostname || safeUrl}
                 </span>
               </a>
             )}

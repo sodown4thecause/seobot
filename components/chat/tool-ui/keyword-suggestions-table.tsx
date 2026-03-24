@@ -86,7 +86,7 @@ export function KeywordSuggestionsTable({ toolInvocation }: KeywordSuggestionsTa
                   </span>
                 </TableCell>
                 <TableCell className="text-right text-zinc-400 text-xs py-2">
-                  ${typeof kw.cpc === 'number' ? kw.cpc.toFixed(2) : '-'}
+                  {typeof kw.cpc === 'number' ? `$${kw.cpc.toFixed(2)}` : '-'}
                 </TableCell>
                 <TableCell className="text-center py-2">
                   <span className="text-xs text-zinc-500">

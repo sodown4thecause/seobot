@@ -55,7 +55,8 @@ export const Response = memo(
     prevProps.isStreaming === nextProps.isStreaming &&
     prevProps.isReasoning === nextProps.isReasoning &&
     JSON.stringify(prevProps.sources) === JSON.stringify(nextProps.sources) &&
-    JSON.stringify(prevProps.reasoningSteps) === JSON.stringify(nextProps.reasoningSteps)
+    JSON.stringify(prevProps.reasoningSteps) === JSON.stringify(nextProps.reasoningSteps) &&
+    JSON.stringify(prevProps.citations) === JSON.stringify(nextProps.citations)
 );
 
 Response.displayName = "Response";
@@ -164,7 +165,7 @@ function ResponseInner({
       
       {/* Main content - NO copy/download icons */}
       <div className={cn("response-container", isStreaming && "is-streaming")}>
-        {Streamdown ? (
+        {Streamdown && (!citations || citations.length === 0) ? (
           <Streamdown className={proseClassName} {...props}>
             {children ?? ""}
           </Streamdown>
