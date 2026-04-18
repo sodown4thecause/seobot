@@ -63,10 +63,10 @@ export function LandingFaqSection() {
               Send an Email
             </EmailLink>
             <Link
-              href="/guides"
+              href="/blog"
               className="inline-flex items-center justify-center border border-white/20 px-6 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition-colors hover:border-white hover:bg-white hover:text-black"
             >
-              Browse Guides
+              Browse Blog
             </Link>
           </div>
         </div>

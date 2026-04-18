@@ -124,7 +124,7 @@ export default function AEOAuditorLandingPage() {
             corroboration.
           </p>
           <div className="flex gap-4 flex-wrap">
-            <Link href="/guides/aeo-audit-playbook" className="text-blue-300 hover:text-blue-200 font-semibold">
+            <Link href="/blog" className="text-blue-300 hover:text-blue-200 font-semibold">
               Read the AEO Audit Playbook →
             </Link>
             <Link href="/audit" className="text-blue-300 hover:text-blue-200 font-semibold">

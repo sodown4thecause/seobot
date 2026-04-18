@@ -18,16 +18,16 @@ export default function AuditPage() {
         <div className="mx-auto max-w-5xl">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Related resources</h2>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <Link href="/guides/llm-mentions" className="hover:text-white transition-colors">
+            <Link href="/blog" className="hover:text-white transition-colors">
               Why LLM Mentions Matter
             </Link>
-            <Link href="/guides/aeo-audit-playbook" className="hover:text-white transition-colors">
+            <Link href="/blog" className="hover:text-white transition-colors">
               AEO Audit Playbook
             </Link>
-            <Link href="/guides/answer-engine-optimization" className="hover:text-white transition-colors">
+            <Link href="/blog" className="hover:text-white transition-colors">
               Answer Engine Optimization Guide
             </Link>
-            <Link href="/resources" className="hover:text-white transition-colors">
+            <Link href="/blog" className="hover:text-white transition-colors">
               SEO Resources and Templates
             </Link>
             <Link href="/case-studies" className="hover:text-white transition-colors">

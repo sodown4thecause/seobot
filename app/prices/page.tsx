@@ -204,7 +204,7 @@ export default async function PricesPage() {
               <h3 className="text-lg font-bold mb-2">Why do LLM &quot;mentions&quot; matter?</h3>
               <p className="text-zinc-300">
                 Mentions and citations influence trust, clicks, and brand preference in zero-click AI answers. Read the guide:{' '}
-                <Link className="underline hover:text-white" href="/guides/llm-mentions">
+                <Link className="underline hover:text-white" href="/blog">
                   Why LLM mentions matter
                 </Link>
                 .

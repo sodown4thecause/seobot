@@ -95,6 +95,12 @@ const serverEnvSchema = z.object({
   DIRECTUS_URL: z.string().url().optional(),
   DIRECTUS_TOKEN: z.string().min(1).optional(),
 
+  // Webflow CMS
+  WEBFLOW_API_TOKEN: z.string().min(1).optional(),
+  WEBFLOW_BLOG_ID: z.string().min(1).optional(),
+  WEBFLOW_CASESTUDIES_ID: z.string().min(1).optional(),
+  WEBFLOW_SITE_ID: z.string().min(1).optional(),
+
   // Quality Thresholds (optional, with defaults)
   MIN_DATAFORSEO_SCORE: z.preprocess(
     (val) => (val ? Number(val) : undefined),

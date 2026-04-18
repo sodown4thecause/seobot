@@ -22,8 +22,6 @@ export function Navbar() {
                         { label: 'Features', href: '/#features' },
                         { label: 'Pricing', href: '/prices' },
                         { label: 'Blog', href: '/blog' },
-                        { label: 'Guides', href: '/guides' },
-                        { label: 'Resources', href: '/resources' },
                         { label: 'Case Studies', href: '/case-studies' },
                     ].map((item) => (
                         <Link

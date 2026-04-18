@@ -229,12 +229,12 @@ export function LandingPageClient() {
           </p>
           <div className="mt-10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">
             Prefer to learn first?{' '}
-            <Link href="/guides/llm-mentions" className="hover:text-white transition-colors">
+            <Link href="/blog" className="hover:text-white transition-colors">
               Why LLM mentions matter
             </Link>{' '}
             -{' '}
-            <Link href="/guides" className="hover:text-white transition-colors">
-              Guides
+            <Link href="/blog" className="hover:text-white transition-colors">
+              Blog
             </Link>
           </div>
         </div>
@@ -248,8 +248,8 @@ export function LandingPageClient() {
           </div>
 
           <div className="flex flex-wrap gap-10 text-xs font-mono text-zinc-500 uppercase tracking-widest justify-center">
-            <Link href="/guides" className="hover:text-white transition-colors">
-              Guides
+            <Link href="/blog" className="hover:text-white transition-colors">
+              Blog
             </Link>
             <Link href="/aeo-auditor" className="hover:text-white transition-colors">
               AEO Auditor
@@ -257,8 +257,8 @@ export function LandingPageClient() {
             <Link href="/#faq" className="hover:text-white transition-colors">
               FAQ
             </Link>
-            <Link href="/resources" className="hover:text-white transition-colors">
-              Resources
+            <Link href="/case-studies" className="hover:text-white transition-colors">
+              Case Studies
             </Link>
             <Link href="/case-studies" className="hover:text-white transition-colors">
               Case Studies
