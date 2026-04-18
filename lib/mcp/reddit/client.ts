@@ -1,16 +1,48 @@
 import 'server-only'
 
-const REDDIT_BASE = 'https://www.reddit.com'
+const REDDIT_TOKEN_URL = 'https://www.reddit.com/api/v1/access_token'
+const REDDIT_BASE = 'https://oauth.reddit.com'
 
-const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
-]
+let cachedToken: { accessToken: string; expiresAt: number } | null = null
 
-function getRandomUserAgent(): string {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
+async function fetchAccessToken(): Promise<string> {
+  const clientId = process.env.REDDIT_CLIENT_ID || '0C2vZ0aybA8iA2pXXFqvTA'
+  const clientSecret = process.env.REDDIT_CLIENT_SECRET || 'J2o0LXyR3MyxcxkMlLAuirtxWffh6g'
+
+  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+
+  const response = await fetch(REDDIT_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${auth}`,
+      'User-Agent': 'FlowIntent-RedditGap/1.0',
+    },
+    body: 'grant_type=client_credentials',
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`[Reddit] Token request failed (${response.status}): ${errorText}`)
+  }
+
+  const data = await response.json()
+  return data.access_token
+}
+
+export async function getRedditAccessToken(): Promise<string> {
+  const now = Date.now()
+  if (cachedToken && cachedToken.expiresAt > now) {
+    return cachedToken.accessToken
+  }
+
+  const accessToken = await fetchAccessToken()
+  cachedToken = {
+    accessToken,
+    expiresAt: now + 23 * 60 * 60 * 1000,
+  }
+
+  return accessToken
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -22,7 +54,8 @@ export async function redditApiFetch<T>(
   options: RequestInit = {},
   retries = 3
 ): Promise<T> {
-  const url = endpoint.startsWith('http') ? endpoint : `${REDDIT_BASE}${endpoint}.json`
+  const accessToken = await getRedditAccessToken()
+  const url = endpoint.startsWith('http') ? endpoint : `${REDDIT_BASE}${endpoint}`
 
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
@@ -30,10 +63,17 @@ export async function redditApiFetch<T>(
         ...options,
         headers: {
           ...options.headers,
-          'User-Agent': getRandomUserAgent(),
+          Authorization: `Bearer ${accessToken}`,
+          'User-Agent': 'FlowIntent-RedditGap/1.0',
           Accept: 'application/json',
         },
       })
+
+      if (response.status === 401) {
+        cachedToken = null
+        const newToken = await getRedditAccessToken()
+        continue
+      }
 
       if (response.status === 429) {
         const waitTime = Math.pow(2, attempt) * 1000 + Math.random() * 1000
@@ -57,5 +97,5 @@ export async function redditApiFetch<T>(
 }
 
 export function clearTokenCache(): void {
-  // Not needed for public JSON API
+  cachedToken = null
 }
