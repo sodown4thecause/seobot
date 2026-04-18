@@ -43,7 +43,6 @@ interface RedditSearchResponse {
 }
 
 interface RedditSubredditSearchResponse {
-  kind: string
   data: {
     after: string | null
     dist: number
@@ -59,18 +58,16 @@ export async function searchSubreddits(
   limit = 10
 ): Promise<RedditSubreddit[]> {
   const params = new URLSearchParams({
-    query,
+    q: query,
     limit: String(limit),
-    type: 'sr',
-    sort: 'relevance',
   })
 
   const response = await redditApiFetch<RedditSubredditSearchResponse>(
-    `/search?${params.toString()}`
+    `/subreddits/search?${params.toString()}`
   )
 
-  return (response.data?.children || [])
-    .filter((child) => child.kind === 't5')
+  return ((response.data?.data?.children || []) as Array<{ data: Record<string, unknown> }>)
+    .filter((child) => child.data?.display_name)
     .map((child) => {
       const d = child.data
       return {
@@ -80,7 +77,7 @@ export async function searchSubreddits(
         description: (d.public_description as string) || '',
         subscribers: (d.subscribers as number) || 0,
         activeUsers: (d.accounts_active as number) || 0,
-        over18: (d.over18 as boolean) || false,
+        over18: (d.over_18 as boolean) || false,
         publicDescription: (d.public_description as string) || '',
       }
     })
@@ -106,9 +103,12 @@ export async function searchPosts(
     ? `/r/${subreddit}/search?${params.toString()}`
     : `/search?${params.toString()}`
 
-  const response = await redditApiFetch<RedditSearchResponse>(endpoint)
+  const raw = await redditApiFetch<Array<{ data: { children: Array<{ kind: string; data: Record<string, unknown> }> } }>>(endpoint)
+  const listing = raw?.[0]?.data || raw?.data
 
-  return (response.data?.children || [])
+  const children = Array.isArray(listing?.children) ? listing.children : []
+
+  return children
     .filter((child) => child.kind === 't3')
     .map((child) => {
       const d = child.data
@@ -141,11 +141,14 @@ export async function getTopPosts(
     t: time,
   })
 
-  const response = await redditApiFetch<RedditSearchResponse>(
+  const raw = await redditApiFetch<Array<{ data: { children: Array<{ kind: string; data: Record<string, unknown> }> } }>>(
     `/r/${subreddit}/top?${params.toString()}`
   )
+  const listing = raw?.[0]?.data || raw?.data
 
-  return (response.data?.children || [])
+  const children = Array.isArray(listing?.children) ? listing.children : []
+
+  return children
     .filter((child) => child.kind === 't3')
     .map((child) => {
       const d = child.data
