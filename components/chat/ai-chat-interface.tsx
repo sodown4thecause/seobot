@@ -1051,7 +1051,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   return (
     <div className="flex w-full h-full overflow-hidden bg-zinc-950">
       <div className={cn("flex flex-col h-full transition-all duration-500", activeArtifact ? "w-1/2 border-r border-zinc-800" : "w-full")}>
-        <Conversation className="flex-1 overflow-hidden">
+        <Conversation className="flex-1">
           <ConversationContent className="px-4 py-4 max-w-3xl mx-auto space-y-4">
             {messages.map((m, idx) => (
               <AIMessage key={m.id || idx} from={m.role as any}>
