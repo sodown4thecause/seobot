@@ -67,7 +67,7 @@ export default function DashboardLayout({
                     <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
                       <DashboardBreadcrumbs currentPage={currentPage} />
                     </header>
-                    <div className="flex-1 min-h-0">{children}</div>
+                    <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
                   </main>
                 </div>
               </AgentProvider>

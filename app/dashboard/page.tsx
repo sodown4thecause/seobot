@@ -12,7 +12,7 @@ import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
       <DashboardInner />
     </Suspense>
   )
