@@ -22,7 +22,7 @@ export const faqSections: FaqSection[] = [
         q: 'Where can I learn the full strategy?',
         a: 'Start with the guide, then run an AI Trust Audit to establish your baseline and prioritize fixes.',
         links: [
-          { label: 'Read the guide', href: '/guides/llm-mentions' },
+          { label: 'Read the blog', href: '/blog' },
           { label: 'Run an audit', href: '/audit' },
         ],
       },
