@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendRedditGapEmail } from '@/lib/reddit-gap/email'
+import { requireUserId } from '@/lib/auth/clerk'
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/redis/rate-limit'
 import type { RedditGapResults } from '@/lib/reddit-gap/types'
 
 export interface EmailRequest {
@@ -10,6 +12,21 @@ export interface EmailRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    let userId: string | null = null
+    try {
+      userId = await requireUserId()
+    } catch {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Check rate limiting - 3 emails per hour per user
+    const rateLimitResult = await rateLimitMiddleware(request, 'EXPORT', userId)
+    if (rateLimitResult) return rateLimitResult
+
     const body: EmailRequest = await request.json()
     
     const { email, results, auditId } = body

@@ -142,17 +142,25 @@ export async function identifyGaps(
     const aiGaps = JSON.parse(result.rawText)
     
     // Convert AI response to ContentGap format with proper metadata
+    // Use deterministic calculations based on thread data, not random values
     return aiGaps.map((gap: any, index: number) => {
-      const engagementScore = Math.min(100, Math.round(
-        (gap.engagementScore || 50) + Math.random() * 20
-      ))
+      const baseEngagement = gap.engagementScore || 50
+      // Derive engagement score from actual thread scores (deterministic)
+      const threadEngagement = threads.slice(0, 3).reduce((sum, t) => sum + Math.min(100, t.score), 0) / Math.max(1, threads.slice(0, 3).length * 2)
+      const engagementScore = Math.min(100, Math.round((baseEngagement + threadEngagement) / 2))
+      
+      // Calculate frequency based on actual question occurrence in threads
+      const questionFrequency = threads.filter(t => 
+        t.questions.some(q => q.question.toLowerCase().includes(gap.question.toLowerCase().slice(0, 20)))
+      ).length
+      const frequency = Math.max(1, Math.min(5, questionFrequency || Math.ceil(gap.engagementScore / 20)))
       
       return {
         id: `gap-${index + 1}`,
         question: gap.question,
         context: gap.context,
         engagementScore,
-        frequency: Math.max(1, Math.floor(Math.random() * 5) + 1),
+        frequency,
         commercialIntent: gap.commercialIntent || 'medium',
         competitionLevel: gap.competitionLevel || 'medium',
         sourceThreads: threads.slice(0, 3).map(t => ({

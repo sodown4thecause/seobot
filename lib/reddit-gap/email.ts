@@ -1,5 +1,17 @@
 import type { RedditGapResults } from './types'
 
+/**
+ * Escape HTML special characters to prevent HTML injection
+ */
+function escHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+}
+
 export interface RedditGapEmailInput {
   email: string
   results: RedditGapResults
@@ -22,7 +34,10 @@ export function buildRedditGapEmailPayload(input: RedditGapEmailInput): RedditGa
   const reportUrl = getReportUrl(input.auditId)
   const { results } = input
 
-  const subject = `Reddit Content Gap Analysis: ${results.topic}`
+  // Escape all user/AI-generated content for HTML safety
+  const safeTopic = escHtml(results.topic)
+
+  const subject = `Reddit Content Gap Analysis: ${safeTopic}`
   
   const text = [
     `Your Reddit Content Gap Analysis for "${results.topic}" is ready.`,
@@ -104,6 +119,14 @@ export function buildRedditGapEmailPayload(input: RedditGapEmailInput): RedditGa
     `AI-powered content strategy insights from Reddit discussions`
   ].filter(Boolean).join('\n')
 
+  // Pre-escape all dynamic content for HTML template
+  const safeMomentumLabel = escHtml(results.scorecard.momentumCategory.label)
+  const safeMomentumSummary = escHtml(results.scorecard.momentumCategory.summary)
+  const safeBenchmarkLabel = escHtml(results.scorecard.benchmarkBand.label)
+  const safeBenchmarkSummary = escHtml(results.scorecard.benchmarkBand.summary)
+  const safeTopGapQuestion = results.topGapPreview ? escHtml(results.topGapPreview.question) : ''
+  const safeTopGapContext = results.topGapPreview?.context ? escHtml(results.topGapPreview.context) : ''
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -126,7 +149,7 @@ export function buildRedditGapEmailPayload(input: RedditGapEmailInput): RedditGa
     <body>
       <div class="header">
         <h1>📊 Reddit Content Gap Analysis</h1>
-        <h2>${results.topic}</h2>
+        <h2>${safeTopic}</h2>
         <p>AI-powered insights from Reddit discussions</p>
       </div>
 
@@ -153,8 +176,8 @@ export function buildRedditGapEmailPayload(input: RedditGapEmailInput): RedditGa
       ${results.topGapPreview ? `
       <div class="highlight">
         <h3>🎯 Top Content Gap</h3>
-        <p><strong>${results.topGapPreview.question}</strong></p>
-        <p>${results.topGapPreview.context}</p>
+        <p><strong>${safeTopGapQuestion}</strong></p>
+        <p>${safeTopGapContext}</p>
       </div>
       ` : ''}
 
@@ -180,19 +203,19 @@ export function buildRedditGapEmailPayload(input: RedditGapEmailInput): RedditGa
 
       <div class="section">
         <h3>🚀 Momentum & Benchmark</h3>
-        <p><strong>${results.scorecard.momentumCategory.label}</strong></p>
-        <p>${results.scorecard.momentumCategory.summary}</p>
+        <p><strong>${safeMomentumLabel}</strong></p>
+        <p>${safeMomentumSummary}</p>
         <br>
-        <p><strong>${results.scorecard.benchmarkBand.label}</strong></p>
-        <p>${results.scorecard.benchmarkBand.summary}</p>
+        <p><strong>${safeBenchmarkLabel}</strong></p>
+        <p>${safeBenchmarkSummary}</p>
       </div>
 
       <div class="section">
         <h3>💡 Key Strengths</h3>
         ${results.scorecard.strengths.map(s => `
           <div class="metric">
-            <span>${s.title}</span>
-            <span>${s.detail}</span>
+            <span>${escHtml(s.title)}</span>
+            <span>${escHtml(s.detail)}</span>
           </div>
         `).join('')}
       </div>
@@ -201,10 +224,10 @@ export function buildRedditGapEmailPayload(input: RedditGapEmailInput): RedditGa
         <h3>🎯 Top Opportunities</h3>
         ${results.scorecard.opportunities.slice(0, 3).map((opp, i) => `
           <div class="opportunity">
-            <h4>${i + 1}. ${opp.title}</h4>
-            <p>${opp.detail}</p>
-            <p><strong>Action:</strong> ${opp.action}</p>
-            <p><strong>Effort:</strong> ${opp.effort} | <strong>Timeframe:</strong> ${opp.timeframe}</p>
+            <h4>${i + 1}. ${escHtml(opp.title)}</h4>
+            <p>${escHtml(opp.detail)}</p>
+            <p><strong>Action:</strong> ${escHtml(opp.action)}</p>
+            <p><strong>Effort:</strong> ${escHtml(opp.effort)} | <strong>Timeframe:</strong> ${escHtml(opp.timeframe)}</p>
           </div>
         `).join('')}
       </div>
