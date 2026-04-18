@@ -220,19 +220,19 @@ function DashboardInner() {
   // Dashboard always shows all NextPhase features now
 
   return (
-    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col bg-zinc-950">
+    <div className="relative flex h-full flex-col bg-zinc-950">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="flex-1 px-6 pt-6"
+        className="flex-1 min-h-0 px-6 pt-6"
       >
         {/* Chat Interface - Full height */}
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto h-full">
           <AIChatInterface
             context={context}
             placeholder={isNewUser ? "Tell me about your business..." : "Ask anything..."}
-            className="h-[calc(100vh-12rem)]"
+            className="h-full"
             conversationId={resolvedConversationId}
             agentId={activeAgentId}
             initialMessage={initialMessage}

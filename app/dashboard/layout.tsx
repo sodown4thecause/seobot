@@ -58,16 +58,16 @@ export default function DashboardLayout({
           <ActionProvider>
             <ChatModeProvider>
               <AgentProvider>
-                <div className="relative flex min-h-screen overflow-hidden bg-zinc-950 text-foreground">
+                <div className="relative flex h-screen overflow-hidden bg-zinc-950 text-foreground">
                   <Sidebar
                     collapsed={sidebarCollapsed}
                     onToggle={() => setSidebarCollapsed((v) => !v)}
                   />
-                  <main className={cn('relative z-10 flex min-h-screen flex-1 flex-col')}>
-                    <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
+                  <main className={cn('relative z-10 flex h-full flex-1 flex-col')}>
+                    <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
                       <DashboardBreadcrumbs currentPage={currentPage} />
                     </header>
-                    <div className="flex-1">{children}</div>
+                    <div className="flex-1 min-h-0">{children}</div>
                   </main>
                 </div>
               </AgentProvider>

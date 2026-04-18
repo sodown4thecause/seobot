@@ -99,20 +99,20 @@ function ResponseInner({
     "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
     "prose prose-invert max-w-none",
     
-    // Headings - Tighter spacing
+    // Headings - Compact spacing
     "prose-headings:font-semibold prose-headings:text-zinc-100 prose-headings:tracking-tight",
-    "prose-h1:text-2xl prose-h1:font-bold prose-h1:mb-3 prose-h1:mt-5",
-    "prose-h2:text-xl prose-h2:font-semibold prose-h2:mb-2 prose-h2:mt-5",
-    "prose-h3:text-lg prose-h3:font-semibold prose-h3:mb-2 prose-h3:mt-4",
-    "prose-h4:text-base prose-h4:font-medium prose-h4:mb-2 prose-h4:mt-3",
+    "prose-h1:text-xl prose-h1:font-bold prose-h1:mb-2 prose-h1:mt-4",
+    "prose-h2:text-lg prose-h2:font-semibold prose-h2:mb-1.5 prose-h2:mt-4",
+    "prose-h3:text-base prose-h3:font-semibold prose-h3:mb-1 prose-h3:mt-3",
+    "prose-h4:text-sm prose-h4:font-medium prose-h4:mb-1 prose-h4:mt-2",
     
-    // Paragraphs - Tighter spacing
-    "prose-p:text-sm prose-p:text-zinc-300 prose-p:leading-6 prose-p:mb-2",
+    // Paragraphs - Compact spacing
+    "prose-p:text-sm prose-p:text-zinc-300 prose-p:leading-relaxed prose-p:mb-1.5",
     
     // Lists - Compact formatting
-    "prose-ul:my-2 prose-ul:space-y-1",
-    "prose-ol:my-2 prose-ol:space-y-1",
-    "prose-li:text-sm prose-li:leading-6",
+    "prose-ul:my-1.5 prose-ul:space-y-0.5",
+    "prose-ol:my-1.5 prose-ol:space-y-0.5",
+    "prose-li:text-sm prose-li:leading-relaxed",
     "prose-li:marker:text-zinc-500",
     
     // Code - Compact
