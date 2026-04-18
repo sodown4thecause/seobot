@@ -15,7 +15,10 @@ export class WorkflowPersistence {
    */
   async saveExecution(execution: WorkflowExecution): Promise<void> {
     const user = await getCurrentUser()
-    if (!user) throw new Error('User not authenticated')
+    if (!user) {
+      console.warn('[WorkflowPersistence] Skipping saveExecution - no authenticated user')
+      return
+    }
 
     try {
       await db
@@ -53,7 +56,10 @@ export class WorkflowPersistence {
     checkpointData: Record<string, any>
   ): Promise<void> {
     const user = await getCurrentUser()
-    if (!user) throw new Error('User not authenticated')
+    if (!user) {
+      console.warn('[WorkflowPersistence] Skipping saveCheckpoint - no authenticated user')
+      return
+    }
 
     try {
       await db
@@ -142,7 +148,10 @@ export class WorkflowPersistence {
   async getUserExecutions(userId?: string, limit: number = 50): Promise<WorkflowExecution[]> {
     const user = await getCurrentUser()
     const targetUserId = userId || user?.id
-    if (!targetUserId) throw new Error('User not authenticated')
+    if (!targetUserId) {
+      console.warn('[WorkflowPersistence] No user ID available, returning empty executions')
+      return []
+    }
 
     try {
       const data = await db
