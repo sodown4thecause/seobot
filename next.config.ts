@@ -16,18 +16,46 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.gravatar.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'uploads-ssl.webflow.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'assets-global.website-files.com',
+      },
     ],
   },
   async redirects() {
     return [
       {
         source: '/aeo-vs-seo',
-        destination: '/guides/aeo-vs-geo',
+        destination: '/blog/aeo-vs-geo',
         permanent: true,
       },
       {
         source: '/docs',
-        destination: '/guides',
+        destination: '/blog',
+        permanent: true,
+      },
+      {
+        source: '/guides',
+        destination: '/blog',
+        permanent: true,
+      },
+      {
+        source: '/guides/:slug*',
+        destination: '/blog',
+        permanent: true,
+      },
+      {
+        source: '/resources',
+        destination: '/blog',
+        permanent: true,
+      },
+      {
+        source: '/resources/:slug*',
+        destination: '/blog',
         permanent: true,
       },
       {
