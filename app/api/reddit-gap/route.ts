@@ -25,9 +25,10 @@ function getRequestIp(request: NextRequest): string {
 }
 
 async function enforceRateLimit(ipAddress: string, scope: RateLimitScope): Promise<boolean> {
+  const key = `reddit-gap:${scope}:${ipAddress}:${new Date().toISOString().slice(0, 10)}`
+
   try {
     const redis = getRedisClient()
-    const key = `reddit-gap:${scope}:${ipAddress}:${new Date().toISOString().slice(0, 10)}`
 
     if (redis) {
       const count = await redis.incr(key)
