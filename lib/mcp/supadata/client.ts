@@ -39,6 +39,7 @@ export async function scrapeUrl(url: string, options?: { lang?: string; noLinks?
       'x-api-key': apiKey,
       Accept: 'application/json',
     },
+    signal: AbortSignal.timeout(10000), // 10 second timeout
   })
 
   if (!response.ok) {
