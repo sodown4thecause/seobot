@@ -646,4 +646,24 @@ export type NewApiUsageEvent = typeof apiUsageEvents.$inferInsert
 export type UserCompetitor = typeof userCompetitors.$inferSelect
 export type NewUserCompetitor = typeof userCompetitors.$inferInsert
 
+export const redditGapAudits = pgTable('reddit_gap_audits', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    email: text('email').notNull(),
+    topic: text('topic').notNull(),
+    url: text('url'),
+    discoveredSubreddits: jsonb('discovered_subreddits').$type<Json>(),
+    threadCount: integer('thread_count').default(0),
+    contentGaps: jsonb('content_gaps').$type<Json>(),
+    scorecard: jsonb('scorecard').$type<Json>(),
+    overallGapScore: integer('overall_gap_score'),
+    totalQuestionsFound: integer('total_questions_found').default(0),
+    analysisConfidence: real('analysis_confidence'),
+    report: jsonb('report').$type<Json>(),
+    source: text('source').default('reddit_gap_landing'),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // _review

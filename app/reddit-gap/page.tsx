@@ -1,5 +1,3 @@
-'use client'
-
 import { buildPageMetadata } from '@/lib/seo/metadata'
 import { RedditGapFlow } from '@/components/reddit-gap/RedditGapFlow'
 import Link from 'next/link'
