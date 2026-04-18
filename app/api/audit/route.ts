@@ -141,6 +141,26 @@ async function enforceBudgetGuards(): Promise<{ allowed: boolean; message?: stri
   return { allowed: true }
 }
 
+async function enforceEmailRateLimit(email: string): Promise<boolean> {
+  try {
+    const result = await db.execute(
+      sql`SELECT COUNT(*)::int AS count FROM ai_visibility_audits WHERE email = ${email.trim().toLowerCase()}`
+    )
+    const count = Array.isArray(result)
+      ? Number((result[0] as { count?: number } | undefined)?.count || 0)
+      : result &&
+          typeof result === 'object' &&
+          'rows' in result &&
+          Array.isArray((result as { rows?: Array<{ count?: number }> }).rows)
+        ? Number((result as { rows: Array<{ count?: number }> }).rows[0]?.count || 0)
+        : 0
+    return count === 0
+  } catch {
+    console.warn('[AI Visibility Audit] Email rate limit check failed, allowing request')
+    return true
+  }
+}
+
 function validateDetectPayload(payload: AuditDetectPayload): string | null {
   if (!payload.domain) {
     return 'Domain is required.'
@@ -290,15 +310,21 @@ export async function POST(request: NextRequest) {
     }
 
     const { userId } = await auth()
+
+    const ipAddress = getRequestIp(request)
+
     if (!userId) {
-      return jsonResponse(
-        {
-          ok: false,
-          stage: 'detected',
-          message: 'Please sign in to unlock the full AI visibility report.',
-        },
-        401
-      )
+      const emailAlreadyUsed = await enforceEmailRateLimit(runPayload.email)
+      if (!emailAlreadyUsed) {
+        return jsonResponse(
+          {
+            ok: false,
+            stage: 'detected',
+            message: 'This email has already been used for a free audit. Sign in to run additional audits.',
+          },
+          429
+        )
+      }
     }
 
     if (!runPayload.confirmedContext) {
@@ -312,7 +338,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const ipAddress = getRequestIp(request)
     const allowedByRateLimit = await enforceRateLimit(ipAddress, 'run')
     if (!allowedByRateLimit) {
       return jsonResponse(
