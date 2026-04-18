@@ -189,7 +189,7 @@ function DashboardInner() {
   if (!isLoaded || isLoading) {
     if (!clerkReady && !isLoaded) {
       return (
-        <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
+        <div className="relative h-full flex flex-col items-center justify-center">
           <div className="animate-pulse text-gray-400">Loading...</div>
         </div>
       )
@@ -197,7 +197,7 @@ function DashboardInner() {
 
     if (clerkTimedOut && !isLoaded) {
       return (
-        <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center px-6 text-center">
+        <div className="relative h-full flex flex-col items-center justify-center px-6 text-center">
           <div className="max-w-xl rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
             Clerk auth is not loading in the browser. Verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, then restart `npm run dev`.
             <div className="mt-2">
@@ -211,7 +211,7 @@ function DashboardInner() {
     }
 
     return (
-      <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
+      <div className="relative h-full flex flex-col items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading...</div>
       </div>
     )
