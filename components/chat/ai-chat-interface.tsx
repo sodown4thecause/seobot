@@ -511,7 +511,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const lastLoadedConversationId = useRef<string | null>(null)
   const bootstrapTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const bootstrapAbortControllerRef = useRef<AbortController | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  
   const lastAutoSentKey = useRef<string | null>(null)
 
   // 3. Memoized Values
@@ -876,10 +876,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     return () => clearTimeout(t)
   }, [autoSendKey, autoSendMessage, conversationId, hydratedConversationId, status, isBootstrapping, sendMessage])
 
-  useEffect(() => {
-    if (!messagesEndRef.current) return
-    messagesEndRef.current.scrollIntoView({ behavior: isLoading ? 'smooth' : 'auto', block: 'end' })
-  }, [messages.length, isLoading])
+  
 
   // 8. Missing Handlers (Re-added)
   const removeToast = useCallback((id: string) => {
@@ -1081,7 +1078,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 </MessageContent>
               </AIMessage>
             )}
-            <div ref={messagesEndRef} />
+            
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
