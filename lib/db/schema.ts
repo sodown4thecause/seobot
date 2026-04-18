@@ -645,3 +645,5 @@ export type NewApiUsageEvent = typeof apiUsageEvents.$inferInsert
 // User Competitor Mapping Types
 export type UserCompetitor = typeof userCompetitors.$inferSelect
 export type NewUserCompetitor = typeof userCompetitors.$inferInsert
+
+// _review
