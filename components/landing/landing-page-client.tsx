@@ -48,28 +48,28 @@ export function LandingPageClient() {
               className="space-y-6"
             >
               <h1 className="text-5xl md:text-[98px] font-black tracking-tight leading-none uppercase italic text-gradient">
-                Is AI Recommending
+                Stop Writing for Robots.
                 <br />
-                Your <span className="bg-white text-black px-4 not-italic inline-block">Competitors</span>
+                Start Answering the <span className="bg-white text-black px-4 not-italic inline-block">Painful Questions</span>
                 <br />
-                Instead of You?
+                Your Buyers Are Asking Right Now.
               </h1>
               <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-none uppercase italic text-zinc-400 mt-4">
-                Find Out In <span className="text-white">60 Seconds</span>.
+                Find the Content Gaps on <span className="text-white">Reddit &amp; Forums</span> in 60 Seconds.
               </h2>
 
               <div className="flex flex-col md:flex-row items-baseline gap-8 pt-8">
                 <div className="max-w-xl">
                   <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-[0.4em] mb-4">
-                    AI VISIBILITY AUDIT / FREE LEAD REPORT
+                    REDDIT CONTENT GAP REPORT / FREE LEAD MAGNET
                   </p>
                   <p className="text-xl md:text-2xl text-zinc-300 font-light leading-tight uppercase tracking-tight">
-                    Buyers ask Perplexity, Grok, and Gemini what to buy next. We show whether they hear your brand or send pipeline to someone else.
+                    Forget standard keyword tools. Buyers use communities to validate their real-world problems. We use Reddit &amp; Forum Intelligence to find the specific, high-intent questions your competitors are missing — giving you the immediate content brief to dominate that conversation.
                   </p>
                   <div className="mt-6 grid gap-2 text-left text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">
-                    <p>01 - We detect your market from your homepage</p>
-                    <p>02 - We run 5 buyer-intent checks across 3 AI engines</p>
-                    <p>03 - You see who AI recommends and what sources it cites</p>
+                    <p>01 - We scan your top competitor&apos;s content</p>
+                    <p>02 - We analyze real-time Reddit &amp; community discussions for your topic</p>
+                    <p>03 - You receive a priority content gap report &amp; AI-ready content briefs</p>
                   </div>
                 </div>
 
@@ -80,7 +80,7 @@ export function LandingPageClient() {
                         size="lg"
                         className="h-14 w-full sm:w-auto px-8 text-base md:h-16 md:px-10 md:text-lg bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-wider group border-4 border-white shadow-[0_24px_60px_rgba(255,255,255,0.08)]"
                       >
-                        Audit My AI Visibility
+                        Audit My Content Gaps
                         <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                       </Button>
                     </Link>
@@ -99,7 +99,7 @@ export function LandingPageClient() {
       <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/15 bg-black/90 p-3 backdrop-blur md:hidden">
         <Link href="/audit" className="block">
           <Button className="h-12 w-full rounded-none bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-wider">
-            Audit My AI Visibility
+            Audit My Content Gaps
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Link>
@@ -111,11 +111,11 @@ export function LandingPageClient() {
           <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20">
             <div className="text-center">
               <div className="text-5xl md:text-6xl font-black text-white mb-2">2,847+</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">AI Audits Run</div>
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Content Gaps Identified</div>
             </div>
             <div className="text-center">
               <div className="text-5xl md:text-6xl font-black text-white mb-2">89%</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Avg Citation Increase</div>
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Avg Organic Visibility Increase</div>
             </div>
             <div className="text-center">
               <div className="text-5xl md:text-6xl font-black text-white mb-2">127</div>
@@ -128,13 +128,13 @@ export function LandingPageClient() {
       <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5 backdrop-blur-sm">
         <div className="container mx-auto px-6 text-center">
           <div className="mx-auto max-w-3xl space-y-5 rounded-none border border-white/10 bg-black/40 p-10">
-            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Canonical Lead Magnet Flow</p>
-            <h3 className="text-3xl font-black uppercase tracking-tight">Run the full audit at /audit</h3>
+            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Reddit Content Gap Report</p>
+            <h3 className="text-3xl font-black uppercase tracking-tight">Reveal Hidden Buyer Intent from Reddit</h3>
             <p className="text-zinc-400">
-              We moved the full lead-magnet journey to one canonical path for consistent tracking and share-ready reports.
+              We scan your competitors, analyze real-time Reddit discussions, and deliver a priority content gap report with AI-ready briefs.
             </p>
             <Link href="/audit" className="inline-flex items-center gap-2 border border-white px-6 py-3 text-sm font-black uppercase tracking-[0.18em] hover:bg-white hover:text-black transition-colors">
-              Go To Audit
+              Get the Reddit Gap Report
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -214,18 +214,18 @@ export function LandingPageClient() {
       <section className="relative z-10 py-48 px-6 bg-gradient-to-b from-transparent to-zinc-900/50">
         <div className="container mx-auto text-center border-t border-white/10 pt-32">
           <h2 className="text-5xl md:text-8xl font-bold tracking-tighter mb-12 uppercase italic">
-            Don&apos;t Lose <span className="text-zinc-500">Market Share</span> to AI.
+            Don&apos;t Let <span className="text-zinc-500">Buyer Intent</span> Slip Away.
           </h2>
           <Link href="/audit">
             <Button
               size="lg"
               className="h-20 px-16 text-2xl bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-widest shadow-2xl shadow-white/5"
             >
-              Run Free Audit Now
+              Reveal Hidden Buyer Intent
             </Button>
           </Link>
           <p className="mt-6 text-sm font-mono uppercase tracking-wider text-zinc-600">
-            30-second scan - No signup - See what you&apos;re losing
+            60-second Reddit scan - No signup - Find what your competitors are missing
           </p>
           <div className="mt-10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">
             Prefer to learn first?{' '}
