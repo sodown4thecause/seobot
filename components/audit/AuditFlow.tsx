@@ -211,12 +211,12 @@ export function AuditFlow() {
   return (
     <section className="mx-auto w-full max-w-6xl space-y-6 px-4 py-10 md:px-8">
       <header className="space-y-3 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-zinc-300">Free AI Visibility Audit</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-zinc-300">Free Reddit Content Gap Report</p>
         <h1 className="text-3xl font-black uppercase italic tracking-tight text-white md:text-5xl">
-          Is AI Recommending Your Competitors Instead Of You?
+          Stop Writing for Robots. Start Answering the Questions Your Buyers Are Asking Right Now.
         </h1>
         <p className="mx-auto max-w-3xl text-zinc-400">
-          Run the live 5-check audit, watch analysis load in real time, then unlock your full report.
+          We scan your competitors, analyze real-time Reddit discussions, and deliver a priority content gap report with AI-ready briefs — in 60 seconds.
         </p>
       </header>
 
@@ -271,9 +271,9 @@ export function AuditFlow() {
               className="mx-auto max-w-xl space-y-5 text-center"
             >
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-400">Report ready</p>
-              <h2 className="text-3xl font-black uppercase italic text-white">Unlock your full audit</h2>
+              <h2 className="text-3xl font-black uppercase italic text-white">Unlock your content gap report</h2>
               <p className="text-zinc-400">
-                Your analysis is complete. Confirm where we should send your recap and action plan.
+                Your analysis is complete. Confirm where we should send your content gap report and priority briefs.
               </p>
               <Input
                 value={gateEmail}
@@ -287,7 +287,7 @@ export function AuditFlow() {
                 className="w-full bg-white text-black hover:bg-zinc-200"
                 disabled={!gateEmail.includes('@')}
               >
-                Show full results
+                Show content gap results
               </Button>
             </motion.div>
           ) : null}

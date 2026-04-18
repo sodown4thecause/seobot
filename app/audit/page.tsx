@@ -3,11 +3,11 @@ import { buildPageMetadata } from '@/lib/seo/metadata'
 import Link from 'next/link'
 
 export const metadata = buildPageMetadata({
-  title: 'AI Visibility Scorecard | FlowIntent',
+  title: 'Reddit Content Gap Report | FlowIntent',
   description:
-    'See how your brand shows up across Perplexity, Grok, and Gemini, then unlock a shareable AI visibility scorecard with clear next actions.',
+    'Find the high-intent buyer questions your competitors are missing. Scan Reddit & community discussions and get AI-ready content briefs in 60 seconds.',
   path: '/audit',
-  keywords: ['AI visibility audit', 'LLM competitor audit', 'Perplexity citation audit', 'brand visibility'],
+  keywords: ['Reddit content gap', 'content gap analysis', 'buyer intent Reddit', 'content brief generator', 'Reddit SEO', 'forum keyword research'],
 })
 
 export default function AuditPage() {

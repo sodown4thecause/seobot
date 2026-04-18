@@ -16,9 +16,9 @@ export function AuditForm({ onSubmit, loading }: AuditFormProps) {
   return (
     <Card className="border-white/10 bg-zinc-950 text-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-black uppercase italic tracking-tight">Start Your AI Visibility Audit</CardTitle>
+        <CardTitle className="text-2xl font-black uppercase italic tracking-tight">Start Your Content Gap Audit</CardTitle>
         <CardDescription className="text-zinc-400">
-          Enter your domain and email to see whether AI buyers are being sent to competitors.
+          Enter your domain and email to find the high-intent buyer questions your competitors are missing.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -38,7 +38,7 @@ export function AuditForm({ onSubmit, loading }: AuditFormProps) {
             })
           }}
         >
-          {loading ? 'Previewing your scorecard...' : 'Preview My Scorecard'}
+          {loading ? 'Scanning Reddit discussions...' : 'Reveal My Content Gaps'}
         </Button>
       </CardContent>
     </Card>
