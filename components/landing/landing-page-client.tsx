@@ -28,11 +28,11 @@ export function LandingPageClient() {
 
       <Navbar />
 
-      {/* Authority Bar - Trusted By */}
+      {/* Authority Bar */}
       <div className="relative z-10 border-y border-white/10 bg-white/[0.02] backdrop-blur-sm">
         <div className="container mx-auto px-6 py-4">
           <p className="text-center text-xs text-zinc-500 uppercase tracking-[0.3em]">
-            Trusted by SEO teams at <span className="text-white font-semibold">Shopify</span> - <span className="text-white font-semibold">HubSpot</span> - <span className="text-white font-semibold">Ahrefs</span> - <span className="text-white font-semibold">SEMrush</span>
+            SEO + AEO in one workflow — <span className="text-white font-semibold">Google</span> · <span className="text-white font-semibold">ChatGPT</span> · <span className="text-white font-semibold">Perplexity</span> · <span className="text-white font-semibold">Gemini</span> · <span className="text-white font-semibold">Grok</span>
           </p>
         </div>
       </div>
@@ -48,28 +48,28 @@ export function LandingPageClient() {
               className="space-y-6"
             >
               <h1 className="text-5xl md:text-[98px] font-black tracking-tight leading-none uppercase italic text-gradient">
-                Stop Writing for Robots.
+                Do AI Engines
                 <br />
-                Start Answering the <span className="bg-white text-black px-4 not-italic inline-block">Painful Questions</span>
+                Recommend You <span className="bg-white text-black px-4 not-italic inline-block">or Your</span>
                 <br />
-                Your Buyers Are Asking Right Now.
+                Competitors?
               </h1>
               <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-none uppercase italic text-zinc-400 mt-4">
-                Find Out If <span className="text-white">AI Recommends You</span> — or Your Competitors.
+                Find out in 60 seconds — then <span className="text-white">fix it.</span>
               </h2>
 
               <div className="flex flex-col md:flex-row items-baseline gap-8 pt-8">
                 <div className="max-w-xl">
                   <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-[0.4em] mb-4">
-                    AI VISIBILITY AUDIT / FREE LEAD MAGNET
+                    Free AI Visibility Audit
                   </p>
                   <p className="text-xl md:text-2xl text-zinc-300 font-light leading-tight uppercase tracking-tight">
-                    Forget standard keyword tools. Buyers are asking AI for recommendations — and your competitors are getting cited instead of you. Run a free 60-second audit to see where you rank across Perplexity, Grok, and Gemini.
+                    Most SEO tools can&apos;t tell you if ChatGPT or Perplexity is sending buyers to your competitors. FlowIntent audits your brand across AI answer engines and shows you exactly where you&apos;re missing.
                   </p>
                   <div className="mt-6 grid gap-2 text-left text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">
-                    <p>01 - We check if AI models mention your brand</p>
-                    <p>02 - We compare your visibility against competitors</p>
-                    <p>03 - You receive a shareable scorecard with clear next actions</p>
+                    <p>01 - Check if AI models mention your brand</p>
+                    <p>02 - Compare your visibility against competitors</p>
+                    <p>03 - Get a scorecard with prioritized next actions</p>
                   </div>
                 </div>
 
@@ -80,13 +80,13 @@ export function LandingPageClient() {
                         size="lg"
                         className="h-14 w-full sm:w-auto px-8 text-base md:h-16 md:px-10 md:text-lg bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-wider group border-4 border-white shadow-[0_24px_60px_rgba(255,255,255,0.08)]"
                       >
-Audit My Content Gaps
+                        Run My Free AI Audit
                         <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                       </Button>
                     </Link>
                     <div className="text-center sm:text-left">
                       <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-600">Free. No credit card.</p>
-                      <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">Average runtime: about 60 seconds</p>
+                      <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">Typical runtime: 60 seconds</p>
                     </div>
                   </div>
                 </div>
@@ -99,27 +99,27 @@ Audit My Content Gaps
       <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/15 bg-black/90 p-3 backdrop-blur md:hidden">
         <Link href="/reddit-gap" className="block">
           <Button className="h-12 w-full rounded-none bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-wider">
-            Audit My Content Gaps
+            Run My Free AI Audit
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Link>
       </div>
 
-      {/* Social Proof - Statistics */}
+      {/* What you get - quick wins */}
       <section className="relative z-10 py-16 border-b border-white/5">
         <div className="container mx-auto px-6">
           <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20">
             <div className="text-center">
-              <div className="text-5xl md:text-6xl font-black text-white mb-2">2,847+</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Content Gaps Identified</div>
+              <div className="text-5xl md:text-6xl font-black text-white mb-2">60s</div>
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">To Your First Visibility Score</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl md:text-6xl font-black text-white mb-2">89%</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Avg Organic Visibility Increase</div>
+              <div className="text-5xl md:text-6xl font-black text-white mb-2">70+</div>
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">SEO & AEO Data Endpoints</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl md:text-6xl font-black text-white mb-2">127</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Agencies Trust Us</div>
+              <div className="text-5xl md:text-6xl font-black text-white mb-2">4</div>
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">AI Engines Audited Per Run</div>
             </div>
           </div>
         </div>
@@ -128,13 +128,13 @@ Audit My Content Gaps
       <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5 backdrop-blur-sm">
         <div className="container mx-auto px-6 text-center">
           <div className="mx-auto max-w-3xl space-y-5 rounded-none border border-white/10 bg-black/40 p-10">
-            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">AI Visibility Audit</p>
-            <h3 className="text-3xl font-black uppercase tracking-tight">See How AI Recommends You — or Your Competitors</h3>
+            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Free AI Visibility Audit</p>
+            <h3 className="text-3xl font-black uppercase tracking-tight">Is Your Brand Invisible to AI Answer Engines?</h3>
             <p className="text-zinc-400">
-              We check Perplexity, Grok, and Gemini for your brand, compare your visibility against competitors, and deliver a shareable scorecard with clear next actions.
+              When buyers ask ChatGPT or Perplexity to recommend a tool, who gets cited — you or a competitor? Run a free audit across Perplexity, Grok, and Gemini to get your baseline visibility score and a clear list of what to fix first.
             </p>
             <Link href="/reddit-gap" className="inline-flex items-center gap-2 border border-white px-6 py-3 text-sm font-black uppercase tracking-[0.18em] hover:bg-white hover:text-black transition-colors">
-              Get Your Free Content Gap Report
+              Get My Free Visibility Score
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -147,20 +147,20 @@ Audit My Content Gaps
             <div className="grid gap-24">
               <ValueProp
                 number="01"
-                title="You Ask"
-                description="No complex dashboards. Just chat with the agent like you would an SEO consultant. Our LLM understands intent and delivers strategy in plain English."
+                title="Describe Your Goal"
+                description="No dashboards to learn. Tell FlowIntent what you want — rank a keyword, beat a competitor, or get cited by AI — and the right workflow starts automatically."
                 icon={MessageSquare}
               />
               <ValueProp
                 number="02"
-                title="We Hunt"
-                description="Our agents hit 60+ distinct SEO endpoints simultaneously, scrape live data and write the best EEAT content. We find what's missing and fill the gap."
+                title="We Gather Intelligence"
+                description="Specialist agents query 70+ SEO and AEO data endpoints in parallel — live SERP data, competitor signals, AI citation checks, and content gaps — all in one pass."
                 icon={Search}
               />
               <ValueProp
                 number="03"
-                title="AI Synthesizes"
-                description="We don't just dump data. AI distills thousands of metrics into a single, actionable answer. Real-time intelligence that drives rankings."
+                title="You Get a Plan"
+                description="Not a data dump. FlowIntent turns thousands of signals into a prioritized action list: what to publish, what to fix, and what will move the needle first."
                 icon={Brain}
               />
             </div>
@@ -177,32 +177,32 @@ Audit My Content Gaps
             variants={itemVariants}
             className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10"
           >
-            <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Audits</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Stop AI hallucinations</h3>
+              <div className="bg-black/40 border border-white/10 p-8 rounded-none">
+              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">AI Trust Audits</p>
+              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">See what AI says about you</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Identify how LLMs describe your brand, find false claims, and publish corrections they can actually retrieve.
+                Find out how Perplexity, Grok, and Gemini currently describe your brand. Spot inaccurate claims before buyers do, then publish the corrections AI can actually retrieve.
               </p>
             </div>
             <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Research</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Find intent gaps</h3>
+              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Competitive Research</p>
+              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Know what to publish next</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Competitive SERP + entity research across dozens of endpoints to uncover what you should publish next.
+                Live SERP and entity research across 70+ endpoints surfaces the exact topics and questions your competitors rank for — and you don&apos;t yet.
               </p>
             </div>
             <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Content</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Become cite-worthy</h3>
+              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Content Engine</p>
+              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Generate content AI wants to cite</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Generate &quot;answer assets&quot; (definitions, comparisons, checklists) with EEAT signals and retrieval-friendly structure.
+                Create definitions, comparisons, and how-to content structured for EEAT and AI retrieval — the formats that get picked up as citations, not buried in search results.
               </p>
             </div>
             <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Monitoring</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Track mention deltas</h3>
+              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Visibility Monitoring</p>
+              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Prove progress week over week</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Measure repeatable prompt sets over time so you can prove improvements week-over-week, not vibes.
+                Run the same prompt sets on a schedule and track your mention and citation count over time. Show stakeholders real movement — not just gut feel.
               </p>
             </div>
           </motion.div>
@@ -214,18 +214,18 @@ Audit My Content Gaps
       <section className="relative z-10 py-48 px-6 bg-gradient-to-b from-transparent to-zinc-900/50">
         <div className="container mx-auto text-center border-t border-white/10 pt-32">
           <h2 className="text-5xl md:text-8xl font-bold tracking-tighter mb-12 uppercase italic">
-            Don&apos;t Let <span className="text-zinc-500">Buyer Intent</span> Slip Away.
+            Your Competitors Are <span className="text-zinc-500">Already</span> Getting Cited.
           </h2>
           <Link href="/reddit-gap">
             <Button
               size="lg"
               className="h-20 px-16 text-2xl bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-widest shadow-2xl shadow-white/5"
             >
-              Reveal Your AI Visibility
+              Run My Free AI Audit
             </Button>
           </Link>
           <p className="mt-6 text-sm font-mono uppercase tracking-wider text-zinc-600">
-            60-second audit - No signup - See if AI recommends your competitors
+            60 seconds — no signup — see exactly where you stand
           </p>
           <div className="mt-10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">
             Prefer to learn first?{' '}
