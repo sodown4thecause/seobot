@@ -14,12 +14,8 @@ interface CaseStudyPageProps {
 export const revalidate = 300
 
 export async function generateStaticParams() {
-  try {
-    const slugs = await getCaseStudySlugs()
-    return slugs.map((slug) => ({ slug }))
-  } catch {
-    return []
-  }
+  const slugs = await getCaseStudySlugs()
+  return slugs.map((slug) => ({ slug }))
 }
 
 export async function generateMetadata({ params }: CaseStudyPageProps): Promise<Metadata> {
