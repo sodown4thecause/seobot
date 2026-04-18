@@ -36,10 +36,13 @@ async function fetchAccessToken(): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${apiKey}`,
       'User-Agent': 'FlowIntent-RedditGap/1.0',
     },
-    body: 'grant_type=client_credentials',
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: clientId,
+      client_secret: clientSecret,
+    }).toString(),
   })
 
   if (!response.ok) {
@@ -60,7 +63,7 @@ export async function getRedditAccessToken(): Promise<string> {
   const accessToken = await fetchAccessToken()
   cachedToken = {
     accessToken,
-    expiresAt: now + 55 * 60 * 1000,
+    expiresAt: now + 23 * 60 * 60 * 1000, // Reddit tokens now expire in 24h, refresh at 23h
   }
 
   return accessToken
