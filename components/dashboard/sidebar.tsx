@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useAgent, type Conversation } from '@/components/providers/agent-provider'
-import { Logo } from '@/components/ui/logo'
+
 import { isContentDashboardRoute, isImageDashboardRoute } from '@/lib/dashboard/sidebar-routes'
 
 export interface SidebarProps {
@@ -120,9 +120,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Header / Logo */}
       <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-4 h-[57px]">
         {!collapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Logo className="h-6 w-6" />
-            <span className="text-sm font-bold text-zinc-100 tracking-tight">Flow Intent</span>
+          <Link href="/dashboard" className="flex items-center gap-3 group">
+            <div className="w-8 h-8 bg-white flex items-center justify-center text-black font-black italic text-sm transition-transform group-hover:scale-105">
+              FI
+            </div>
+            <span className="font-bold text-sm tracking-tighter text-zinc-100 uppercase italic">Flow Intent</span>
           </Link>
         )}
         <Button

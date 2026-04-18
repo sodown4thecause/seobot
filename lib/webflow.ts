@@ -111,10 +111,23 @@ async function webflowFetch<T>(endpoint: string, revalidate?: number): Promise<T
 
   if (!response.ok) {
     const errorText = await response.text()
+    const isTransient = response.status === 409 || response.status >= 500
+    if (isTransient) {
+      console.warn(`[Webflow] Transient API error (${response.status}) for ${endpoint}: ${errorText}`)
+      throw new TransientWebflowError(response.status, errorText)
+    }
     throw new Error(`Webflow API error (${response.status}): ${errorText}`)
   }
 
   return response.json() as Promise<T>
+}
+
+class TransientWebflowError extends Error {
+  status: number
+  constructor(status: number, detail: string) {
+    super(`Transient Webflow API error (${status}): ${detail}`)
+    this.status = status
+  }
 }
 
 function extractImageUrl(field: unknown): string | null {
@@ -220,11 +233,27 @@ export async function getCaseStudy(slug: string, revalidateSeconds = 300): Promi
 }
 
 export async function getBlogSlugs(): Promise<string[]> {
-  const posts = await getBlogPosts(3600)
-  return posts.map((p) => p.slug).filter(Boolean)
+  try {
+    const posts = await getBlogPosts(3600)
+    return posts.map((p) => p.slug).filter(Boolean)
+  } catch (err) {
+    if (err instanceof TransientWebflowError) {
+      console.warn(`[Webflow] Skipping blog static generation: ${err.message}`)
+      return []
+    }
+    throw err
+  }
 }
 
 export async function getCaseStudySlugs(): Promise<string[]> {
-  const studies = await getCaseStudies(3600)
-  return studies.map((s) => s.slug).filter(Boolean)
+  try {
+    const studies = await getCaseStudies(3600)
+    return studies.map((s) => s.slug).filter(Boolean)
+  } catch (err) {
+    if (err instanceof TransientWebflowError) {
+      console.warn(`[Webflow] Skipping case-studies static generation: ${err.message}`)
+      return []
+    }
+    throw err
+  }
 }
