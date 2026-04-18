@@ -38,15 +38,15 @@ export function AuditPageClient() {
         <div className="max-w-4xl mx-auto px-6">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
             <p className="text-xs font-mono uppercase tracking-[0.35em] text-zinc-500">Canonical Flow</p>
-            <h2 className="mt-3 text-2xl font-bold">Start the full audit on the /audit page</h2>
+            <h2 className="mt-3 text-2xl font-bold">Start the full audit on the /reddit-gap page</h2>
             <p className="mt-3 text-zinc-400">
               The lead magnet now runs in one place so visibility controls and share artifacts stay consistent.
             </p>
             <Link
-              href="/audit"
+              href="/reddit-gap"
               className="mt-6 inline-flex items-center justify-center bg-white px-8 py-4 rounded-none font-black uppercase tracking-[0.1em] text-black hover:bg-zinc-200 transition-colors"
             >
-              Go to /audit
+              Go to /reddit-gap
             </Link>
           </div>
         </div>

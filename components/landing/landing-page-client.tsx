@@ -75,12 +75,12 @@ export function LandingPageClient() {
 
                 <div className="flex-1 flex justify-end items-end">
                   <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <Link href="/audit">
+                    <Link href="/reddit-gap">
                       <Button
                         size="lg"
                         className="h-14 w-full sm:w-auto px-8 text-base md:h-16 md:px-10 md:text-lg bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-wider group border-4 border-white shadow-[0_24px_60px_rgba(255,255,255,0.08)]"
                       >
-Audit My AI Visibility
+Audit My Content Gaps
                         <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                       </Button>
                     </Link>
@@ -97,9 +97,9 @@ Audit My AI Visibility
       </section>
 
       <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/15 bg-black/90 p-3 backdrop-blur md:hidden">
-        <Link href="/audit" className="block">
+        <Link href="/reddit-gap" className="block">
           <Button className="h-12 w-full rounded-none bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-wider">
-            Audit My AI Visibility
+            Audit My Content Gaps
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Link>
@@ -133,8 +133,8 @@ Audit My AI Visibility
             <p className="text-zinc-400">
               We check Perplexity, Grok, and Gemini for your brand, compare your visibility against competitors, and deliver a shareable scorecard with clear next actions.
             </p>
-            <Link href="/audit" className="inline-flex items-center gap-2 border border-white px-6 py-3 text-sm font-black uppercase tracking-[0.18em] hover:bg-white hover:text-black transition-colors">
-              Get Your Free AI Visibility Scorecard
+            <Link href="/reddit-gap" className="inline-flex items-center gap-2 border border-white px-6 py-3 text-sm font-black uppercase tracking-[0.18em] hover:bg-white hover:text-black transition-colors">
+              Get Your Free Content Gap Report
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -216,7 +216,7 @@ Audit My AI Visibility
           <h2 className="text-5xl md:text-8xl font-bold tracking-tighter mb-12 uppercase italic">
             Don&apos;t Let <span className="text-zinc-500">Buyer Intent</span> Slip Away.
           </h2>
-          <Link href="/audit">
+          <Link href="/reddit-gap">
             <Button
               size="lg"
               className="h-20 px-16 text-2xl bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-widest shadow-2xl shadow-white/5"
