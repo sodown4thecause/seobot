@@ -11,6 +11,8 @@ async function fetchAccessToken(): Promise<string> {
 
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
 
+  console.log('[Reddit] Fetching token with client_id:', clientId.substring(0, 8) + '...')
+
   const response = await fetch(REDDIT_TOKEN_URL, {
     method: 'POST',
     headers: {
@@ -23,10 +25,12 @@ async function fetchAccessToken(): Promise<string> {
 
   if (!response.ok) {
     const errorText = await response.text()
+    console.error('[Reddit] Token request failed:', response.status, errorText)
     throw new Error(`[Reddit] Token request failed (${response.status}): ${errorText}`)
   }
 
   const data = await response.json()
+  console.log('[Reddit] Token received successfully')
   return data.access_token
 }
 
@@ -54,8 +58,10 @@ export async function redditApiFetch<T>(
   options: RequestInit = {},
   retries = 3
 ): Promise<T> {
-  const accessToken = await getRedditAccessToken()
+  let accessToken = await getRedditAccessToken()
   const url = endpoint.startsWith('http') ? endpoint : `${REDDIT_BASE}${endpoint}`
+
+  console.log('[Reddit] Calling API:', endpoint)
 
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
@@ -69,9 +75,12 @@ export async function redditApiFetch<T>(
         },
       })
 
+      console.log('[Reddit] Response status:', response.status, 'for', endpoint)
+
       if (response.status === 401) {
+        console.log('[Reddit] Token expired, refreshing...')
         cachedToken = null
-        const newToken = await getRedditAccessToken()
+        accessToken = await getRedditAccessToken()
         continue
       }
 
@@ -83,7 +92,8 @@ export async function redditApiFetch<T>(
       }
 
       if (!response.ok) {
-        throw new Error(`[Reddit] API request failed (${response.status}): ${response.statusText}`)
+        const errorText = await response.text()
+        throw new Error(`[Reddit] API request failed (${response.status}): ${errorText}`)
       }
 
       return response.json()

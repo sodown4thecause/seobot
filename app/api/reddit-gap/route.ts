@@ -25,15 +25,19 @@ function getRequestIp(request: NextRequest): string {
 }
 
 async function enforceRateLimit(ipAddress: string, scope: RateLimitScope): Promise<boolean> {
-  const redis = getRedisClient()
-  const key = `reddit-gap:${scope}:${ipAddress}:${new Date().toISOString().slice(0, 10)}`
+  try {
+    const redis = getRedisClient()
+    const key = `reddit-gap:${scope}:${ipAddress}:${new Date().toISOString().slice(0, 10)}`
 
-  if (redis) {
-    const count = await redis.incr(key)
-    if (count === 1) {
-      await redis.expire(key, 24 * 60 * 60)
+    if (redis) {
+      const count = await redis.incr(key)
+      if (count === 1) {
+        await redis.expire(key, 24 * 60 * 60)
+      }
+      return count <= RATE_LIMIT_PER_DAY
     }
-    return count <= RATE_LIMIT_PER_DAY
+  } catch (error) {
+    console.warn('[Reddit Gap] Redis error (non-blocking):', error)
   }
 
   if (!hasLoggedRedisFallback) {
