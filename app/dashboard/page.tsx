@@ -12,7 +12,7 @@ import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
       <DashboardInner />
     </Suspense>
   )
@@ -189,7 +189,7 @@ function DashboardInner() {
   if (!isLoaded || isLoading) {
     if (!clerkReady && !isLoaded) {
       return (
-        <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
+        <div className="relative h-full flex flex-col items-center justify-center">
           <div className="animate-pulse text-gray-400">Loading...</div>
         </div>
       )
@@ -197,7 +197,7 @@ function DashboardInner() {
 
     if (clerkTimedOut && !isLoaded) {
       return (
-        <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center px-6 text-center">
+        <div className="relative h-full flex flex-col items-center justify-center px-6 text-center">
           <div className="max-w-xl rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
             Clerk auth is not loading in the browser. Verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, then restart `npm run dev`.
             <div className="mt-2">
@@ -211,7 +211,7 @@ function DashboardInner() {
     }
 
     return (
-      <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
+      <div className="relative h-full flex flex-col items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading...</div>
       </div>
     )
@@ -220,19 +220,19 @@ function DashboardInner() {
   // Dashboard always shows all NextPhase features now
 
   return (
-    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col bg-zinc-950">
+    <div className="relative flex h-full flex-col bg-zinc-950">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="flex-1 px-6 pt-6"
+        className="flex-1 min-h-0 px-6 pt-6"
       >
         {/* Chat Interface - Full height */}
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto h-full">
           <AIChatInterface
             context={context}
             placeholder={isNewUser ? "Tell me about your business..." : "Ask anything..."}
-            className="h-[calc(100vh-12rem)]"
+            className="h-full"
             conversationId={resolvedConversationId}
             agentId={activeAgentId}
             initialMessage={initialMessage}

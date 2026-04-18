@@ -12,7 +12,7 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
 export const Message = ({ className, from, ...props }: MessageProps) => (
   <div
     className={cn(
-      "group flex w-full gap-4 py-3",
+      "group flex w-full gap-4 py-1",
       from === "user" ? "is-user" : "is-assistant",
       className
     )}
