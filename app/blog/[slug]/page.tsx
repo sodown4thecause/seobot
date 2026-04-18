@@ -2,10 +2,18 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Metadata } from 'next'
+import DOMPurify from 'isomorphic-dompurify'
 import { Navbar } from '@/components/navbar'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 import { absoluteUrl } from '@/lib/seo/site'
 import { getBlogPost, getBlogSlugs } from '@/lib/webflow'
+
+function safeJsonLd(input: object): string {
+  return JSON.stringify(input)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/\//g, '\\u002f')
+}
 
 interface BlogPostPageProps {
   params: Promise<{
@@ -71,7 +79,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <article className="container mx-auto px-4 py-16 pt-32 max-w-3xl">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(articleSchema) }}
         />
         <Link
           href="/blog"
@@ -109,7 +117,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         {post.body ? (
           <div
             className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-a:text-blue-400 hover:prose-a:text-blue-300"
-            dangerouslySetInnerHTML={{ __html: post.body }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.body, { ADD_TAGS: ['img'], ADD_ATTR: ['loading', 'fetchpriority'] }) }}
           />
         ) : (
           <div className="bg-gray-800/50 rounded-lg p-8 text-center">

@@ -73,27 +73,22 @@ export type CaseStudy = {
   createdOn: string
 }
 
-function getApiToken(): string {
-  const token = serverEnv.WEBFLOW_API_TOKEN
-  if (!token) {
-    throw new Error('WEBFLOW_API_TOKEN environment variable is required')
-  }
-  return token
+function getApiToken(): string | null {
+  return serverEnv.WEBFLOW_API_TOKEN ?? null
 }
 
-function getCollectionId(type: 'blog' | 'case-studies'): string {
+function getCollectionId(type: 'blog' | 'case-studies'): string | null {
   if (type === 'blog') {
-    const id = serverEnv.WEBFLOW_BLOG_ID
-    if (!id) throw new Error('WEBFLOW_BLOG_ID environment variable is required')
-    return id
+    return serverEnv.WEBFLOW_BLOG_ID ?? null
   }
-  const id = serverEnv.WEBFLOW_CASESTUDIES_ID
-  if (!id) throw new Error('WEBFLOW_CASESTUDIES_ID environment variable is required')
-  return id
+  return serverEnv.WEBFLOW_CASESTUDIES_ID ?? null
 }
 
 async function webflowFetch<T>(endpoint: string, revalidate?: number): Promise<T> {
   const token = getApiToken()
+  if (!token) {
+    throw new Error('WEBFLOW_API_TOKEN is not configured')
+  }
   const url = `${WEBFLOW_API_BASE}${endpoint}`
 
   const headers: Record<string, string> = {
@@ -159,13 +154,14 @@ function mapCaseStudy(item: WebflowCollectionItem): CaseStudy {
 
 export async function getBlogPosts(revalidateSeconds = 300): Promise<BlogPost[]> {
   const collectionId = getCollectionId('blog')
+  if (!collectionId) return []
   const items: BlogPost[] = []
   let offset = 0
   const limit = 100
 
   do {
     const data = await webflowFetch<WebflowCollectionItemsResponse>(
-      `/collections/${collectionId}/items?limit=${limit}&offset=${offset}`,
+      `/collections/${collectionId}/items/live?limit=${limit}&offset=${offset}`,
       revalidateSeconds,
     )
     items.push(...data.items.map(mapBlogPost))
@@ -178,8 +174,9 @@ export async function getBlogPosts(revalidateSeconds = 300): Promise<BlogPost[]>
 
 export async function getBlogPost(slug: string, revalidateSeconds = 300): Promise<BlogPost | null> {
   const collectionId = getCollectionId('blog')
+  if (!collectionId) return null
   const data = await webflowFetch<WebflowCollectionItemsResponse>(
-    `/collections/${collectionId}/items?slug=${encodeURIComponent(slug)}&limit=1`,
+    `/collections/${collectionId}/items/live?slug=${encodeURIComponent(slug)}&limit=1`,
     revalidateSeconds,
   )
 
@@ -190,13 +187,14 @@ export async function getBlogPost(slug: string, revalidateSeconds = 300): Promis
 
 export async function getCaseStudies(revalidateSeconds = 300): Promise<CaseStudy[]> {
   const collectionId = getCollectionId('case-studies')
+  if (!collectionId) return []
   const items: CaseStudy[] = []
   let offset = 0
   const limit = 100
 
   do {
     const data = await webflowFetch<WebflowCollectionItemsResponse>(
-      `/collections/${collectionId}/items?limit=${limit}&offset=${offset}`,
+      `/collections/${collectionId}/items/live?limit=${limit}&offset=${offset}`,
       revalidateSeconds,
     )
     items.push(...data.items.map(mapCaseStudy))
@@ -209,8 +207,9 @@ export async function getCaseStudies(revalidateSeconds = 300): Promise<CaseStudy
 
 export async function getCaseStudy(slug: string, revalidateSeconds = 300): Promise<CaseStudy | null> {
   const collectionId = getCollectionId('case-studies')
+  if (!collectionId) return null
   const data = await webflowFetch<WebflowCollectionItemsResponse>(
-    `/collections/${collectionId}/items?slug=${encodeURIComponent(slug)}&limit=1`,
+    `/collections/${collectionId}/items/live?slug=${encodeURIComponent(slug)}&limit=1`,
     revalidateSeconds,
   )
 

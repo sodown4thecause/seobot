@@ -260,9 +260,6 @@ export function LandingPageClient() {
             <Link href="/case-studies" className="hover:text-white transition-colors">
               Case Studies
             </Link>
-            <Link href="/case-studies" className="hover:text-white transition-colors">
-              Case Studies
-            </Link>
             <EmailLink className="hover:text-white transition-colors">
               Send an Email
             </EmailLink>
