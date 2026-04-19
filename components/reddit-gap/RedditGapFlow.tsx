@@ -15,7 +15,7 @@ import type {
 } from '@/lib/reddit-gap/types'
 
 type Stage = 'form' | 'discovery' | 'loading' | 'gate' | 'results'
-type AnalysisPhase = 'idle' | 'searching-reddit' | 'scraping-threads' | 'analyzing-gaps' | 'scoring' | 'done' | 'done'
+type AnalysisPhase = 'idle' | 'searching-reddit' | 'scraping-threads' | 'analyzing-gaps' | 'scoring' | 'done'
 
 export function RedditGapFlow() {
   const [stage, setStage] = useState<Stage>('form')
@@ -87,7 +87,6 @@ export function RedditGapFlow() {
           action: 'run',
           topic,
           url: url || undefined,
-          email: 'preview@example.com', // Temporary email for preview
           confirmedSubreddits: selectedSubreddits,
         }),
       })
@@ -156,7 +155,7 @@ export function RedditGapFlow() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed.')
       setPhase('idle')
-      setStage('gate')
+      setStage('discovery')
     } finally {
       clearInterval(phaseTimer)
       setLoading(false)
@@ -265,7 +264,7 @@ export function RedditGapFlow() {
             </motion.div>
           )}
 
-          {stage === 'gate' && results?.topGapPreview && (
+          {stage === 'gate' && results && (
             <motion.div
               key="gate"
               initial={{ opacity: 0, y: 20 }}
@@ -278,20 +277,29 @@ export function RedditGapFlow() {
                   Preview
                 </p>
                 <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tight">
-                  Your Top Content Gap
+                  {results.topGapPreview ? 'Your Top Content Gap' : 'Analysis Complete'}
                 </h2>
               </div>
-              <div className="bg-white/[0.03] border border-white/10 p-6 rounded-none mb-8">
-                <h3 className="text-lg font-bold text-white mb-2">
-                  &ldquo;{results.topGapPreview.question}&rdquo;
-                </h3>
-                <p className="text-zinc-400 text-sm">{results.topGapPreview.context}</p>
-                <div className="flex gap-4 mt-3 text-xs font-mono text-zinc-500">
-                  <span className="text-emerald-400">Engagement: {results.topGapPreview.engagementScore}/100</span>
-                  <span>Frequency: {results.topGapPreview.frequency}x</span>
-                  <span>Intent: {results.topGapPreview.commercialIntent}</span>
+              {results.topGapPreview ? (
+                <div className="bg-white/[0.03] border border-white/10 p-6 rounded-none mb-8">
+                  <h3 className="text-lg font-bold text-white mb-2">
+                    &ldquo;{results.topGapPreview.question}&rdquo;
+                  </h3>
+                  <p className="text-zinc-400 text-sm">{results.topGapPreview.context}</p>
+                  <div className="flex gap-4 mt-3 text-xs font-mono text-zinc-500">
+                    <span className="text-emerald-400">Engagement: {results.topGapPreview.engagementScore}/100</span>
+                    <span>Frequency: {results.topGapPreview.frequency}x</span>
+                    <span>Intent: {results.topGapPreview.commercialIntent}</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-white/[0.03] border border-white/10 p-6 rounded-none mb-8">
+                  <p className="text-zinc-400 text-sm">
+                    We analyzed {results.analyzedThreads} threads but couldn&apos;t identify clear content gaps. 
+                    Try refining your topic or selecting different subreddits.
+                  </p>
+                </div>
+              )}
               <EmailGate
                 topic={topic}
                 onSubmit={handleEmailSubmit}
