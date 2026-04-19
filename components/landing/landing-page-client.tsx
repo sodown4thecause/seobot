@@ -32,7 +32,7 @@ export function LandingPageClient() {
       <div className="relative z-10 border-y border-white/10 bg-white/[0.02] backdrop-blur-sm">
         <div className="container mx-auto px-6 py-4">
           <p className="text-center text-xs text-zinc-500 uppercase tracking-[0.3em]">
-            SEO + AEO in one workflow — <span className="text-white font-semibold">Google</span> · <span className="text-white font-semibold">ChatGPT</span> · <span className="text-white font-semibold">Perplexity</span> · <span className="text-white font-semibold">Gemini</span> · <span className="text-white font-semibold">Grok</span>
+            Powered by <span className="text-white font-semibold">Supadata</span> · <span className="text-white font-semibold">Reddit API</span> · <span className="text-white font-semibold">Real-Time Analysis</span>
           </p>
         </div>
       </div>
@@ -48,28 +48,28 @@ export function LandingPageClient() {
               className="space-y-6"
             >
               <h1 className="text-5xl md:text-[98px] font-black tracking-tight leading-none uppercase italic text-gradient">
-                Do AI Engines
+                Your Audience Is on Reddit
                 <br />
-                Recommend You <span className="bg-white text-black px-4 not-italic inline-block">or Your</span>
+                <span className="bg-white text-black px-4 not-italic inline-block">Asking Questions</span>
                 <br />
-                Competitors?
+                Your Competitors Ignore.
               </h1>
               <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-none uppercase italic text-zinc-400 mt-4">
-                Find out in 60 seconds — then <span className="text-white">fix it.</span>
+                Find the Content Gaps They&apos;re <span className="text-white">Missing</span> — Before They Do.
               </h2>
 
               <div className="flex flex-col md:flex-row items-baseline gap-8 pt-8">
                 <div className="max-w-xl">
                   <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-[0.4em] mb-4">
-                    Free AI Visibility Audit
+                    REDDIT CONTENT GAP AUDIT / FREE LEAD MAGNET
                   </p>
                   <p className="text-xl md:text-2xl text-zinc-300 font-light leading-tight uppercase tracking-tight">
-                    Most SEO tools can&apos;t tell you if ChatGPT or Perplexity is sending buyers to your competitors. FlowIntent audits your brand across AI answer engines and shows you exactly where you&apos;re missing.
+                    Stop guessing what content to create. We scan thousands of Reddit discussions to find the exact questions your audience is asking — and your competitors aren&apos;t answering. Get a prioritized content brief in 60 seconds.
                   </p>
                   <div className="mt-6 grid gap-2 text-left text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">
-                    <p>01 - Check if AI models mention your brand</p>
-                    <p>02 - Compare your visibility against competitors</p>
-                    <p>03 - Get a scorecard with prioritized next actions</p>
+                    <p>01 - We scan relevant subreddits for real questions</p>
+                    <p>02 - We find content gaps your competitors miss</p>
+                    <p>03 - You get a ranked brief with thread sources + action items</p>
                   </div>
                 </div>
 
@@ -111,15 +111,15 @@ export function LandingPageClient() {
           <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20">
             <div className="text-center">
               <div className="text-5xl md:text-6xl font-black text-white mb-2">60s</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">To Your First Visibility Score</div>
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">To Your Content Gap Report</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl md:text-6xl font-black text-white mb-2">70+</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">SEO & AEO Data Endpoints</div>
+              <div className="text-5xl md:text-6xl font-black text-white mb-2">1000s</div>
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Reddit Threads Analyzed</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl md:text-6xl font-black text-white mb-2">4</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">AI Engines Audited Per Run</div>
+              <div className="text-5xl md:text-6xl font-black text-white mb-2">50+</div>
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Subreddits Available</div>
             </div>
           </div>
         </div>
@@ -128,10 +128,10 @@ export function LandingPageClient() {
       <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5 backdrop-blur-sm">
         <div className="container mx-auto px-6 text-center">
           <div className="mx-auto max-w-3xl space-y-5 rounded-none border border-white/10 bg-black/40 p-10">
-            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Free AI Visibility Audit</p>
-            <h3 className="text-3xl font-black uppercase tracking-tight">Is Your Brand Invisible to AI Answer Engines?</h3>
+            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Reddit Content Gap Audit</p>
+            <h3 className="text-3xl font-black uppercase tracking-tight">Find What Reddit Is Asking That Your Competitors Ignore</h3>
             <p className="text-zinc-400">
-              When buyers ask ChatGPT or Perplexity to recommend a tool, who gets cited — you or a competitor? Run a free audit across Perplexity, Grok, and Gemini to get your baseline visibility score and a clear list of what to fix first.
+              We scan thousands of Reddit discussions across relevant subreddits, identify high-intent questions your competitors aren&apos;t answering, and deliver a ranked content brief with sources and action items.
             </p>
             <Link href="/reddit-gap" className="inline-flex items-center gap-2 border border-white px-6 py-3 text-sm font-black uppercase tracking-[0.18em] hover:bg-white hover:text-black transition-colors">
               Get My Free Content Gap Report
@@ -147,20 +147,20 @@ export function LandingPageClient() {
             <div className="grid gap-24">
               <ValueProp
                 number="01"
-                title="Describe Your Goal"
-                description="No dashboards to learn. Tell FlowIntent what you want — rank a keyword, beat a competitor, or get cited by AI — and the right workflow starts automatically."
+                title="Enter Your Topic"
+                description="Tell us what you sell or write about. No complex setup — just a topic and optional competitor URL to focus the analysis."
                 icon={MessageSquare}
               />
               <ValueProp
                 number="02"
-                title="We Gather Intelligence"
-                description="Specialist agents query 70+ SEO and AEO data endpoints in parallel — live SERP data, competitor signals, AI citation checks, and content gaps — all in one pass."
+                title="We Scan Reddit"
+                description="Our agents discover relevant subreddits, analyze thousands of threads in real-time, and extract high-intent questions your competitors are ignoring."
                 icon={Search}
               />
               <ValueProp
                 number="03"
-                title="You Get a Plan"
-                description="Not a data dump. FlowIntent turns thousands of signals into a prioritized action list: what to publish, what to fix, and what will move the needle first."
+                title="Get Your Brief"
+                description="Receive a prioritized content gap report with source threads, engagement scores, and a 7/30/90-day action plan — ready to execute or hand to your team."
                 icon={Brain}
               />
             </div>
@@ -178,31 +178,31 @@ export function LandingPageClient() {
             className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10"
           >
               <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">AI Trust Audits</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">See what AI says about you</h3>
+              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Discovery</p>
+              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Find hidden subreddits</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Find out how Perplexity, Grok, and Gemini currently describe your brand. Spot inaccurate claims before buyers do, then publish the corrections AI can actually retrieve.
+                Auto-detect the communities where your audience hangs out. We surface relevant subreddits you might not even know exist.
               </p>
             </div>
             <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Competitive Research</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Know what to publish next</h3>
+              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Analysis</p>
+              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Extract real questions</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Live SERP and entity research across 70+ endpoints surfaces the exact topics and questions your competitors rank for — and you don&apos;t yet.
+                Parse thousands of threads to find the exact questions your audience asks — ranked by engagement, intent, and competitive gap.
               </p>
             </div>
             <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Content Engine</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Generate content AI wants to cite</h3>
+              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Briefs</p>
+              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Get ready-to-publish briefs</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Create definitions, comparisons, and how-to content structured for EEAT and AI retrieval — the formats that get picked up as citations, not buried in search results.
+                Each content gap comes with source threads, recommended content type, and priority ranking — everything you need to start writing.
               </p>
             </div>
             <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Visibility Monitoring</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Prove progress week over week</h3>
+              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Scorecard</p>
+              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Measure your gap score</h3>
               <p className="text-zinc-400 leading-relaxed">
-                Run the same prompt sets on a schedule and track your mention and citation count over time. Show stakeholders real movement — not just gut feel.
+                Get an overall gap score, opportunity breakdown, and 7/30/90-day action plan prioritized by effort and impact.
               </p>
             </div>
           </motion.div>
@@ -225,12 +225,12 @@ export function LandingPageClient() {
             </Button>
           </Link>
           <p className="mt-6 text-sm font-mono uppercase tracking-wider text-zinc-600">
-            60 seconds — no signup — see exactly where you stand
+            60-second scan — no signup — see what your audience is asking on Reddit
           </p>
           <div className="mt-10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">
             Prefer to learn first?{' '}
             <Link href="/blog" className="hover:text-white transition-colors">
-              Why LLM mentions matter
+              Why Reddit content gaps matter
             </Link>{' '}
             -{' '}
             <Link href="/blog" className="hover:text-white transition-colors">
