@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowRight, ExternalLink, Flame, MessageSquare, TrendingUp, Mail, CheckCircle } from 'lucide-react'
+import { ArrowRight, ExternalLink, Flame, MessageSquare, TrendingUp, Mail, CheckCircle, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { RedditGapResults, ContentGap } from '@/lib/reddit-gap/types'
 
 interface ContentGapListProps {
   results: RedditGapResults
   auditId: string | null
+  requireEmail?: boolean
 }
 
 function GapScoreBar({ score, label }: { score: number; label: string }) {
@@ -113,12 +114,13 @@ function ContentGapCard({ gap, index }: { gap: ContentGap; index: number }) {
   )
 }
 
-export function ContentGapList({ results, auditId }: ContentGapListProps) {
+export function ContentGapList({ results, auditId, requireEmail = false }: ContentGapListProps) {
   const { scorecard, contentGaps, discoveredSubreddits, analyzedThreads, totalQuestionsFound, analysisConfidence } = results
   const [email, setEmail] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [emailError, setEmailError] = useState('')
+  const [isUnlocked, setIsUnlocked] = useState(!requireEmail)
 
   const handleSendEmail = async () => {
     if (!email.trim()) {
@@ -153,6 +155,49 @@ export function ContentGapList({ results, auditId }: ContentGapListProps) {
       if (response.ok) {
         setEmailSent(true)
         setEmail('')
+      } else {
+        setEmailError(data.error || 'Failed to send email')
+      }
+    } catch (error) {
+      setEmailError('Network error. Please try again.')
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const handleUnlock = async () => {
+    if (!email.trim()) {
+      setEmailError('Please enter your email address to unlock')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email address')
+      return
+    }
+
+    setIsSending(true)
+    setEmailError('')
+
+    try {
+      const response = await fetch('/api/reddit-gap/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          results,
+          auditId: auditId || undefined
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setEmailSent(true)
+        setIsUnlocked(true)
       } else {
         setEmailError(data.error || 'Failed to send email')
       }
@@ -216,18 +261,75 @@ export function ContentGapList({ results, auditId }: ContentGapListProps) {
         </div>
       </div>
 
-      <div>
+      <div className="relative">
         <h3 className="text-lg font-bold uppercase tracking-wider mb-4">
           Content Gaps ({contentGaps.length})
         </h3>
-        <div className="space-y-4">
-          {contentGaps.map((gap, index) => (
-            <ContentGapCard key={gap.id} gap={gap} index={index} />
-          ))}
-        </div>
+
+        {/* Actual content - shown when unlocked */}
+        {isUnlocked && (
+          <div className="space-y-4">
+            {contentGaps.map((gap, index) => (
+              <ContentGapCard key={gap.id} gap={gap} index={index} />
+            ))}
+          </div>
+        )}
+
+        {/* Blur overlay when locked */}
+        {!isUnlocked && (
+          <>
+            <div className="space-y-4 blur-sm opacity-50 pointer-events-none select-none">
+              <div className="border border-white/10 bg-white/[0.02] p-5">
+                <div className="h-20 bg-white/5 rounded" />
+              </div>
+              <div className="border border-white/10 bg-white/[0.02] p-5">
+                <div className="h-20 bg-white/5 rounded" />
+              </div>
+              <div className="border border-white/10 bg-white/[0.02] p-5">
+                <div className="h-20 bg-white/5 rounded" />
+              </div>
+            </div>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
+              <div className="bg-black border border-emerald-500/30 p-6 max-w-sm w-full mx-4 text-center">
+                <Lock className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
+                <h3 className="text-lg font-black uppercase tracking-tight mb-2">
+                  Unlock Full Report
+                </h3>
+                <p className="text-xs text-zinc-400 mb-4">
+                  Enter your email to see all {contentGaps.length} content gaps
+                </p>
+                <div className="space-y-2">
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      setEmailError('')
+                    }}
+                    className={`w-full h-10 px-3 bg-white/[0.03] border text-white placeholder:text-zinc-600 rounded-none text-sm ${
+                      emailError ? 'border-red-500' : 'border-white/10'
+                    }`}
+                    disabled={isSending}
+                  />
+                  <Button
+                    onClick={handleUnlock}
+                    disabled={isSending}
+                    className="w-full h-10 bg-emerald-500 text-black hover:bg-emerald-400 rounded-none font-bold uppercase tracking-wider text-sm disabled:opacity-50"
+                  >
+                    {isSending ? 'Unlocking...' : 'Unlock & Email Report'}
+                  </Button>
+                  {emailError && (
+                    <p className="text-xs text-red-400 font-mono">{emailError}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {scorecard.strengths.length > 0 && (
+      {isUnlocked && scorecard.strengths.length > 0 && (
         <div>
           <h3 className="text-lg font-bold uppercase tracking-wider mb-4">Key Strengths</h3>
           <div className="grid gap-3 sm:grid-cols-3">

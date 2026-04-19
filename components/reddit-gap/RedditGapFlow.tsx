@@ -29,6 +29,7 @@ export function RedditGapFlow() {
   const [phase, setPhase] = useState<AnalysisPhase>('idle')
   const [error, setError] = useState<string | null>(null)
   const [gateEmail, setGateEmail] = useState('')
+  const [hasEmail, setHasEmail] = useState(false)
 
   const handleDetect = async (inputTopic: string, inputUrl?: string) => {
     setTopic(inputTopic)
@@ -66,6 +67,7 @@ export function RedditGapFlow() {
     setPhase('searching-reddit')
     setError(null)
     setStage('loading')
+    setHasEmail(false)
 
     const phaseProgression: AnalysisPhase[] = ['searching-reddit', 'scraping-threads', 'analyzing-gaps', 'scoring']
 
@@ -100,7 +102,7 @@ export function RedditGapFlow() {
       setResults(payload.results)
       setAuditId(payload.auditId || null)
       setPhase('done')
-      setStage('gate')
+      setStage('results')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed.')
       setPhase('idle')
@@ -164,6 +166,7 @@ export function RedditGapFlow() {
 
   const handleEmailSubmit = async (email: string) => {
     setGateEmail(email)
+    setHasEmail(true)
 
     try {
       await fetch('/api/reddit-gap/leads', {
@@ -316,7 +319,7 @@ export function RedditGapFlow() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <ContentGapList results={results} auditId={auditId} />
+              <ContentGapList results={results} auditId={auditId} requireEmail={!hasEmail} />
             </motion.div>
           )}
         </AnimatePresence>
