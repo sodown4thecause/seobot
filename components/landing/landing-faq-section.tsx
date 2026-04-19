@@ -12,7 +12,7 @@ export function LandingFaqSection() {
             Frequently Asked Questions
           </h2>
           <p className="mt-6 text-lg text-zinc-400">
-            Everything you need to know about Answer Engine Optimization, AI visibility, and FlowIntent.
+            Everything you need to know about Reddit content gap analysis, audience research, and FlowIntent.
           </p>
         </div>
 
