@@ -88,16 +88,18 @@ function validateDetectPayload(payload: RedditGapDetectPayload): string | null {
   return null
 }
 
-function validateRunPayload(payload: RedditGapRunPayload): string | null {
+function validateRunPayload(payload: RedditGapRunPayload, requireEmail = false): string | null {
   if (!payload.topic || payload.topic.trim().length < 2) {
     return 'Topic is required (minimum 2 characters).'
   }
-  if (!payload.email) {
+  if (requireEmail && !payload.email) {
     return 'Email is required to unlock the full report.'
   }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(payload.email)) {
-    return 'Please provide a valid email address.'
+  if (requireEmail && payload.email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(payload.email)) {
+      return 'Please provide a valid email address.'
+    }
   }
   return null
 }
@@ -243,13 +245,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const auditId = await persistAudit({
-      email: runPayload.email,
-      topic: runPayload.topic,
-      url: runPayload.url || null,
-      results,
-      ipAddress,
-    })
+    const auditId = runPayload.email
+      ? await persistAudit({
+          email: runPayload.email,
+          topic: runPayload.topic,
+          url: runPayload.url || null,
+          results,
+          ipAddress,
+        })
+      : null
 
     const completedAt = new Date().toISOString()
 
