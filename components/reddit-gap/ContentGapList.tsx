@@ -1,6 +1,7 @@
 'use client'
 
-import { ArrowRight, ExternalLink, Flame, MessageSquare, TrendingUp } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowRight, ExternalLink, Flame, MessageSquare, TrendingUp, Mail, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { RedditGapResults, ContentGap } from '@/lib/reddit-gap/types'
 
@@ -112,8 +113,55 @@ function ContentGapCard({ gap, index }: { gap: ContentGap; index: number }) {
   )
 }
 
-export function ContentGapList({ results }: ContentGapListProps) {
+export function ContentGapList({ results, auditId }: ContentGapListProps) {
   const { scorecard, contentGaps, discoveredSubreddits, analyzedThreads, totalQuestionsFound, analysisConfidence } = results
+  const [email, setEmail] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState('')
+
+  const handleSendEmail = async () => {
+    if (!email.trim()) {
+      setEmailError('Please enter your email address')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email address')
+      return
+    }
+
+    setIsSending(true)
+    setEmailError('')
+
+    try {
+      const response = await fetch('/api/reddit-gap/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          results,
+          auditId: auditId || undefined
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setEmailSent(true)
+        setEmail('')
+      } else {
+        setEmailError(data.error || 'Failed to send email')
+      }
+    } catch (error) {
+      setEmailError('Network error. Please try again.')
+    } finally {
+      setIsSending(false)
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -238,15 +286,57 @@ export function ContentGapList({ results }: ContentGapListProps) {
         <p className="text-xs font-mono text-zinc-600 mb-2">
           Want a content brief delivered to your inbox? Enter your email below.
         </p>
-        <div className="max-w-md mx-auto flex gap-2">
-          <input
-            type="email"
-            placeholder="your@email.com"
-            className="flex-1 h-12 px-4 bg-white/[0.03] border border-white/10 text-white placeholder:text-zinc-600 rounded-none"
-          />
-          <Button className="h-12 bg-white text-black hover:bg-zinc-200 rounded-none font-bold uppercase tracking-wider">
-            Send Brief
-          </Button>
+        <div className="max-w-md mx-auto space-y-3">
+          <div className="flex gap-2">
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                setEmailError('')
+                setEmailSent(false)
+              }}
+              className={`flex-1 h-12 px-4 bg-white/[0.03] border text-white placeholder:text-zinc-600 rounded-none ${
+                emailError ? 'border-red-500' : 'border-white/10'
+              }`}
+              disabled={isSending || emailSent}
+            />
+            <Button
+              onClick={handleSendEmail}
+              disabled={isSending || emailSent}
+              className="h-12 bg-white text-black hover:bg-zinc-200 rounded-none font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSending ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent animate-spin rounded-full" />
+                  Sending...
+                </div>
+              ) : emailSent ? (
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Sent!
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  Send Brief
+                </div>
+              )}
+            </Button>
+          </div>
+          
+          {emailError && (
+            <p className="text-xs text-red-400 font-mono">{emailError}</p>
+          )}
+          
+          {emailSent && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-none">
+              <p className="text-xs text-emerald-400 font-mono">
+                ✓ Content gap brief sent successfully! Check your inbox.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

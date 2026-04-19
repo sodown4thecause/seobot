@@ -14,7 +14,7 @@ import type {
   RedditGapResults,
 } from '@/lib/reddit-gap/types'
 
-type Stage = 'form' | 'discovery' | 'loading' | 'preview' | 'gate' | 'results'
+type Stage = 'form' | 'discovery' | 'loading' | 'gate' | 'results'
 type AnalysisPhase = 'idle' | 'searching-reddit' | 'scraping-threads' | 'analyzing-gaps' | 'scoring' | 'done' | 'done'
 
 export function RedditGapFlow() {
@@ -61,10 +61,62 @@ export function RedditGapFlow() {
     }
   }
 
+  const handleAnalyzeWithPreview = async () => {
+    setLoading(true)
+    setPhase('searching-reddit')
+    setError(null)
+    setStage('loading')
+
+    const phaseProgression: AnalysisPhase[] = ['searching-reddit', 'scraping-threads', 'analyzing-gaps', 'scoring']
+
+    const phaseTimer = setInterval(() => {
+      setPhase((prev) => {
+        const currentIndex = phaseProgression.indexOf(prev)
+        if (currentIndex < phaseProgression.length - 1) {
+          return phaseProgression[currentIndex + 1]
+        }
+        return prev
+      })
+    }, 4000)
+
+    try {
+      const response = await fetch('/api/reddit-gap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'run',
+          topic,
+          url: url || undefined,
+          email: 'preview@example.com', // Temporary email for preview
+          confirmedSubreddits: selectedSubreddits,
+        }),
+      })
+
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload.message || 'Analysis failed. Please try again.')
+      }
+
+      setResults(payload.results)
+      setAuditId(payload.auditId || null)
+      setPhase('done')
+      setStage('gate')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Analysis failed.')
+      setPhase('idle')
+      setStage('discovery')
+    } finally {
+      clearInterval(phaseTimer)
+      setLoading(false)
+    }
+  }
+
   const handleRun = async () => {
     setLoading(true)
     setPhase('searching-reddit')
     setError(null)
+    setStage('loading')
 
     const phaseProgression: AnalysisPhase[] = ['searching-reddit', 'scraping-threads', 'analyzing-gaps', 'scoring']
 
@@ -104,6 +156,7 @@ export function RedditGapFlow() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed.')
       setPhase('idle')
+      setStage('gate')
     } finally {
       clearInterval(phaseTimer)
       setLoading(false)
@@ -188,17 +241,33 @@ export function RedditGapFlow() {
                 subreddits={discoveredSubreddits}
                 selected={selectedSubreddits}
                 onSelectionChange={setSelectedSubreddits}
-                onAnalyze={() => {
-                  setStage('preview')
-                }}
+                onAnalyze={handleAnalyzeWithPreview}
                 topic={topic}
               />
             </motion.div>
           )}
 
-          {stage === 'preview' && results?.topGapPreview && (
+          {stage === 'loading' && (
             <motion.div
-              key="preview"
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="text-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-6" />
+                <h2 className="text-2xl font-black uppercase tracking-tight mb-4">
+                  Analyzing Reddit Discussions
+                </h2>
+                <ProgressStages phase={phase} />
+              </div>
+            </motion.div>
+          )}
+
+          {stage === 'gate' && results?.topGapPreview && (
+            <motion.div
+              key="gate"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -229,24 +298,6 @@ export function RedditGapFlow() {
                 loading={loading}
                 error={error}
               />
-            </motion.div>
-          )}
-
-          {(stage === 'loading' || (stage === 'preview' && loading)) && (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="text-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-6" />
-                <h2 className="text-2xl font-black uppercase tracking-tight mb-4">
-                  Analyzing Reddit Discussions
-                </h2>
-                <ProgressStages phase={phase} />
-              </div>
             </motion.div>
           )}
 
