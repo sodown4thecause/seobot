@@ -121,6 +121,7 @@ export function ContentGapList({ results, auditId, requireEmail = false }: Conte
   const [emailSent, setEmailSent] = useState(false)
   const [emailError, setEmailError] = useState('')
   const [isUnlocked, setIsUnlocked] = useState(!requireEmail)
+  const [emailWarning, setEmailWarning] = useState('')
 
   const handleSendEmail = async () => {
     if (!email.trim()) {
@@ -199,14 +200,12 @@ export function ContentGapList({ results, auditId, requireEmail = false }: Conte
         setEmailSent(true)
         setIsUnlocked(true)
       } else {
-        setEmailSent(true)
+        setEmailWarning(data.error || 'Email service temporarily unavailable. Content unlocked.')
         setIsUnlocked(true)
-        setEmailError(data.error || 'Email service temporarily unavailable. Content unlocked.')
       }
     } catch (error) {
-      setEmailSent(true)
+      setEmailWarning('Email service unavailable. Content unlocked for you.')
       setIsUnlocked(true)
-      setEmailError('Email service unavailable. Content unlocked for you.')
     } finally {
       setIsSending(false)
     }
@@ -431,12 +430,20 @@ export function ContentGapList({ results, auditId, requireEmail = false }: Conte
               )}
             </Button>
           </div>
-          
+
           {emailError && (
             <p className="text-xs text-red-400 font-mono">{emailError}</p>
           )}
-          
-          {emailSent && (
+
+          {emailWarning && (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 p-3 rounded-none">
+              <p className="text-xs text-yellow-400 font-mono">
+                ⚠ {emailWarning}
+              </p>
+            </div>
+          )}
+
+          {emailSent && !emailWarning && (
             <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-none">
               <p className="text-xs text-emerald-400 font-mono">
                 ✓ Content gap brief sent successfully! Check your inbox.
