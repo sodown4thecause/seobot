@@ -199,10 +199,14 @@ export function ContentGapList({ results, auditId, requireEmail = false }: Conte
         setEmailSent(true)
         setIsUnlocked(true)
       } else {
-        setEmailError(data.error || 'Failed to send email')
+        setEmailSent(true)
+        setIsUnlocked(true)
+        setEmailError(data.error || 'Email service temporarily unavailable. Content unlocked.')
       }
     } catch (error) {
-      setEmailError('Network error. Please try again.')
+      setEmailSent(true)
+      setIsUnlocked(true)
+      setEmailError('Email service unavailable. Content unlocked for you.')
     } finally {
       setIsSending(false)
     }
