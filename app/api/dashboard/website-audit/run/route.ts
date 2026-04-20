@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = subscriptionCheck.userId
+    if (!userId) {
+      return NextResponse.json({ error: 'authentication_required', message: 'Authentication required' }, { status: 401 })
+    }
 
     let body: unknown
     try {
