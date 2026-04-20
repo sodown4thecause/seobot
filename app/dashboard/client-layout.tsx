@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Sidebar } from '@/components/dashboard/sidebar'
@@ -42,10 +43,10 @@ function getCurrentPageName(pathname: string): string {
 
 interface DashboardClientLayoutProps {
   children: React.ReactNode
-  pathname: string
 }
 
-export function DashboardClientLayout({ children, pathname }: DashboardClientLayoutProps) {
+export function DashboardClientLayout({ children }: DashboardClientLayoutProps) {
+  const pathname = usePathname()
   const [queryClient] = useState(() => createDashboardQueryClient())
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const currentPage = getCurrentPageName(pathname ?? '')

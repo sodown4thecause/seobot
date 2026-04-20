@@ -1,6 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { checkSubscription } from './lib/billing/subscription-guard'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -33,21 +32,6 @@ const isPublicRoute = createRouteMatcher([
   '/signup(.*)',
 ])
 
-// Routes that require subscription (in addition to auth)
-const isDashboardRoute = createRouteMatcher([
-  '/dashboard(.*)',
-])
-
-// Routes exempt from subscription checks (even if authenticated)
-const isSubscriptionExemptRoute = createRouteMatcher([
-  '/api/webhooks(.*)',
-  '/billing(.*)',
-  '/prices(.*)',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/login(.*)',
-  '/signup(.*)',
-])
 
 export default clerkMiddleware(async (auth, request) => {
   const url = request.nextUrl
@@ -81,17 +65,6 @@ export default clerkMiddleware(async (auth, request) => {
   // Protect all routes except public ones
   if (!isPublicRoute(request)) {
     await auth.protect()
-  }
-
-  // Subscription check for dashboard routes
-  // Note: Full subscription verification happens in page/API layer for DB access
-  // This middleware layer ensures we redirect early for UX purposes
-  if (userId && isDashboardRoute(request) && !isSubscriptionExemptRoute(request)) {
-    const subscription = await checkSubscription(userId)
-    if (!subscription.hasSubscription) {
-      console.log(`[Middleware] Redirecting user to prices (status: ${subscription.status})`)
-      return NextResponse.redirect(new URL('/prices?requires_subscription=1', request.url))
-    }
   }
 })
 

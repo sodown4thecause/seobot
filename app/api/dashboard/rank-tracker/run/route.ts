@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { getUserId } from '@/lib/auth/clerk'
 import { requireApiSubscription } from '@/lib/billing/subscription-guard'
 import { saveDashboardSnapshot } from '@/lib/dashboard/repository'
 import { runRankTracker } from '@/lib/dashboard/rank-tracker/service'
@@ -25,15 +24,12 @@ export async function POST(request: NextRequest) {
     const subscriptionCheck = await requireApiSubscription()
     if (!subscriptionCheck.success) {
       return NextResponse.json(
-        { error: subscriptionCheck.error?.code, message: subscriptionCheck.error?.message },
+        { error: subscriptionCheck.error?.message || 'Subscription required' },
         { status: subscriptionCheck.error?.status || 403 }
       )
     }
 
     const userId = subscriptionCheck.userId
-    if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
 
     let body: unknown
     try {
