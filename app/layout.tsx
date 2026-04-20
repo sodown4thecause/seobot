@@ -183,6 +183,17 @@ export default function RootLayout({
         >
           <html lang="en" className="dark" suppressHydrationWarning>
             <head>
+              <script async src="https://www.googletagmanager.com/gtag/js?id=G-GRL7VE85GX" />
+              <script
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    window.dataLayer = window.dataLayer || [];
+                    function gtag(){dataLayer.push(arguments);}
+                    gtag('js', new Date());
+                    gtag('config', 'G-GRL7VE85GX');
+                  `,
+                }}
+              />
               <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
@@ -200,6 +211,17 @@ export default function RootLayout({
       ) : (
         <html lang="en" className="dark" suppressHydrationWarning>
           <head>
+            <script async src="https://www.googletagmanager.com/gtag/js?id=G-GRL7VE85GX" />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', 'G-GRL7VE85GX');
+                `,
+              }}
+            />
             <script
               type="application/ld+json"
               dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
