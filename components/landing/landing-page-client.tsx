@@ -105,6 +105,31 @@ export function LandingPageClient() {
         </Link>
       </div>
 
+      {/* Product Demo */}
+      <section className="relative z-10 py-20 px-6 border-b border-white/5">
+        <div className="container mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={itemVariants}
+            className="max-w-4xl mx-auto space-y-6 text-center"
+          >
+            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Product Demo</p>
+            <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight">See It In Action</h2>
+            <div className="relative w-full overflow-hidden border border-white/10 bg-black" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                src="https://www.youtube.com/embed/Wix-qhO3kkk?rel=0&modestbranding=1"
+                title="FlowIntent Product Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full"
+              />
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* What you get - quick wins */}
       <section className="relative z-10 py-16 border-b border-white/5">
         <div className="container mx-auto px-6">
