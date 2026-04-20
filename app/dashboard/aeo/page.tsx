@@ -11,6 +11,7 @@ import { useAgent } from '@/components/providers/agent-provider'
 import { launchWorkflowChat } from '@/lib/workflows/launch-workflow-chat'
 import { useUser } from '@clerk/nextjs'
 import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
+import { AeoInsightsWorkspace } from '@/components/dashboard/aeo-insights-workspace'
 
 const AEO_WORKFLOWS = [
     {
@@ -95,37 +96,13 @@ export default function AEOCommandCenterPage() {
                 </div>
             </motion.div>
 
-            {/* Quick Stats (Placeholder) */}
+            {/* Live AEO Insights */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="grid grid-cols-1 md:grid-cols-4 gap-4"
             >
-                <Card className="bg-zinc-900/50 border-zinc-800">
-                    <CardContent className="p-4">
-                        <p className="text-2xl font-bold text-zinc-100">—</p>
-                        <p className="text-sm text-zinc-400">AI Citations</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-zinc-900/50 border-zinc-800">
-                    <CardContent className="p-4">
-                        <p className="text-2xl font-bold text-zinc-100">—</p>
-                        <p className="text-sm text-zinc-400">Visibility Score</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-zinc-900/50 border-zinc-800">
-                    <CardContent className="p-4">
-                        <p className="text-2xl font-bold text-zinc-100">—</p>
-                        <p className="text-sm text-zinc-400">Citation Gaps</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-zinc-900/50 border-zinc-800">
-                    <CardContent className="p-4">
-                        <p className="text-2xl font-bold text-zinc-100">—</p>
-                        <p className="text-sm text-zinc-400">AEO Content</p>
-                    </CardContent>
-                </Card>
+                <AeoInsightsWorkspace />
             </motion.div>
 
             {/* AEO Workflows */}

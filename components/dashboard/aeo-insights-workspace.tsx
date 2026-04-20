@@ -1,54 +1,79 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { WorkspaceShell, type WorkspaceActionItem, type WorkspaceHistoryItem, type WorkspaceKpiItem, type WorkspaceTabItem } from '@/components/dashboard/analytics/workspace-shell'
 import { AEO_MODULE_ORDER, AeoModuleRegistry } from '@/components/dashboard/aeo/module-registry'
+import { useAeoInsightsWorkspace } from '@/lib/dashboard/hooks/use-aeo-insights-workspace'
 
-const KPI_ITEMS: WorkspaceKpiItem[] = [
-  { id: 'llm-visibility', label: 'LLM Visibility Score', value: '66', detail: 'up 6 points week over week' },
-  { id: 'citation-sov', label: 'Citation Share of Voice', value: '23%', detail: 'across tracked prompt clusters' },
-  { id: 'entity-gap', label: 'Entity Gap Count', value: '14', detail: 'priority entities missing in answers' },
-  { id: 'fix-queue', label: 'AEO Fix Queue', value: '9', detail: 'high-confidence actions ready' },
-]
+const DEFAULT_KEYWORDS = ['seo reporting', 'ai search visibility', 'answer engine optimization']
 
 const ACTION_QUEUE: WorkspaceActionItem[] = [
   { id: 'aeo-a1', title: 'Generate AEO brief: buyer intent cluster', status: 'pending', owner: 'aeo-agent' },
   { id: 'aeo-a2', title: 'Track prompt set: ai seo platform pricing', status: 'in_progress', owner: 'research-ops' },
 ]
 
-const HISTORY: WorkspaceHistoryItem[] = [
-  { id: 'aeo-h1', label: 'Citation diff processed', timestamp: '2026-03-01 11:50 UTC', detail: 'Competitor citation overlap updated' },
-  { id: 'aeo-h2', label: 'Prompt coverage refreshed', timestamp: '2026-03-01 09:32 UTC', detail: '84 prompts analyzed in latest run' },
-]
-
-const TABS: WorkspaceTabItem[] = [
-  {
-    id: 'visibility',
-    label: 'Visibility',
-    content: <AeoModuleRegistry moduleIds={AEO_MODULE_ORDER.slice(0, 2)} />,
-  },
-  {
-    id: 'coverage-gaps',
-    label: 'Coverage and Gaps',
-    content: <AeoModuleRegistry moduleIds={AEO_MODULE_ORDER.slice(2, 6)} />,
-  },
-  {
-    id: 'competitive-diff',
-    label: 'Competitive Diff',
-    content: <AeoModuleRegistry moduleIds={AEO_MODULE_ORDER.slice(6)} />,
-  },
-]
-
 export function AeoInsightsWorkspace() {
+  const [domain] = useState<string | undefined>(undefined)
+
+  const { kpis, modules, isLoading, isFetching, isRefreshing, refresh } = useAeoInsightsWorkspace(
+    { keywords: DEFAULT_KEYWORDS, domain }
+  )
+
+  const moduleStatuses = useMemo(
+    () => Object.fromEntries(modules.map((m) => [m.id, m.status])) as Record<string, 'ready' | 'pending'>,
+    [modules]
+  )
+
+  const liveKpis: WorkspaceKpiItem[] = useMemo(
+    () =>
+      kpis.map((kpi) => ({
+        id: kpi.id,
+        label: kpi.label,
+        value: isLoading ? '--' : kpi.value,
+        detail: kpi.detail,
+      })),
+    [kpis, isLoading]
+  )
+
+  const history: WorkspaceHistoryItem[] = [
+    { id: 'aeo-h1', label: 'Snapshot loaded', timestamp: new Date().toUTCString(), detail: 'Live data from DataForSEO AI analysis' },
+  ]
+
+  const tabs: WorkspaceTabItem[] = useMemo(
+    () => [
+      {
+        id: 'visibility',
+        label: 'Visibility',
+        content: <AeoModuleRegistry moduleIds={AEO_MODULE_ORDER.slice(0, 2)} moduleStatuses={moduleStatuses} />,
+      },
+      {
+        id: 'coverage-gaps',
+        label: 'Coverage and Gaps',
+        content: <AeoModuleRegistry moduleIds={AEO_MODULE_ORDER.slice(2, 6)} moduleStatuses={moduleStatuses} />,
+      },
+      {
+        id: 'competitive-diff',
+        label: 'Competitive Diff',
+        content: <AeoModuleRegistry moduleIds={AEO_MODULE_ORDER.slice(6)} moduleStatuses={moduleStatuses} />,
+      },
+    ],
+    [moduleStatuses]
+  )
+
   return (
     <WorkspaceShell
       workspace="aeo-insights"
       title="AEO Insights"
       description="Monitor LLM visibility, citation share, and answer quality gaps with action-ready recommendations."
-      kpis={KPI_ITEMS}
-      tabs={TABS}
+      kpis={liveKpis}
+      tabs={tabs}
       defaultTab="visibility"
       actionQueue={ACTION_QUEUE}
-      history={HISTORY}
+      history={history}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      isRefreshing={isRefreshing}
+      onRefresh={() => refresh({ promptCluster: DEFAULT_KEYWORDS.join(','), domain })}
     />
   )
 }

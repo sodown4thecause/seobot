@@ -4,6 +4,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
+  BarChart2,
   ChevronLeft,
   ChevronRight,
   MessageSquarePlus,
@@ -13,6 +14,7 @@ import {
   Clock,
   Trash2,
   Search,
+  Target,
   TrendingUp,
   Users,
   KeyRound,
@@ -21,6 +23,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
+import { UserButton } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
@@ -44,6 +47,8 @@ const DASHBOARD_LINKS = [
   { name: 'Backlink Profile', href: '/dashboard/backlink-profile', icon: LinkIcon },
   { name: 'Content Performance', href: '/dashboard/content-performance', icon: FileText },
   { name: 'AEO Insights', href: '/dashboard/aeo', icon: Sparkles },
+  { name: 'Campaigns', href: '/dashboard/campaigns', icon: Target },
+  { name: 'Opportunities', href: '/dashboard/opportunities', icon: BarChart2 },
 ] as const
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
@@ -291,7 +296,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   onClick={() => setShowAllConversations((value) => !value)}
                   className="w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-800/70 hover:text-zinc-200"
                 >
-                  {showAllConversations ? 'Less' : 'More'}
+                  {showAllConversations
+                    ? 'Show less'
+                    : `Show ${state.conversations.length - DEFAULT_VISIBLE_RECENT_CHATS} more`}
                 </button>
               )}
             </nav>
@@ -299,6 +306,29 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
       </ScrollArea>
 
+      {/* ── User footer ── */}
+      <div className={cn(
+        'shrink-0 border-t border-zinc-800 px-2 py-3',
+        collapsed ? 'flex justify-center' : 'flex items-center gap-2'
+      )}>
+        <UserButton
+          appearance={{
+            elements: {
+              avatarBox: 'h-7 w-7',
+            },
+          }}
+        />
+        {!collapsed && (
+          <div className="flex-1 min-w-0">
+            <Link
+              href="/prices"
+              className="block text-[10px] font-semibold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors truncate"
+            >
+              Upgrade to Pro →
+            </Link>
+          </div>
+        )}
+      </div>
     </aside>
   )
 }
