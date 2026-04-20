@@ -30,9 +30,11 @@ async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
     ...init,
   })
 
-  const payload = (await response.json().catch(() => null)) as { error?: unknown } | null
+  const payload = (await response.json().catch(() => null)) as { error?: unknown; message?: unknown } | null
   if (!response.ok) {
-    throw new Error(toErrorMessage(payload?.error, `Request failed with status ${response.status}`))
+    // Prefer message (human-readable) over error (machine code) for user display
+    const errorText = payload?.message ?? payload?.error
+    throw new Error(toErrorMessage(errorText, `Request failed with status ${response.status}`))
   }
 
   return payload as T
