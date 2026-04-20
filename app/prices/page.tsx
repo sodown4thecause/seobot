@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
-import { Check } from 'lucide-react'
+import { Check, Lock } from 'lucide-react'
 import { EmailLink } from '@/components/email-link'
 import {
   FLOWINTENT_PRO_PRICE,
@@ -19,8 +19,14 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ['AI SEO pricing', 'AEO platform pricing', 'FlowIntent pricing', 'SEO tool pricing'],
 })
 
-export default async function PricesPage() {
+interface PricesPageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function PricesPage({ searchParams }: PricesPageProps) {
   const { userId } = await auth()
+  const params = await searchParams
+  const requiresSubscription = params.requires_subscription === '1'
   const primaryCtaHref = userId ? '/billing/checkout' : '/sign-up'
   const primaryCtaLabel = userId ? 'Continue to checkout' : 'Start 30-day free trial'
 
@@ -95,6 +101,21 @@ export default async function PricesPage() {
       <Navbar />
 
       <main className="container mx-auto px-6 pt-32 pb-20">
+        {requiresSubscription && (
+          <div className="max-w-4xl mx-auto mb-8">
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 flex items-start gap-4">
+              <Lock className="h-6 w-6 text-yellow-500 shrink-0 mt-0.5" />
+              <div>
+                <h2 className="text-lg font-semibold text-yellow-100 mb-1">
+                  Subscription Required
+                </h2>
+                <p className="text-yellow-200/80">
+                  The dashboard requires an active subscription. Start your {FLOWINTENT_TRIAL_LABEL.toLowerCase()} to access all features.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
             Simple Pricing for AI Visibility

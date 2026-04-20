@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getUserId } from '@/lib/auth/clerk'
+import { requireApiSubscription } from '@/lib/billing/subscription-guard'
 import { runDashboardAction } from '@/lib/dashboard/actions/orchestrator'
 import { dashboardActionPayloadSchema } from '@/lib/dashboard/actions/schemas'
 import type { DashboardActionName } from '@/lib/dashboard/actions/tools'
@@ -13,14 +13,21 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ action: string }> }
 ) {
-  const userId = await getUserId()
-  if (!userId) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  // Check subscription before processing
+  const subscriptionCheck = await requireApiSubscription()
+  if (!subscriptionCheck.success) {
+    return NextResponse.json(
+      {
+        error: subscriptionCheck.error?.code || 'subscription_required',
+        message: subscriptionCheck.error?.message || 'Active subscription required to access this feature',
+      },
+      { status: subscriptionCheck.error?.status || 403 }
+    )
   }
 
   const { action } = await context.params
   if (!allowedActions.includes(action as DashboardActionName)) {
-    return NextResponse.json({ error: 'Unsupported action' }, { status: 404 })
+    return NextResponse.json({ error: 'unsupported_action', message: 'Unsupported action' }, { status: 404 })
   }
 
   let body: unknown

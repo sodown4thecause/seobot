@@ -32,6 +32,7 @@ const isPublicRoute = createRouteMatcher([
   '/signup(.*)',
 ])
 
+
 export default clerkMiddleware(async (auth, request) => {
   const url = request.nextUrl
 
