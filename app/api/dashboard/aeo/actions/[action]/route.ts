@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { getUserId } from '@/lib/auth/clerk'
+import { requireApiSubscription } from '@/lib/billing/subscription-guard'
 import { runDashboardAction } from '@/lib/dashboard/actions/orchestrator'
 import { dashboardActionPayloadSchema } from '@/lib/dashboard/actions/schemas'
 import type { DashboardActionName } from '@/lib/dashboard/actions/tools'
@@ -13,7 +14,16 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ action: string }> }
 ) {
-  const userId = await getUserId()
+  // Check subscription before processing
+  const subscriptionCheck = await requireApiSubscription()
+  if (!subscriptionCheck.success) {
+    return NextResponse.json(
+      { error: subscriptionCheck.error?.code, message: subscriptionCheck.error?.message },
+      { status: subscriptionCheck.error?.status || 403 }
+    )
+  }
+
+  const userId = subscriptionCheck.userId
   if (!userId) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }

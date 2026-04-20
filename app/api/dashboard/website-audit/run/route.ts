@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { getUserId } from '@/lib/auth/clerk'
+import { requireApiSubscription } from '@/lib/billing/subscription-guard'
 import { saveDashboardSnapshot } from '@/lib/dashboard/repository'
 import { runWebsiteAudit } from '@/lib/dashboard/website-audit/service'
 
@@ -16,7 +17,16 @@ const runWebsiteAuditSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserId()
+    // Check subscription before processing
+    const subscriptionCheck = await requireApiSubscription()
+    if (!subscriptionCheck.success) {
+      return NextResponse.json(
+        { error: subscriptionCheck.error?.code, message: subscriptionCheck.error?.message },
+        { status: subscriptionCheck.error?.status || 403 }
+      )
+    }
+
+    const userId = subscriptionCheck.userId
     if (!userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
