@@ -20,7 +20,10 @@ export async function POST(request: NextRequest) {
     const subscriptionCheck = await requireApiSubscription()
     if (!subscriptionCheck.success) {
       return NextResponse.json(
-        { error: subscriptionCheck.error?.message || 'Subscription required' },
+        {
+          error: subscriptionCheck.error?.code || 'subscription_required',
+          message: subscriptionCheck.error?.message || 'Active subscription required to access this feature',
+        },
         { status: subscriptionCheck.error?.status || 403 }
       )
     }
