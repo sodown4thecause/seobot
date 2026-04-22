@@ -1,6 +1,12 @@
+import type { Viewport } from 'next'
 import { SignIn } from '@clerk/nextjs'
 import Link from 'next/link'
 import { SymbolBackground } from '@/components/landing/symbol-background'
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
 
 export default function LoginPage({
   params,

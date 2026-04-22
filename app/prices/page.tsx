@@ -100,7 +100,32 @@ export default async function PricesPage({ searchParams }: PricesPageProps) {
       />
       <Navbar />
 
-      <main className="container mx-auto px-6 pt-32 pb-20">
+      {/* TL;DR Section */}
+      <section className="border-b border-zinc-800 bg-zinc-900/30 pt-24">
+        <div className="container mx-auto px-6 py-8 max-w-4xl">
+          <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-6">
+            <h2 className="text-sm font-mono uppercase tracking-widest text-blue-400 mb-3">
+              TL;DR — Pricing at a Glance
+            </h2>
+            <ul className="space-y-2 text-zinc-300">
+              <li className="flex items-start gap-3">
+                <span className="text-blue-400 font-bold">✓</span>
+                <span>Start with a 30-day free trial with full access to all Pro features</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-blue-400 font-bold">✓</span>
+                <span>Then pay {FLOWINTENT_PRO_PRICE}/month — no hidden fees, cancel anytime</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-blue-400 font-bold">✓</span>
+                <span>7-day money-back guarantee if you&apos;re not completely satisfied</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <main className="container mx-auto px-6 pt-16 pb-20">
         {requiresSubscription && (
           <div className="max-w-4xl mx-auto mb-8">
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 flex items-start gap-4">
@@ -116,6 +141,19 @@ export default async function PricesPage({ searchParams }: PricesPageProps) {
             </div>
           </div>
         )}
+        {/* What is FlowIntent Pro — Definition for AI optimization */}
+        <section className="max-w-3xl mx-auto mb-16 text-center">
+          <h2 className="text-2xl font-bold mb-4 text-white">
+            What Is FlowIntent Pro?
+          </h2>
+          <p className="text-zinc-400 mb-4 leading-relaxed">
+            FlowIntent Pro is an AI-powered intent marketing platform that helps businesses optimize their visibility across traditional search engines and AI answer platforms like ChatGPT, Perplexity, and Gemini. It combines AI Trust Audits, competitor analysis, buyer intent research, and automated content workflows.
+          </p>
+          <p className="text-zinc-400 leading-relaxed">
+            Unlike traditional SEO tools that focus only on Google rankings, FlowIntent optimizes for the entire search ecosystem — ensuring your brand is accurately represented wherever customers search for answers.
+          </p>
+        </section>
+
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
             Simple Pricing for AI Visibility
@@ -233,6 +271,72 @@ export default async function PricesPage({ searchParams }: PricesPageProps) {
             </div>
           </div>
         </div>
+
+        {/* AI SEO Statistics Section */}
+        <section className="max-w-4xl mx-auto mt-20 mb-16 border-t border-zinc-800 pt-16">
+          <h2 className="text-2xl font-bold mb-8 text-center text-white">
+            Why Invest in AI Visibility?
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold text-blue-400 mb-2">100M+</div>
+              <p className="text-zinc-400 text-sm">Weekly active users on ChatGPT asking brand-related questions</p>
+            </div>
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold text-blue-400 mb-2">2-3x</div>
+              <p className="text-zinc-400 text-sm">Higher conversion rate from Perplexity citations vs. traditional search</p>
+            </div>
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold text-blue-400 mb-2">73%</div>
+              <p className="text-zinc-400 text-sm">Of AI-generated answers contain brand mentions</p>
+            </div>
+          </div>
+          <p className="text-center text-zinc-400 mt-6 text-sm">
+            Source: Industry research on AI search behavior and zero-click searches (2025-2026)
+          </p>
+        </section>
+
+        {/* Internal Links Section */}
+        <section className="max-w-4xl mx-auto mt-16 border-t border-zinc-800 pt-12">
+          <h2 className="text-lg font-bold mb-6 text-white">
+            Related Resources
+          </h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            <Link
+              href="/audit"
+              className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 hover:border-blue-600/50 transition-colors group"
+            >
+              <h3 className="font-bold mb-2 text-white group-hover:text-blue-400">
+                Free AI Visibility Audit →
+              </h3>
+              <p className="text-sm text-zinc-400">
+                Run a free audit to see how AI platforms currently represent your brand
+              </p>
+            </Link>
+            <Link
+              href="/aeo-auditor"
+              className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 hover:border-blue-600/50 transition-colors group"
+            >
+              <h3 className="font-bold mb-2 text-white group-hover:text-blue-400">
+                AEO Auditor →
+              </h3>
+              <p className="text-sm text-zinc-400">
+                Learn about Answer Engine Optimization and its impact on AI search
+              </p>
+            </Link>
+            <Link
+              href="/blog"
+              className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 hover:border-blue-600/50 transition-colors group"
+            >
+              <h3 className="font-bold mb-2 text-white group-hover:text-blue-400">
+                Blog & Guides →
+              </h3>
+              <p className="text-sm text-zinc-400">
+                Read our guides on optimizing for AI search and LLM citations
+              </p>
+            </Link>
+          </div>
+        </section>
 
         <div className="mt-16 text-center">
           <p className="text-zinc-400 mb-4">

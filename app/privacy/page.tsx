@@ -4,7 +4,7 @@ import { EmailLink } from '@/components/email-link'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 
 export const metadata: Metadata = buildPageMetadata({
-  title: 'FlowIntent Privacy Policy',
+  title: 'FlowIntent Privacy Policy | Data Protection & Security Commitment',
   description: 'Read the FlowIntent privacy policy and how we collect, use, and protect customer data.',
   path: '/privacy',
 })
