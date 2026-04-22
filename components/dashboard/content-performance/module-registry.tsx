@@ -50,9 +50,10 @@ const MODULE_COPY: Record<(typeof CONTENT_PERFORMANCE_MODULE_ORDER)[number], { t
 
 interface ContentPerformanceModuleRegistryProps {
   moduleIds: readonly string[]
+  moduleStatuses?: Record<string, 'ready' | 'pending'>
 }
 
-export function ContentPerformanceModuleRegistry({ moduleIds }: ContentPerformanceModuleRegistryProps) {
+export function ContentPerformanceModuleRegistry({ moduleIds, moduleStatuses }: ContentPerformanceModuleRegistryProps) {
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
       {moduleIds
@@ -62,6 +63,7 @@ export function ContentPerformanceModuleRegistry({ moduleIds }: ContentPerforman
             key={moduleId}
             title={MODULE_COPY[moduleId].title}
             description={MODULE_COPY[moduleId].description}
+            status={moduleStatuses?.[moduleId]}
           />
         ))}
     </div>

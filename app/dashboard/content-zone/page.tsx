@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { motion } from 'framer-motion'
 import { ArrowRight, AlertCircle, ExternalLink } from 'lucide-react'
@@ -26,6 +27,8 @@ interface Keyword {
 
 function ContentZoneInner() {
   const { user, isLoaded } = useUser()
+  const router = useRouter()
+  const [onboardingUrl, setOnboardingUrl] = useState('')
   const {
     businessContext,
     brandVoice,
@@ -249,14 +252,15 @@ function ContentZoneInner() {
               </p>
               <div className="flex gap-3">
                 <Input
+                  value={onboardingUrl}
+                  onChange={(e) => setOnboardingUrl(e.target.value)}
                   placeholder="https://your-website.com"
                   className="flex-1 bg-zinc-950 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
                 />
                 <Button
                   className="bg-zinc-800 hover:bg-zinc-700"
                   onClick={() => {
-                    // Navigate to onboarding flow
-                    window.location.href = '/dashboard?startOnboarding=true'
+                    router.push('/dashboard?startOnboarding=true')
                   }}
                 >
                   Analyze
@@ -391,7 +395,7 @@ function ContentZoneInner() {
               <Button
                 onClick={handleGenerate}
                 disabled={isGenerating || !topic.trim() || !primaryKeyword.trim()}
-                className="w-full h-14 text-lg font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
+                className="w-full h-14 text-lg font-medium bg-emerald-600 hover:bg-emerald-500 text-white"
               >
                 {isGenerating ? (
                   <>
