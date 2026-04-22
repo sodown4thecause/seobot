@@ -44,6 +44,7 @@ function ContentZoneInner() {
   const [tone, setTone] = useState('')
   const [wordCount, setWordCount] = useState(1200)
   const [audience, setAudience] = useState('')
+  const [onboardingUrl, setOnboardingUrl] = useState('')
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
@@ -54,6 +55,18 @@ function ContentZoneInner() {
   const [error, setError] = useState<string | null>(null)
 
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // URL validation to prevent open redirect vulnerabilities
+  const isValidUrl = (url: string): boolean => {
+    if (!url) return false
+    try {
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`)
+      // Ensure the URL has a valid protocol and hostname
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }
 
   // Update tone when content type changes
   useEffect(() => {
@@ -250,13 +263,24 @@ function ContentZoneInner() {
               <div className="flex gap-3">
                 <Input
                   placeholder="https://your-website.com"
+                  value={onboardingUrl}
+                  onChange={(e) => setOnboardingUrl(e.target.value)}
                   className="flex-1 bg-zinc-950 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
                 />
                 <Button
                   className="bg-zinc-800 hover:bg-zinc-700"
                   onClick={() => {
-                    // Navigate to onboarding flow
-                    window.location.href = '/dashboard?startOnboarding=true'
+                    // Validate URL before navigation
+                    if (onboardingUrl.trim() && isValidUrl(onboardingUrl)) {
+                      // Navigate to onboarding flow with URL as query parameter
+                      const params = new URLSearchParams({ startOnboarding: 'true', url: onboardingUrl.trim() })
+                      window.location.href = `/dashboard?${params.toString()}`
+                    } else if (onboardingUrl.trim()) {
+                      setError('Please enter a valid URL')
+                    } else {
+                      // Navigate without URL if empty
+                      window.location.href = '/dashboard?startOnboarding=true'
+                    }
                   }}
                 >
                   Analyze
