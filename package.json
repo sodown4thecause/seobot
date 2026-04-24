@@ -49,6 +49,7 @@
     "@directus/sdk": "^19.0.0",
     "@google/genai": "^1.31.0",
     "@google/generative-ai": "^0.24.1",
+    "@kubiks/otel-drizzle": "^2.1.0",
     "@langfuse/otel": "^4.4.9",
     "@langfuse/tracing": "^4.4.9",
     "@modelcontextprotocol/sdk": "^1.24.3",
