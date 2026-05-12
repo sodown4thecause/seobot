@@ -79,8 +79,8 @@ When complete: Move to Step 5`
     case 5:
       return `
 Step 5: CMS Integration
-- Ask what CMS platform they use (WordPress, Webflow, Shopify, HubSpot, Custom CMS)
-- Guide them through connection process
+- Confirm their Webflow CMS setup
+- Guide them through the Webflow connection process
 - Allow skipping if they don't want to connect now
 When complete: Move to Step 6`
     
@@ -144,4 +144,3 @@ export const STEP_5_MESSAGE = `Last step! Let's connect your website so I can pu
 What platform is your website built on?`
 
 export const STEP_6_MESSAGE = `🎉 You're all set! Here's what we've accomplished...`
-

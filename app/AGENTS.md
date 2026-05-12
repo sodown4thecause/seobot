@@ -19,7 +19,7 @@ app/
 │   └── analytics/
 ├── admin/                 # Admin dashboard (protected)
 ├── (auth pages)           # sign-in/, sign-up/, user-profile/
-└── (marketing)            # blog/, guides/, resources/, case-studies/ (Directus-powered)
+└── (marketing)            # blog/, guides/, resources/, case-studies/ (Webflow-powered)
 ```
 
 ## API ROUTES

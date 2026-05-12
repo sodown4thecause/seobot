@@ -17,13 +17,10 @@
  *   await db.insert(businessProfiles).values(...)
  */
 
-import { neon, neonConfig } from '@neondatabase/serverless'
+import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from './schema'
 import { sql } from 'drizzle-orm'
-
-// Configure Neon for serverless environments
-neonConfig.fetchConnectionCache = true
 
 // ---------------------------------------------------------------------------
 // Admin client (neondb_owner) - bypasses RLS, for migrations/webhooks/admin
