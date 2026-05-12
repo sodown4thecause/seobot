@@ -11,7 +11,8 @@ import { generateEmbedding } from '@/lib/ai/embeddings'
 import { db } from '@/lib/db'
 import { businessProfiles } from '@/lib/db/schema'
 import { isAbortError } from '@/lib/errors/types'
-import { searchAgentDocuments } from '@/lib/db/vector-search'
+import { retrieveRelevantChunks } from '@/lib/db/vector-search'
+import { DEFAULT_CHAT_MODE, CHAT_MODE_LABELS, type ChatMode } from '@/lib/chat/modes'
 
 interface SeoAeoContext {
   systemPromptAddendum: string
@@ -20,6 +21,7 @@ interface SeoAeoContext {
 
 interface BuildSeoAeoContextOptions {
   signal?: AbortSignal
+  mode?: ChatMode
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -62,7 +64,7 @@ export async function buildSeoAeoContext(
   userId?: string,
   options: BuildSeoAeoContextOptions = {},
 ): Promise<SeoAeoContext> {
-  const { signal } = options
+  const { signal, mode = DEFAULT_CHAT_MODE } = options
 
   try {
     throwIfAborted(signal)
@@ -87,12 +89,13 @@ export async function buildSeoAeoContext(
 
     throwIfAborted(signal)
 
-    let ragDocs: Awaited<ReturnType<typeof searchAgentDocuments>> = []
+    let ragDocs: Awaited<ReturnType<typeof retrieveRelevantChunks>> = []
     if (queryEmbedding) {
       ragDocs = await raceWithAbort(
-        searchAgentDocuments(queryEmbedding, 'seo_aeo', {
+        retrieveRelevantChunks(queryEmbedding, {
+          mode,
           threshold: 0.3,
-          limit: 3,
+          limit: mode === 'geo' ? 6 : 3,
         }),
         signal,
       ).catch((error) => {
@@ -104,7 +107,7 @@ export async function buildSeoAeoContext(
 
     throwIfAborted(signal)
 
-    console.log(`[SEO-AEO Context] RAG docs retrieved: ${ragDocs.length}`)
+    console.log(`[SEO-AEO Context] ${mode} RAG docs retrieved: ${ragDocs.length}`)
 
     const sections: string[] = []
 
@@ -135,7 +138,7 @@ export async function buildSeoAeoContext(
         .map((doc, index) => `### Source ${index + 1}: ${doc.title}\n${doc.content}`)
         .join('\n\n')
 
-      sections.push(`## Industry Research\nUse this data to give specific, cited answers:\n\n${docSections}`)
+      sections.push(`## ${CHAT_MODE_LABELS[mode]} Retrieved Context\nUse only this ${CHAT_MODE_LABELS[mode]} context by default. Do not blend SEO, GEO/AEO, or content RAG unless the user explicitly asks for cross-mode analysis.\n\n${docSections}`)
     }
 
     if (sections.length === 0) {

@@ -12,8 +12,9 @@ import type {
 const BASE_URL = 'https://api.dataforseo.com/v3'
 
 function basicAuthHeader() {
+  const username = serverEnv.DATAFORSEO_USERNAME || serverEnv.DATAFORSEO_LOGIN
   const auth = Buffer.from(
-    `${serverEnv.DATAFORSEO_LOGIN}:${serverEnv.DATAFORSEO_PASSWORD}`
+    `${username}:${serverEnv.DATAFORSEO_PASSWORD}`
   ).toString('base64')
   return `Basic ${auth}`
 }

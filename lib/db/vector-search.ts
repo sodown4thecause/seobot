@@ -14,6 +14,7 @@ import {
     type WritingFramework,
 } from './schema'
 import { sql, desc, eq } from 'drizzle-orm'
+import type { ChatMode } from '@/lib/chat/modes'
 
 // ============================================================================
 // TYPES
@@ -39,8 +40,13 @@ export interface FrameworkSearchResult {
 export interface AgentDocumentSearchResult {
     id: string
     agentType: string
+    mode: ChatMode
     title: string
     content: string
+    sourceType: string | null
+    url: string | null
+    engine: string | null
+    topic: string | null
     metadata: unknown
     similarity: number
 }
@@ -82,8 +88,13 @@ interface FrameworkRawRow {
 interface AgentDocumentRawRow {
     id: string
     agent_type: string
+    mode: ChatMode
     title: string
     content: string
+    source_type: string | null
+    url: string | null
+    engine: string | null
+    topic: string | null
     metadata: unknown
     similarity: string | number
 }
@@ -202,8 +213,13 @@ export async function searchAgentDocuments(
             SELECT 
                 id,
                 agent_type,
+                mode,
                 title,
                 content,
+                source_type,
+                url,
+                engine,
+                topic,
                 metadata,
                 1 - (embedding <=> ${embeddingStr}::vector) as similarity
             FROM agent_documents
@@ -217,13 +233,82 @@ export async function searchAgentDocuments(
         return (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
             id: row.id,
             agentType: row.agent_type,
+            mode: row.mode,
             title: row.title,
             content: row.content,
+            sourceType: row.source_type,
+            url: row.url,
+            engine: row.engine,
+            topic: row.topic,
             metadata: row.metadata,
             similarity: parseFloat(String(row.similarity)),
         }))
     } catch (error) {
         console.error('[Vector Search] Agent documents search failed:', error)
+        return []
+    }
+}
+
+export interface RetrieveRelevantChunksOptions extends VectorSearchOptions {
+    mode: ChatMode
+    topic?: string
+    sourceType?: string
+}
+
+export async function retrieveRelevantChunks(
+    queryEmbedding: number[],
+    options: RetrieveRelevantChunksOptions
+): Promise<AgentDocumentSearchResult[]> {
+    const { threshold = 0.3, limit = 5, mode, topic, sourceType } = options
+
+    if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
+        console.error('[Vector Search] Invalid embedding: must be non-empty array')
+        return []
+    }
+
+    try {
+        const embeddingStr = `[${queryEmbedding.join(',')}]`
+        const topicFilter = topic ? sql`AND topic = ${topic}` : sql``
+        const sourceTypeFilter = sourceType ? sql`AND source_type = ${sourceType}` : sql``
+
+        const results = await db.execute(sql`
+            SELECT
+                id,
+                agent_type,
+                mode,
+                title,
+                content,
+                source_type,
+                url,
+                engine,
+                topic,
+                metadata,
+                1 - (embedding <=> ${embeddingStr}::vector) as similarity
+            FROM agent_documents
+            WHERE mode = ${mode}
+              AND embedding IS NOT NULL
+              AND 1 - (embedding <=> ${embeddingStr}::vector) > ${threshold}
+              ${topicFilter}
+              ${sourceTypeFilter}
+            ORDER BY embedding <=> ${embeddingStr}::vector
+            LIMIT ${limit}
+        `)
+
+        return (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
+            id: row.id,
+            agentType: row.agent_type,
+            mode: row.mode,
+            title: row.title,
+            content: row.content,
+            sourceType: row.source_type,
+            url: row.url,
+            engine: row.engine,
+            topic: row.topic,
+            metadata: row.metadata,
+            similarity: parseFloat(String(row.similarity)),
+        }))
+    } catch (error) {
+        console.error('[Vector Search] Mode-aware RAG search failed:', error)
         return []
     }
 }
@@ -441,9 +526,17 @@ export async function insertFrameworkWithEmbedding(
 export async function insertAgentDocumentWithEmbedding(
     data: {
         agentType: string
+        mode?: ChatMode
         title: string
         content: string
         sourceType?: string
+        url?: string
+        engine?: string
+        query?: string
+        topic?: string
+        brand?: string
+        competitor?: string
+        capturedAt?: Date
         metadata?: unknown
         embedding: number[]
     }
@@ -453,12 +546,35 @@ export async function insertAgentDocumentWithEmbedding(
     const embeddingStr = `[${validatedEmbedding.join(',')}]`
 
     const result = await db.execute(sql`
-        INSERT INTO agent_documents (agent_type, title, content, source_type, metadata, embedding)
+        INSERT INTO agent_documents (
+            agent_type,
+            mode,
+            title,
+            content,
+            source_type,
+            url,
+            engine,
+            query,
+            topic,
+            brand,
+            competitor,
+            captured_at,
+            metadata,
+            embedding
+        )
         VALUES (
             ${data.agentType},
+            ${data.mode || 'seo'},
             ${data.title},
             ${data.content},
             ${data.sourceType || DEFAULT_SOURCE_TYPE},
+            ${data.url || null},
+            ${data.engine || null},
+            ${data.query || null},
+            ${data.topic || null},
+            ${data.brand || null},
+            ${data.competitor || null},
+            ${data.capturedAt || null},
             ${JSON.stringify(data.metadata) || '{}'}::jsonb,
             ${embeddingStr}::vector
         )

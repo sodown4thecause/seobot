@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/weekly-seo-research",
+      "schedule": "0 21 * * 0"
+    },
+    {
+      "path": "/api/cron/weekly-geo-research",
+      "schedule": "0 21 * * 1"
+    }
+  ]
+}
