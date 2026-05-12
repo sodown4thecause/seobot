@@ -1,5 +1,5 @@
 import { generateText } from 'ai'
-import { llmMentionsSearch, llmResponsesLive } from '@/lib/api/dataforseo-service'
+import { llmResponsesLive } from '@/lib/api/dataforseo-service'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import { extractDomains, extractUrls } from './utils'
 import type { GeoEngine, GeoEngineAdapter, GeoEngineAdapterInput, GeoEngineResult } from './types'
@@ -13,6 +13,19 @@ function notConfigured(engine: GeoEngine, input: GeoEngineAdapterInput, reason: 
     citedDomains: [],
     capturedAt: new Date().toISOString(),
     status: 'not_configured',
+    error: reason,
+  }
+}
+
+function failed(engine: GeoEngine, input: GeoEngineAdapterInput, reason: string): GeoEngineResult {
+  return {
+    engine,
+    prompt: input.prompt,
+    responseText: '',
+    citedUrls: [],
+    citedDomains: [],
+    capturedAt: new Date().toISOString(),
+    status: 'error',
     error: reason,
   }
 }
@@ -46,18 +59,11 @@ class DataForSeoChatGptAdapter implements GeoEngineAdapter {
 
 class DataForSeoGoogleAiOverviewAdapter implements GeoEngineAdapter {
   async runPrompt(input: GeoEngineAdapterInput): Promise<GeoEngineResult> {
-    const result = await llmMentionsSearch({
-      brandName: input.brand,
-      platform: 'google',
-      limit: 20,
-    })
-
-    if (!result.success) {
-      return notConfigured('google_ai_overview', input, result.error?.message || 'DataForSEO Google AI mentions unavailable')
-    }
-
-    const responseText = extractResponseText(result.data) || JSON.stringify(result.data)
-    return completed('google_ai_overview', input, responseText, result.data)
+    return notConfigured(
+      'google_ai_overview',
+      input,
+      'Google AI Overview prompt execution is not configured. DataForSEO mention search is not used because it does not run the provided prompt.',
+    )
   }
 }
 
@@ -86,7 +92,7 @@ Answer as the target answer engine would. Include sources only if the model/prov
 
       return completed(this.engine, input, result.text, result)
     } catch (error) {
-      return notConfigured(this.engine, input, error instanceof Error ? error.message : 'Gateway model unavailable')
+      return failed(this.engine, input, error instanceof Error ? error.message : 'Gateway model request failed')
     }
   }
 }
@@ -94,10 +100,18 @@ Answer as the target answer engine would. Include sources only if the model/prov
 function extractResponseText(data: unknown): string {
   if (!data || typeof data !== 'object') return ''
   const text = JSON.stringify(data)
-  const answerMatches = [...text.matchAll(/"answer"\s*:\s*"([^"]+)"/g)]
-  if (answerMatches[0]?.[1]) return answerMatches[0][1]
-  const responseMatches = [...text.matchAll(/"response"\s*:\s*"([^"]+)"/g)]
-  return responseMatches[0]?.[1] || ''
+  const answerMatches = [...text.matchAll(/"answer"\s*:\s*"((?:[^"\\]|\\.)*)"/g)]
+  if (answerMatches[0]?.[1]) return parseJsonStringLiteral(answerMatches[0][1])
+  const responseMatches = [...text.matchAll(/"response"\s*:\s*"((?:[^"\\]|\\.)*)"/g)]
+  return responseMatches[0]?.[1] ? parseJsonStringLiteral(responseMatches[0][1]) : ''
+}
+
+function parseJsonStringLiteral(value: string): string {
+  try {
+    return JSON.parse(`"${value}"`) as string
+  } catch {
+    return value
+  }
 }
 
 export function getGeoEngineAdapter(engine: GeoEngine): GeoEngineAdapter {
