@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as IndexNowRequestBody
-  const urls = normalizeIndexNowUrls(body.urls ?? [])
+  const urls = normalizeIndexNowUrls(Array.isArray(body.urls) ? body.urls : [])
 
   if (urls.length === 0) {
     return NextResponse.json(
