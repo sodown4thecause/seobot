@@ -37,5 +37,5 @@ export function extractUrls(value: unknown): string[] {
 export function countMentions(text: string, term: string): number {
   if (!term.trim()) return 0
   const escaped = term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return (text.match(new RegExp(`\\b${escaped}\\b`, 'gi')) || []).length
+  return (text.match(new RegExp(`(?<!\\p{L})${escaped}(?!\\p{L})`, 'giu')) || []).length
 }

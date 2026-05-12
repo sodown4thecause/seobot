@@ -68,5 +68,6 @@ Run an authenticated GEO prompt manually:
 ```bash
 curl -X POST http://localhost:3000/api/geo/runs \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $SESSION_TOKEN" \
   -d '{"prompt":"Which agencies are best for AI visibility?","competitors":["Competitor A"],"engines":["chatgpt","perplexity"]}'
 ```

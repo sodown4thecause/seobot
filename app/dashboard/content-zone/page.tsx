@@ -24,6 +24,40 @@ interface Keyword {
   difficulty?: number
 }
 
+interface ContentQualityScores {
+  dataforseo: number
+  eeat: number
+  depth: number
+  factual: number
+  frase: number
+  aeo?: number
+  overall: number
+}
+
+interface ContentMetadata {
+  researchSummary?: string
+  citations?: Array<{ url: string; title?: string }>
+  metaTitle?: string
+  metaDescription?: string
+  slug?: string
+  directAnswer?: string
+}
+
+interface ContentGenerationResult {
+  content: string
+  qualityScores: ContentQualityScores
+  metadata: ContentMetadata
+}
+
+const EMPTY_QUALITY_SCORES: ContentQualityScores = {
+  dataforseo: 0,
+  eeat: 0,
+  depth: 0,
+  factual: 0,
+  frase: 0,
+  overall: 0,
+}
+
 function ContentZoneInner() {
   const { user, isLoaded } = useUser()
   const {
@@ -50,8 +84,8 @@ function ContentZoneInner() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState<ProgressEvent[]>([])
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
-  const [qualityScores, setQualityScores] = useState<any>(null)
-  const [metadata, setMetadata] = useState<any>(null)
+  const [qualityScores, setQualityScores] = useState<ContentQualityScores | null>(null)
+  const [metadata, setMetadata] = useState<ContentMetadata | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -179,7 +213,7 @@ function ContentZoneInner() {
             }
           } else if (event === 'complete') {
             try {
-              const result = JSON.parse(data)
+              const result = JSON.parse(data) as ContentGenerationResult
               setGeneratedContent(result.content)
               setQualityScores(result.qualityScores)
               setMetadata(result.metadata)
@@ -243,7 +277,7 @@ function ContentZoneInner() {
         >
           <h1 className="text-2xl font-semibold text-zinc-100 mb-2">Content Zone</h1>
           <p className="text-sm text-zinc-400 max-w-2xl">
-            Create SEO-optimized content powered by AI. We'll analyze your competitors,
+            Create SEO-optimized content powered by AI. We&apos;ll analyze your competitors,
             research your topic, and generate high-quality content that ranks.
           </p>
         </motion.div>
@@ -270,12 +304,13 @@ function ContentZoneInner() {
                 <Button
                   className="bg-zinc-800 hover:bg-zinc-700"
                   onClick={() => {
+                    const trimmedOnboardingUrl = onboardingUrl.trim()
                     // Validate URL before navigation
-                    if (onboardingUrl.trim() && isValidUrl(onboardingUrl)) {
+                    if (trimmedOnboardingUrl && isValidUrl(trimmedOnboardingUrl)) {
                       // Navigate to onboarding flow with URL as query parameter
-                      const params = new URLSearchParams({ startOnboarding: 'true', url: onboardingUrl.trim() })
+                      const params = new URLSearchParams({ startOnboarding: 'true', url: trimmedOnboardingUrl })
                       window.location.href = `/dashboard?${params.toString()}`
-                    } else if (onboardingUrl.trim()) {
+                    } else if (trimmedOnboardingUrl) {
                       setError('Please enter a valid URL')
                     } else {
                       // Navigate without URL if empty
@@ -287,7 +322,7 @@ function ContentZoneInner() {
                 </Button>
               </div>
               <p className="text-xs text-zinc-500 mt-2">
-                We'll extract your brand voice, identify competitors, and suggest target keywords.
+                We&apos;ll extract your brand voice, identify competitors, and suggest target keywords.
               </p>
             </div>
           </motion.div>
@@ -314,8 +349,8 @@ function ContentZoneInner() {
 
             <ContentResult
               content={generatedContent}
-              qualityScores={qualityScores}
-              metadata={metadata}
+              qualityScores={qualityScores ?? EMPTY_QUALITY_SCORES}
+              metadata={metadata ?? {}}
               onRegenerate={handleGenerate}
             />
           </motion.div>
