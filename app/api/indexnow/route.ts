@@ -10,7 +10,7 @@ type IndexNowRequestBody = {
 }
 
 function isAuthorized(request: Request): boolean {
-  if (!serverEnv.CRON_SECRET) return true
+  if (!serverEnv.CRON_SECRET) return false
   return request.headers.get('authorization') === `Bearer ${serverEnv.CRON_SECRET}`
 }
 

@@ -90,7 +90,7 @@ Answer as the target answer engine would. Include sources only if the model/prov
         },
       })
 
-      return completed(this.engine, input, result.text, result)
+      return completed(this.engine, input, result.text, { text: result.text, usage: result.usage, finishReason: result.finishReason })
     } catch (error) {
       return failed(this.engine, input, error instanceof Error ? error.message : 'Gateway model request failed')
     }

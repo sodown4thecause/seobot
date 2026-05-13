@@ -46,20 +46,19 @@ export async function getGeoBusinessProfileForUser(userId: string): Promise<GeoB
 
 export async function listGeoBusinessProfiles(limit = 50): Promise<GeoBusinessProfile[]> {
   const profiles = await db.select().from(businessProfiles).limit(limit)
+  const profilesByUrl = profiles.filter(p => p.websiteUrl)
+  if (profilesByUrl.length === 0) return []
 
-  const results: GeoBusinessProfile[] = []
-  for (const profile of profiles) {
-    if (!profile.websiteUrl) continue
-    results.push({
-      userId: profile.userId,
-      brand: brandFromWebsiteUrl(profile.websiteUrl),
-      websiteUrl: profile.websiteUrl,
-      industry: profile.industry,
-      competitors: await getCompetitorsForUser(profile.userId),
-    })
-  }
+  const userIds = profilesByUrl.map(p => p.userId)
+  const competitorMap = await batchGetCompetitorsForUsers(userIds)
 
-  return results
+  return profilesByUrl.map(profile => ({
+    userId: profile.userId,
+    brand: brandFromWebsiteUrl(profile.websiteUrl),
+    websiteUrl: profile.websiteUrl,
+    industry: profile.industry,
+    competitors: competitorMap.get(profile.userId) ?? [],
+  }))
 }
 
 async function getCompetitorsForUser(userId: string): Promise<string[]> {
@@ -77,4 +76,37 @@ async function getCompetitorsForUser(userId: string): Promise<string[]> {
     .where(inArray(competitors.id, ids))
 
   return rows.map(row => row.domain).filter(Boolean)
+}
+
+async function batchGetCompetitorsForUsers(userIds: string[]): Promise<Map<string, string[]>> {
+  if (userIds.length === 0) return new Map()
+
+  const mappings = await db
+    .select({ userId: userCompetitors.userId, competitorId: userCompetitors.competitorId })
+    .from(competitors)
+    .innerJoin(userCompetitors, eq(userCompetitors.competitorId, competitors.id))
+    .where(inArray(userCompetitors.userId, userIds))
+
+  const competitorIds = [...new Set(mappings.map(m => m.competitorId))]
+  const competitorDomains = competitorIds.length > 0
+    ? await db
+        .select({ id: competitors.id, domain: competitors.domain })
+        .from(competitors)
+        .where(inArray(competitors.id, competitorIds))
+    : []
+
+  const domainById = new Map(competitorDomains.map(c => [c.id, c.domain]))
+
+  const result = new Map<string, string[]>()
+  for (const id of userIds) {
+    result.set(id, [])
+  }
+  for (const mapping of mappings) {
+    const domain = domainById.get(mapping.competitorId)
+    if (domain) {
+      result.get(mapping.userId)?.push(domain)
+    }
+  }
+
+  return result
 }

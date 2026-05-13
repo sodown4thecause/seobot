@@ -7,8 +7,9 @@ import { ingestRagDocument } from '@/lib/rag/ingest'
 import { analyzeGeoVisibility } from '@/lib/geo/analysis'
 import { getGeoEngineAdapter } from '@/lib/geo/adapters'
 import { parseGeoEngines, splitEnvList } from '@/lib/geo/utils'
-import { listGeoBusinessProfiles } from '@/lib/geo/profile'
+import { listGeoBusinessProfiles, type GeoBusinessProfile } from '@/lib/geo/profile'
 import type { ChatMode } from '@/lib/chat/modes'
+import type { GeoEngineResult } from '@/lib/geo/types'
 import { serverEnv } from '@/lib/config/env'
 
 const RESEARCH_MODEL = 'openai/gpt-5.5'
@@ -40,7 +41,6 @@ export async function runWeeklyResearch(mode: ResearchMode) {
       sourceType: 'weekly_research',
       title: `${mode.toUpperCase()} weekly research ${new Date().toISOString().slice(0, 10)}`,
       rawMarkdown: result.summary,
-      rawJson: result.rawJson,
       metadata: {
         researchJobId: job.id,
         generatedBy: result.model,
@@ -71,7 +71,6 @@ async function runWeeklySeoResearch() {
     : ['SEO industry changes', 'technical SEO', 'SERP volatility', 'content strategy', 'case studies', 'whitepapers']
 
   const context = profileRows.map(profile => ({
-    websiteUrl: profile.websiteUrl,
     industry: profile.industry,
     goals: profile.goals,
   }))
@@ -81,7 +80,7 @@ async function runWeeklySeoResearch() {
 Focus areas:
 ${topics.map(topic => `- ${topic}`).join('\n')}
 
-Known business profile context:
+Known business profile context (anonymized industries and goals):
 ${JSON.stringify(context, null, 2)}
 
 Produce structured Markdown with:
@@ -106,7 +105,7 @@ async function runWeeklyGeoResearch() {
   }
 
   const fallbackTopics = splitEnvList(serverEnv.GEO_DEFAULT_TOPICS)
-  const runResults = []
+  const runResults: Array<{ profile: GeoBusinessProfile; row: typeof geoRuns.$inferInsert; engineResult: GeoEngineResult; analysis: Awaited<ReturnType<typeof analyzeGeoVisibility>> }> = []
 
   for (const profile of profiles) {
     const promptRows = await db
@@ -182,21 +181,18 @@ async function runWeeklyGeoResearch() {
 
   const prompt = `Create a weekly GEO/AEO deep research summary for SEOBOT's GEO-mode RAG.
 
-This is a multi-tenant summary across active business profiles. Keep profile-specific recommendations clearly attributed.
+This is an aggregated summary across active business profiles. Do NOT include any user-identifying information (user IDs, specific brand names, website URLs, or competitor names). Instead, synthesize general patterns, industry trends, and actionable recommendations applicable across profiles.
 
-GEO run evidence:
+GEO run evidence (anonymized):
 ${JSON.stringify(runResults.map(result => ({
-  userId: result.profile.userId,
-  brand: result.row.brand,
-  websiteUrl: result.profile.websiteUrl,
+  profileIndex: runResults.indexOf(result) + 1,
   engine: result.row.engine,
   prompt: result.row.prompt,
   status: result.row.status,
   visibilityScore: result.analysis.visibilityScore,
   sentiment: result.analysis.sentiment,
-  citedDomains: result.engineResult.citedDomains,
-  mentionedBrands: result.analysis.mentionedBrands,
-  competitorMentions: result.analysis.competitorMentions,
+  citedDomainsCount: result.engineResult.citedDomains.length,
+  mentionedBrandsCount: result.analysis.mentionedBrands.length,
   recommendedContentActions: result.analysis.recommendedContentActions,
 })), null, 2)}
 
