@@ -151,7 +151,7 @@ function DashboardInner() {
         clearTimeout(timeoutId)
       }
     }
-  }, [user, isLoaded])
+  }, [user, isLoaded, shouldStartOnboarding, onboardingUrl])
 
   useEffect(() => {
     if (explicitConversationId) {

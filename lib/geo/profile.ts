@@ -82,29 +82,18 @@ async function batchGetCompetitorsForUsers(userIds: string[]): Promise<Map<strin
   if (userIds.length === 0) return new Map()
 
   const mappings = await db
-    .select({ userId: userCompetitors.userId, competitorId: userCompetitors.competitorId })
+    .select({ userId: userCompetitors.userId, competitorId: userCompetitors.competitorId, domain: competitors.domain })
     .from(competitors)
     .innerJoin(userCompetitors, eq(userCompetitors.competitorId, competitors.id))
     .where(inArray(userCompetitors.userId, userIds))
-
-  const competitorIds = [...new Set(mappings.map(m => m.competitorId))]
-  const competitorDomains = competitorIds.length > 0
-    ? await db
-        .select({ id: competitors.id, domain: competitors.domain })
-        .from(competitors)
-        .where(inArray(competitors.id, competitorIds))
-    : []
-
-  const domainById = new Map(competitorDomains.map(c => [c.id, c.domain]))
 
   const result = new Map<string, string[]>()
   for (const id of userIds) {
     result.set(id, [])
   }
   for (const mapping of mappings) {
-    const domain = domainById.get(mapping.competitorId)
-    if (domain) {
-      result.get(mapping.userId)?.push(domain)
+    if (mapping.domain) {
+      result.get(mapping.userId)?.push(mapping.domain)
     }
   }
 

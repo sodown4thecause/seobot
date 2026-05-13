@@ -32,7 +32,13 @@ interface ModernChatProps {
 export function ModernChat({ context, placeholder = "Message the AI" }: ModernChatProps) {
   const { focus, setFocus, fetchRoadmap } = useAIState()
   const [input, setInput] = useState('')
-  const [mode, setMode] = useState<ChatMode>(DEFAULT_CHAT_MODE)
+  const [mode, setMode] = useState<ChatMode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('seobot_chat_mode')
+      if (saved === 'seo' || saved === 'geo' || saved === 'content') return saved
+    }
+    return DEFAULT_CHAT_MODE
+  })
 
   const [showHandoff, setShowHandoff] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -43,13 +49,6 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
   const handoffTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const toastTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
   
-  useEffect(() => {
-    const savedMode = window.localStorage.getItem('seobot_chat_mode')
-    if (savedMode === 'seo' || savedMode === 'geo' || savedMode === 'content') {
-      setMode(savedMode)
-    }
-  }, [])
-
   const handleModeChange = useCallback((nextMode: ChatMode) => {
     setMode(nextMode)
     window.localStorage.setItem('seobot_chat_mode', nextMode)

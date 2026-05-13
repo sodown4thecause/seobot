@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       brandPosition: analysis.brandPosition,
       visibilityScore: analysis.visibilityScore,
       status: engineResult.status,
-      rawJson: ({ engineResult, analysis, userId, topic: body.topic } as unknown) as Json,
+      rawJson: ({ engineResult, analysis, topic: body.topic } as unknown) as Json,
       capturedAt: new Date(engineResult.capturedAt),
     }).returning()
 
