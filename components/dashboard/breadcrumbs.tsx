@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Home } from 'lucide-react'
+import { ChevronRight, Home } from 'lucide-react'
 
 interface DashboardBreadcrumbsProps {
   currentPage: string
@@ -13,7 +13,10 @@ export function DashboardBreadcrumbs({ currentPage }: DashboardBreadcrumbsProps)
         <span>Flow Intent</span>
       </Link>
       {currentPage && currentPage !== 'Dashboard' && (
-        <span className="ml-1 font-medium text-zinc-300">{currentPage}</span>
+        <>
+          <ChevronRight className="h-3.5 w-3.5 text-zinc-600" />
+          <span className="font-medium text-zinc-300">{currentPage}</span>
+        </>
       )}
     </nav>
   )

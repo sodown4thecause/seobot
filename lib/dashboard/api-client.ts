@@ -1,6 +1,7 @@
 import type { NormalizedRankTrackerPayload } from '@/lib/dashboard/rank-tracker/types'
 import type { DashboardDataType, DashboardSnapshotRecord } from '@/lib/dashboard/repository'
 import type { NormalizedWebsiteAuditPayload } from '@/lib/dashboard/website-audit/types'
+import type { WorkspaceSnapshot } from '@/lib/dashboard/analytics/contracts'
 
 type RunResponse<TSnapshot> = {
   jobId: string
@@ -106,4 +107,91 @@ export async function getRankTrackerHistory(input?: RankTrackerHistoryInput): Pr
   const url = query.length > 0 ? `/api/dashboard/rank-tracker/history?${query}` : '/api/dashboard/rank-tracker/history'
 
   return requestJson(url)
+}
+
+// ── AEO Insights ────────────────────────────────────────────────────────────
+
+export interface AeoSnapshotInput {
+  keywords: string[]
+  domain?: string
+  location?: string
+}
+
+export interface AeoSnapshotResponse {
+  success: boolean
+  data: WorkspaceSnapshot
+}
+
+export async function getAeoInsightsSnapshot(input: AeoSnapshotInput): Promise<AeoSnapshotResponse> {
+  const params = new URLSearchParams()
+  for (const kw of input.keywords) {
+    params.append('keyword', kw)
+  }
+  if (input.domain) params.set('domain', input.domain)
+  if (input.location) params.set('location', input.location)
+  return requestJson(`/api/dashboard/aeo/snapshot?${params.toString()}`)
+}
+
+export interface AeoRefreshInput {
+  domain?: string
+  promptCluster?: string
+  location?: string
+}
+
+export interface AeoRefreshResponse {
+  success: boolean
+  refreshed: boolean
+  data: WorkspaceSnapshot
+}
+
+export async function refreshAeoInsights(input: AeoRefreshInput): Promise<AeoRefreshResponse> {
+  return requestJson('/api/dashboard/aeo/refresh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+// ── Content Performance ──────────────────────────────────────────────────────
+
+export interface ContentPerformanceSnapshotInput {
+  domain: string
+  locationName?: string
+  languageCode?: string
+}
+
+export interface ContentPerformanceSnapshotResponse {
+  success: boolean
+  data: WorkspaceSnapshot
+}
+
+export async function getContentPerformanceSnapshot(
+  input: ContentPerformanceSnapshotInput
+): Promise<ContentPerformanceSnapshotResponse> {
+  const params = new URLSearchParams({ domain: input.domain })
+  if (input.locationName) params.set('locationName', input.locationName)
+  if (input.languageCode) params.set('languageCode', input.languageCode)
+  return requestJson(`/api/dashboard/content-performance/snapshot?${params.toString()}`)
+}
+
+export interface ContentPerformanceRefreshInput {
+  domain: string
+  locationName?: string
+  languageCode?: string
+}
+
+export interface ContentPerformanceRefreshResponse {
+  success: boolean
+  refreshed: boolean
+  data: WorkspaceSnapshot
+}
+
+export async function refreshContentPerformance(
+  input: ContentPerformanceRefreshInput
+): Promise<ContentPerformanceRefreshResponse> {
+  return requestJson('/api/dashboard/content-performance/refresh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
 }

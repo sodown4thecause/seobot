@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { motion } from 'framer-motion'
 import { ArrowRight, AlertCircle, ExternalLink } from 'lucide-react'
@@ -60,6 +61,8 @@ const EMPTY_QUALITY_SCORES: ContentQualityScores = {
 
 function ContentZoneInner() {
   const { user, isLoaded } = useUser()
+  const router = useRouter()
+  const [onboardingUrl, setOnboardingUrl] = useState('')
   const {
     businessContext,
     brandVoice,
@@ -78,7 +81,6 @@ function ContentZoneInner() {
   const [tone, setTone] = useState('')
   const [wordCount, setWordCount] = useState(1200)
   const [audience, setAudience] = useState('')
-  const [onboardingUrl, setOnboardingUrl] = useState('')
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
@@ -296,25 +298,22 @@ function ContentZoneInner() {
               </p>
               <div className="flex gap-3">
                 <Input
-                  placeholder="https://your-website.com"
                   value={onboardingUrl}
                   onChange={(e) => setOnboardingUrl(e.target.value)}
+                  placeholder="https://your-website.com"
                   className="flex-1 bg-zinc-950 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
                 />
                 <Button
                   className="bg-zinc-800 hover:bg-zinc-700"
                   onClick={() => {
                     const trimmedOnboardingUrl = onboardingUrl.trim()
-                    // Validate URL before navigation
                     if (trimmedOnboardingUrl && isValidUrl(trimmedOnboardingUrl)) {
-                      // Navigate to onboarding flow with URL as query parameter
                       const params = new URLSearchParams({ startOnboarding: 'true', url: trimmedOnboardingUrl })
-                      window.location.href = `/dashboard?${params.toString()}`
+                      router.push(`/dashboard?${params.toString()}`)
                     } else if (trimmedOnboardingUrl) {
                       setError('Please enter a valid URL')
                     } else {
-                      // Navigate without URL if empty
-                      window.location.href = '/dashboard?startOnboarding=true'
+                      router.push('/dashboard?startOnboarding=true')
                     }
                   }}
                 >
@@ -450,7 +449,7 @@ function ContentZoneInner() {
               <Button
                 onClick={handleGenerate}
                 disabled={isGenerating || !topic.trim() || !primaryKeyword.trim()}
-                className="w-full h-14 text-lg font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
+                className="w-full h-14 text-lg font-medium bg-emerald-600 hover:bg-emerald-500 text-white"
               >
                 {isGenerating ? (
                   <>

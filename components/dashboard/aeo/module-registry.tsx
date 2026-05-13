@@ -50,9 +50,10 @@ const MODULE_COPY: Record<(typeof AEO_MODULE_ORDER)[number], { title: string; de
 
 interface AeoModuleRegistryProps {
   moduleIds: readonly string[]
+  moduleStatuses?: Record<string, 'ready' | 'pending'>
 }
 
-export function AeoModuleRegistry({ moduleIds }: AeoModuleRegistryProps) {
+export function AeoModuleRegistry({ moduleIds, moduleStatuses }: AeoModuleRegistryProps) {
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
       {moduleIds
@@ -62,6 +63,7 @@ export function AeoModuleRegistry({ moduleIds }: AeoModuleRegistryProps) {
             key={moduleId}
             title={MODULE_COPY[moduleId].title}
             description={MODULE_COPY[moduleId].description}
+            status={moduleStatuses?.[moduleId]}
           />
         ))}
     </div>

@@ -1,6 +1,8 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AlertCircle } from 'lucide-react'
 import { QuickStartGrid } from '@/components/dashboard/quick-start-grid'
 import { useRouter } from 'next/navigation'
 import { useAgent } from '@/components/providers/agent-provider'
@@ -13,10 +15,13 @@ export default function WorkflowsPage() {
     const { state, actions } = useAgent()
     const { user, isLoaded } = useUser()
     const { ready: clerkReady, timedOut: clerkTimedOut } = useClerkLoadGuard(isLoaded, 5000)
+    const [launchError, setLaunchError] = useState<string | null>(null)
 
     // Create a fresh conversation, then navigate with workflow query param.
     // The dashboard chat picks up ?workflow= and auto-sends the guided prompt.
     const handleWorkflowSelect = async (workflowId: string) => {
+        setLaunchError(null)
+
         if (!isLoaded || !user) {
             router.push('/sign-in')
             return
@@ -30,12 +35,12 @@ export default function WorkflowsPage() {
         })
 
         if (result === 'invalid-workflow') {
-            console.error('[WorkflowsPage] Invalid workflow ID:', workflowId)
+            setLaunchError(`"${workflowId}" is not a recognised workflow. Please try another.`)
             return
         }
 
         if (result === 'launch-failed') {
-            console.error('[WorkflowsPage] Failed to create workflow conversation:', workflowId)
+            setLaunchError('Failed to start the workflow — please try again.')
         }
     }
 
@@ -65,7 +70,20 @@ export default function WorkflowsPage() {
                 transition={{ duration: 0.6 }}
                 className="flex-1 px-6 pt-6"
             >
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-7xl mx-auto space-y-4">
+                    <AnimatePresence>
+                        {launchError && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                className="flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+                            >
+                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                {launchError}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                     <QuickStartGrid onWorkflowSelect={handleWorkflowSelect} />
                 </div>
             </motion.div>
