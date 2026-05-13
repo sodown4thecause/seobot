@@ -90,7 +90,13 @@ Answer as the target answer engine would. Include sources only if the model/prov
         },
       })
 
-      return completed(this.engine, input, result.text, { text: result.text, usage: result.usage, finishReason: result.finishReason })
+      const sourceUrls = result.sources?.filter((s): s is typeof s & { sourceType: 'url' } => s.sourceType === 'url' && 'url' in s).map(s => s.url) ?? []
+      return completed(this.engine, input, result.text, {
+        text: result.text,
+        usage: result.usage,
+        finishReason: result.finishReason,
+        sources: sourceUrls,
+      })
     } catch (error) {
       return failed(this.engine, input, error instanceof Error ? error.message : 'Gateway model request failed')
     }

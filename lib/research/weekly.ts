@@ -184,10 +184,9 @@ async function runWeeklyGeoResearch() {
 This is an aggregated summary across active business profiles. Do NOT include any user-identifying information (user IDs, specific brand names, website URLs, or competitor names). Instead, synthesize general patterns, industry trends, and actionable recommendations applicable across profiles.
 
 GEO run evidence (anonymized):
-${JSON.stringify(runResults.map(result => ({
-  profileIndex: runResults.indexOf(result) + 1,
+${JSON.stringify(runResults.map((result, index) => ({
+  profileIndex: index + 1,
   engine: result.row.engine,
-  prompt: result.row.prompt,
   status: result.row.status,
   visibilityScore: result.analysis.visibilityScore,
   sentiment: result.analysis.sentiment,

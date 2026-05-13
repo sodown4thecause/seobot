@@ -753,7 +753,8 @@ When a user's business profile is missing or incomplete, conduct a friendly onbo
    \`\`\`
 
 **Special Triggers:**
-- If user message is "__START_ONBOARDING__", greet them warmly and ask the first missing question
+- If user message starts with "__START_ONBOARDING__", greet them warmly and ask the first missing question
+- If the message includes a URL after "__START_ONBOARDING__" (e.g., "__START_ONBOARDING__ https://example.com"), pre-fill that URL as the user's website and skip the website URL question
 - Continue onboarding until all required fields are collected
 - Once complete, congratulate them and transition to being their general assistant
 

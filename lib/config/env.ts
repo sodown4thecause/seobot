@@ -30,10 +30,7 @@ const serverEnvSchema = z.object({
   AI_GATEWAY_API_KEY: z.string().min(1).optional(),
   AI_GATEWAY_BASE_URL: z.string().url().optional(),
   // External APIs
-  DATAFORSEO_USERNAME: z.string().email({
-    message: 'DATAFORSEO_USERNAME must be a valid email',
-  }),
-  DATAFORSEO_LOGIN: z.string().email().optional(),
+  DATAFORSEO_USERNAME: z.string().min(1, 'DATAFORSEO_USERNAME is required'),
   DATAFORSEO_PASSWORD: z.string().min(1, 'DATAFORSEO_PASSWORD is required'),
   DATAFORSEO_MCP_URL: z.string().url().optional(),
   DATAFORSEO_BASIC_AUTH: z.string().optional(),

@@ -26,6 +26,8 @@ function DashboardInner() {
   const searchParams = useSearchParams()
   const workflowId = searchParams?.get('workflow') ?? undefined
   const explicitConversationId = searchParams?.get('conversationId') ?? undefined
+  const onboardingUrl = searchParams?.get('url') ?? undefined
+  const shouldStartOnboarding = searchParams?.has('startOnboarding')
 
   const [isNewUser, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -97,15 +99,21 @@ function DashboardInner() {
 
         if (response.ok) {
           const data = await response.json()
-          if (!data.profile?.websiteUrl) {
-            // Profile exists but incomplete - trigger onboarding
+          if (!data.profile?.websiteUrl || shouldStartOnboarding) {
             setIsNewUser(true)
-            setInitialMessage('__START_ONBOARDING__')
+            if (onboardingUrl) {
+              setInitialMessage(`__START_ONBOARDING__ ${onboardingUrl}`)
+            } else {
+              setInitialMessage('__START_ONBOARDING__')
+            }
           }
         } else if (response.status === 404) {
-          // New user - no profile exists
           setIsNewUser(true)
-          setInitialMessage('__START_ONBOARDING__')
+          if (onboardingUrl) {
+            setInitialMessage(`__START_ONBOARDING__ ${onboardingUrl}`)
+          } else {
+            setInitialMessage('__START_ONBOARDING__')
+          }
         } else if (response.status === 401) {
           // Unauthorized - redirect to sign-in
           window.location.href = '/sign-in'
