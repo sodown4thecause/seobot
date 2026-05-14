@@ -1,12 +1,13 @@
 import 'server-only'
 
-import { generateImage, generateText } from 'ai'
+import { generateText } from 'ai'
 import { db, libraryItems, type Json } from '@/lib/db'
 import { generateImageKey, uploadToR2 } from '@/lib/storage/r2-client'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 
 export const CONTENT_IMAGE_MODEL = 'google/gemini-3-pro-image'
 const FAST_TEXT_MODEL = 'google/gemini-3-flash'
+const IMAGE_GENERATION_TIMEOUT_MS = Number(process.env.CONTENT_IMAGE_TIMEOUT_MS || 60000)
 
 export type ContentImageAssetType = 'main' | 'thumbnail'
 
@@ -84,6 +85,16 @@ function extractBase64Image(file: unknown): { base64: string; mediaType: string 
   }
 
   return null
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timeout))
+  })
 }
 
 function buildImagePrompt(input: ContentImageAssetInput): string {
@@ -164,30 +175,16 @@ async function generateImageBase64(prompt: string, assetType: ContentImageAssetT
 
   if (fileImage) return fileImage
 
-  const imageResult = await generateImage({
-    model: vercelGateway.imageModel(CONTENT_IMAGE_MODEL),
-    prompt,
-    providerOptions: {
-      gateway: {
-        tags: ['feature:content-images', `asset:${assetType}`, 'mode:content', 'fallback:generate-image'],
-      },
-    },
-  })
-
-  const generatedImage = imageResult.images
-    ?.map(image => extractBase64Image(image))
-    .find((image): image is { base64: string; mediaType: string } => !!image)
-
-  if (!generatedImage) {
-    throw new Error('Image model did not return an image file')
-  }
-
-  return generatedImage
+  throw new Error('Image model did not return an image file')
 }
 
 export async function generateAndSaveContentImageAsset(input: ContentImageAssetInput): Promise<ContentImageAsset> {
   const prompt = buildImagePrompt(input)
-  const { base64, mediaType } = await generateImageBase64(prompt, input.assetType)
+  const { base64, mediaType } = await withTimeout(
+    generateImageBase64(prompt, input.assetType),
+    IMAGE_GENERATION_TIMEOUT_MS,
+    `${input.assetType} image generation`,
+  )
   const previewUrl = toDataUrl(base64, mediaType)
   const altText = await generateAltText(input, prompt)
   const caption = input.assetType === 'main'

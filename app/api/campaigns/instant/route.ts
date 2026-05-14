@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Instant Campaign API
  * 
  * Streamlined endpoint for 3-minute campaigns with SSE progress streaming
@@ -16,7 +16,7 @@ import { requireUserId } from '@/lib/auth'
 import { nanoid } from 'nanoid'
 import { createSmoothStreamResponse, sendProgressUpdate, sendStepComplete, sendError } from '@/lib/utils/smooth-stream'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 // Campaign type to workflow ID mapping
 const CAMPAIGN_WORKFLOW_MAP: Record<string, string> = {
@@ -319,7 +319,7 @@ export async function GET() {
       name: CAMPAIGN_NAMES[type],
       description: workflow?.description || '',
       estimatedTime: workflow?.estimatedTime || 'Unknown',
-      icon: workflow?.icon || '⚡',
+      icon: workflow?.icon || '?',
     }
   })
 
@@ -331,3 +331,4 @@ export async function GET() {
     }
   )
 }
+

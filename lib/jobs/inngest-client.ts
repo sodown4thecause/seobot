@@ -10,15 +10,15 @@
 import { Inngest } from 'inngest'
 import { z } from 'zod'
 
-import { costTrackingMiddleware, executeTrackedDataForSeoCall } from '@/lib/jobs/middleware/cost-tracking'
+import { executeTrackedDataForSeoCall } from '@/lib/jobs/middleware/cost-tracking'
 
 // ============================================================================
 // Environment Validation
 // ============================================================================
 
 const envSchema = z.object({
-  INNGEST_EVENT_KEY: z.string().min(1, 'INNGEST_EVENT_KEY is required'),
-  INNGEST_SIGNING_KEY: z.string().min(1, 'INNGEST_SIGNING_KEY is required'),
+  INNGEST_EVENT_KEY: z.string().min(1).optional(),
+  INNGEST_SIGNING_KEY: z.string().min(1).optional(),
 })
 
 const env = envSchema.parse(process.env)
@@ -103,8 +103,7 @@ export type RefreshFailedEvent = z.infer<typeof refreshFailedSchema>
 export const inngest = new Inngest({
   id: 'seobot-dashboard',
   name: 'SEOBOT Dashboard Jobs',
-  eventKey: env.INNGEST_EVENT_KEY,
-  middleware: [costTrackingMiddleware],
+  eventKey: env.INNGEST_EVENT_KEY || 'local-dev-event-key',
 })
 
 // ============================================================================

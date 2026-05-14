@@ -387,18 +387,28 @@ const ContentPackagePreview = ({ output }: { output: ContentPackagePreviewOutput
         <p className="mt-1 text-xs text-zinc-400">{output.title}</p>
       </div>
       <div className="grid gap-3 p-4 md:grid-cols-2">
-        {[mainImage, thumbnail].filter((image): image is ContentPackageImagePreview => Boolean(image)).map((image) => (
-          <figure key={image.type} className="overflow-hidden rounded-xl border border-white/10 bg-black/30">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={image.url || image.previewUrl} alt={image.altText || image.type} className="aspect-video w-full object-cover" />
-            <figcaption className="space-y-1 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-300">
-                {image.type === 'main' ? 'Main image' : 'Thumbnail'}
-              </p>
-              <p className="text-xs text-zinc-500">{image.saveStatus === 'saved' ? 'Saved to library' : 'Preview only'}</p>
-            </figcaption>
-          </figure>
-        ))}
+        {[mainImage, thumbnail].filter((image): image is ContentPackageImagePreview => Boolean(image)).map((image) => {
+          const imageSrc = image.url || image.previewUrl
+
+          return (
+            <figure key={image.type} className="overflow-hidden rounded-xl border border-white/10 bg-black/30">
+              {imageSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageSrc} alt={image.altText || image.type} className="aspect-video w-full object-cover" />
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center bg-zinc-950 px-4 text-center text-xs text-zinc-500">
+                  Image generated, but persistent preview storage is not configured.
+                </div>
+              )}
+              <figcaption className="space-y-1 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-300">
+                  {image.type === 'main' ? 'Main image' : 'Thumbnail'}
+                </p>
+                <p className="text-xs text-zinc-500">{image.saveStatus === 'saved' ? 'Saved to library' : 'Preview only'}</p>
+              </figcaption>
+            </figure>
+          )
+        })}
       </div>
     </div>
   )

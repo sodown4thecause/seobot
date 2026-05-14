@@ -24,6 +24,7 @@ import { createTelemetryConfig } from '@/lib/observability/langfuse'
 import type { AgentType } from './intent-classifier'
 import type { Tool } from 'ai'
 import type { GatewayModelId } from '@ai-sdk/gateway'
+import { normalizeChatMode, type ChatMode } from '@/lib/chat/modes'
 
 // Primary chat model — claude-haiku-4-5: fast, excellent tool call reliability,
 // Anthropic models issue parallel tool calls in a single step.
@@ -206,6 +207,25 @@ function compactContentImageAsset(asset: Awaited<ReturnType<typeof generateAndSa
   }
 }
 
+function failedContentImageAsset(type: 'main' | 'thumbnail', error: unknown) {
+  return {
+    id: `${type}-failed`,
+    type,
+    url: undefined,
+    previewAvailable: false,
+    storageKey: undefined,
+    saveStatus: 'failed',
+    saveError: error instanceof Error ? error.message : 'Image generation failed',
+    mediaType: 'image/png',
+    prompt: '',
+    altText: type === 'main' ? 'Main image failed to generate' : 'Thumbnail failed to generate',
+    caption: '',
+    model: 'google/gemini-3-pro-image',
+    aspectRatio: type === 'main' ? '16:9' : '1200x630',
+    libraryItemId: undefined,
+  }
+}
+
 export function createContentPackageTool(userId?: string, conversationId?: string) {
   return tool({
     description:
@@ -277,7 +297,7 @@ export function createContentPackageTool(userId?: string, conversationId?: strin
         }
 
         const title = contentResult.title || args.topic
-        const [mainImage, thumbnailImage] = await Promise.all([
+        const [mainImageResult, thumbnailImageResult] = await Promise.allSettled([
           generateAndSaveContentImageAsset({
             userId,
             conversationId,
@@ -304,8 +324,14 @@ export function createContentPackageTool(userId?: string, conversationId?: strin
           }),
         ])
 
-        const compactMainImage = compactContentImageAsset(mainImage)
-        const compactThumbnailImage = compactContentImageAsset(thumbnailImage)
+        const mainImage = mainImageResult.status === 'fulfilled' ? mainImageResult.value : null
+        const thumbnailImage = thumbnailImageResult.status === 'fulfilled' ? thumbnailImageResult.value : null
+        const compactMainImage = mainImageResult.status === 'fulfilled'
+          ? compactContentImageAsset(mainImageResult.value)
+          : failedContentImageAsset('main', mainImageResult.reason)
+        const compactThumbnailImage = thumbnailImageResult.status === 'fulfilled'
+          ? compactContentImageAsset(thumbnailImageResult.value)
+          : failedContentImageAsset('thumbnail', thumbnailImageResult.reason)
 
         const [libraryItem] = await db.insert(libraryItems).values({
           userId,
@@ -330,7 +356,7 @@ export function createContentPackageTool(userId?: string, conversationId?: strin
             mode: 'content',
             contentId: contentResult.contentId,
             contentVersionId: contentResult.contentVersionId,
-            imageLibraryItemIds: [mainImage.libraryItemId, thumbnailImage.libraryItemId].filter(Boolean),
+            imageLibraryItemIds: [mainImage?.libraryItemId, thumbnailImage?.libraryItemId].filter(Boolean),
           } as unknown) as Json,
         }).returning()
 
@@ -349,8 +375,8 @@ export function createContentPackageTool(userId?: string, conversationId?: strin
           },
           saveStatus: {
             content: libraryItem?.id ? 'saved' : 'not_saved',
-            mainImage: mainImage.saveStatus,
-            thumbnail: thumbnailImage.saveStatus,
+            mainImage: compactMainImage.saveStatus,
+            thumbnail: compactThumbnailImage.saveStatus,
           },
         }
       } catch (error) {
@@ -472,13 +498,18 @@ export function createGatewayImageTool() {
 /**
  * Get core tools that are always available regardless of agent type.
  */
-export function getCoreTools(userId?: string, conversationId?: string): Record<string, Tool> {
-  return {
+export function getCoreTools(userId?: string, conversationId?: string, mode?: ChatMode): Record<string, Tool> {
+  const coreTools: Record<string, Tool> = {
     generate_researched_content: createOrchestratorTool(userId),
-    generate_content_package: createContentPackageTool(userId, conversationId),
     client_ui: createClientUiTool(),
     gateway_image: createGatewayImageTool(),
   }
+
+  if (mode === 'content') {
+    coreTools.generate_content_package = createContentPackageTool(userId, conversationId)
+  }
+
+  return coreTools
 }
 
 /**
@@ -498,10 +529,11 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
   } = options
 
   const serverMessageIdGenerator = createIdGenerator({ prefix: 'msg', size: 16 })
+  const chatMode = normalizeChatMode(context?.mode)
 
   // Merge core tools with provided tools
   const allTools = {
-    ...getCoreTools(userId, conversationId),
+    ...getCoreTools(userId, conversationId, chatMode),
     ...tools,
   }
 

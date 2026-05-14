@@ -1,11 +1,11 @@
-﻿import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { competitors } from '@/lib/db/schema'
 import { sql } from 'drizzle-orm'
 import { competitorAnalysis, domainMetrics } from '@/lib/api/dataforseo-service'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 interface RequestBody {
   domain: string
@@ -105,3 +105,4 @@ export async function POST(req: Request) {
     )
   }
 }
+

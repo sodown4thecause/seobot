@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserId } from '@/lib/auth'
 import { getConversationForUser, loadConversationMessages } from '@/lib/chat/storage'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function GET(
   request: NextRequest,

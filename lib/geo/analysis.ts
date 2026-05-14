@@ -4,6 +4,8 @@ import { vercelGateway } from '@/lib/ai/gateway-provider'
 import { countMentions, extractDomains } from './utils'
 import type { GeoEngine, GeoVisibilityAnalysis } from './types'
 
+const GEO_ANALYSIS_MODEL_ID = process.env.GEO_ANALYSIS_MODEL_ID || 'openai/gpt-5.5'
+
 const analysisSchema = z.object({
   brandMentioned: z.boolean(),
   mentionedBrands: z.array(z.string()),
@@ -29,7 +31,7 @@ export async function analyzeGeoVisibility(input: {
 
   try {
     const { output } = await generateText({
-      model: vercelGateway.languageModel('openai/gpt-5.5'),
+      model: vercelGateway.languageModel(GEO_ANALYSIS_MODEL_ID),
       output: Output.object({
         schema: analysisSchema,
       }),
@@ -83,6 +85,14 @@ function heuristicAnalysis(input: {
     .map(competitor => text.toLowerCase().indexOf(competitor.toLowerCase()))
     .filter(position => position >= 0)
   const brandPositionIndex = text.toLowerCase().indexOf(input.brand.toLowerCase())
+  const orderedMentionPositions = [
+    ...(brandPositionIndex >= 0 ? [{ term: input.brand, position: brandPositionIndex }] : []),
+    ...input.competitors.flatMap(competitor => {
+      const position = text.toLowerCase().indexOf(competitor.toLowerCase())
+      return position >= 0 ? [{ term: competitor, position }] : []
+    }),
+  ].sort((a, b) => a.position - b.position)
+  const brandPosition = orderedMentionPositions.findIndex(item => item.term === input.brand)
   const appearsBeforeCompetitors = brandPositionIndex >= 0
     && (competitorPositions.length === 0 || competitorPositions.every(position => brandPositionIndex < position))
 
@@ -100,7 +110,7 @@ function heuristicAnalysis(input: {
     competitorMentions,
     citedDomains,
     sentiment: brandMentioned ? 'neutral' : 'absent',
-    brandPosition: brandMentioned ? 1 : null,
+    brandPosition: brandMentioned ? brandPosition + 1 : null,
     visibilityScore,
     rationale: brandMentioned
       ? 'Heuristic analysis found the brand in the response and scored visibility from mention order and citation presence.'

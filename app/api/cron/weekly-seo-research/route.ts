@@ -1,12 +1,20 @@
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { serverEnv } from '@/lib/config/env'
 import { runWeeklyResearch } from '@/lib/research/weekly'
 
 export const maxDuration = 300
 
+function isAuthorized(authHeader: string | null): boolean {
+  if (!serverEnv.CRON_SECRET || !authHeader?.startsWith('Bearer ')) return false
+  const token = Buffer.from(authHeader.slice('Bearer '.length))
+  const secret = Buffer.from(serverEnv.CRON_SECRET)
+  return token.length === secret.length && timingSafeEqual(token, secret)
+}
+
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization')
-  if (!serverEnv.CRON_SECRET || authHeader !== `Bearer ${serverEnv.CRON_SECRET}`) {
+  if (!isAuthorized(authHeader)) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 

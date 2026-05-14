@@ -1,4 +1,4 @@
-﻿import { streamText } from 'ai';
+import { streamText } from 'ai';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
 // import { z } from 'zod';
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit';
@@ -6,7 +6,7 @@ import { getUserId } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors/handlers';
 import { createTelemetryConfig } from '@/lib/observability/langfuse';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
@@ -58,3 +58,4 @@ export async function POST(req: Request) {
     return handleApiError(error, 'Failed to generate content');
   }
 }
+

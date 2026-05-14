@@ -14,10 +14,14 @@ export async function getMcpClient(): Promise<Client> {
 /**
  * Create Basic Auth header using Web APIs (Edge runtime compatible)
  */
-function createBasicAuth(username: string, password: string): string {
+function createBasicAuth(username?: string, password?: string): string {
   const preencoded = serverEnv.DATAFORSEO_BASIC_AUTH?.trim();
   if (preencoded) {
     return preencoded.startsWith('Basic ') ? preencoded : `Basic ${preencoded}`;
+  }
+
+  if (!username || !password) {
+    throw new Error('DATAFORSEO_USERNAME/DATAFORSEO_PASSWORD or DATAFORSEO_BASIC_AUTH is required');
   }
 
   // Use Web API btoa instead of Buffer (Edge runtime compatible)

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Analytics API
  *
  * Provides usage analytics and insights
@@ -14,7 +14,7 @@ import { writingFrameworks, chatMessages } from '@/lib/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { cacheGet, cacheSet, CACHE_PREFIXES } from '@/lib/redis/client'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 interface AnalyticsData {
   overview: {
@@ -215,3 +215,4 @@ export async function GET(_req: NextRequest) {
 export async function OPTIONS(_req: NextRequest) {
   return NextResponse.json({ message: 'Analytics API' })
 }
+
