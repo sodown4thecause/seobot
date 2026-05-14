@@ -55,10 +55,10 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
   // Run keyword-based routing immediately (synchronous, 0ms) as a fallback
   // This ensures we always have a result, even if the LLM classification times out
   const keywordRouting = AgentRouter.routeQuery(query, context)
-  const CLASSIFICATION_TIMEOUT_MS = 5000
+  const CLASSIFICATION_TIMEOUT_MS = Number(process.env.INTENT_CLASSIFIER_TIMEOUT_MS || 3000)
   const controller = new AbortController()
   const timeoutId = setTimeout(() => {
-    controller.abort(new AbortError('Intent classification timed out after 5s'))
+    controller.abort(new AbortError(`Intent classification timed out after ${CLASSIFICATION_TIMEOUT_MS}ms`))
   }, CLASSIFICATION_TIMEOUT_MS)
 
   try {

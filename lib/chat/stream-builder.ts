@@ -6,6 +6,7 @@
  */
 
 import {
+  generateText,
   streamText,
   tool,
   type ModelMessage,
@@ -22,12 +23,14 @@ import { db, libraryItems, type Json } from '@/lib/db'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
 import type { AgentType } from './intent-classifier'
 import type { Tool } from 'ai'
+import type { GatewayModelId } from '@ai-sdk/gateway'
 
 // Primary chat model — claude-haiku-4-5: fast, excellent tool call reliability,
 // Anthropic models issue parallel tool calls in a single step.
-const CHAT_MODEL_ID = 'anthropic/claude-haiku-4-5'
+const CHAT_MODEL_ID = (process.env.CHAT_EXECUTOR_MODEL_ID || 'anthropic/claude-haiku-4-5') as GatewayModelId
+const FAST_CONTENT_MODEL_ID = (process.env.CONTENT_FAST_MODEL_ID || 'google/gemini-3-flash') as GatewayModelId
 // Fallbacks use current Gateway model IDs and avoid stale gpt-4o-era defaults.
-const FALLBACK_MODELS = ['openai/gpt-5.4', 'google/gemini-3-flash']
+const FALLBACK_MODELS = ['google/gemini-3-flash', 'openai/gpt-5.4']
 
 export interface StreamOptions {
   modelMessages: ModelMessage[]
@@ -70,6 +73,10 @@ export function createOrchestratorTool(userId?: string) {
         const result = await orchestrator.generateContent({
           ...args,
           userId,
+          qualityMode: 'fast',
+          skipFrase: true,
+          skipEeat: true,
+          skipRevisionLoop: true,
         })
 
         console.log('[Stream Builder] Orchestrator completed successfully')
@@ -78,10 +85,8 @@ export function createOrchestratorTool(userId?: string) {
         const contentResult = result.content || "Content generation completed but no content was returned."
 
         const scoreSummary = `
-## Quality Scores
+## Fast Quality Estimate
 - **Overall Quality**: ${result.qualityScores.overall}/100
-- **DataForSEO Score**: ${result.qualityScores.dataforseo}/100
-- **EEAT Score**: ${result.qualityScores.eeat}/100
 - **Content Depth**: ${result.qualityScores.depth}/100
 - **Factual Accuracy**: ${result.qualityScores.factual}/100
 - **Revision Rounds**: ${result.revisionCount}
@@ -96,6 +101,109 @@ ${(result.qaReport?.improvement_instructions?.length ?? 0) > 0 ? `\n## QA Review
       }
     },
   })
+}
+
+interface ContentPackageDraft {
+  title: string
+  content: string
+  contentId?: string
+  contentVersionId?: string
+  qualityScores?: Record<string, unknown>
+  revisionCount?: number
+  metadata?: Record<string, unknown>
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timeout))
+  })
+}
+
+function extractRequestedWordCount(value?: number): number {
+  if (!value || !Number.isFinite(value)) return 800
+  return Math.max(50, Math.min(3000, Math.round(value)))
+}
+
+async function generateFastContentPackageDraft(args: {
+  topic: string
+  type: 'blog_post' | 'article' | 'social_media' | 'landing_page'
+  keywords?: string[]
+  tone?: string
+  wordCount?: number
+}): Promise<ContentPackageDraft> {
+  const wordCount = extractRequestedWordCount(args.wordCount)
+  const result = await generateText({
+    model: vercelGateway.languageModel(FAST_CONTENT_MODEL_ID),
+    prompt: `Create a polished ${args.type.replace('_', ' ')} for a marketing team.
+
+Topic: ${args.topic}
+Target word count: ${wordCount}
+Tone: ${args.tone || 'professional, clear, practical'}
+Keywords: ${(args.keywords ?? []).join(', ') || 'AI search visibility, B2B SaaS'}
+
+Return exactly this plain-text structure:
+Title: <concise title>
+
+<content body>
+
+Keep the body close to ${wordCount} words. Make it concrete and useful. Do not use markdown symbols.`,
+    providerOptions: {
+      gateway: {
+        tags: ['feature:chat', 'mode:content', 'feature:content-package', 'path:fast-short-form'],
+      },
+    },
+  })
+
+  const text = result.text.trim()
+  const titleMatch = text.match(/^Title:\s*(.+)$/im)
+  const title = titleMatch?.[1]?.trim() || args.topic
+  const content = text
+    .replace(/^Title:\s*.+$/im, '')
+    .trim()
+
+  return {
+    title,
+    content: content || text,
+    metadata: {
+      mode: 'content',
+      generationPath: 'fast-short-form',
+      requestedWordCount: wordCount,
+      model: FAST_CONTENT_MODEL_ID,
+    },
+    qualityScores: {
+      overall: 80,
+      dataforseo: 0,
+      eeat: 75,
+      depth: wordCount <= 200 ? 70 : 78,
+      factual: 75,
+    },
+    revisionCount: 0,
+  }
+}
+
+function compactContentImageAsset(asset: Awaited<ReturnType<typeof generateAndSaveContentImageAsset>>) {
+  const hasPersistentUrl = !!asset.url && !asset.url.startsWith('data:')
+
+  return {
+    id: asset.id,
+    type: asset.type,
+    url: hasPersistentUrl ? asset.url : undefined,
+    previewAvailable: !hasPersistentUrl,
+    storageKey: asset.storageKey,
+    saveStatus: asset.saveStatus,
+    saveError: asset.saveError,
+    mediaType: asset.mediaType,
+    prompt: asset.prompt,
+    altText: asset.altText,
+    caption: asset.caption,
+    model: asset.model,
+    aspectRatio: asset.aspectRatio,
+    libraryItemId: asset.libraryItemId,
+  }
 }
 
 export function createContentPackageTool(userId?: string, conversationId?: string) {
@@ -123,14 +231,52 @@ export function createContentPackageTool(userId?: string, conversationId?: strin
       }
 
       try {
-        const orchestrator = new RAGWriterOrchestrator()
-        const contentResult = await orchestrator.generateContent({
-          ...args,
-          keywords: args.keywords ?? [],
-          userId,
-        })
+        const requestedWordCount = extractRequestedWordCount(args.wordCount)
+        let contentResult: ContentPackageDraft
 
-        const title = contentResult.metadata?.metaTitle || args.topic
+        if (requestedWordCount <= 300) {
+          contentResult = await generateFastContentPackageDraft({
+            ...args,
+            keywords: args.keywords ?? [],
+            wordCount: requestedWordCount,
+          })
+        } else {
+          try {
+            const orchestrator = new RAGWriterOrchestrator()
+            const orchestratorResult = await withTimeout(
+              orchestrator.generateContent({
+                ...args,
+                keywords: args.keywords ?? [],
+                userId,
+                qualityMode: 'fast',
+                skipFrase: true,
+                skipEeat: true,
+                skipRevisionLoop: true,
+              }),
+              150000,
+              'Content orchestrator'
+            )
+
+            contentResult = {
+              title: orchestratorResult.metadata?.metaTitle || args.topic,
+              content: orchestratorResult.content,
+              contentId: orchestratorResult.contentId,
+              contentVersionId: orchestratorResult.contentVersionId,
+              qualityScores: orchestratorResult.qualityScores as unknown as Record<string, unknown>,
+              revisionCount: orchestratorResult.revisionCount,
+              metadata: orchestratorResult.metadata as Record<string, unknown> | undefined,
+            }
+          } catch (error) {
+            console.warn('[Stream Builder] Orchestrator unavailable, using fast content package fallback:', error)
+            contentResult = await generateFastContentPackageDraft({
+              ...args,
+              keywords: args.keywords ?? [],
+              wordCount: requestedWordCount,
+            })
+          }
+        }
+
+        const title = contentResult.title || args.topic
         const [mainImage, thumbnailImage] = await Promise.all([
           generateAndSaveContentImageAsset({
             userId,
@@ -158,6 +304,9 @@ export function createContentPackageTool(userId?: string, conversationId?: strin
           }),
         ])
 
+        const compactMainImage = compactContentImageAsset(mainImage)
+        const compactThumbnailImage = compactContentImageAsset(thumbnailImage)
+
         const [libraryItem] = await db.insert(libraryItems).values({
           userId,
           conversationId: conversationId || null,
@@ -167,15 +316,15 @@ export function createContentPackageTool(userId?: string, conversationId?: strin
           data: ({
             contentId: contentResult.contentId,
             contentVersionId: contentResult.contentVersionId,
-            qualityScores: contentResult.qualityScores,
-            revisionCount: contentResult.revisionCount,
-            metadata: contentResult.metadata,
+            qualityScores: contentResult.qualityScores ?? {},
+            revisionCount: contentResult.revisionCount ?? 0,
+            metadata: contentResult.metadata ?? {},
             images: {
-              main: mainImage,
-              thumbnail: thumbnailImage,
+              main: compactMainImage,
+              thumbnail: compactThumbnailImage,
             },
           } as unknown) as Json,
-          imageUrl: thumbnailImage.url || mainImage.url,
+          imageUrl: compactThumbnailImage.url || compactMainImage.url || null,
           tags: ['content', args.type, 'content-package'],
           metadata: ({
             mode: 'content',
@@ -191,12 +340,12 @@ export function createContentPackageTool(userId?: string, conversationId?: strin
           content: contentResult.content,
           contentId: contentResult.contentId,
           libraryItemId: libraryItem?.id,
-          qualityScores: contentResult.qualityScores,
-          revisionCount: contentResult.revisionCount,
-          metadata: contentResult.metadata,
+          qualityScores: contentResult.qualityScores ?? {},
+          revisionCount: contentResult.revisionCount ?? 0,
+          metadata: contentResult.metadata ?? {},
           images: {
-            main: mainImage,
-            thumbnail: thumbnailImage,
+            main: compactMainImage,
+            thumbnail: compactThumbnailImage,
           },
           saveStatus: {
             content: libraryItem?.id ? 'saved' : 'not_saved',

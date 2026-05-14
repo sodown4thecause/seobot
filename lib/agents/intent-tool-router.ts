@@ -8,11 +8,17 @@
  * This prevents context bloat and improves tool selection accuracy.
  */
 
-import { generateObject } from 'ai'
+import { Output, generateText } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { isAbortError } from '@/lib/errors/types'
 import { z } from 'zod'
+
+export const FAST_CLASSIFIER_MODEL_ID = (
+    process.env.INTENT_CLASSIFIER_MODEL_ID ||
+    process.env.TOOL_ROUTER_MODEL_ID ||
+    'anthropic/claude-haiku-4-5'
+) as GatewayModelId
 
 // =============================================================================
 // INTENT CATEGORIES & TOOL MAPPINGS
@@ -348,12 +354,13 @@ export class IntentToolRouter {
             .join('\n')
 
         try {
-            // Use generateObject with PERMISSIVE schema to allow for LLM formatting issues
+            // Use the fastest Gateway classifier path; sanitize the permissive output below.
             // Then sanitize the result to handle cases like ":backlinks" instead of "backlinks"
-            const { object: rawResult } = await generateObject({
-                model: vercelGateway.languageModel('google/gemini-3-flash' as GatewayModelId),
-                schema: RawIntentClassificationSchema,
+            const { output: rawResult } = await generateText({
+                model: vercelGateway.languageModel(FAST_CLASSIFIER_MODEL_ID),
+                output: Output.object({ schema: RawIntentClassificationSchema }),
                 abortSignal,
+                temperature: 0,
                 prompt: `You are an SEO/AEO intent classifier. Analyze the user query and classify their intent.
 
 IMPORTANT: Return EXACT enum values without any prefixes like colons. For example, use "backlinks" NOT ":backlinks".

@@ -60,6 +60,7 @@ const handler = async (req: Request) => {
       messagesCount: body.messages?.length,
       hasContext: !!body.context,
       chatId: body.chatId,
+      mode: body.context?.mode,
     }))
 
     const { messages: incomingMessages, chatId, context } = body

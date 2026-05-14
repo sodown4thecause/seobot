@@ -599,13 +599,22 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     mode,
   }), [contextKey, agentPreference, conversationId, mode])
 
-  const transport = useMemo(() => new DefaultChatTransport({
-    api: '/api/chat',
-    body: () => ({
+  const latestRequestRef = useRef({
+    chatId: conversationId,
+    context: mergedContext,
+  })
+
+  useEffect(() => {
+    latestRequestRef.current = {
       chatId: conversationId,
       context: mergedContext,
-    }),
-  }), [conversationId, mergedContext])
+    }
+  }, [conversationId, mergedContext])
+
+  const transport = useMemo(() => new DefaultChatTransport({
+    api: '/api/chat',
+    body: () => latestRequestRef.current,
+  }), [])
 
   // 4. useChat Hook
   const {

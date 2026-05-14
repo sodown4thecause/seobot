@@ -6,6 +6,7 @@ import { generateImageKey, uploadToR2 } from '@/lib/storage/r2-client'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 
 export const CONTENT_IMAGE_MODEL = 'google/gemini-3-pro-image'
+const FAST_TEXT_MODEL = 'google/gemini-3-flash'
 
 export type ContentImageAssetType = 'main' | 'thumbnail'
 
@@ -121,7 +122,7 @@ function buildFallbackAlt(input: ContentImageAssetInput): string {
 async function generateAltText(input: ContentImageAssetInput, prompt: string): Promise<string> {
   try {
     const result = await generateText({
-      model: vercelGateway.languageModel('openai/gpt-5.4'),
+      model: vercelGateway.languageModel(FAST_TEXT_MODEL),
       prompt: `Write concise image alt text under 125 characters.
 
 Content title: ${input.title}
@@ -216,7 +217,7 @@ export async function generateAndSaveContentImageAsset(input: ContentImageAssetI
     content: null,
     data: ({
       url,
-      previewUrl: upload.success ? undefined : previewUrl,
+      previewUrl: undefined,
       storageKey: upload.success ? storageKey : undefined,
       altText,
       caption,
@@ -227,7 +228,7 @@ export async function generateAndSaveContentImageAsset(input: ContentImageAssetI
       saveStatus,
       saveError: upload.error,
     } as unknown) as Json,
-    imageUrl: url,
+    imageUrl: upload.success ? url : null,
     tags: ['content', input.assetType, 'ai-image'],
     metadata: ({
       contentId: input.contentId,

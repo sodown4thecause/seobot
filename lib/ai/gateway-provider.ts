@@ -126,11 +126,15 @@ export const vercelGateway = {
 
     // Only OpenAI embeddings supported (text-embedding-3-small)
     if (modelId.startsWith('openai/')) {
+      if (gateway?.textEmbeddingModel) {
+        console.log('[Gateway] Using gateway for embedding:', modelId);
+        return gateway.textEmbeddingModel(modelId);
+      }
       if (openai) {
         console.log('[Gateway] Using direct OpenAI for embedding:', modelId);
         return openai.textEmbeddingModel(modelId.replace('openai/', ''));
       }
-      throw new Error('OPENAI_API_KEY is required for embeddings; AI Gateway is not used for embedding models');
+      throw new Error('Neither AI_GATEWAY_API_KEY nor OPENAI_API_KEY is configured for embeddings');
     }
 
     throw new Error(`Unsupported embedding model: ${modelId}. Only OpenAI embeddings are supported.`);
