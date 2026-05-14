@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth'
 import { db, libraryItems } from '@/lib/db'
 
 export const runtime = 'edge'

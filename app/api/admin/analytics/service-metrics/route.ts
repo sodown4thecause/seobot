@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { subDays } from 'date-fns'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 // import { db } from '@/lib/db'
 // import { apiUsageLogs } from '@/lib/db/schema'
 // import { eq, gte, and } from 'drizzle-orm'

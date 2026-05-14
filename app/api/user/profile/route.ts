@@ -1,4 +1,5 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { businessProfiles, brandVoices, competitors, keywords } from '@/lib/db/schema'
@@ -6,7 +7,8 @@ import { eq } from 'drizzle-orm'
 
 export async function GET() {
   try {
-    const { userId } = await auth()
+    const session = await auth.api.getSession({ headers: await headers() })
+    const userId = session?.user?.id
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

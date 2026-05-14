@@ -17,6 +17,8 @@ import { z } from 'zod'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import { RAGWriterOrchestrator } from '@/lib/agents/rag-writer-orchestrator'
 import { generateImageWithGatewayGemini } from '@/lib/ai/image-generation'
+import { generateAndSaveContentImageAsset } from '@/lib/ai/content-image-assets'
+import { db, libraryItems, type Json } from '@/lib/db'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
 import type { AgentType } from './intent-classifier'
 import type { Tool } from 'ai'
@@ -24,8 +26,8 @@ import type { Tool } from 'ai'
 // Primary chat model — claude-haiku-4-5: fast, excellent tool call reliability,
 // Anthropic models issue parallel tool calls in a single step.
 const CHAT_MODEL_ID = 'anthropic/claude-haiku-4-5'
-// Fallbacks: gpt-4o-mini (parallel tool calls), gemini-3-flash (large context)
-const FALLBACK_MODELS = ['openai/gpt-4o-mini', 'google/gemini-3-flash']
+// Fallbacks use current Gateway model IDs and avoid stale gpt-4o-era defaults.
+const FALLBACK_MODELS = ['openai/gpt-5.4', 'google/gemini-3-flash']
 
 export interface StreamOptions {
   modelMessages: ModelMessage[]
@@ -96,6 +98,124 @@ ${(result.qaReport?.improvement_instructions?.length ?? 0) > 0 ? `\n## QA Review
   })
 }
 
+export function createContentPackageTool(userId?: string, conversationId?: string) {
+  return tool({
+    description:
+      'Generate a complete saved content package for Content mode: researched content, a main 16:9 image, a thumbnail/social image, alt text, captions, and library records. Use this for article, blog post, landing page, or social content creation requests.',
+    inputSchema: z.object({
+      topic: z.string().describe('The main topic of the content'),
+      type: z
+        .enum(['blog_post', 'article', 'social_media', 'landing_page'])
+        .describe('Type of content to generate'),
+      keywords: z.array(z.string()).default([]).describe('Target keywords'),
+      tone: z.string().optional().describe('Desired tone'),
+      wordCount: z.number().optional().describe('Target word count'),
+      competitorUrls: z.array(z.string()).optional().describe('Optional competitor URLs for comparison'),
+      mainImagePrompt: z.string().optional().describe('Optional custom prompt for the main hero image'),
+      thumbnailPrompt: z.string().optional().describe('Optional custom prompt for the thumbnail/social image'),
+    }),
+    execute: async (args) => {
+      if (!userId) {
+        return {
+          success: false,
+          error: 'Authentication required. Please sign in to generate and save content packages.',
+        }
+      }
+
+      try {
+        const orchestrator = new RAGWriterOrchestrator()
+        const contentResult = await orchestrator.generateContent({
+          ...args,
+          keywords: args.keywords ?? [],
+          userId,
+        })
+
+        const title = contentResult.metadata?.metaTitle || args.topic
+        const [mainImage, thumbnailImage] = await Promise.all([
+          generateAndSaveContentImageAsset({
+            userId,
+            conversationId,
+            contentId: contentResult.contentId,
+            title,
+            content: contentResult.content,
+            topic: args.topic,
+            keywords: args.keywords ?? [],
+            assetType: 'main',
+            aspectRatio: '16:9',
+            prompt: args.mainImagePrompt,
+          }),
+          generateAndSaveContentImageAsset({
+            userId,
+            conversationId,
+            contentId: contentResult.contentId,
+            title,
+            content: contentResult.content,
+            topic: args.topic,
+            keywords: args.keywords ?? [],
+            assetType: 'thumbnail',
+            aspectRatio: args.type === 'social_media' ? '1:1' : '1200x630',
+            prompt: args.thumbnailPrompt,
+          }),
+        ])
+
+        const [libraryItem] = await db.insert(libraryItems).values({
+          userId,
+          conversationId: conversationId || null,
+          itemType: 'response',
+          title,
+          content: contentResult.content,
+          data: ({
+            contentId: contentResult.contentId,
+            contentVersionId: contentResult.contentVersionId,
+            qualityScores: contentResult.qualityScores,
+            revisionCount: contentResult.revisionCount,
+            metadata: contentResult.metadata,
+            images: {
+              main: mainImage,
+              thumbnail: thumbnailImage,
+            },
+          } as unknown) as Json,
+          imageUrl: thumbnailImage.url || mainImage.url,
+          tags: ['content', args.type, 'content-package'],
+          metadata: ({
+            mode: 'content',
+            contentId: contentResult.contentId,
+            contentVersionId: contentResult.contentVersionId,
+            imageLibraryItemIds: [mainImage.libraryItemId, thumbnailImage.libraryItemId].filter(Boolean),
+          } as unknown) as Json,
+        }).returning()
+
+        return {
+          success: true,
+          title,
+          content: contentResult.content,
+          contentId: contentResult.contentId,
+          libraryItemId: libraryItem?.id,
+          qualityScores: contentResult.qualityScores,
+          revisionCount: contentResult.revisionCount,
+          metadata: contentResult.metadata,
+          images: {
+            main: mainImage,
+            thumbnail: thumbnailImage,
+          },
+          saveStatus: {
+            content: libraryItem?.id ? 'saved' : 'not_saved',
+            mainImage: mainImage.saveStatus,
+            thumbnail: thumbnailImage.saveStatus,
+          },
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to generate content package'
+        console.error('[Stream Builder] Content package tool failed:', error)
+        return {
+          success: false,
+          error: message,
+        }
+      }
+    },
+  })
+}
+
 /**
  * Create the client UI tool for displaying interactive components.
  */
@@ -127,7 +247,7 @@ export function createClientUiTool() {
  */
 export function createGatewayImageTool() {
   return tool({
-    description: "Generate images with Google Gemini 2.5 Flash Image via Vercel AI Gateway. Use when the user asks for an image or wants edits/regenerations.",
+    description: "Generate images with Google Gemini 3 Pro Image via Vercel AI Gateway. Use when the user asks for an image or wants edits/regenerations.",
     inputSchema: z.object({
       prompt: z.string().describe("Base prompt for the image"),
       previousPrompt: z.string().optional().describe("Previous prompt to refine from"),
@@ -165,7 +285,7 @@ export function createGatewayImageTool() {
 
         return {
           type: 'image',
-          model: 'google/gemini-2.5-flash-image',
+          model: 'google/gemini-3-pro-image',
           prompt: response.prompt,
           size: args.size || '1024x1024',
           url: primary?.url,
@@ -191,7 +311,7 @@ export function createGatewayImageTool() {
         console.error('[Stream Builder] Gateway image tool failed:', error)
         return {
           type: 'image',
-          model: 'google/gemini-2.5-flash-image',
+          model: 'google/gemini-3-pro-image',
           status: 'error',
           errorMessage: message,
         }
@@ -203,9 +323,10 @@ export function createGatewayImageTool() {
 /**
  * Get core tools that are always available regardless of agent type.
  */
-export function getCoreTools(userId?: string): Record<string, Tool> {
+export function getCoreTools(userId?: string, conversationId?: string): Record<string, Tool> {
   return {
     generate_researched_content: createOrchestratorTool(userId),
+    generate_content_package: createContentPackageTool(userId, conversationId),
     client_ui: createClientUiTool(),
     gateway_image: createGatewayImageTool(),
   }
@@ -231,7 +352,7 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
 
   // Merge core tools with provided tools
   const allTools = {
-    ...getCoreTools(userId),
+    ...getCoreTools(userId, conversationId),
     ...tools,
   }
 
@@ -278,6 +399,7 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
       onboardingStep: (context?.onboarding as Record<string, unknown>)?.currentStep as number | undefined,
       toolsCount: Object.keys(allTools).length,
       conversationId,
+      mode: context?.mode as string | undefined,
       mcpDataforseoEnabled: agentType === 'seo-aeo' || agentType === 'content',
       mcpFirecrawlEnabled: agentType === 'seo-aeo' || agentType === 'content',
       mcpJinaEnabled: agentType === 'content',

@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Workflow Persistence - Drizzle ORM Implementation
  * Handles saving and restoring workflow state
  */
 
 import { db, userProgress, type Json } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { eq, and, desc, like } from 'drizzle-orm'
 import type { WorkflowExecution, WorkflowStepResult } from './types'
 

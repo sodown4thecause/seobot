@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth'
 import { isAdmin } from '@/lib/auth/admin-check'
 import { db, auditEvents, type Json } from '@/lib/db'
 import { gte } from 'drizzle-orm'

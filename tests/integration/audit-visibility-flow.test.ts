@@ -12,12 +12,14 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
-vi.mock('@clerk/nextjs/server', () => ({
-  currentUser: vi.fn(async () => ({
-    primaryEmailAddress: {
-      emailAddress: 'founder@flowintent.com',
+vi.mock('@/lib/auth', () => ({
+  auth: {
+    api: {
+      getSession: vi.fn(async () => ({
+        user: { id: 'test-user-id', email: 'founder@flowintent.com', name: 'Test User' },
+      })),
     },
-  })),
+  },
 }))
 
 function buildRequest(visibility: 'unlisted' | 'public' | 'private') {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { currentUser } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import { EnhancedImageAgent } from '@/lib/agents/enhanced-image-agent'
 import { handleApiError } from '@/lib/errors/handlers'
 
@@ -18,9 +19,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Get authenticated user
-    const user = await currentUser()
+    const session = await auth.api.getSession({ headers: await headers() })
+    const userId = session?.user?.id
 
-    if (!user || !user.id) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

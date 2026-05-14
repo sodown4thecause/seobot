@@ -1,4 +1,4 @@
-import { getUserId } from '@/lib/auth/clerk'
+﻿import { getUserId } from '@/lib/auth'
 import { db, conversations, messages } from '@/lib/db'
 import { eq, desc, and } from 'drizzle-orm'
 import { NextRequest, NextResponse } from 'next/server'

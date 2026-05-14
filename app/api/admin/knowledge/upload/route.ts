@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 // import { OpenAI } from 'openai'
 import { PDFParse } from 'pdf-parse'
 // import { serverEnv } from '@/lib/config/env'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 // import { db } from '@/lib/db'
 // import knowledge tables when implemented
 

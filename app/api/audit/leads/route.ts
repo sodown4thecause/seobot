@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import { isAdmin } from '@/lib/auth/admin-check'
 import { db, auditLeads } from '@/lib/db'
 import { desc, sql } from 'drizzle-orm'

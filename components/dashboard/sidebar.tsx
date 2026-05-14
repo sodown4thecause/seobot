@@ -23,7 +23,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { UserButton } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
@@ -55,6 +55,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { state, actions } = useAgent()
+  const { data: session } = authClient.useSession()
   const hasFetchedRef = React.useRef(false)
   const [showAllConversations, setShowAllConversations] = React.useState(false)
   const isContentRoute = isContentDashboardRoute(pathname)
@@ -311,22 +312,37 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         'shrink-0 border-t border-zinc-800 px-2 py-3',
         collapsed ? 'flex justify-center' : 'flex items-center gap-2'
       )}>
-        <UserButton
-          appearance={{
-            elements: {
-              avatarBox: 'h-7 w-7',
-            },
-          }}
-        />
-        {!collapsed && (
-          <div className="flex-1 min-w-0">
-            <Link
-              href="/prices"
-              className="block text-[10px] font-semibold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors truncate"
-            >
-              Upgrade to Pro →
-            </Link>
+        {session?.user ? (
+          <div className={cn('flex items-center gap-2', collapsed && 'justify-center')}>
+            {session.user.image ? (
+              <img src={session.user.image} alt={session.user.name || 'User'} className="h-7 w-7 rounded-full" />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center text-white text-xs font-bold">
+                {(session.user.name || 'U')[0].toUpperCase()}
+              </div>
+            )}
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <Link
+                  href="/prices"
+                  className="block text-[10px] font-semibold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors truncate"
+                >
+                  Upgrade to Pro →
+                </Link>
+              </div>
+            )}
           </div>
+        ) : (
+          !collapsed && (
+            <div className="flex-1 min-w-0">
+              <Link
+                href="/prices"
+                className="block text-[10px] font-semibold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors truncate"
+              >
+                Upgrade to Pro →
+              </Link>
+            </div>
+          )
         )}
       </div>
     </aside>

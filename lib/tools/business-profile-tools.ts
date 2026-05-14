@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Business Profile Tools
  * 
  * AI SDK tools for managing user business profiles during onboarding
@@ -9,7 +9,7 @@
 
 import { tool } from 'ai'
 import { z } from 'zod'
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import {
     getBusinessProfile,
     upsertBusinessProfile,

@@ -32,10 +32,15 @@ process.env.DATABASE_URL =
 // Mock Next.js server components
 vi.mock('server-only', () => ({}))
 
-// Mock Clerk server SDK (avoids server-only crashes in unit tests)
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(async () => ({ userId: null })),
-  currentUser: vi.fn(async () => ({ id: 'test-user-id' })),
+// Mock Better Auth server SDK (avoids crashes in unit tests)
+vi.mock('@/lib/auth', () => ({
+  auth: {
+    api: {
+      getSession: vi.fn(async () => ({
+        user: { id: 'test-user-id', email: 'test@test.com', name: 'Test User' },
+      })),
+    },
+  },
 }))
 
 // Mock env config to bypass validation in tests

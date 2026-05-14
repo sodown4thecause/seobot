@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Tutorial Progress Service - Drizzle ORM Implementation
  * Handles tutorial progress tracking and milestone management
  */
 
 import { db, userProgress } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { eq, and, desc, isNotNull } from 'drizzle-orm'
 import type { TutorialProgress, TutorialStepCompletion, TutorialMilestone } from './types'
 

@@ -7,14 +7,15 @@ import { QuickStartGrid } from '@/components/dashboard/quick-start-grid'
 import { useRouter } from 'next/navigation'
 import { useAgent } from '@/components/providers/agent-provider'
 import { launchWorkflowChat } from '@/lib/workflows/launch-workflow-chat'
-import { useUser } from '@clerk/nextjs'
-import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
+import { authClient } from '@/lib/auth-client'
+
 
 export default function WorkflowsPage() {
     const router = useRouter()
     const { state, actions } = useAgent()
-    const { user, isLoaded } = useUser()
-    const { ready: clerkReady, timedOut: clerkTimedOut } = useClerkLoadGuard(isLoaded, 5000)
+    const { data: session } = authClient.useSession()
+    const user = session?.user ?? null
+    const isLoaded = !!session
     const [launchError, setLaunchError] = useState<string | null>(null)
 
     // Create a fresh conversation, then navigate with workflow query param.
@@ -44,20 +45,10 @@ export default function WorkflowsPage() {
         }
     }
 
-    if (!isLoaded && !clerkReady) {
+    if (!isLoaded) {
         return (
             <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
                 <div className="animate-pulse text-gray-400">Loading...</div>
-            </div>
-        )
-    }
-
-    if (clerkTimedOut && !isLoaded) {
-        return (
-            <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center px-6 text-center">
-                <div className="max-w-xl rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
-                    Clerk auth is not loading in the browser. Verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, then restart `npm run dev`.
-                </div>
             </div>
         )
     }

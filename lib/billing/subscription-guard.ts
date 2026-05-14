@@ -10,14 +10,15 @@ import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth-config'
+import { headers } from 'next/headers'
 import { isSubscriptionActive, type SubscriptionStatus } from './subscription-status'
 
 export interface SubscriptionCheckResult {
   hasSubscription: boolean
   status: SubscriptionStatus
   userId: string | null
-  clerkId: string | null
+  authUserId: string | null
   polarSubscriptionId: string | null
   currentPeriodEnd: Date | null
 }
@@ -27,14 +28,14 @@ export interface SubscriptionCheckResult {
  * Returns detailed subscription information without redirecting
  */
 export async function checkSubscription(
-  clerkId: string | null | undefined
+  authUserId: string | null | undefined
 ): Promise<SubscriptionCheckResult> {
-  if (!clerkId) {
+  if (!authUserId) {
     return {
       hasSubscription: false,
       status: null,
       userId: null,
-      clerkId: null,
+      authUserId: null,
       polarSubscriptionId: null,
       currentPeriodEnd: null,
     }
@@ -44,13 +45,13 @@ export async function checkSubscription(
     const [user] = await db
       .select({
         id: users.id,
-        clerkId: users.clerkId,
+        authUserId: users.betterAuthId,
         subscriptionStatus: users.subscriptionStatus,
         polarSubscriptionId: users.polarSubscriptionId,
         currentPeriodEnd: users.currentPeriodEnd,
       })
       .from(users)
-      .where(eq(users.clerkId, clerkId))
+      .where(eq(users.betterAuthId, authUserId))
       .limit(1)
 
     if (!user) {
@@ -58,7 +59,7 @@ export async function checkSubscription(
         hasSubscription: false,
         status: null,
         userId: null,
-        clerkId,
+        authUserId,
         polarSubscriptionId: null,
         currentPeriodEnd: null,
       }
@@ -71,7 +72,7 @@ export async function checkSubscription(
       hasSubscription,
       status,
       userId: user.id,
-      clerkId: user.clerkId,
+      authUserId: user.authUserId,
       polarSubscriptionId: user.polarSubscriptionId,
       currentPeriodEnd: user.currentPeriodEnd,
     }
@@ -82,7 +83,7 @@ export async function checkSubscription(
       hasSubscription: false,
       status: null,
       userId: null,
-      clerkId,
+      authUserId,
       polarSubscriptionId: null,
       currentPeriodEnd: null,
     }
@@ -96,16 +97,29 @@ export async function checkSubscription(
 export async function requireSubscription(
   redirectTo: string = '/prices?requires_subscription=1'
 ): Promise<SubscriptionCheckResult> {
-  const { userId: clerkId } = await auth()
+  if (process.env.NODE_ENV === 'development') {
+    return {
+      hasSubscription: true,
+      status: 'active',
+      userId: 'dev-user',
+      authUserId: 'dev-user',
+      polarSubscriptionId: null,
+      currentPeriodEnd: null,
+    }
+  }
 
-  if (!clerkId) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  if (!session?.user?.id) {
     redirect('/sign-in?redirect_url=' + encodeURIComponent(redirectTo))
   }
 
-  const result = await checkSubscription(clerkId)
+  const result = await checkSubscription(session.user.id)
 
   if (!result.hasSubscription) {
-    console.log(`[Subscription Guard] Denied access to ${clerkId} (status: ${result.status})`)
+    console.log(`[Subscription Guard] Denied access to ${session.user.id} (status: ${result.status})`)
     redirect(redirectTo)
   }
 
@@ -117,13 +131,13 @@ export async function requireSubscription(
  * Returns NextResponse for edge middleware usage
  */
 export async function middlewareCheckSubscription(
-  clerkId: string | null | undefined
+  userId: string | null | undefined
 ): Promise<{ allowed: boolean; status: SubscriptionStatus }> {
-  if (!clerkId) {
+  if (!userId) {
     return { allowed: false, status: null }
   }
 
-  const result = await checkSubscription(clerkId)
+  const result = await checkSubscription(userId)
   return { allowed: result.hasSubscription, status: result.status }
 }
 
@@ -152,9 +166,11 @@ export interface ApiSubscriptionResult {
  * ```
  */
 export async function requireApiSubscription(): Promise<ApiSubscriptionResult> {
-  const { userId: clerkId } = await auth()
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
 
-  if (!clerkId) {
+  if (!session?.user?.id) {
     return {
       success: false,
       userId: null,
@@ -167,13 +183,13 @@ export async function requireApiSubscription(): Promise<ApiSubscriptionResult> {
     }
   }
 
-  const subscription = await checkSubscription(clerkId)
+  const subscription = await checkSubscription(session.user.id)
 
   if (!subscription.hasSubscription) {
-    console.log(`[API Subscription Guard] Denied access to ${clerkId} (status: ${subscription.status})`)
+    console.log(`[API Subscription Guard] Denied access to ${session.user.id} (status: ${subscription.status})`)
     return {
       success: false,
-      userId: clerkId,
+      userId: session.user.id,
       subscription,
       error: {
         code: 'subscription_required',
@@ -185,7 +201,7 @@ export async function requireApiSubscription(): Promise<ApiSubscriptionResult> {
 
   return {
     success: true,
-    userId: clerkId,
+    userId: session.user.id,
     subscription,
   }
 }

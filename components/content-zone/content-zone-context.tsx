@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { useUser } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 
 export interface BusinessContext {
   websiteUrl?: string
@@ -54,7 +54,9 @@ interface ContentZoneContextType extends UserContextData {
 const ContentZoneContext = createContext<ContentZoneContextType | undefined>(undefined)
 
 export function ContentZoneProvider({ children }: { children: React.ReactNode }) {
-  const { user, isLoaded } = useUser()
+  const { data: session } = authClient.useSession()
+  const user = session?.user ?? null
+  const isLoaded = !!session
   const [contextData, setContextData] = useState<UserContextData>({
     userId: null,
     businessContext: null,

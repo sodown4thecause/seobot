@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Content Validation API
  * 
  * Validates content for SEO compliance using Winston AI
@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import { validateContentForSEO } from '@/lib/external-apis/winston-ai'
 
 export const runtime = 'edge'

@@ -1,4 +1,4 @@
-import { requireUserId } from '@/lib/auth/clerk'
+﻿import { requireUserId } from '@/lib/auth'
 import { db, businessProfiles } from '@/lib/db'
 import { sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'

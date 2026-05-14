@@ -1,8 +1,8 @@
-import { streamText } from 'ai';
+﻿import { streamText } from 'ai';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
 // import { z } from 'zod';
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit';
-import { getUserId } from '@/lib/auth/clerk';
+import { getUserId } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors/handlers';
 import { createTelemetryConfig } from '@/lib/observability/langfuse';
 

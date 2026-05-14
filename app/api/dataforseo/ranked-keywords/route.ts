@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth'
 import { analyzeRankedKeywords, compareKeywordProfiles } from '@/lib/services/dataforseo/ranked-keywords-analysis'
 
 export const runtime = 'edge'

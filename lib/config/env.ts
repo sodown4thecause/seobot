@@ -30,9 +30,7 @@ const serverEnvSchema = z.object({
   AI_GATEWAY_API_KEY: z.string().min(1).optional(),
   AI_GATEWAY_BASE_URL: z.string().url().optional(),
   // External APIs
-  DATAFORSEO_USERNAME: z.string().email({
-    message: 'DATAFORSEO_USERNAME must be a valid email',
-  }),
+  DATAFORSEO_USERNAME: z.string().min(1, 'DATAFORSEO_USERNAME is required'),
   DATAFORSEO_PASSWORD: z.string().min(1, 'DATAFORSEO_PASSWORD is required'),
   DATAFORSEO_MCP_URL: z.string().url().optional(),
   DATAFORSEO_BASIC_AUTH: z.string().optional(),
@@ -89,6 +87,14 @@ const serverEnvSchema = z.object({
 
   // Cron & Security
   CRON_SECRET: z.string().min(1).optional(),
+
+  // GEO / AEO mode configuration
+  GEO_ENABLED_ENGINES: z.string().optional(),
+  GEO_COMPETITORS: z.string().optional(),
+  GEO_DEFAULT_TOPICS: z.string().optional(),
+  WEEKLY_RESEARCH_MODEL: z.string().optional(),
+  WEEKLY_RESEARCH_FALLBACK_MODEL: z.string().optional(),
+  SCRAPINGBEE_API_KEY: z.string().min(1).optional(),
 
   // Site Configuration
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),

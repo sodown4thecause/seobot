@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUser } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 import { motion } from 'framer-motion'
 import { ArrowRight, AlertCircle, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,8 +25,44 @@ interface Keyword {
   difficulty?: number
 }
 
+interface ContentQualityScores {
+  dataforseo: number
+  eeat: number
+  depth: number
+  factual: number
+  frase: number
+  aeo?: number
+  overall: number
+}
+
+interface ContentMetadata {
+  researchSummary?: string
+  citations?: Array<{ url: string; title?: string }>
+  metaTitle?: string
+  metaDescription?: string
+  slug?: string
+  directAnswer?: string
+}
+
+interface ContentGenerationResult {
+  content: string
+  qualityScores: ContentQualityScores
+  metadata: ContentMetadata
+}
+
+const EMPTY_QUALITY_SCORES: ContentQualityScores = {
+  dataforseo: 0,
+  eeat: 0,
+  depth: 0,
+  factual: 0,
+  frase: 0,
+  overall: 0,
+}
+
 function ContentZoneInner() {
-  const { user, isLoaded } = useUser()
+  const { data: session } = authClient.useSession()
+  const user = session?.user ?? null
+  const isLoaded = !!session
   const router = useRouter()
   const [onboardingUrl, setOnboardingUrl] = useState('')
   const {
@@ -52,11 +88,23 @@ function ContentZoneInner() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState<ProgressEvent[]>([])
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
-  const [qualityScores, setQualityScores] = useState<any>(null)
-  const [metadata, setMetadata] = useState<any>(null)
+  const [qualityScores, setQualityScores] = useState<ContentQualityScores | null>(null)
+  const [metadata, setMetadata] = useState<ContentMetadata | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // URL validation to prevent open redirect vulnerabilities
+  const isValidUrl = (url: string): boolean => {
+    if (!url) return false
+    try {
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`)
+      // Ensure the URL has a valid protocol and hostname
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }
 
   // Update tone when content type changes
   useEffect(() => {
@@ -169,7 +217,7 @@ function ContentZoneInner() {
             }
           } else if (event === 'complete') {
             try {
-              const result = JSON.parse(data)
+              const result = JSON.parse(data) as ContentGenerationResult
               setGeneratedContent(result.content)
               setQualityScores(result.qualityScores)
               setMetadata(result.metadata)
@@ -233,7 +281,7 @@ function ContentZoneInner() {
         >
           <h1 className="text-2xl font-semibold text-zinc-100 mb-2">Content Zone</h1>
           <p className="text-sm text-zinc-400 max-w-2xl">
-            Create SEO-optimized content powered by AI. We'll analyze your competitors,
+            Create SEO-optimized content powered by AI. We&apos;ll analyze your competitors,
             research your topic, and generate high-quality content that ranks.
           </p>
         </motion.div>
@@ -260,14 +308,22 @@ function ContentZoneInner() {
                 <Button
                   className="bg-zinc-800 hover:bg-zinc-700"
                   onClick={() => {
-                    router.push('/dashboard?startOnboarding=true')
+                    const trimmedOnboardingUrl = onboardingUrl.trim()
+                    if (trimmedOnboardingUrl && isValidUrl(trimmedOnboardingUrl)) {
+                      const params = new URLSearchParams({ startOnboarding: 'true', url: trimmedOnboardingUrl })
+                      router.push(`/dashboard?${params.toString()}`)
+                    } else if (trimmedOnboardingUrl) {
+                      setError('Please enter a valid URL')
+                    } else {
+                      router.push('/dashboard?startOnboarding=true')
+                    }
                   }}
                 >
                   Analyze
                 </Button>
               </div>
               <p className="text-xs text-zinc-500 mt-2">
-                We'll extract your brand voice, identify competitors, and suggest target keywords.
+                We&apos;ll extract your brand voice, identify competitors, and suggest target keywords.
               </p>
             </div>
           </motion.div>
@@ -294,8 +350,8 @@ function ContentZoneInner() {
 
             <ContentResult
               content={generatedContent}
-              qualityScores={qualityScores}
-              metadata={metadata}
+              qualityScores={qualityScores ?? EMPTY_QUALITY_SCORES}
+              metadata={metadata ?? {}}
               onRegenerate={handleGenerate}
             />
           </motion.div>

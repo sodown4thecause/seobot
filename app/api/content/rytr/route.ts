@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rytr Content Generation API
  * 
  * Generates SEO-optimized content using Rytr AI
@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import {
   generateSEOContent,
   generateBlogSection,

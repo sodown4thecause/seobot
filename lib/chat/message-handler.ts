@@ -5,9 +5,11 @@
  */
 
 import { convertToModelMessages, type ModelMessage, type UIMessage } from 'ai'
+import type { ChatMode } from './modes'
 
 export interface ChatContext {
   page?: string
+  mode?: ChatMode
   onboarding?: {
     currentStep?: number
     data?: Record<string, unknown>

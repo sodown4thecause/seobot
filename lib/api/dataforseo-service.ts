@@ -13,7 +13,7 @@ const BASE_URL = 'https://api.dataforseo.com/v3'
 
 function basicAuthHeader() {
   const auth = Buffer.from(
-    `${serverEnv.DATAFORSEO_LOGIN}:${serverEnv.DATAFORSEO_PASSWORD}`
+    `${serverEnv.DATAFORSEO_USERNAME}:${serverEnv.DATAFORSEO_PASSWORD}`
   ).toString('base64')
   return `Basic ${auth}`
 }

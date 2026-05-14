@@ -21,7 +21,7 @@ import {
   updateActiveTrace,
 } from '@langfuse/tracing'
 
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { handleApiError } from '@/lib/errors/handlers'
 import {
@@ -37,6 +37,7 @@ import { saveUIMessage } from '@/lib/chat/storage'
 import { ensureChatForUser } from '@/lib/chat/persistence'
 import { detectWorkflowTrigger } from '@/lib/chat/orchestrator'
 import { buildSeoAeoContext } from '@/lib/chat/seo-aeo-context'
+import { normalizeChatMode } from '@/lib/chat/modes'
 
 export const maxDuration = 300 // 5 minutes
 
@@ -62,6 +63,8 @@ const handler = async (req: Request) => {
     }))
 
     const { messages: incomingMessages, chatId, context } = body
+    const mode = normalizeChatMode(context?.mode)
+    const modeContext = { ...(context || {}), mode }
     const agentId = context?.agentId || 'general'
     const isOnboarding = context?.page === 'onboarding' || !!context?.onboarding
 
@@ -126,7 +129,7 @@ const handler = async (req: Request) => {
     // Has a 5s internal timeout - falls back to keyword-based routing if LLM is slow
     const classification = await classifyUserIntent({
       query: lastUserMessageContent,
-      context,
+      context: modeContext,
     })
 
     console.log('[Chat API] Agent routing result:', {
@@ -148,6 +151,7 @@ const handler = async (req: Request) => {
       input: lastUserMessageContent,
       metadata: {
         agentType: classification.agent,
+        mode,
         page: context?.page,
         isOnboarding,
         onboardingStep: (context?.onboarding as Record<string, unknown> | undefined)?.currentStep,
@@ -156,9 +160,15 @@ const handler = async (req: Request) => {
     })
 
     // 10. Build system prompt for the selected agent
+    const effectiveAgent = classification.agent === 'onboarding' || classification.agent === 'image'
+      ? classification.agent
+      : mode === 'content'
+        ? 'content'
+        : 'seo-aeo'
+
     const systemPrompt = buildAgentSystemPrompt(
-      classification.agent,
-      context,
+      effectiveAgent,
+      modeContext,
       classification.allIntents
     )
 
@@ -169,18 +179,19 @@ const handler = async (req: Request) => {
     const emptyRagContext = { systemPromptAddendum: '', ragDocsFound: 0 }
     const [tools, ragContext] = await Promise.all([
       assembleTools({
-        agent: classification.agent,
+        agent: effectiveAgent,
         intentTools: classification.tools,
         userId: user?.id,
         request: req,
       }),
-      classification.agent === 'seo-aeo'
+      effectiveAgent === 'seo-aeo' || effectiveAgent === 'content'
         ? (async () => {
             const controller = new AbortController()
             let timeoutId: ReturnType<typeof setTimeout> | undefined
 
             const ragPromise = buildSeoAeoContext(lastUserMessageContent, user?.id, {
               signal: controller.signal,
+              mode,
             }).catch(err => {
               const message = err instanceof Error ? err.message : String(err)
               console.warn('[Chat API] SEO-AEO context fetch failed:', message)
@@ -247,8 +258,8 @@ const handler = async (req: Request) => {
       tools,
       userId: user?.id,
       conversationId: activeConversationId || undefined,
-      agentType: classification.agent,
-      context: context as Record<string, unknown>,
+      agentType: effectiveAgent,
+      context: modeContext as Record<string, unknown>,
       originalMessages: incomingMessages!,
       onFinish: async ({ messages: uiMessages }) => {
         console.log('[Chat API] toUIMessageStreamResponse onFinish:', {
