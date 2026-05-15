@@ -75,6 +75,25 @@ async function ensureApplicationUser(authUser: {
   await db.insert(users).values(userValues)
 }
 
+async function ensureApplicationUserByAuthId(authUserId: string) {
+  const [authUser] = await db
+    .select({
+      id: authSchema.user.id,
+      email: authSchema.user.email,
+      name: authSchema.user.name,
+      image: authSchema.user.image,
+    })
+    .from(authSchema.user)
+    .where(eq(authSchema.user.id, authUserId))
+    .limit(1)
+
+  if (!authUser) {
+    throw new Error(`Cannot sync app user row: auth user ${authUserId} was not found`)
+  }
+
+  await ensureApplicationUser(authUser)
+}
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
@@ -137,6 +156,18 @@ export const auth = betterAuth({
             await ensureApplicationUser(user)
           } catch (error) {
             console.error('[Better Auth] Failed to sync app user row after signup', error)
+            throw error
+          }
+        },
+      },
+    },
+    session: {
+      create: {
+        after: async (session) => {
+          try {
+            await ensureApplicationUserByAuthId(session.userId)
+          } catch (error) {
+            console.error('[Better Auth] Failed to repair app user row after sign-in', error)
             throw error
           }
         },
