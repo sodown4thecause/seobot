@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { db, keywords } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { keywordResearch } from '@/lib/api/dataforseo-service'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 

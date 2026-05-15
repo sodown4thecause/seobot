@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { createContentZoneBrief, contentZoneBriefRequestSchema } from '@/lib/content-zone/brief'
 import { ZodError } from 'zod'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,3 +35,4 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+

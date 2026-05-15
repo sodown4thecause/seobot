@@ -1,30 +1,28 @@
 /**
- * Admin Middleware Helper
- * Provides reusable admin access checks for API routes with Clerk
+ * Admin Middleware Helper - Better Auth Implementation
+ *
+ * Provides reusable admin access checks for API routes.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { currentUser } from '@clerk/nextjs/server'
-import { isAdmin } from './admin-check'
+import { auth } from '@/lib/auth-config'
+import { headers } from 'next/headers'
 
-/**
- * Middleware to check admin access in API routes
- * Returns null if admin, or a NextResponse with error if not
- */
 export async function requireAdminMiddleware(_req: NextRequest): Promise<NextResponse | null> {
   try {
-    const user = await currentUser()
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    })
 
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const admin = await isAdmin(user.id)
-    if (!admin) {
+    if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
     }
 
-    return null // Admin check passed
+    return null
   } catch (error) {
     console.error('[Admin Middleware] Error:', error)
     return NextResponse.json(

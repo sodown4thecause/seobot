@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { currentUser } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import type { AuditExecutionMeta, AuditResponsePayload, PlatformResult } from '@/lib/audit/types'
@@ -119,8 +120,8 @@ export async function GET(
   }
 
   if ((row.public_visibility || 'unlisted') === 'private') {
-    const user = await currentUser()
-    const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase().trim()
+    const session = await auth.api.getSession({ headers: await headers() })
+    const userEmail = session?.user?.email?.toLowerCase().trim()
     const rowEmail = row.email?.toLowerCase().trim()
 
     if (!userEmail) {

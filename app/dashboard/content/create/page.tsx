@@ -5,12 +5,14 @@ import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useUser } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 
 function CreateContentForm() {
   const searchParams = useSearchParams()
   const keywordFromUrl = searchParams?.get('keyword') || ''
-  const { user, isLoaded: userLoaded } = useUser()
+  const { data: session } = authClient.useSession()
+  const user = session?.user ?? null
+  const userLoaded = !!session
   
   interface ContentAnalysisData {
     keyword: string

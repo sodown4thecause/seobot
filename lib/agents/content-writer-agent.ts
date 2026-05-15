@@ -11,6 +11,8 @@ import { ProviderError } from '@/lib/errors/types'
 import { logAgentExecution } from '@/lib/errors/logger'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
 
+const CONTENT_WRITER_MODEL_ID = (process.env.CONTENT_WRITER_MODEL_ID || 'google/gemini-3-flash') as GatewayModelId
+
 export interface ContentWriteParams {
   type: 'blog_post' | 'article' | 'social_media' | 'landing_page'
   topic: string
@@ -78,14 +80,14 @@ export class ContentWriterAgent {
     // Build the writing prompt
     const prompt = this.buildPrompt(params)
 
-    // Generate content using Claude via Vercel AI Gateway for superior quality
+    // Generate content via a fast Gateway model; override CONTENT_WRITER_MODEL_ID for deeper drafts.
     return logAgentExecution(
       'content-writer',
       async () => {
         return withAgentRetry(
           async () => {
             const { text, usage: _usage } = await generateText({
-              model: vercelGateway.languageModel('moonshotai/kimi-k2' as GatewayModelId),
+              model: vercelGateway.languageModel(CONTENT_WRITER_MODEL_ID),
               system: this.buildSystemPrompt(guidance),
               prompt: prompt,
               temperature: 0.7,
@@ -103,8 +105,8 @@ export class ContentWriterAgent {
                   revisionRound: params.revisionRound,
                   hasImprovementInstructions: !!params.improvementInstructions,
                   learningsApplied: this.countLearnings(guidance),
-                  provider: 'moonshotai',
-                  model: 'kimi-k2',
+                  provider: 'vercel-gateway',
+                  model: CONTENT_WRITER_MODEL_ID,
                 }
               ),
             })
@@ -142,7 +144,7 @@ export class ContentWriterAgent {
           {
             retries: 2,
             agent: 'content-writer',
-            provider: 'moonshotai',
+            provider: 'vercel-gateway',
             onRetry: (error, attempt, delay) => {
               console.warn(
                 `[Content Writer] Retry attempt ${attempt} after ${delay}ms:`,
@@ -166,7 +168,7 @@ export class ContentWriterAgent {
       if (!(error instanceof ProviderError)) {
         throw new ProviderError(
           error instanceof Error ? error.message : 'Content generation failed',
-          'moonshotai',
+          'vercel-gateway',
           {
             agent: 'content-writer',
             cause: error instanceof Error ? error : undefined,

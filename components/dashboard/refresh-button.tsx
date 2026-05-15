@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Loader2, RotateCw } from 'lucide-react'
-import { useAuth } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 
@@ -19,7 +19,8 @@ export function RefreshButton({
   jobType = 'full-refresh',
   estimatedCostUsd,
 }: RefreshButtonProps) {
-  const { isSignedIn } = useAuth()
+  const { data: session } = authClient.useSession()
+  const isSignedIn = !!session
   const { toast } = useToast()
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [didComplete, setDidComplete] = React.useState(false)

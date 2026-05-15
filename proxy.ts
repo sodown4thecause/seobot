@@ -1,22 +1,22 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getSessionCookie } from 'better-auth/cookies'
 
 const isDev = process.env.NODE_ENV === 'development'
 
-// Define public routes that don't require authentication
-const isPublicRoute = createRouteMatcher([
+const publicRoutes = [
   '/',
   '/robots.txt',
   '/sitemap.xml',
   '/.well-known(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/studio(.*)',         // Sanity Studio (has its own auth)
+  '/studio(.*)',
   '/api/webhooks(.*)',
-  '/api/audit(.*)',      // AEO audit API (free lead magnet)
-  '/api/analytics/audit(.*)', // Audit analytics tracking
-  '/audit(.*)',          // Audit page
-  '/aeo-auditor(.*)',    // AEO auditor page (linked from guides)
+  '/api/audit(.*)',
+  '/api/analytics/audit(.*)',
+  '/api/auth(.*)',
+  '/audit(.*)',
+  '/aeo-auditor(.*)',
   '/blog(.*)',
   '/docs(.*)',
   '/guides(.*)',
@@ -30,31 +30,35 @@ const isPublicRoute = createRouteMatcher([
   '/terms(.*)',
   '/login(.*)',
   '/signup(.*)',
-])
+]
 
+function isPublicRoute(pathname: string): boolean {
+  return publicRoutes.some((route) => {
+    if (route.endsWith('(.*)')) {
+      return pathname.startsWith(route.replace('(.*)', ''))
+    }
+    return pathname === route
+  })
+}
 
-export default clerkMiddleware(async (auth, request) => {
+export default async function proxy(request: NextRequest) {
   const url = request.nextUrl
 
-  // DEV MODE: Skip all auth checks but still allow ClerkProvider to work
-  if (isDev) {
-    // Just handle basic redirects, no auth
-    if (url.pathname === '/chat') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-    return NextResponse.next()
-  }
-
-  const { userId } = await auth()
-
-  // Redirect /chat to /dashboard (fix broken redirect)
   if (url.pathname === '/chat') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // Redirect authenticated users away from auth pages
-  if (userId && (
-    url.pathname.startsWith('/sign-in') || 
+  if (isDev) {
+    return NextResponse.next()
+  }
+
+  // Better Auth session validation depends on the Node runtime and database-backed auth config.
+  // Keep middleware as a lightweight route gate; protected handlers/pages must validate the
+  // session with getUserId(), requireUserId(), or auth.api.getSession() before returning data.
+  const sessionCookie = getSessionCookie(request)
+
+  if (sessionCookie && (
+    url.pathname.startsWith('/sign-in') ||
     url.pathname.startsWith('/sign-up') ||
     url.pathname.startsWith('/login') ||
     url.pathname.startsWith('/signup')
@@ -62,17 +66,16 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // Protect all routes except public ones
-  if (!isPublicRoute(request)) {
-    await auth.protect()
+  if (!sessionCookie && !isPublicRoute(url.pathname)) {
+    return NextResponse.redirect(new URL('/sign-in', request.url))
   }
-})
+
+  return NextResponse.next()
+}
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
     '/(api|trpc)(.*)',
   ],
 }

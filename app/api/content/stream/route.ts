@@ -1,5 +1,5 @@
-import { RAGWriterOrchestrator, ProgressUpdate } from '@/lib/agents/rag-writer-orchestrator'
-import { requireUserId } from '@/lib/auth/clerk'
+﻿import { RAGWriterOrchestrator, ProgressUpdate } from '@/lib/agents/rag-writer-orchestrator'
+import { requireUserId } from '@/lib/auth'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 // TODO: Re-implement credit limit checking with Drizzle ORM
 // import { checkCreditLimit } from '@/lib/usage/limit-check'

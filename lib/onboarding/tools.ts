@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Onboarding AI Tools
  * 
  * AI SDK tools for the onboarding flow that extract brand voice
@@ -9,7 +9,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { extractAndStoreBrandVoice } from './brand-voice-extractor'
 import { upsertBusinessProfile, getUserBusinessContext } from './user-context-service'
-import { getUserId } from '@/lib/auth/clerk'
+import { getUserId } from '@/lib/auth'
 
 // Schema definitions
 const extractBrandVoiceSchema = z.object({

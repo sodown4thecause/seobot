@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 
-import { getUserId } from '@/lib/auth/clerk'
+import { getUserId } from '@/lib/auth'
 import {
   buildDiagnosticCacheKey,
   createDiagnosticResultId,

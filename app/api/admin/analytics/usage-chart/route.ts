@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { subDays } from 'date-fns'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,4 +48,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
 

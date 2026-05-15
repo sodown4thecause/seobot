@@ -21,6 +21,8 @@ import { Message as AIMessage, MessageAvatar, MessageContent } from '@/component
 import { Response } from '@/components/ai-elements/response'
 import { Loader } from '@/components/ai-elements/loader'
 import { ChatInput } from '@/components/chat/chat-input'
+import { ChatModeSelector } from '@/components/chat/chat-mode-selector'
+import { DEFAULT_CHAT_MODE, type ChatMode } from '@/lib/chat/modes'
 
 interface ModernChatProps {
   context?: any
@@ -30,6 +32,18 @@ interface ModernChatProps {
 export function ModernChat({ context, placeholder = "Message the AI" }: ModernChatProps) {
   const { focus, setFocus, fetchRoadmap } = useAIState()
   const [input, setInput] = useState('')
+  const [mode, setMode] = useState<ChatMode>(DEFAULT_CHAT_MODE)
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('seobot_chat_mode')
+      if (saved === 'seo' || saved === 'geo' || saved === 'content') {
+        setMode(saved)
+      }
+    } catch {
+      // Keep the default when storage is unavailable.
+    }
+  }, [])
 
   const [showHandoff, setShowHandoff] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -40,12 +54,26 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
   const handoffTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const toastTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
   
+  const handleModeChange = useCallback((nextMode: ChatMode) => {
+    setMode(nextMode)
+    try {
+      window.localStorage.setItem('seobot_chat_mode', nextMode)
+    } catch {
+      // In-memory mode switching still works if persistence is blocked.
+    }
+  }, [])
+
+  const latestBodyState = useRef({ context: { ...context, mode } })
+  useEffect(() => {
+    latestBodyState.current = { context: { ...context, mode } }
+  }, [context, mode])
+
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: '/api/chat',
-      body: () => ({ context }),
+      body: () => latestBodyState.current,
     })
-  }, [context])
+  }, [])
 
   const {
     messages,
@@ -295,9 +323,10 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
 
         <div className="p-4 border-t border-zinc-900 bg-zinc-950">
           <div className="max-w-3xl mx-auto">
+            <ChatModeSelector value={mode} onChange={handleModeChange} />
             <ChatInput
               value={input}
-              onChange={(e: any) => setInput(e.target.value)}
+              onChange={setInput}
               onSubmit={() => {
                 handleSendMessage({ text: input })
                 setInput('')

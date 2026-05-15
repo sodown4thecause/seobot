@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useUser } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -44,7 +44,9 @@ function parseSseEventChunk(chunk: string): { event?: string; data?: string } {
 }
 
 export default function ContentZonePage() {
-  const { user, isLoaded } = useUser()
+  const { data: session } = authClient.useSession()
+  const user = session?.user ?? null
+  const isLoaded = !!session
 
   const [topic, setTopic] = useState('')
   const [primaryKeyword, setPrimaryKeyword] = useState('')

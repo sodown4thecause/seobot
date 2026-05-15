@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { getUserId } from '@/lib/auth/clerk'
+import { getUserId } from '@/lib/auth'
 import { saveWorkspaceView } from '@/lib/dashboard/analytics/saved-views'
 
 export const runtime = 'nodejs'

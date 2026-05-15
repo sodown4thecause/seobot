@@ -36,7 +36,8 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
  */
 export const users = pgTable('users', {
     id: uuid('id').primaryKey().defaultRandom(),
-    clerkId: text('clerk_id').notNull().unique(),
+    clerkId: text('clerk_id').unique(),
+    betterAuthId: text('better_auth_id').unique(),
     email: text('email').notNull(),
     firstName: text('first_name'),
     lastName: text('last_name'),
@@ -52,6 +53,7 @@ export const users = pgTable('users', {
 }, (table) => {
     return {
         clerkIdIdx: index('idx_users_clerk_id').on(table.clerkId),
+        betterAuthIdIdx: index('idx_users_better_auth_id').on(table.betterAuthId),
         emailIdx: index('idx_users_email').on(table.email),
         polarSubIdx: index('idx_users_polar_sub_id').on(table.polarSubscriptionId),
     }
@@ -296,13 +298,93 @@ export const writingFrameworks = pgTable('writing_frameworks', {
 export const agentDocuments = pgTable('agent_documents', {
     id: uuid('id').primaryKey().defaultRandom(),
     agentType: text('agent_type').notNull().default('general'),
+    mode: text('mode').notNull().default('seo'),
     title: text('title').notNull(),
     content: text('content').notNull(),
     embedding: vector('embedding', { dimensions: 1536 }), // OpenAI embeddings
     sourceType: text('source_type').default('pdf'),
+    url: text('url'),
+    engine: text('engine'),
+    query: text('query'),
+    topic: text('topic'),
+    brand: text('brand'),
+    competitor: text('competitor'),
     metadata: jsonb('metadata').$type<Json>().default({}),
+    capturedAt: timestamp('captured_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        modeIdx: index('idx_agent_documents_mode').on(table.mode),
+        modeSourceIdx: index('idx_agent_documents_mode_source_type').on(table.mode, table.sourceType),
+        modeTopicIdx: index('idx_agent_documents_mode_topic').on(table.mode, table.topic),
+    }
+})
+
+export const geoPrompts = pgTable('geo_prompts', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id'),
+    prompt: text('prompt').notNull(),
+    brand: text('brand'),
+    topic: text('topic'),
+    audience: text('audience'),
+    intent: text('intent'),
+    competitors: text('competitors').array(),
+    engines: text('engines').array(),
+    active: boolean('active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        brandIdx: index('idx_geo_prompts_brand').on(table.brand),
+        userIdIdx: index('idx_geo_prompts_user_id').on(table.userId),
+        activeIdx: index('idx_geo_prompts_active').on(table.active),
+    }
+})
+
+export const geoRuns = pgTable('geo_runs', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id'),
+    geoPromptId: uuid('geo_prompt_id').references(() => geoPrompts.id, { onDelete: 'set null' }),
+    engine: text('engine').notNull(),
+    prompt: text('prompt').notNull(),
+    brand: text('brand').notNull(),
+    competitors: text('competitors').array(),
+    responseText: text('response_text'),
+    citedUrls: text('cited_urls').array(),
+    citedDomains: text('cited_domains').array(),
+    mentionedBrands: text('mentioned_brands').array(),
+    competitorMentions: jsonb('competitor_mentions').$type<Json>(),
+    sentiment: text('sentiment'),
+    brandPosition: integer('brand_position'),
+    visibilityScore: real('visibility_score'),
+    status: text('status').default('completed').notNull(),
+    rawJson: jsonb('raw_json').$type<Json>(),
+    capturedAt: timestamp('captured_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        engineIdx: index('idx_geo_runs_engine').on(table.engine),
+        userIdIdx: index('idx_geo_runs_user_id').on(table.userId),
+        brandIdx: index('idx_geo_runs_brand').on(table.brand),
+        capturedAtIdx: index('idx_geo_runs_captured_at').on(table.capturedAt),
+    }
+})
+
+export const researchJobs = pgTable('research_jobs', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id'),
+    mode: text('mode').notNull(),
+    status: text('status').notNull().default('queued'),
+    summary: text('summary'),
+    rawJson: jsonb('raw_json').$type<Json>(),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        modeStatusIdx: index('idx_research_jobs_mode_status').on(table.mode, table.status),
+        userIdIdx: index('idx_research_jobs_user_id').on(table.userId),
+        createdAtIdx: index('idx_research_jobs_created_at').on(table.createdAt),
+    }
 })
 
 /**
@@ -525,6 +607,12 @@ export type NewWritingFramework = typeof writingFrameworks.$inferInsert
 
 export type AgentDocument = typeof agentDocuments.$inferSelect
 export type NewAgentDocument = typeof agentDocuments.$inferInsert
+export type GeoPrompt = typeof geoPrompts.$inferSelect
+export type NewGeoPrompt = typeof geoPrompts.$inferInsert
+export type GeoRun = typeof geoRuns.$inferSelect
+export type NewGeoRun = typeof geoRuns.$inferInsert
+export type ResearchJob = typeof researchJobs.$inferSelect
+export type NewResearchJob = typeof researchJobs.$inferInsert
 
 export type ContentLearning = typeof contentLearnings.$inferSelect
 export type NewContentLearning = typeof contentLearnings.$inferInsert

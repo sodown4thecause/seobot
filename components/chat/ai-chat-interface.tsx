@@ -9,6 +9,7 @@ import { Terminal, Check, Copy, ChevronDown, ChevronRight, Loader2, Sparkles, Se
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
+import { ChatModeSelector } from '@/components/chat/chat-mode-selector'
 import { renderMessageComponent } from './message-types'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -43,6 +44,7 @@ import {
   extractReasoning,
   extractSources,
 } from '@/lib/chat/message-metadata'
+import { DEFAULT_CHAT_MODE, type ChatMode } from '@/lib/chat/modes'
 
 interface AIChatInterfaceProps {
   context?: Record<string, unknown>
@@ -97,6 +99,10 @@ const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComp
   const isLoading = state !== 'result'
   const isSuccess = state === 'result'
   const [isOpen, setIsOpen] = useState(false)
+
+  if (toolName === 'generate_content_package' && isSuccess && result?.success) {
+    return <ContentPackagePreview output={result} />
+  }
 
   // 1. Handle specialized client UI
   if (toolName === 'client_ui') {
@@ -265,6 +271,10 @@ const ToolPartInvocation = ({
   const isSuccess = !isLoading
   const [isOpen, setIsOpen] = useState(false)
 
+  if (toolName === 'generate_content_package' && isSuccess && output?.success) {
+    return <ContentPackagePreview output={output} />
+  }
+
   // Use the same specialized component logic as ToolInvocation
   const SpecializedComponent = TOOL_COMPONENTS[toolName]
   if (SpecializedComponent) {
@@ -345,6 +355,61 @@ const ToolPartInvocation = ({
           </div>
         </CollapsibleContent>
       </Collapsible>
+    </div>
+  )
+}
+
+type ContentPackageImagePreview = {
+  type: 'main' | 'thumbnail'
+  url?: string
+  previewUrl?: string
+  altText?: string
+  saveStatus?: 'saved' | 'preview_only' | 'failed'
+}
+
+type ContentPackagePreviewOutput = {
+  title?: string
+  images?: {
+    main?: ContentPackageImagePreview
+    thumbnail?: ContentPackageImagePreview
+  }
+}
+
+const ContentPackagePreview = ({ output }: { output: ContentPackagePreviewOutput }) => {
+  const images = output.images || {}
+  const mainImage = images.main
+  const thumbnail = images.thumbnail
+
+  return (
+    <div className="my-4 overflow-hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
+      <div className="border-b border-white/10 p-4">
+        <p className="text-sm font-semibold text-emerald-100">Content package saved</p>
+        <p className="mt-1 text-xs text-zinc-400">{output.title}</p>
+      </div>
+      <div className="grid gap-3 p-4 md:grid-cols-2">
+        {[mainImage, thumbnail].filter((image): image is ContentPackageImagePreview => Boolean(image)).map((image) => {
+          const imageSrc = image.url || image.previewUrl
+
+          return (
+            <figure key={image.type} className="overflow-hidden rounded-xl border border-white/10 bg-black/30">
+              {imageSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageSrc} alt={image.altText || image.type} className="aspect-video w-full object-cover" />
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center bg-zinc-950 px-4 text-center text-xs text-zinc-500">
+                  Image generated, but persistent preview storage is not configured.
+                </div>
+              )}
+              <figcaption className="space-y-1 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-300">
+                  {image.type === 'main' ? 'Main image' : 'Thumbnail'}
+                </p>
+                <p className="text-xs text-zinc-500">{image.saveStatus === 'saved' ? 'Saved to library' : 'Preview only'}</p>
+              </figcaption>
+            </figure>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -497,6 +562,11 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const { roadmap, fetchRoadmap, focus, setFocus } = useAIState()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [input, setInput] = useState('')
+  const [mode, setMode] = useState<ChatMode>(() => {
+    if (typeof window === 'undefined') return DEFAULT_CHAT_MODE
+    const saved = window.localStorage.getItem('seobot_chat_mode')
+    return saved === 'seo' || saved === 'geo' || saved === 'content' ? saved : DEFAULT_CHAT_MODE
+  })
   const [prevFocus, setPrevFocus] = useState<string | null>(null)
   const [showHandoff, setShowHandoff] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
@@ -515,6 +585,11 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   // 3. Memoized Values
   const agentPreference = useMemo(() => agentIdProp ?? (chatContext as any)?.agentId ?? 'general', [agentIdProp, chatContext])
 
+  const handleModeChange = useCallback((nextMode: ChatMode) => {
+    setMode(nextMode)
+    window.localStorage.setItem('seobot_chat_mode', nextMode)
+  }, [])
+
   const contextKey = useMemo(() => {
     if (!chatContext) return ''
     const keys = Object.keys(chatContext).sort()
@@ -531,15 +606,25 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     ...(chatContext || {}),
     agentId: agentPreference,
     conversationId,
-  }), [contextKey, agentPreference, conversationId])
+    mode,
+  }), [contextKey, agentPreference, conversationId, mode])
+
+  const latestRequestRef = useRef({
+    chatId: conversationId,
+    context: mergedContext,
+  })
+
+  useEffect(() => {
+    latestRequestRef.current = {
+      chatId: conversationId,
+      context: mergedContext,
+    }
+  }, [conversationId, mergedContext])
 
   const transport = useMemo(() => new DefaultChatTransport({
     api: '/api/chat',
-    body: () => ({
-      chatId: conversationId,
-      context: mergedContext,
-    }),
-  }), [conversationId, mergedContext])
+    body: () => latestRequestRef.current,
+  }), [])
 
   // 4. useChat Hook
   const {
@@ -1023,6 +1108,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             <p className="text-lg md:text-xl text-zinc-500">Your AI-powered SEO and content assistant</p>
           </div>
           <div className="w-full max-w-3xl mx-auto">
+            <ChatModeSelector value={mode} onChange={handleModeChange} />
             <ChatInput
               value={input}
               onChange={setInput}
@@ -1099,7 +1185,10 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               />
             )}
             <div className="flex items-center gap-3">
-              <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />
+              <div className="min-w-0 flex-1">
+                <ChatModeSelector value={mode} onChange={handleModeChange} />
+                <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />
+              </div>
               {isLoading && (
                 <button
                   type="button"

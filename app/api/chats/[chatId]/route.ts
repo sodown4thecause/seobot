@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getUserId } from '@/lib/auth/clerk'
+import { getUserId } from '@/lib/auth'
 import { loadChatMessagesForUser } from '@/lib/chat/persistence'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 

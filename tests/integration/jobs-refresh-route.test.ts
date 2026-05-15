@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import { POST } from '@/app/api/jobs/refresh/route'
 
 const { mockSendRefreshRequest, mockInvalidateDashboardCache } = vi.hoisted(() => ({
@@ -15,10 +16,23 @@ vi.mock('@/lib/cache/redis-client', () => ({
   invalidateDashboardCache: mockInvalidateDashboardCache,
 }))
 
+vi.mock('@/lib/auth', () => ({
+  auth: {
+    api: {
+      getSession: vi.fn(),
+    },
+  },
+}))
+
+vi.mock('next/headers', () => ({
+  headers: vi.fn(),
+}))
+
 describe('jobs refresh route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(auth).mockResolvedValue({ userId: 'user_123' } as Awaited<ReturnType<typeof auth>>)
+    vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: 'user_123', email: 'test@test.com' } } as any)
+    vi.mocked(headers).mockResolvedValue(new Headers() as any)
   })
 
   it('returns structured 500 and skips cache invalidation when enqueue fails', async () => {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { currentUser } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import type { AuditVisibilityState } from '@/lib/audit/types'
@@ -29,13 +30,13 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const { id } = await context.params
-  const user = await currentUser()
+  const session = await auth.api.getSession({ headers: await headers() })
 
-  if (!user) {
+  if (!session?.user) {
     return NextResponse.json({ ok: false, message: 'Authentication required.' }, { status: 401 })
   }
 
-  const userEmail = user.primaryEmailAddress?.emailAddress?.toLowerCase().trim()
+  const userEmail = session.user.email?.toLowerCase().trim()
   if (!userEmail) {
     return NextResponse.json({ ok: false, message: 'Unable to verify account email.' }, { status: 403 })
   }

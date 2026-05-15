@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import { db, businessProfiles } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 // import { type OnboardingData } from '@/lib/onboarding/state'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   try {
@@ -65,4 +65,5 @@ export async function POST(req: Request) {
     )
   }
 }
+
 

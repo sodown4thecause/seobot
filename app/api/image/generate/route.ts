@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import { getUserId, rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { generateText } from 'ai'
 import { createGateway } from '@ai-sdk/gateway'
@@ -32,6 +32,7 @@ function toImageUrl(image: { dataUrl?: string; base64?: string; mediaType?: stri
   }
 
   if (image.base64 && image.base64.trim().length > 0) {
+    if (image.base64.startsWith('data:')) return image.base64
     return `data:${image.mediaType || 'image/png'};base64,${image.base64}`
   }
 
@@ -60,9 +61,9 @@ export async function POST(req: NextRequest) {
 
     try {
         const model = gateway
-          ? gateway('google/gemini-2.5-flash-image')
+          ? gateway('google/gemini-3-pro-image')
           : google
-            ? google('gemini-2.5-flash-image')
+            ? google('gemini-3-pro-image')
             : null
 
         if (!model) {

@@ -2,9 +2,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { executeWorkflow, formatWorkflowResults } from '@/lib/workflows/executor'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,4 +71,5 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
 

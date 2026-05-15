@@ -96,7 +96,7 @@ async function handleSubscriptionUpdate(data: PolarSubscriptionPayload) {
                 currentPeriodEnd: currentPeriodEnd,
                 updatedAt: new Date()
             })
-            .where(eq(users.clerkId, userId))
+            .where(eq(users.betterAuthId, userId))
     } else if (polarSubscriptionId) {
         // Try to find user by subscription ID
         await db.update(users)

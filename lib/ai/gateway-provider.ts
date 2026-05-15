@@ -126,12 +126,10 @@ export const vercelGateway = {
 
     // Only OpenAI embeddings supported (text-embedding-3-small)
     if (modelId.startsWith('openai/')) {
-      // Prefer Gateway for OpenAI embeddings (for monitoring/caching)
-      if (gateway) {
+      if (gateway?.textEmbeddingModel) {
         console.log('[Gateway] Using gateway for embedding:', modelId);
         return gateway.textEmbeddingModel(modelId);
       }
-      // Fallback to direct OpenAI
       if (openai) {
         console.log('[Gateway] Using direct OpenAI for embedding:', modelId);
         return openai.textEmbeddingModel(modelId.replace('openai/', ''));

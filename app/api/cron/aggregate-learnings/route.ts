@@ -1,8 +1,17 @@
 import { getBestPractices } from '@/lib/ai/learning-storage';
 import { NextResponse } from 'next/server';
 import { serverEnv } from '@/lib/config/env';
+import { timingSafeEqual } from 'crypto';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
+
+function isAuthorized(authHeader: string | null): boolean {
+  if (!serverEnv.CRON_SECRET || !authHeader?.startsWith('Bearer ')) return false;
+
+  const supplied = Buffer.from(authHeader.slice('Bearer '.length));
+  const expected = Buffer.from(serverEnv.CRON_SECRET);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
 
 /**
  * Cron endpoint for learning aggregation
@@ -13,10 +22,8 @@ export const runtime = 'edge';
  */
 export async function GET(req: Request) {
   try {
-    // Check for authorization (e.g., a secret key in headers)
-    // In production, you should set CRON_SECRET environment variable
     const authHeader = req.headers.get('authorization');
-    if (serverEnv.CRON_SECRET && authHeader !== `Bearer ${serverEnv.CRON_SECRET}`) {
+    if (!isAuthorized(authHeader)) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 

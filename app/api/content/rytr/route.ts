@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import {
   generateSEOContent,
   generateBlogSection,
@@ -22,7 +22,7 @@ import {
   type RytrUseCase,
 } from '@/lib/external-apis/rytr'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
@@ -136,4 +136,5 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
 

@@ -1,4 +1,5 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
@@ -9,7 +10,8 @@ interface CancelBody {
 }
 
 export async function POST(request: Request) {
-  const { userId } = await auth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const userId = session?.user?.id
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
