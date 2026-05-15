@@ -106,6 +106,12 @@ export const inngest = new Inngest({
   eventKey: env.INNGEST_EVENT_KEY,
 })
 
+function requireInngestEventKey(): void {
+  if (!env.INNGEST_EVENT_KEY) {
+    throw new Error('INNGEST_EVENT_KEY is required to send Inngest events')
+  }
+}
+
 // ============================================================================
 // Event Type Definitions (for TypeScript inference)
 // ============================================================================
@@ -141,6 +147,8 @@ export async function sendRefreshRequest(
   jobType: RefreshRequestedEvent['data']['jobType'],
   competitorUrls?: string[]
 ): Promise<void> {
+  requireInngestEventKey()
+
   await inngest.send({
     name: 'dashboard/refresh.requested',
     data: {
@@ -164,6 +172,8 @@ export async function sendProgressUpdate(
   message?: string,
   metadata?: Record<string, unknown>
 ): Promise<void> {
+  requireInngestEventKey()
+
   await inngest.send({
     name: 'dashboard/refresh.progress',
     data: {

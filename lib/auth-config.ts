@@ -15,7 +15,7 @@ import bcrypt from 'bcrypt'
 import { db } from '@/lib/db'
 import * as authSchema from '@/lib/auth-schema'
 import { users } from '@/lib/db/schema'
-import { eq, or } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 async function ensureApplicationUser(authUser: {
   id: string
@@ -32,10 +32,10 @@ async function ensureApplicationUser(authUser: {
   const [firstName, ...lastNameParts] = (authUser.name || '').trim().split(/\s+/).filter(Boolean)
   const now = new Date()
 
-  const [existingUser] = await db
+  const [existingByAuthId] = await db
     .select({ id: users.id })
     .from(users)
-    .where(or(eq(users.betterAuthId, authUser.id), eq(users.email, email)))
+    .where(eq(users.betterAuthId, authUser.id))
     .limit(1)
 
   const userValues = {
@@ -48,8 +48,27 @@ async function ensureApplicationUser(authUser: {
     deletedAt: null,
   }
 
-  if (existingUser) {
-    await db.update(users).set(userValues).where(eq(users.id, existingUser.id))
+  if (existingByAuthId) {
+    await db.update(users).set(userValues).where(eq(users.id, existingByAuthId.id))
+    return
+  }
+
+  const existingByEmail = await db
+    .select({ id: users.id, betterAuthId: users.betterAuthId })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(2)
+
+  if (existingByEmail.length > 1) {
+    throw new Error(`Cannot link Better Auth user ${authUser.id}: multiple app users found for ${email}`)
+  }
+
+  if (existingByEmail[0]) {
+    if (existingByEmail[0].betterAuthId && existingByEmail[0].betterAuthId !== authUser.id) {
+      throw new Error(`Cannot link Better Auth user ${authUser.id}: ${email} is already linked to another auth user`)
+    }
+
+    await db.update(users).set(userValues).where(eq(users.id, existingByEmail[0].id))
     return
   }
 
@@ -118,6 +137,7 @@ export const auth = betterAuth({
             await ensureApplicationUser(user)
           } catch (error) {
             console.error('[Better Auth] Failed to sync app user row after signup', error)
+            throw error
           }
         },
       },
