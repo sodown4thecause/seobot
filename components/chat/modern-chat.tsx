@@ -63,17 +63,17 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     }
   }, [])
 
-  const latestBodyState = useMemo(() => ({ current: { context: { ...context, mode } } }), [])
+  const latestBodyState = useRef({ context: { ...context, mode } })
   useEffect(() => {
     latestBodyState.current = { context: { ...context, mode } }
-  }, [context, latestBodyState, mode])
+  }, [context, mode])
 
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: '/api/chat',
       body: () => latestBodyState.current,
     })
-  }, [latestBodyState])
+  }, [])
 
   const {
     messages,
