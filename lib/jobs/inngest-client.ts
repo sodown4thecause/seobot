@@ -103,7 +103,7 @@ export type RefreshFailedEvent = z.infer<typeof refreshFailedSchema>
 export const inngest = new Inngest({
   id: 'seobot-dashboard',
   name: 'SEOBOT Dashboard Jobs',
-  eventKey: env.INNGEST_EVENT_KEY || 'local-dev-event-key',
+  eventKey: env.INNGEST_EVENT_KEY,
 })
 
 // ============================================================================

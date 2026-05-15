@@ -63,17 +63,17 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     }
   }, [])
 
-  const latestBodyRef = useRef({ context: { ...context, mode } })
+  const latestBodyState = useMemo(() => ({ current: { context: { ...context, mode } } }), [])
   useEffect(() => {
-    latestBodyRef.current = { context: { ...context, mode } }
-  }, [context, mode])
+    latestBodyState.current = { context: { ...context, mode } }
+  }, [context, latestBodyState, mode])
 
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: '/api/chat',
-      body: () => latestBodyRef.current,
+      body: () => latestBodyState.current,
     })
-  }, [])
+  }, [latestBodyState])
 
   const {
     messages,
@@ -326,7 +326,7 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
             <ChatModeSelector value={mode} onChange={handleModeChange} />
             <ChatInput
               value={input}
-              onChange={(e: any) => setInput(e.target.value)}
+              onChange={setInput}
               onSubmit={() => {
                 handleSendMessage({ text: input })
                 setInput('')

@@ -30,7 +30,7 @@ import {
   convertToModelFormat,
   type RequestBody,
 } from '@/lib/chat/message-handler'
-import { classifyUserIntent, buildAgentSystemPrompt } from '@/lib/chat/intent-classifier'
+import { classifyUserIntent, buildAgentSystemPrompt, type AgentType } from '@/lib/chat/intent-classifier'
 import { assembleTools } from '@/lib/chat/tool-assembler'
 import { buildStreamResponse, type StreamOptions } from '@/lib/chat/stream-builder'
 import { saveUIMessage } from '@/lib/chat/storage'
@@ -161,11 +161,17 @@ const handler = async (req: Request) => {
     })
 
     // 10. Build system prompt for the selected agent
-    const effectiveAgent = classification.agent === 'onboarding' || classification.agent === 'image'
-      ? classification.agent
-      : mode === 'content'
-        ? 'content'
-        : 'seo-aeo'
+    let effectiveAgent: AgentType
+    if (classification.agent === 'onboarding' || classification.agent === 'image') {
+      effectiveAgent = classification.agent
+    } else if (mode === 'content') {
+      effectiveAgent = 'content'
+    } else if (mode === 'geo') {
+      // GEO currently shares the SEO/AEO agent prompt and tools while using GEO-scoped RAG and mode context.
+      effectiveAgent = 'seo-aeo'
+    } else {
+      effectiveAgent = 'seo-aeo'
+    }
 
     const systemPrompt = buildAgentSystemPrompt(
       effectiveAgent,

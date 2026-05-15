@@ -7,7 +7,10 @@ import { vercelGateway } from '@/lib/ai/gateway-provider'
 
 export const CONTENT_IMAGE_MODEL = 'google/gemini-3-pro-image'
 const FAST_TEXT_MODEL = 'google/gemini-3-flash'
-const IMAGE_GENERATION_TIMEOUT_MS = Number(process.env.CONTENT_IMAGE_TIMEOUT_MS || 60000)
+const IMAGE_GENERATION_TIMEOUT_MS = (() => {
+  const parsed = Number(process.env.CONTENT_IMAGE_TIMEOUT_MS)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60000
+})()
 
 export type ContentImageAssetType = 'main' | 'thumbnail'
 

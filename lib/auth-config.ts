@@ -14,6 +14,47 @@ import { nextCookies } from 'better-auth/next-js'
 import bcrypt from 'bcrypt'
 import { db } from '@/lib/db'
 import * as authSchema from '@/lib/auth-schema'
+import { users } from '@/lib/db/schema'
+import { eq, or } from 'drizzle-orm'
+
+async function ensureApplicationUser(authUser: {
+  id: string
+  email?: string | null
+  name?: string | null
+  image?: string | null
+}) {
+  const email = authUser.email?.trim()
+  if (!email) {
+    console.warn('[Better Auth] Skipping app user sync because auth user has no email', { userId: authUser.id })
+    return
+  }
+
+  const [firstName, ...lastNameParts] = (authUser.name || '').trim().split(/\s+/).filter(Boolean)
+  const now = new Date()
+
+  const [existingUser] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(or(eq(users.betterAuthId, authUser.id), eq(users.email, email)))
+    .limit(1)
+
+  const userValues = {
+    betterAuthId: authUser.id,
+    email,
+    firstName: firstName || null,
+    lastName: lastNameParts.join(' ') || null,
+    imageUrl: authUser.image || null,
+    updatedAt: now,
+    deletedAt: null,
+  }
+
+  if (existingUser) {
+    await db.update(users).set(userValues).where(eq(users.id, existingUser.id))
+    return
+  }
+
+  await db.insert(users).values(userValues)
+}
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -67,6 +108,20 @@ export const auth = betterAuth({
 
   verification: {
     modelName: 'verification',
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          try {
+            await ensureApplicationUser(user)
+          } catch (error) {
+            console.error('[Better Auth] Failed to sync app user row after signup', error)
+          }
+        },
+      },
+    },
   },
 
   plugins: [

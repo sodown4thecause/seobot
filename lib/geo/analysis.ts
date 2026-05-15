@@ -92,7 +92,7 @@ function heuristicAnalysis(input: {
       return position >= 0 ? [{ term: competitor, position }] : []
     }),
   ].sort((a, b) => a.position - b.position)
-  const brandPosition = orderedMentionPositions.findIndex(item => item.term === input.brand)
+  const brandPositionIndexInMentionOrder = orderedMentionPositions.findIndex(item => item.term === input.brand)
   const appearsBeforeCompetitors = brandPositionIndex >= 0
     && (competitorPositions.length === 0 || competitorPositions.every(position => brandPositionIndex < position))
 
@@ -110,7 +110,9 @@ function heuristicAnalysis(input: {
     competitorMentions,
     citedDomains,
     sentiment: brandMentioned ? 'neutral' : 'absent',
-    brandPosition: brandMentioned ? brandPosition + 1 : null,
+    brandPosition: brandMentioned && brandPositionIndexInMentionOrder >= 0
+      ? brandPositionIndexInMentionOrder + 1
+      : null,
     visibilityScore,
     rationale: brandMentioned
       ? 'Heuristic analysis found the brand in the response and scored visibility from mention order and citation presence.'
