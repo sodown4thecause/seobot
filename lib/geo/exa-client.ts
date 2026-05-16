@@ -3,6 +3,7 @@ import { serverEnv } from '@/lib/config/env'
 import { extractDomains } from './utils'
 
 const EXA_BASE_URL = 'https://api.exa.ai'
+const EXA_SEARCH_TIMEOUT_MS = 10_000
 
 export type ExaGeoSource = {
   title: string
@@ -58,6 +59,9 @@ export async function searchExaGeoSources(params: {
     'authoritative sources citations comparisons recommendations',
   ].filter(Boolean).join('\n')
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), EXA_SEARCH_TIMEOUT_MS)
+
   try {
     const response = await fetch(`${EXA_BASE_URL}/search`, {
       method: 'POST',
@@ -65,6 +69,7 @@ export async function searchExaGeoSources(params: {
         'Content-Type': 'application/json',
         'x-api-key': serverEnv.EXA_API_KEY,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         query,
         type: 'auto',
@@ -81,6 +86,7 @@ export async function searchExaGeoSources(params: {
         },
       }),
     })
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       const text = await response.text()
@@ -119,10 +125,13 @@ export async function searchExaGeoSources(params: {
       },
     }
   } catch (error) {
+    clearTimeout(timeoutId)
     return {
       status: 'error',
       sources: [],
-      error: error instanceof Error ? error.message : 'Exa search failed',
+      error: error instanceof Error && error.name === 'AbortError'
+        ? `Exa search timed out after ${EXA_SEARCH_TIMEOUT_MS}ms`
+        : error instanceof Error ? error.message : 'Exa search failed',
     }
   }
 }

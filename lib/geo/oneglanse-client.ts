@@ -109,10 +109,7 @@ function stringifyGoogleAiOverviewItem(item: DataForSEOGoogleAiOverviewItem): st
   if (typeof item.text === 'string' && item.text.trim()) return item.text.trim()
   if (!Array.isArray(item.items) || item.items.length === 0) return ''
 
-  const nestedText = JSON.stringify(item.items)
-    .replace(/\\n/g, '\n')
-    .replace(/\\"/g, '"')
-    .trim()
+  const nestedText = JSON.stringify(item.items, null, 2).trim()
 
   return nestedText
 }
