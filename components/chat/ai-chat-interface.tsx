@@ -46,7 +46,6 @@ import {
   extractReasoning,
   extractSources,
 } from '@/lib/chat/message-metadata'
-import { DEFAULT_CHAT_MODE, type ChatMode } from '@/lib/chat/modes'
 
 interface AIChatInterfaceProps {
   context?: Record<string, unknown>
@@ -565,11 +564,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const { roadmap, fetchRoadmap, focus, setFocus } = useAIState()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [input, setInput] = useState('')
-  const [mode, setMode] = useState<ChatMode>(() => {
-    if (typeof window === 'undefined') return DEFAULT_CHAT_MODE
-    const saved = window.localStorage.getItem('seobot_chat_mode')
-    return saved === 'seo' || saved === 'geo' || saved === 'content' ? saved : DEFAULT_CHAT_MODE
-  })
   const [prevFocus, setPrevFocus] = useState<string | null>(null)
   const [showHandoff, setShowHandoff] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
@@ -588,11 +582,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   // 3. Memoized Values
   const agentPreference = useMemo(() => agentIdProp ?? (chatContext as any)?.agentId ?? 'general', [agentIdProp, chatContext])
 
-  const handleModeChange = useCallback((nextMode: ChatMode) => {
-    setMode(nextMode)
-    window.localStorage.setItem('seobot_chat_mode', nextMode)
-  }, [])
-
   const contextKey = useMemo(() => {
     if (!chatContext) return ''
     const keys = Object.keys(chatContext).sort()
@@ -609,9 +598,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     ...(chatContext || {}),
     agentId: agentPreference,
     conversationId,
-    mode,
-    chatMode: mode,
-  }), [contextKey, agentPreference, conversationId, mode])
+    mode: chatMode,
+    chatMode,
+  }), [contextKey, agentPreference, conversationId, chatMode])
 
   const latestRequestRef = useRef({
     chatId: conversationId,
@@ -1203,7 +1192,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             <ChatModeSelector />
           </div>
           <div className="w-full max-w-3xl mx-auto">
-            <ChatModeSelector value={mode} onChange={handleModeChange} />
             <ChatInput
               value={input}
               onChange={setInput}
@@ -1295,7 +1283,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             </div>
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <ChatModeSelector value={mode} onChange={handleModeChange} />
                 <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />
               </div>
               {isLoading && (
