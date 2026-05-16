@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { authClient } from '@/lib/auth-client'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import Link from 'next/link'
+import { GoogleAuthButton } from './GoogleAuthButton'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
@@ -37,6 +38,14 @@ export default function LoginForm() {
         <CardDescription className="text-zinc-400">Welcome back. Enter your credentials to continue.</CardDescription>
       </CardHeader>
       <CardContent className="pt-4">
+        <div className="mb-5 space-y-5">
+          <GoogleAuthButton label="Continue with Google" />
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-zinc-800" />
+            <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">or</span>
+            <div className="h-px flex-1 bg-zinc-800" />
+          </div>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <p className="text-sm text-red-400 text-center">{error}</p>
