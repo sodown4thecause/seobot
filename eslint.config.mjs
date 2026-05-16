@@ -27,7 +27,6 @@ const eslintConfig = defineConfig([
       "documents/**",
       "kitty/**",
       "wezterm/**",
-      "%USERPROFILE%/**",
       "~/**",
       "scripts/**",
       "tests/**",

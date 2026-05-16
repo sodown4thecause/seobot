@@ -2,7 +2,7 @@
 
 import { Search, Brain, PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { type ChatMode, useChatMode } from './chat-mode-context'
+import { type ChatMode, useChatModeOptional } from './chat-mode-context'
 
 const MODES: { id: ChatMode; label: string; icon: React.ElementType; description: string }[] = [
   {
@@ -30,7 +30,7 @@ interface ChatModeSelectorProps {
 }
 
 export function ChatModeSelector({ className }: ChatModeSelectorProps) {
-  const { chatMode, setChatMode } = useChatMode()
+  const { chatMode, setChatMode } = useChatModeOptional()
 
   return (
     <div className={cn('flex items-center gap-1 p-1 rounded-xl bg-zinc-900 border border-zinc-800', className)}>
