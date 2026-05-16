@@ -11,7 +11,7 @@ import { AbortError } from '@/lib/errors/types'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import type { OnboardingData, OnboardingStep } from '@/lib/onboarding/state'
 
-export type AgentType = 'seo-aeo' | 'content' | 'general' | 'onboarding' | 'image'
+export type AgentType = 'seo-aeo' | 'content' | 'general' | 'onboarding' | 'image' | 'geo'
 
 export interface ClassificationResult {
   agent: AgentType
@@ -38,6 +38,18 @@ export interface ClassifyOptions {
 export async function classifyUserIntent(options: ClassifyOptions): Promise<ClassificationResult> {
   const { query, context } = options
   const isOnboarding = context?.page === 'onboarding' || !!context?.onboarding
+
+  // GEO mode override — always route to geo agent when the UI mode is 'geo'
+  if (context?.chatMode === 'geo') {
+    return {
+      agent: 'geo',
+      confidence: 1.0,
+      reasoning: 'GEO mode selected by user',
+      tools: ['geo_brand_scan'],
+      classification: null,
+      allIntents: ['geo'],
+    }
+  }
 
   // Skip LLM classification for onboarding
   if (isOnboarding || AgentRouter.routeQuery(query, context).agent === 'onboarding') {

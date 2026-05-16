@@ -1087,10 +1087,10 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       { id: 'link-building-plan', text: 'Write a high-quality, SEO/AEO-optimized link building plan for my website', icon: 'zap' as const },
     ]
     const geoSuggestions = [
-      { id: 'ai-brand-visibility', text: 'How often is my brand mentioned in ChatGPT, Gemini, and Perplexity responses?', icon: 'sparkles' as const },
-      { id: 'ai-overview-track', text: 'Am I appearing in Google AI Overviews for my target keywords?', icon: 'target' as const },
-      { id: 'geo-competitor', text: 'Which competitors are being cited by AI models in my industry?', icon: 'search' as const },
-      { id: 'geo-optimize', text: 'How can I optimize my content to get cited in AI-generated answers?', icon: 'zap' as const },
+      { id: 'ai-brand-visibility', text: 'My brand is "Flow Intent" and my website is flowintent.com — check if I appear in ChatGPT, Gemini, and Perplexity when someone searches "best SEO tools"', icon: 'sparkles' as const },
+      { id: 'geo-competitor', text: 'Track my brand "Flow Intent" for the query "alternatives to Ahrefs" and tell me which competitors appear', icon: 'target' as const },
+      { id: 'geo-optimize', text: 'How can I optimize my content to get cited in AI-generated answers?', icon: 'search' as const },
+      { id: 'geo-new-brand', text: 'I want to start tracking my brand across AI platforms — where do I begin?', icon: 'zap' as const },
     ]
     const contentSuggestions = [
       { id: 'blog-post', text: 'Write a comprehensive blog post about the benefits of green tea.', icon: 'lightbulb' as const },
@@ -1105,6 +1105,90 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       seo: 'Keyword research, SERP analysis & technical SEO',
       geo: 'Track brand visibility across AI platforms & overviews',
       content: 'Generate blog posts & articles with AI-powered images',
+    }
+
+    // GEO mode gets a dedicated workflow onboarding panel
+    if (chatMode === 'geo') {
+      return (
+        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
+          <div className="w-full max-w-3xl space-y-6 py-4">
+            <div className="flex justify-center">
+              <ChatModeSelector />
+            </div>
+
+            {/* Hero */}
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">GEO / AEO Mode</h1>
+              <p className="text-zinc-400 text-base max-w-xl mx-auto">
+                Track how often your brand appears inside ChatGPT, Gemini, and Perplexity responses — and get actionable steps to increase your AI visibility.
+              </p>
+            </div>
+
+            {/* How it works */}
+            <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5 space-y-4">
+              <p className="text-xs font-mono uppercase tracking-widest text-violet-400">How this works</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { step: '1', label: 'Tell us your brand', detail: 'Share your brand name, website, and industry so we know what to track.' },
+                  { step: '2', label: 'Pick your queries', detail: 'Choose what people search for — we suggest the best ones based on your niche.' },
+                  { step: '3', label: 'We query the AI models', detail: 'We send your queries to ChatGPT, Gemini, and Perplexity in real time and capture their responses.' },
+                  { step: '4', label: 'Get actionable insights', detail: 'See exactly where you appear, what your competitors say, and which content will get you cited.' },
+                ].map(({ step, label, detail }) => (
+                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                    <div className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* What we track */}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {[
+                { label: 'ChatGPT', sub: 'gpt-4o-mini' },
+                { label: 'Gemini', sub: 'gemini-2.0-flash' },
+                { label: 'Perplexity', sub: 'sonar + citations' },
+              ].map(({ label, sub }) => (
+                <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+                  <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Chat input */}
+            <div className="w-full">
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSubmit={() => handleSendMessage({ text: input })}
+                disabled={isLoading}
+                placeholder="Tell me your brand name and what you want to track..."
+                className="bg-transparent"
+              />
+            </div>
+
+            {/* Starter prompts */}
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {geoSuggestions.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSendMessage({ text: s.text })}
+                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-violet-500/40 hover:bg-violet-500/5 hover:text-zinc-100 transition-all duration-200"
+                  >
+                    {s.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
     }
 
     return (
