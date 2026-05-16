@@ -24,7 +24,9 @@ import { useArtifactStore } from '@/lib/artifacts/artifact-store'
 import { bootstrapConversationRecord } from '@/lib/chat/conversation-bootstrap'
 import { KeywordArtifact } from './artifacts/keyword-artifact'
 import { BacklinkArtifact } from './artifacts/backlink-artifact'
+import { BlogArtifact } from './artifacts/blog-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
+import { useChatModeOptional } from './chat-mode-context'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // AI Elements Imports
@@ -556,6 +558,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   autoSendKey,
 }, ref) => {
   // 1. Initial State & Context
+  const { chatMode } = useChatModeOptional()
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null)
   const { artifacts, updateArtifact } = useArtifactStore()
@@ -607,6 +610,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     agentId: agentPreference,
     conversationId,
     mode,
+    chatMode: mode,
   }), [contextKey, agentPreference, conversationId, mode])
 
   const latestRequestRef = useRef({
@@ -1076,36 +1080,43 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // Empty State View - with styled ProactiveSuggestions
   if (messages.length === 0) {
-    // Default suggestions for empty state - using new Suggestions format
-    const defaultSuggestions = [
-      {
-        id: 'competitor-topical-map',
-        text: 'Analyze my top competitors and find content gaps and write me a topical map.',
-        icon: 'target' as const,
-      },
-      {
-        id: 'content-pillars',
-        text: 'Generate 10 content pillars that will rank well for my website.',
-        icon: 'lightbulb' as const,
-      },
-      {
-        id: 'eeat-improvement',
-        text: 'How can I improve my content for better EEAT?',
-        icon: 'sparkles' as const,
-      },
-      {
-        id: 'link-building-plan',
-        text: 'Write a high-quality, SEO/AEO-optimized link building plan for my website',
-        icon: 'zap' as const,
-      },
+    const seoSuggestions = [
+      { id: 'competitor-topical-map', text: 'Analyze my top competitors and find content gaps and write me a topical map.', icon: 'target' as const },
+      { id: 'content-pillars', text: 'Generate 10 content pillars that will rank well for my website.', icon: 'lightbulb' as const },
+      { id: 'eeat-improvement', text: 'How can I improve my content for better EEAT?', icon: 'sparkles' as const },
+      { id: 'link-building-plan', text: 'Write a high-quality, SEO/AEO-optimized link building plan for my website', icon: 'zap' as const },
     ]
+    const geoSuggestions = [
+      { id: 'ai-brand-visibility', text: 'How often is my brand mentioned in ChatGPT, Gemini, and Perplexity responses?', icon: 'sparkles' as const },
+      { id: 'ai-overview-track', text: 'Am I appearing in Google AI Overviews for my target keywords?', icon: 'target' as const },
+      { id: 'geo-competitor', text: 'Which competitors are being cited by AI models in my industry?', icon: 'search' as const },
+      { id: 'geo-optimize', text: 'How can I optimize my content to get cited in AI-generated answers?', icon: 'zap' as const },
+    ]
+    const contentSuggestions = [
+      { id: 'blog-post', text: 'Write a comprehensive blog post about the benefits of green tea.', icon: 'lightbulb' as const },
+      { id: 'london-coffee', text: 'Write me a blog about the best coffee shops in London.', icon: 'sparkles' as const },
+      { id: 'listicle', text: 'Create a 10-step guide to starting a successful podcast in 2025.', icon: 'zap' as const },
+      { id: 'product-review', text: 'Write a comparison article for the top 5 project management tools.', icon: 'target' as const },
+    ]
+    const modeMap = { seo: seoSuggestions, geo: geoSuggestions, content: contentSuggestions }
+    const defaultSuggestions = modeMap[chatMode] ?? seoSuggestions
+
+    const modeDescriptions = {
+      seo: 'Keyword research, SERP analysis & technical SEO',
+      geo: 'Track brand visibility across AI platforms & overviews',
+      content: 'Generate blog posts & articles with AI-powered images',
+    }
 
     return (
       <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-zinc-950 font-chat", className)}>
-        <div className="w-full max-w-4xl space-y-8">
-          <div className="text-center space-y-3">
+        <div className="w-full max-w-4xl space-y-6">
+          <div className="text-center space-y-2">
             <h1 className="text-4xl md:text-5xl font-semibold text-zinc-100 tracking-tight">Flow Intent</h1>
-            <p className="text-lg md:text-xl text-zinc-500">Your AI-powered SEO and content assistant</p>
+            <p className="text-base md:text-lg text-zinc-500">{modeDescriptions[chatMode]}</p>
+          </div>
+          {/* Mode Selector */}
+          <div className="flex justify-center">
+            <ChatModeSelector />
           </div>
           <div className="w-full max-w-3xl mx-auto">
             <ChatModeSelector value={mode} onChange={handleModeChange} />
@@ -1118,7 +1129,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               className="bg-transparent"
             />
           </div>
-          {/* New Suggestions component in empty state */}
           <div className="max-w-3xl mx-auto">
             <Suggestions
               suggestions={defaultSuggestions}
@@ -1137,20 +1147,32 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       <div className={cn("flex flex-col h-full transition-all duration-500", activeArtifact ? "w-1/2 border-r border-zinc-800" : "w-full")}>
         <Conversation>
           <ConversationContent className="px-4 py-2 max-w-3xl mx-auto">
-            {messages.map((m, idx) => (
-              <AIMessage key={m.id || idx} from={m.role as any}>
-                <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
-                <MessageContent>
-                  {renderMessageContent(m, getMessageText(m), idx === messages.length - 1)}
-                  {/* Only show regenerate button on last assistant message */}
-                  {m.role === 'assistant' && idx === messages.length - 1 && !isLoading && (
-                    <div className="mt-1">
-                      <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
-                    </div>
-                  )}
-                </MessageContent>
-              </AIMessage>
-            ))}
+            {messages.map((m, idx) => {
+              const isLastMsg = idx === messages.length - 1
+              const text = getMessageText(m)
+              const isContentAssistant = chatMode === 'content' && m.role === 'assistant' && text.length > 200
+
+              return (
+                <AIMessage key={m.id || idx} from={m.role as any}>
+                  <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
+                  <MessageContent>
+                    {isContentAssistant ? (
+                      <BlogArtifact
+                        content={text}
+                        isStreaming={isLastMsg && isLoading}
+                      />
+                    ) : (
+                      renderMessageContent(m, text, isLastMsg)
+                    )}
+                    {m.role === 'assistant' && isLastMsg && !isLoading && !isContentAssistant && (
+                      <div className="mt-1">
+                        <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
+                      </div>
+                    )}
+                  </MessageContent>
+                </AIMessage>
+              )
+            })}
             {isLoading && (
               <AIMessage from="assistant">
                 <MessageAvatar isUser={false} name="AI" />
@@ -1162,16 +1184,15 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 </MessageContent>
               </AIMessage>
             )}
-            
+
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
 
         <div className="p-4">
           <div className="max-w-3xl mx-auto space-y-3">
-            {/* Convert proactiveSuggestions to new format */}
             {proactiveSuggestions.length > 0 && (
-              <Suggestions 
+              <Suggestions
                 suggestions={proactiveSuggestions.map(s => ({
                   id: s.taskKey,
                   text: s.prompt,
@@ -1184,6 +1205,10 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 title="Suggested next steps"
               />
             )}
+            {/* Mode selector above input */}
+            <div className="flex justify-start">
+              <ChatModeSelector />
+            </div>
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <ChatModeSelector value={mode} onChange={handleModeChange} />

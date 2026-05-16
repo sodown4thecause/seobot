@@ -1,50 +1,69 @@
 'use client'
 
-import { CHAT_MODE_LABELS, type ChatMode } from '@/lib/chat/modes'
+import { Search, Brain, PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { type ChatMode, useChatMode } from './chat-mode-context'
+
+const MODES: { id: ChatMode; label: string; icon: React.ElementType; description: string }[] = [
+  {
+    id: 'seo',
+    label: 'SEO Mode',
+    icon: Search,
+    description: 'Keyword research, SERP analysis & technical SEO',
+  },
+  {
+    id: 'geo',
+    label: 'GEO / AEO',
+    icon: Brain,
+    description: 'Track brand mentions across ChatGPT, Gemini, Perplexity & AI Overviews',
+  },
+  {
+    id: 'content',
+    label: 'Content Mode',
+    icon: PenLine,
+    description: 'Generate blog posts, articles & content with AI-powered images',
+  },
+]
 
 interface ChatModeSelectorProps {
-  value: ChatMode
-  onChange: (mode: ChatMode) => void
+  className?: string
 }
 
-const modeDescriptions: Record<ChatMode, string> = {
-  seo: 'SERP, keyword, technical SEO, backlinks, and ranking strategy',
-  geo: 'AI visibility, citations, brand mentions, answer engines, and sentiment',
-  content: 'Case studies, proof assets, whitepapers, insights, and content planning',
-}
+export function ChatModeSelector({ className }: ChatModeSelectorProps) {
+  const { chatMode, setChatMode } = useChatMode()
 
-const modes = Object.keys(CHAT_MODE_LABELS) as ChatMode[]
-
-export function ChatModeSelector({ value, onChange }: ChatModeSelectorProps) {
   return (
-    <div className="mb-3">
-      <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Chat mode">
-        {modes.map((mode) => {
-          const selected = value === mode
-          return (
-            <button
-              key={mode}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              title={modeDescriptions[mode]}
-              onClick={() => onChange(mode)}
-              className={cn(
-                'h-9 rounded-md border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400',
-                selected
-                  ? 'border-cyan-400 bg-cyan-400/10 text-cyan-100'
-                  : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-100'
-              )}
-            >
-              {CHAT_MODE_LABELS[mode]}
-            </button>
-          )
-        })}
-      </div>
-      <div className="mt-2 text-xs text-zinc-500">
-        Current mode: <span className="text-zinc-300">{CHAT_MODE_LABELS[value]}</span>
-      </div>
+    <div className={cn('flex items-center gap-1 p-1 rounded-xl bg-zinc-900 border border-zinc-800', className)}>
+      {MODES.map((mode) => {
+        const Icon = mode.icon
+        const isActive = chatMode === mode.id
+        return (
+          <button
+            key={mode.id}
+            type="button"
+            onClick={() => setChatMode(mode.id)}
+            title={mode.description}
+            className={cn(
+              'relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
+              isActive
+                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+            )}
+          >
+            <Icon className={cn('h-3.5 w-3.5 shrink-0', isActive && mode.id === 'seo' && 'text-emerald-400', isActive && mode.id === 'geo' && 'text-violet-400', isActive && mode.id === 'content' && 'text-amber-400')} />
+            <span className="hidden sm:inline">{mode.label}</span>
+            <span className="sm:hidden text-xs">{mode.label.split(' ')[0]}</span>
+            {isActive && (
+              <span className={cn(
+                'absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full',
+                mode.id === 'seo' && 'bg-emerald-400',
+                mode.id === 'geo' && 'bg-violet-400',
+                mode.id === 'content' && 'bg-amber-400',
+              )} />
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }
