@@ -8,8 +8,10 @@
 import { createAuthClient } from 'better-auth/react'
 import { adminClient } from 'better-auth/client/plugins'
 
+const publicAuthBaseURL = process.env.NEXT_PUBLIC_BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL
+
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  ...(publicAuthBaseURL ? { baseURL: publicAuthBaseURL } : {}),
   plugins: [
     adminClient(),
   ],

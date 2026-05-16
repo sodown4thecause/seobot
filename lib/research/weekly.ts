@@ -248,6 +248,9 @@ ${JSON.stringify(runResults.map((result, index) => ({
   visibilityScore: result.analysis.visibilityScore,
   sentiment: result.analysis.sentiment,
   citedDomainsCount: result.engineResult.citedDomains.length,
+  sourceOpportunityCount: Array.isArray((result.engineResult.rawJson as { exaSourceOpportunities?: { sources?: unknown[] } } | undefined)?.exaSourceOpportunities?.sources)
+    ? ((result.engineResult.rawJson as { exaSourceOpportunities?: { sources?: unknown[] } }).exaSourceOpportunities?.sources?.length ?? 0)
+    : 0,
   mentionedBrandsCount: result.analysis.mentionedBrands.length,
   recommendedContentActions: result.analysis.recommendedContentActions,
 })), null, 2)}

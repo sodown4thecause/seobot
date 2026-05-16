@@ -67,7 +67,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (!sessionCookie && !isPublicRoute(url.pathname)) {
-    return NextResponse.redirect(new URL('/sign-in', request.url))
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   return NextResponse.next()

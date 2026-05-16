@@ -113,7 +113,7 @@ export async function requireSubscription(
   })
 
   if (!session?.user?.id) {
-    redirect('/sign-in?redirect_url=' + encodeURIComponent(redirectTo))
+    redirect('/login?redirect_url=' + encodeURIComponent(redirectTo))
   }
 
   const result = await checkSubscription(session.user.id)
