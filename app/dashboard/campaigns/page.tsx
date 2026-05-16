@@ -40,7 +40,7 @@ export default function CampaignsPage() {
 
     const handleStartCampaign = async (workflow: Workflow) => {
         if (!isLoaded || !user) {
-            router.push('/sign-in')
+            router.push('/login')
             return
         }
 

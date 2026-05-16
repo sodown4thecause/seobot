@@ -24,7 +24,7 @@ export default function WorkflowsPage() {
         setLaunchError(null)
 
         if (!isLoaded || !user) {
-            router.push('/sign-in')
+            router.push('/login')
             return
         }
 

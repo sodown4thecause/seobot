@@ -47,10 +47,14 @@ function completed(
   responseText: string,
   rawJson?: unknown,
   explicitCitedUrls: string[] = [],
+  options: { extractRawUrls?: boolean } = {},
 ): GeoEngineResult {
+  const extractedUrls = options.extractRawUrls === false
+    ? extractUrls(responseText)
+    : extractUrls(rawJson ?? responseText)
   const citedUrls = Array.from(new Set([
     ...explicitCitedUrls,
-    ...extractUrls(rawJson ?? responseText),
+    ...extractedUrls,
   ]))
 
   return {
@@ -103,8 +107,9 @@ function pickGoogleAiOverviewItems(data: unknown): DataForSEOGoogleAiOverviewIte
 function stringifyGoogleAiOverviewItem(item: DataForSEOGoogleAiOverviewItem): string {
   if (typeof item.markdown === 'string' && item.markdown.trim()) return item.markdown.trim()
   if (typeof item.text === 'string' && item.text.trim()) return item.text.trim()
+  if (!Array.isArray(item.items) || item.items.length === 0) return ''
 
-  const nestedText = JSON.stringify(item.items ?? '')
+  const nestedText = JSON.stringify(item.items)
     .replace(/\\n/g, '\n')
     .replace(/\\"/g, '"')
     .trim()
@@ -113,15 +118,7 @@ function stringifyGoogleAiOverviewItem(item: DataForSEOGoogleAiOverviewItem): st
 }
 
 async function runGoogleAiOverview(input: GeoEngineAdapterInput): Promise<GeoEngineResult> {
-  const [dataForSeoResult, exaResult] = await Promise.all([
-    googleAiOverviewSerp({ query: input.prompt }),
-    searchExaGeoSources({
-      query: input.prompt,
-      brand: input.brand,
-      competitors: input.competitors,
-      numResults: 8,
-    }),
-  ])
+  const dataForSeoResult = await googleAiOverviewSerp({ query: input.prompt })
 
   if (!dataForSeoResult.success) {
     return failed(
@@ -130,6 +127,13 @@ async function runGoogleAiOverview(input: GeoEngineAdapterInput): Promise<GeoEng
       dataForSeoResult.error?.message || 'DataForSEO Google AI Overview SERP request failed',
     )
   }
+
+  const exaResult = await searchExaGeoSources({
+    query: input.prompt,
+    brand: input.brand,
+    competitors: input.competitors,
+    numResults: 8,
+  })
 
   const aiOverviewItems = pickGoogleAiOverviewItems(dataForSeoResult.data)
   const responseText = aiOverviewItems
@@ -143,8 +147,6 @@ async function runGoogleAiOverview(input: GeoEngineAdapterInput): Promise<GeoEng
       ?.map(reference => reference.url)
       .filter((url): url is string => typeof url === 'string' && url.length > 0) ?? []
   ))
-
-  const exaUrls = exaResult.sources.map(source => source.url)
 
   return completed('google_ai_overview', input, responseText, {
     provider: 'oneglanse-facade:dataforseo-google-ai-overview',
@@ -169,7 +171,7 @@ async function runGoogleAiOverview(input: GeoEngineAdapterInput): Promise<GeoEng
       sources: exaResult.sources,
       rawJson: exaResult.rawJson,
     },
-  }, [...citedUrls, ...exaUrls])
+  }, citedUrls, { extractRawUrls: false })
 }
 
 export async function runOneGlansePrompt(
