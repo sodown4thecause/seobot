@@ -1,7 +1,12 @@
 import { generateText } from 'ai'
-import { llmResponsesLive } from '@/lib/api/dataforseo-service'
+import {
+  googleAiOverviewSerp,
+  llmResponsesLive,
+  type DataForSEOGoogleAiOverviewItem,
+} from '@/lib/api/dataforseo-service'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import { extractDomains, extractUrls } from './utils'
+import { searchExaGeoSources } from './exa-client'
 import type { GeoEngine, GeoEngineAdapterInput, GeoEngineResult } from './types'
 
 const ONEGLANSE_ENGINE_MODELS: Partial<Record<GeoEngine, string>> = {
@@ -36,8 +41,21 @@ function failed(engine: GeoEngine, input: GeoEngineAdapterInput, reason: string)
   }
 }
 
-function completed(engine: GeoEngine, input: GeoEngineAdapterInput, responseText: string, rawJson?: unknown): GeoEngineResult {
-  const citedUrls = extractUrls(rawJson ?? responseText)
+function completed(
+  engine: GeoEngine,
+  input: GeoEngineAdapterInput,
+  responseText: string,
+  rawJson?: unknown,
+  explicitCitedUrls: string[] = [],
+  options: { extractRawUrls?: boolean } = {},
+): GeoEngineResult {
+  const extractedUrls = options.extractRawUrls === false
+    ? extractUrls(responseText)
+    : extractUrls(rawJson ?? responseText)
+  const citedUrls = Array.from(new Set([
+    ...explicitCitedUrls,
+    ...extractedUrls,
+  ]))
 
   return {
     engine,
@@ -70,6 +88,89 @@ function extractResponseText(data: unknown): string {
   return responseMatches[0]?.[1] ? parseJsonStringLiteral(responseMatches[0][1]) : ''
 }
 
+function pickGoogleAiOverviewItems(data: unknown): DataForSEOGoogleAiOverviewItem[] {
+  if (!data || typeof data !== 'object') return []
+  const response = data as {
+    tasks?: Array<{
+      result?: Array<{
+        items?: DataForSEOGoogleAiOverviewItem[]
+      }>
+    }>
+  }
+
+  return response.tasks
+    ?.flatMap(task => task.result ?? [])
+    .flatMap(result => result.items ?? [])
+    .filter(item => item.type === 'ai_overview') ?? []
+}
+
+function stringifyGoogleAiOverviewItem(item: DataForSEOGoogleAiOverviewItem): string {
+  if (typeof item.markdown === 'string' && item.markdown.trim()) return item.markdown.trim()
+  if (typeof item.text === 'string' && item.text.trim()) return item.text.trim()
+  if (!Array.isArray(item.items) || item.items.length === 0) return ''
+
+  const nestedText = JSON.stringify(item.items, null, 2).trim()
+
+  return nestedText
+}
+
+async function runGoogleAiOverview(input: GeoEngineAdapterInput): Promise<GeoEngineResult> {
+  const dataForSeoResult = await googleAiOverviewSerp({ query: input.prompt })
+
+  if (!dataForSeoResult.success) {
+    return failed(
+      'google_ai_overview',
+      input,
+      dataForSeoResult.error?.message || 'DataForSEO Google AI Overview SERP request failed',
+    )
+  }
+
+  const exaResult = await searchExaGeoSources({
+    query: input.prompt,
+    brand: input.brand,
+    competitors: input.competitors,
+    numResults: 8,
+  })
+
+  const aiOverviewItems = pickGoogleAiOverviewItems(dataForSeoResult.data)
+  const responseText = aiOverviewItems
+    .map(stringifyGoogleAiOverviewItem)
+    .filter(Boolean)
+    .join('\n\n')
+    || 'No Google AI Overview was returned for this query.'
+
+  const citedUrls = aiOverviewItems.flatMap(item => (
+    item.references
+      ?.map(reference => reference.url)
+      .filter((url): url is string => typeof url === 'string' && url.length > 0) ?? []
+  ))
+
+  return completed('google_ai_overview', input, responseText, {
+    provider: 'oneglanse-facade:dataforseo-google-ai-overview',
+    dataforseo: {
+      statusCode: dataForSeoResult.data.status_code,
+      statusMessage: dataForSeoResult.data.status_message,
+      cost: dataForSeoResult.data.cost,
+      tasks: dataForSeoResult.data.tasks?.map(task => ({
+        id: task.id,
+        statusCode: task.status_code,
+        statusMessage: task.status_message,
+        cost: task.cost,
+        itemTypes: task.result?.flatMap(result => result.item_types ?? []),
+        checkUrls: task.result?.map(result => result.check_url).filter(Boolean),
+      })),
+      aiOverviewItems,
+    },
+    exaSourceOpportunities: {
+      status: exaResult.status,
+      error: exaResult.error,
+      requestId: exaResult.requestId,
+      sources: exaResult.sources,
+      rawJson: exaResult.rawJson,
+    },
+  }, citedUrls, { extractRawUrls: false })
+}
+
 export async function runOneGlansePrompt(
   engine: GeoEngine,
   input: GeoEngineAdapterInput,
@@ -88,11 +189,7 @@ export async function runOneGlansePrompt(
   }
 
   if (engine === 'google_ai_overview') {
-    return notConfigured(
-      'google_ai_overview',
-      input,
-      'OneGlanse facade is ready, but Google AI Overview prompt execution is not configured in this environment.',
-    )
+    return runGoogleAiOverview(input)
   }
 
   const model = ONEGLANSE_ENGINE_MODELS[engine]
@@ -130,7 +227,7 @@ Answer as ${engine} would for a user researching vendors, sources, or recommenda
       usage: result.usage,
       finishReason: result.finishReason,
       sources: sourceUrls,
-    })
+    }, sourceUrls)
   } catch (error) {
     return failed(engine, input, error instanceof Error ? error.message : 'OneGlanse facade gateway request failed')
   }

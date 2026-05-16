@@ -25,6 +25,18 @@ type GeoPromptInput = typeof geoPrompts.$inferSelect | {
   competitors: string[]
   engines: string[]
 }
+type GeoRawWithSourceOpportunities = {
+  exaSourceOpportunities?: {
+    sources?: unknown[]
+  }
+}
+
+function getSourceOpportunityCount(result: GeoEngineResult): number {
+  const rawJson = result.rawJson as GeoRawWithSourceOpportunities | undefined
+  return Array.isArray(rawJson?.exaSourceOpportunities?.sources)
+    ? rawJson.exaSourceOpportunities.sources.length
+    : 0
+}
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -248,6 +260,7 @@ ${JSON.stringify(runResults.map((result, index) => ({
   visibilityScore: result.analysis.visibilityScore,
   sentiment: result.analysis.sentiment,
   citedDomainsCount: result.engineResult.citedDomains.length,
+  sourceOpportunityCount: getSourceOpportunityCount(result.engineResult),
   mentionedBrandsCount: result.analysis.mentionedBrands.length,
   recommendedContentActions: result.analysis.recommendedContentActions,
 })), null, 2)}

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!session?.user) {
-    return NextResponse.redirect(new URL('/sign-in', request.url))
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   const checkoutUrl = new URL(OFFICIAL_POLAR_CHECKOUT_URL)

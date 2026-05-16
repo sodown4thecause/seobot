@@ -46,7 +46,7 @@ export default function AEOCommandCenterPage() {
 
     const handleStartWorkflow = async (workflowId: string) => {
         if (!isLoaded || !user) {
-            router.push('/sign-in')
+            router.push('/login')
             return
         }
 

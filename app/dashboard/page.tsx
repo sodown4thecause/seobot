@@ -32,7 +32,6 @@ function DashboardInner() {
   const [isNewUser, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [initialMessage, setInitialMessage] = useState<string | undefined>()
-  const [_userName, setUserName] = useState<string>('')
   const workflowLaunch = useMemo(
     () => (workflowId ? getWorkflowLaunchConfig(workflowId) : null),
     [workflowId]
@@ -57,14 +56,6 @@ function DashboardInner() {
         if (!user) {
           setIsLoading(false)
           return
-        }
-
-        // Get the display name from the active session.
-        const fullName = user.name || ''
-        if (fullName) {
-          setUserName(fullName)
-        } else if (user.email) {
-          setUserName(user.email.split('@')[0])
         }
 
         // Fetch profile with retry logic for cold DB connections
@@ -115,8 +106,8 @@ function DashboardInner() {
             setInitialMessage('__START_ONBOARDING__')
           }
         } else if (response.status === 401) {
-          // Unauthorized - redirect to sign-in
-          window.location.href = '/sign-in'
+          // Unauthorized - redirect to login
+          window.location.href = '/login'
         } else {
           // Server error or other issues - show error state
           console.error(`[Dashboard] Profile fetch failed with status ${response.status}`)

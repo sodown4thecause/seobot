@@ -17,6 +17,36 @@ import * as authSchema from '@/lib/auth-schema'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
+function getTrustedOrigins() {
+  const origins = new Set<string>()
+  const candidates = [
+    process.env.BETTER_AUTH_URL,
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+    process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : undefined,
+  ]
+
+  for (const candidate of candidates) {
+    if (candidate) origins.add(candidate)
+  }
+
+  return Array.from(origins)
+}
+
+function getSocialProviders() {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return {}
+  }
+
+  return {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    },
+  }
+}
+
 async function ensureApplicationUser(authUser: {
   id: string
   email?: string | null
@@ -112,12 +142,7 @@ export const auth = betterAuth({
     },
   },
 
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-    },
-  },
+  socialProviders: getSocialProviders(),
 
   user: {
     modelName: 'user',
@@ -180,10 +205,7 @@ export const auth = betterAuth({
     nextCookies(),
   ],
 
-  trustedOrigins: [
-    process.env.BETTER_AUTH_URL || 'http://localhost:3000',
-    process.env.NEXT_PUBLIC_APP_URL || 'https://flowintent.com',
-  ],
+  trustedOrigins: getTrustedOrigins(),
 })
 
 export type Auth = typeof auth
