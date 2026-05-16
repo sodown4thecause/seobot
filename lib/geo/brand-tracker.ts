@@ -27,9 +27,9 @@ async function callLLMResponse(params: {
   platform: string
   model: string
 }): Promise<LLMResponseResult> {
-  const credentials = btoa(
+  const credentials = Buffer.from(
     `${serverEnv.DATAFORSEO_USERNAME}:${serverEnv.DATAFORSEO_PASSWORD}`
-  )
+  ).toString('base64')
 
   const resp = await fetch(
     'https://api.dataforseo.com/v3/ai_optimization/llm_response/live',
@@ -69,7 +69,7 @@ async function callLLMResponse(params: {
 
   return {
     response: first.response ?? '',
-    annotations: (first.annotations ?? []).slice(0, 6).map((a: any) => ({
+    annotations: (first.annotations ?? []).slice(0, 6).map((a: { title?: string; url?: string }) => ({
       title: a.title ?? a.url ?? '',
       url: a.url ?? '',
     })),
@@ -81,7 +81,7 @@ async function callLLMResponse(params: {
 // Mention parsing
 // ---------------------------------------------------------------------------
 
-function analyseMention(
+function analyzeMention(
   response: string,
   brand: string
 ): {
@@ -146,7 +146,7 @@ export function createGEOBrandScanTool() {
         .describe('Optional competitor brand names to also look for in responses'),
     }),
     execute: async ({ brand, query, competitors = [] }) => {
-      console.log('[GEO Brand Tracker] Scanning:', { brand, query })
+      console.log('[GEO Brand Tracker] Scanning brand for query')
 
       const settled = await Promise.allSettled(
         PLATFORMS.map(async p => {
@@ -156,7 +156,7 @@ export function createGEOBrandScanTool() {
             model: p.model,
           })
 
-          const { brandMentioned, mentionContext, sentiment } = analyseMention(response, brand)
+          const { brandMentioned, mentionContext, sentiment } = analyzeMention(response, brand)
           const competitorsMentioned = findCompetitors(response, competitors)
 
           return {

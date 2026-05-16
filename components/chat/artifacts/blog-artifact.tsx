@@ -34,6 +34,7 @@ export function BlogArtifact({ content, isStreaming = false, title }: BlogArtifa
   const [thumbUrl, setThumbUrl] = useState<string | null>(null)
   const [imagesLoading, setImagesLoading] = useState(false)
   const [imagesGenerated, setImagesGenerated] = useState(false)
+  const [imagesFailed, setImagesFailed] = useState(false)
 
   const displayTitle = title ?? extractTitle(content)
 
@@ -72,7 +73,7 @@ export function BlogArtifact({ content, isStreaming = false, title }: BlogArtifa
           setThumbUrl(extractUrl(data))
         }
       } catch {
-        // Images optional — content still renders
+        setImagesFailed(true)
       } finally {
         setImagesLoading(false)
         setImagesGenerated(true)
@@ -116,6 +117,9 @@ export function BlogArtifact({ content, isStreaming = false, title }: BlogArtifa
               <ImageIcon className="w-3 h-3" />
               Images ready
             </span>
+          )}
+          {imagesFailed && (
+            <span className="text-[10px] text-zinc-500">Images unavailable</span>
           )}
         </div>
         <div className="flex items-center gap-1">

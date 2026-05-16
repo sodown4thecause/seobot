@@ -45,8 +45,8 @@ export interface ToolAssemblyOptions {
 export async function loadMCPTools(agent: AgentType): Promise<Record<string, Tool>> {
   const allMCPTools: Record<string, Tool> = {}
 
-  // Load DataForSEO tools for SEO/AEO, content, and geo agents
-  if (agent === 'seo-aeo' || agent === 'content' || agent === 'geo') {
+  // Load DataForSEO tools for SEO/AEO and content agents
+  if (agent === 'seo-aeo' || agent === 'content') {
     try {
       const dataforSEOTools = await getDataForSEOTools()
       const fixedSEOTools = fixAllMCPTools(dataforSEOTools)
