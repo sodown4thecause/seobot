@@ -290,4 +290,72 @@ describe('AgentRouter', () => {
       expect(contextPrompt).toBeDefined()
     })
   })
+
+  describe('Expert system prompts', () => {
+    it('SEO prompt contains expert identity markers', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.SEO_AEO)
+      expect(prompt).toContain('EXPERT IDENTITY')
+      expect(prompt).toContain('DATA BEFORE ADVICE')
+      expect(prompt).toContain('BACKLINK ANALYSIS REQUIREMENT')
+    })
+
+    it('SEO prompt includes Core Web Vitals thresholds', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.SEO_AEO)
+      expect(prompt).toContain('LCP')
+      expect(prompt).toContain('INP')
+      expect(prompt).toContain('CLS')
+    })
+
+    it('SEO prompt includes the EEAT framework', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.SEO_AEO)
+      expect(prompt).toContain('EEAT')
+    })
+
+    it('GEO prompt includes all 5 platform names', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.GEO)
+      expect(prompt).toContain('ChatGPT')
+      expect(prompt).toContain('Claude')
+      expect(prompt).toContain('Gemini')
+      expect(prompt).toContain('Perplexity')
+      expect(prompt).toContain('Google AI Overview')
+    })
+
+    it('GEO prompt includes Share of Voice calculation guidance', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.GEO)
+      expect(prompt).toContain('Share of Voice')
+    })
+
+    it('GEO prompt includes the 5-step workflow', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.GEO)
+      expect(prompt).toContain('STEP 1')
+      expect(prompt).toContain('STEP 5')
+    })
+
+    it('Content prompt includes the format decision guide', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.CONTENT)
+      expect(prompt).toContain('Pillar page')
+      expect(prompt).toContain('FAQ page')
+      expect(prompt).toContain('Data study')
+    })
+
+    it('Content prompt enforces the tool-then-text pattern', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.CONTENT)
+      expect(prompt).toContain('CRITICAL')
+      expect(prompt).toContain('frontend cannot display tool results')
+    })
+
+    it('Content prompt includes the research-first workflow', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.CONTENT)
+      expect(prompt).toContain('RESEARCH-FIRST WORKFLOW')
+    })
+
+    it('no expert prompt is formatted with markdown symbols', () => {
+      const agents = [AGENT_IDS.SEO_AEO, AGENT_IDS.GEO, AGENT_IDS.CONTENT]
+      for (const agent of agents) {
+        const prompt = AgentRouter.getAgentSystemPrompt(agent)
+        expect(prompt, `${agent} prompt should not use markdown headings`).not.toMatch(/^#{1,6}\s/m)
+        expect(prompt, `${agent} prompt should not use markdown bold`).not.toMatch(/\*\*/)
+      }
+    })
+  })
 })
