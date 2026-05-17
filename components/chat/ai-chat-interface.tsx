@@ -24,7 +24,9 @@ import { useArtifactStore } from '@/lib/artifacts/artifact-store'
 import { bootstrapConversationRecord } from '@/lib/chat/conversation-bootstrap'
 import { KeywordArtifact } from './artifacts/keyword-artifact'
 import { BacklinkArtifact } from './artifacts/backlink-artifact'
+import { BlogArtifact } from './artifacts/blog-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
+import { useChatModeOptional } from './chat-mode-context'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // AI Elements Imports
@@ -44,7 +46,6 @@ import {
   extractReasoning,
   extractSources,
 } from '@/lib/chat/message-metadata'
-import { DEFAULT_CHAT_MODE, type ChatMode } from '@/lib/chat/modes'
 
 interface AIChatInterfaceProps {
   context?: Record<string, unknown>
@@ -556,17 +557,13 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   autoSendKey,
 }, ref) => {
   // 1. Initial State & Context
+  const { chatMode } = useChatModeOptional()
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null)
   const { artifacts, updateArtifact } = useArtifactStore()
   const { roadmap, fetchRoadmap, focus, setFocus } = useAIState()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [input, setInput] = useState('')
-  const [mode, setMode] = useState<ChatMode>(() => {
-    if (typeof window === 'undefined') return DEFAULT_CHAT_MODE
-    const saved = window.localStorage.getItem('seobot_chat_mode')
-    return saved === 'seo' || saved === 'geo' || saved === 'content' ? saved : DEFAULT_CHAT_MODE
-  })
   const [prevFocus, setPrevFocus] = useState<string | null>(null)
   const [showHandoff, setShowHandoff] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
@@ -585,11 +582,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   // 3. Memoized Values
   const agentPreference = useMemo(() => agentIdProp ?? (chatContext as any)?.agentId ?? 'general', [agentIdProp, chatContext])
 
-  const handleModeChange = useCallback((nextMode: ChatMode) => {
-    setMode(nextMode)
-    window.localStorage.setItem('seobot_chat_mode', nextMode)
-  }, [])
-
   const contextKey = useMemo(() => {
     if (!chatContext) return ''
     const keys = Object.keys(chatContext).sort()
@@ -606,8 +598,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     ...(chatContext || {}),
     agentId: agentPreference,
     conversationId,
-    mode,
-  }), [contextKey, agentPreference, conversationId, mode])
+    mode: chatMode,
+    chatMode,
+  }), [contextKey, agentPreference, conversationId, chatMode])
 
   const latestRequestRef = useRef({
     chatId: conversationId,
@@ -1076,39 +1069,129 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // Empty State View - with styled ProactiveSuggestions
   if (messages.length === 0) {
-    // Default suggestions for empty state - using new Suggestions format
-    const defaultSuggestions = [
-      {
-        id: 'competitor-topical-map',
-        text: 'Analyze my top competitors and find content gaps and write me a topical map.',
-        icon: 'target' as const,
-      },
-      {
-        id: 'content-pillars',
-        text: 'Generate 10 content pillars that will rank well for my website.',
-        icon: 'lightbulb' as const,
-      },
-      {
-        id: 'eeat-improvement',
-        text: 'How can I improve my content for better EEAT?',
-        icon: 'sparkles' as const,
-      },
-      {
-        id: 'link-building-plan',
-        text: 'Write a high-quality, SEO/AEO-optimized link building plan for my website',
-        icon: 'zap' as const,
-      },
+    const seoSuggestions = [
+      { id: 'competitor-topical-map', text: 'Analyze my top competitors and find content gaps and write me a topical map.', icon: 'target' as const },
+      { id: 'content-pillars', text: 'Generate 10 content pillars that will rank well for my website.', icon: 'lightbulb' as const },
+      { id: 'eeat-improvement', text: 'How can I improve my content for better EEAT?', icon: 'sparkles' as const },
+      { id: 'link-building-plan', text: 'Write a high-quality, SEO/AEO-optimized link building plan for my website', icon: 'zap' as const },
     ]
+    const geoSuggestions = [
+      { id: 'ai-brand-visibility', text: 'My brand is "Flow Intent" and my website is flowintent.com — check if I appear in ChatGPT, Gemini, and Perplexity when someone searches "best SEO tools"', icon: 'sparkles' as const },
+      { id: 'geo-competitor', text: 'Track my brand "Flow Intent" for the query "alternatives to Ahrefs" and tell me which competitors appear', icon: 'target' as const },
+      { id: 'geo-optimize', text: 'How can I optimize my content to get cited in AI-generated answers?', icon: 'search' as const },
+      { id: 'geo-new-brand', text: 'I want to start tracking my brand across AI platforms — where do I begin?', icon: 'zap' as const },
+    ]
+    const contentSuggestions = [
+      { id: 'blog-post', text: 'Write a comprehensive blog post about the benefits of green tea.', icon: 'lightbulb' as const },
+      { id: 'london-coffee', text: 'Write me a blog about the best coffee shops in London.', icon: 'sparkles' as const },
+      { id: 'listicle', text: 'Create a 10-step guide to starting a successful podcast in 2025.', icon: 'zap' as const },
+      { id: 'product-review', text: 'Write a comparison article for the top 5 project management tools.', icon: 'target' as const },
+    ]
+    const modeMap = { seo: seoSuggestions, geo: geoSuggestions, content: contentSuggestions }
+    const defaultSuggestions = modeMap[chatMode] ?? seoSuggestions
+
+    const modeDescriptions = {
+      seo: 'Keyword research, SERP analysis & technical SEO',
+      geo: 'Track brand visibility across AI platforms & overviews',
+      content: 'Generate blog posts & articles with AI-powered images',
+    }
+
+    // GEO mode gets a dedicated workflow onboarding panel
+    if (chatMode === 'geo') {
+      return (
+        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
+          <div className="w-full max-w-3xl space-y-6 py-4">
+            <div className="flex justify-center">
+              <ChatModeSelector />
+            </div>
+
+            {/* Hero */}
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">GEO / AEO Mode</h1>
+              <p className="text-zinc-400 text-base max-w-xl mx-auto">
+                Track how often your brand appears inside ChatGPT, Gemini, and Perplexity responses — and get actionable steps to increase your AI visibility.
+              </p>
+            </div>
+
+            {/* How it works */}
+            <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5 space-y-4">
+              <p className="text-xs font-mono uppercase tracking-widest text-violet-400">How this works</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { step: '1', label: 'Tell us your brand', detail: 'Share your brand name, website, and industry so we know what to track.' },
+                  { step: '2', label: 'Pick your queries', detail: 'Choose what people search for — we suggest the best ones based on your niche.' },
+                  { step: '3', label: 'We query the AI models', detail: 'We send your queries to ChatGPT, Gemini, and Perplexity in real time and capture their responses.' },
+                  { step: '4', label: 'Get actionable insights', detail: 'See exactly where you appear, what your competitors say, and which content will get you cited.' },
+                ].map(({ step, label, detail }) => (
+                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                    <div className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* What we track */}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {[
+                { label: 'ChatGPT', sub: 'gpt-4o-mini' },
+                { label: 'Gemini', sub: 'gemini-2.0-flash' },
+                { label: 'Perplexity', sub: 'sonar + citations' },
+              ].map(({ label, sub }) => (
+                <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+                  <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Chat input */}
+            <div className="w-full">
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSubmit={() => handleSendMessage({ text: input })}
+                disabled={isLoading}
+                placeholder="Tell me your brand name and what you want to track..."
+                className="bg-transparent"
+              />
+            </div>
+
+            {/* Starter prompts */}
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {geoSuggestions.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSendMessage({ text: s.text })}
+                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-violet-500/40 hover:bg-violet-500/5 hover:text-zinc-100 transition-all duration-200"
+                  >
+                    {s.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-zinc-950 font-chat", className)}>
-        <div className="w-full max-w-4xl space-y-8">
-          <div className="text-center space-y-3">
+        <div className="w-full max-w-4xl space-y-6">
+          <div className="text-center space-y-2">
             <h1 className="text-4xl md:text-5xl font-semibold text-zinc-100 tracking-tight">Flow Intent</h1>
-            <p className="text-lg md:text-xl text-zinc-500">Your AI-powered SEO and content assistant</p>
+            <p className="text-base md:text-lg text-zinc-500">{modeDescriptions[chatMode]}</p>
+          </div>
+          {/* Mode Selector */}
+          <div className="flex justify-center">
+            <ChatModeSelector />
           </div>
           <div className="w-full max-w-3xl mx-auto">
-            <ChatModeSelector value={mode} onChange={handleModeChange} />
             <ChatInput
               value={input}
               onChange={setInput}
@@ -1118,7 +1201,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               className="bg-transparent"
             />
           </div>
-          {/* New Suggestions component in empty state */}
           <div className="max-w-3xl mx-auto">
             <Suggestions
               suggestions={defaultSuggestions}
@@ -1137,20 +1219,32 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       <div className={cn("flex flex-col h-full transition-all duration-500", activeArtifact ? "w-1/2 border-r border-zinc-800" : "w-full")}>
         <Conversation>
           <ConversationContent className="px-4 py-2 max-w-3xl mx-auto">
-            {messages.map((m, idx) => (
-              <AIMessage key={m.id || idx} from={m.role as any}>
-                <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
-                <MessageContent>
-                  {renderMessageContent(m, getMessageText(m), idx === messages.length - 1)}
-                  {/* Only show regenerate button on last assistant message */}
-                  {m.role === 'assistant' && idx === messages.length - 1 && !isLoading && (
-                    <div className="mt-1">
-                      <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
-                    </div>
-                  )}
-                </MessageContent>
-              </AIMessage>
-            ))}
+            {messages.map((m, idx) => {
+              const isLastMsg = idx === messages.length - 1
+              const text = getMessageText(m)
+              const isContentAssistant = chatMode === 'content' && m.role === 'assistant' && text.length > 200
+
+              return (
+                <AIMessage key={m.id || idx} from={m.role as any}>
+                  <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
+                  <MessageContent>
+                    {isContentAssistant ? (
+                      <BlogArtifact
+                        content={text}
+                        isStreaming={isLastMsg && isLoading}
+                      />
+                    ) : (
+                      renderMessageContent(m, text, isLastMsg)
+                    )}
+                    {m.role === 'assistant' && isLastMsg && !isLoading && !isContentAssistant && (
+                      <div className="mt-1">
+                        <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
+                      </div>
+                    )}
+                  </MessageContent>
+                </AIMessage>
+              )
+            })}
             {isLoading && (
               <AIMessage from="assistant">
                 <MessageAvatar isUser={false} name="AI" />
@@ -1162,16 +1256,15 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 </MessageContent>
               </AIMessage>
             )}
-            
+
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
 
         <div className="p-4">
           <div className="max-w-3xl mx-auto space-y-3">
-            {/* Convert proactiveSuggestions to new format */}
             {proactiveSuggestions.length > 0 && (
-              <Suggestions 
+              <Suggestions
                 suggestions={proactiveSuggestions.map(s => ({
                   id: s.taskKey,
                   text: s.prompt,
@@ -1184,9 +1277,12 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 title="Suggested next steps"
               />
             )}
+            {/* Mode selector above input */}
+            <div className="flex justify-start">
+              <ChatModeSelector />
+            </div>
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <ChatModeSelector value={mode} onChange={handleModeChange} />
                 <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />
               </div>
               {isLoading && (

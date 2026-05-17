@@ -98,8 +98,6 @@ const serverEnvSchema = z.object({
 
   // Site Configuration
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
-  DIRECTUS_URL: z.string().url().optional(),
-  DIRECTUS_TOKEN: z.string().min(1).optional(),
 
   // Webflow CMS
   WEBFLOW_API_TOKEN: z.string().min(1).optional(),

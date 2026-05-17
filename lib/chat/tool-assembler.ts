@@ -18,6 +18,7 @@ import { getContentQualityTools } from '@/lib/ai/content-quality-tools'
 import { getEnhancedContentQualityTools } from '@/lib/ai/content-quality-enhancements'
 import { getAEOTools } from '@/lib/ai/aeo-tools'
 import { getAEOPlatformTools } from '@/lib/ai/aeo-platform-tools'
+import { getGEOTools } from '@/lib/geo/brand-tracker'
 import { searchWithPerplexity } from '@/lib/external-apis/perplexity'
 import {
   researchAgentTool,
@@ -462,6 +463,9 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
     // AEO Tools - Only for SEO/AEO agent (citation analysis, EEAT detection, platform optimization)
     ...(agent === 'seo-aeo' ? { ...getAEOTools(), ...getAEOPlatformTools() } : {}),
 
+    // GEO Tools - Only for GEO agent (real-time brand mentions across ChatGPT, Gemini, Perplexity)
+    ...(agent === 'geo' ? getGEOTools() : {}),
+
     // MCP Tools - Use intent-based filtering for SEO/AEO, otherwise load by agent type
     ...(intentTools && intentTools.length > 0
       ? loadToolsForIntents(intentTools, allMCPTools)
@@ -470,7 +474,7 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
 
   // Filter out any undefined tools
   const validatedTools = Object.fromEntries(
-    Object.entries(tools).filter(([_, v]) => v !== undefined)
+    Object.entries(tools).filter(([, v]) => v !== undefined)
   )
 
   console.log('[Tool Assembler] Final validated tools:', {

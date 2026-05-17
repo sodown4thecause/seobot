@@ -48,7 +48,7 @@ interface DashboardClientLayoutProps {
 export function DashboardClientLayout({ children }: DashboardClientLayoutProps) {
   const pathname = usePathname()
   const [queryClient] = useState(() => createDashboardQueryClient())
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const currentPage = getCurrentPageName(pathname ?? '')
 
   return (
@@ -60,8 +60,8 @@ export function DashboardClientLayout({ children }: DashboardClientLayoutProps) 
               <AgentProvider>
                 <div className="relative flex h-screen overflow-hidden bg-zinc-950 text-foreground">
                   <Sidebar
-                    collapsed={sidebarCollapsed}
-                    onToggle={() => setSidebarCollapsed((v) => !v)}
+                    open={sidebarOpen}
+                    onToggle={() => setSidebarOpen((v) => !v)}
                   />
                   <main className={cn('relative z-10 flex h-full flex-1 flex-col')}>
                     <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">

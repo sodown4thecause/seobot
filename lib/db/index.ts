@@ -22,7 +22,7 @@ import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from './schema'
 import { sql } from 'drizzle-orm'
 
-// Configure Neon for serverless environments
+// Reuse HTTP connections across serverless invocations to avoid per-request TCP+TLS overhead
 neonConfig.fetchConnectionCache = true
 
 // ---------------------------------------------------------------------------

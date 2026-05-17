@@ -65,7 +65,7 @@ const handler = async (req: Request) => {
 
     const { messages: incomingMessages, chatId, context } = body
     const mode = normalizeChatMode(context?.mode)
-    const modeContext = { ...(context || {}), mode }
+    const modeContext = { ...(context || {}), mode, chatMode: mode }
     const agentId = context?.agentId || 'general'
     const isOnboarding = context?.page === 'onboarding' || !!context?.onboarding
 
@@ -167,8 +167,7 @@ const handler = async (req: Request) => {
     } else if (mode === 'content') {
       effectiveAgent = 'content'
     } else if (mode === 'geo') {
-      // GEO currently shares the SEO/AEO agent prompt and tools while using GEO-scoped RAG and mode context.
-      effectiveAgent = 'seo-aeo'
+      effectiveAgent = 'geo'
     } else {
       effectiveAgent = 'seo-aeo'
     }
@@ -191,7 +190,7 @@ const handler = async (req: Request) => {
         userId: user?.id,
         request: req,
       }),
-      effectiveAgent === 'seo-aeo' || effectiveAgent === 'content'
+      effectiveAgent === 'seo-aeo' || effectiveAgent === 'content' || effectiveAgent === 'geo'
         ? (async () => {
             const controller = new AbortController()
             let timeoutId: ReturnType<typeof setTimeout> | undefined
