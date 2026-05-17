@@ -1,20 +1,13 @@
 /**
  * GEO Brand Tracker
  *
- * Queries ChatGPT, Gemini, and Perplexity via DataForSEO's llm_response API
- * to detect brand mentions in real AI-generated answers.
- *
- * Available on the current DataForSEO plan (no $100 upgrade needed).
- * Costs ~$0.075 per full 3-platform scan for one query.
+ * Queries ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews via
+ * DataForSEO to detect brand mentions in real AI-generated answers.
  */
 
 import { tool } from 'ai'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
-
-// ---------------------------------------------------------------------------
-// DataForSEO API call
-// ---------------------------------------------------------------------------
 
 interface LLMResponseResult {
   response: string
@@ -22,28 +15,133 @@ interface LLMResponseResult {
   cost?: number
 }
 
-async function callLLMResponse(params: {
-  query: string
-  platform: string
-  model: string
-}): Promise<LLMResponseResult> {
-  const credentials = Buffer.from(
+type LLMPlatform = 'chat_gpt' | 'claude' | 'gemini' | 'perplexity'
+
+function getDataForSEOCredentials() {
+  if (!serverEnv.DATAFORSEO_USERNAME || !serverEnv.DATAFORSEO_PASSWORD) {
+    throw new Error('DataForSEO credentials are not configured')
+  }
+
+  return Buffer.from(
     `${serverEnv.DATAFORSEO_USERNAME}:${serverEnv.DATAFORSEO_PASSWORD}`
   ).toString('base64')
+}
+
+function normalizeAnnotations(
+  annotations: Array<{ title?: string; url?: string; domain?: string }> = []
+) {
+  const seen = new Set<string>()
+
+  return annotations
+    .map(annotation => ({
+      title: annotation.title ?? annotation.domain ?? annotation.url ?? '',
+      url: annotation.url ?? '',
+    }))
+    .filter(annotation => {
+      if (!annotation.url || seen.has(annotation.url)) return false
+      seen.add(annotation.url)
+      return true
+    })
+    .slice(0, 8)
+}
+
+async function callLLMResponse(params: {
+  query: string
+  platform: LLMPlatform
+  modelName: string
+}): Promise<LLMResponseResult> {
+  const task: Record<string, unknown> = {
+    user_prompt: params.query.slice(0, 500),
+    model_name: params.modelName,
+    max_output_tokens: 1200,
+    temperature: 0.2,
+    system_message:
+      'Answer as a buyer researching vendors. Mention relevant brands and cite sources when available.',
+    tag: `geo-${params.platform}-${Date.now()}`,
+  }
+
+  if (params.platform !== 'perplexity') {
+    task.web_search = true
+  }
+
+  if (params.platform === 'chat_gpt' || params.platform === 'claude') {
+    task.force_web_search = true
+  }
 
   const resp = await fetch(
-    'https://api.dataforseo.com/v3/ai_optimization/llm_response/live',
+    `https://api.dataforseo.com/v3/ai_optimization/${params.platform}/llm_responses/live`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${credentials}`,
+        Authorization: `Basic ${getDataForSEOCredentials()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([task]),
+    }
+  )
+
+  if (!resp.ok) {
+    throw new Error(`DataForSEO HTTP ${resp.status}`)
+  }
+
+  const data = await resp.json()
+
+  if (data?.status_code && data.status_code !== 20000) {
+    throw new Error(`DataForSEO error ${data.status_code}: ${data.status_message}`)
+  }
+
+  const dataForSeoTask = data?.tasks?.[0]
+  if (dataForSeoTask?.status_code && dataForSeoTask.status_code !== 20000) {
+    throw new Error(
+      `DataForSEO task error ${dataForSeoTask.status_code}: ${dataForSeoTask.status_message}`
+    )
+  }
+
+  const result = dataForSeoTask?.result?.[0] ?? {}
+  const sections = Array.isArray(result?.message?.sections)
+    ? result.message.sections
+    : []
+
+  const response = sections
+    .filter((section: { type?: string; text?: string }) => section.type === 'text' && section.text)
+    .map((section: { text: string }) => section.text)
+    .join('\n\n')
+
+  const annotations = sections.flatMap(
+    (section: { annotations?: Array<{ title?: string; url?: string }> | null }) =>
+      Array.isArray(section.annotations) ? section.annotations : []
+  )
+
+  const legacyItems = Array.isArray(result?.items) ? result.items : []
+  const firstLegacyItem = legacyItems[0] ?? {}
+
+  return {
+    response: response || firstLegacyItem.response || firstLegacyItem.text || '',
+    annotations: normalizeAnnotations(
+      annotations.length ? annotations : firstLegacyItem.annotations ?? []
+    ),
+    cost: dataForSeoTask?.cost,
+  }
+}
+
+async function callGoogleAIOverview(query: string): Promise<LLMResponseResult> {
+  const resp = await fetch(
+    'https://api.dataforseo.com/v3/serp/google/organic/live/advanced',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${getDataForSEOCredentials()}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify([
         {
-          query: params.query,
-          platform: params.platform,
-          model: params.model,
+          keyword: query,
+          location_code: 2840,
+          language_code: 'en',
+          device: 'desktop',
+          depth: 10,
+          load_async_ai_overview: true,
+          tag: `geo-google-aio-${Date.now()}`,
         },
       ]),
     }
@@ -59,27 +157,42 @@ async function callLLMResponse(params: {
     throw new Error(`DataForSEO error ${data.status_code}: ${data.status_message}`)
   }
 
-  const task = data?.tasks?.[0]
-  if (task?.status_code && task.status_code !== 20000) {
-    throw new Error(`DataForSEO task error ${task.status_code}: ${task.status_message}`)
+  const dataForSeoTask = data?.tasks?.[0]
+  if (dataForSeoTask?.status_code && dataForSeoTask.status_code !== 20000) {
+    throw new Error(
+      `DataForSEO task error ${dataForSeoTask.status_code}: ${dataForSeoTask.status_message}`
+    )
   }
 
-  const items = task?.result?.[0]?.items ?? []
-  const first = items[0] ?? {}
+  const items = dataForSeoTask?.result?.[0]?.items ?? []
+  const aiOverview = items.find((item: { type?: string }) => item.type === 'ai_overview')
+
+  if (!aiOverview) {
+    return { response: '', annotations: [], cost: dataForSeoTask?.cost }
+  }
+
+  const overviewItems = Array.isArray(aiOverview.items) ? aiOverview.items : []
+  const response = overviewItems
+    .map((item: { title?: string; text?: string }) =>
+      [item.title, item.text].filter(Boolean).join('\n')
+    )
+    .filter(Boolean)
+    .join('\n\n')
+
+  const references = [
+    ...(Array.isArray(aiOverview.references) ? aiOverview.references : []),
+    ...overviewItems.flatMap(
+      (item: { references?: Array<{ title?: string; url?: string; domain?: string }> }) =>
+        Array.isArray(item.references) ? item.references : []
+    ),
+  ]
 
   return {
-    response: first.response ?? '',
-    annotations: (first.annotations ?? []).slice(0, 6).map((a: { title?: string; url?: string }) => ({
-      title: a.title ?? a.url ?? '',
-      url: a.url ?? '',
-    })),
-    cost: task?.cost,
+    response,
+    annotations: normalizeAnnotations(references),
+    cost: dataForSeoTask?.cost,
   }
 }
-
-// ---------------------------------------------------------------------------
-// Mention parsing
-// ---------------------------------------------------------------------------
 
 function analyzeMention(
   response: string,
@@ -117,21 +230,19 @@ function findCompetitors(response: string, competitors: string[]): string[] {
   return competitors.filter(c => lower.includes(c.toLowerCase()))
 }
 
-// ---------------------------------------------------------------------------
-// Tool definition
-// ---------------------------------------------------------------------------
-
 const PLATFORMS = [
-  { platform: 'chat_gpt', model: 'gpt-4o-mini', label: 'ChatGPT' },
-  { platform: 'gemini',   model: 'gemini-2.0-flash', label: 'Gemini' },
-  { platform: 'perplexity', model: 'sonar', label: 'Perplexity' },
+  { platform: 'chat_gpt', modelName: 'gpt-4.1-mini', label: 'ChatGPT' },
+  { platform: 'claude', modelName: 'claude-3-5-haiku-latest', label: 'Claude' },
+  { platform: 'gemini', modelName: 'gemini-2.5-flash', label: 'Gemini' },
+  { platform: 'perplexity', modelName: 'sonar', label: 'Perplexity' },
+  { platform: 'google_ai_overview', modelName: 'google-organic-serp', label: 'Google AI Overview' },
 ] as const
 
 export function createGEOBrandScanTool() {
   return tool({
     description:
-      'Check whether a brand is mentioned when users ask ChatGPT, Gemini, and Perplexity about a topic. ' +
-      'Returns real AI responses, whether the brand appeared, surrounding context, sentiment, and (for Perplexity) actual citation URLs. ' +
+      'Check whether a brand is mentioned when users ask ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews about a topic. ' +
+      'Returns real AI responses, whether the brand appeared, surrounding context, sentiment, competitor co-mentions, and citation URLs. ' +
       'Use this any time the user wants to track brand visibility in AI-generated answers.',
     inputSchema: z.object({
       brand: z.string().describe(
@@ -150,19 +261,20 @@ export function createGEOBrandScanTool() {
 
       const settled = await Promise.allSettled(
         PLATFORMS.map(async p => {
-          const { response, annotations, cost } = await callLLMResponse({
-            query,
-            platform: p.platform,
-            model: p.model,
-          })
+          const { response, annotations, cost } = p.platform === 'google_ai_overview'
+            ? await callGoogleAIOverview(query)
+            : await callLLMResponse({
+                query,
+                platform: p.platform,
+                modelName: p.modelName,
+              })
 
           const { brandMentioned, mentionContext, sentiment } = analyzeMention(response, brand)
           const competitorsMentioned = findCompetitors(response, competitors)
 
           return {
             platform: p.label,
-            model: p.model,
-            // Truncate raw response — the LLM will summarise it
+            model: p.modelName,
             responsePreview: response.slice(0, 600),
             brandMentioned,
             mentionContext,
@@ -179,7 +291,7 @@ export function createGEOBrandScanTool() {
           ? r.value
           : {
               platform: PLATFORMS[i].label,
-              model: PLATFORMS[i].model,
+              model: PLATFORMS[i].modelName,
               responsePreview: '',
               brandMentioned: false,
               mentionContext: null,
@@ -215,9 +327,6 @@ export function createGEOBrandScanTool() {
   })
 }
 
-/**
- * All tools exported for the GEO agent.
- */
 export function getGEOTools() {
   return {
     geo_brand_scan: createGEOBrandScanTool(),

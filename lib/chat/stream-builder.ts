@@ -543,6 +543,7 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
   const MAX_STEPS_BY_AGENT: Record<string, number> = {
     'seo-aeo': 4,
     'content': 10, // Uses separate route, kept for safety
+    'geo': 6,
     'image': 2,
     'general': 2,
     'onboarding': 2,
@@ -581,7 +582,7 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
       toolsCount: Object.keys(allTools).length,
       conversationId,
       mode: context?.mode as string | undefined,
-      mcpDataforseoEnabled: agentType === 'seo-aeo' || agentType === 'content',
+      mcpDataforseoEnabled: agentType === 'seo-aeo' || agentType === 'content' || agentType === 'geo',
       mcpFirecrawlEnabled: agentType === 'seo-aeo' || agentType === 'content',
       mcpJinaEnabled: agentType === 'content',
       mcpWinstonEnabled: agentType === 'content',

@@ -474,7 +474,7 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
 
   // Filter out any undefined tools
   const validatedTools = Object.fromEntries(
-    Object.entries(tools).filter(([_, v]) => v !== undefined)
+    Object.entries(tools).filter(([, v]) => v !== undefined)
   )
 
   console.log('[Tool Assembler] Final validated tools:', {
