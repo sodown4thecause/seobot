@@ -2,7 +2,6 @@ import { generateText } from 'ai'
 import { and, eq, or, isNull, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { businessProfiles, geoPrompts, geoRuns, researchJobs, type Json } from '@/lib/db/schema'
-import { vercelGateway } from '@/lib/ai/gateway-provider'
 import { ingestRagDocument } from '@/lib/rag/ingest'
 import { analyzeGeoVisibility } from '@/lib/geo/analysis'
 import { getGeoEngineAdapter } from '@/lib/geo/adapters'
@@ -10,10 +9,7 @@ import { parseGeoEngines, splitEnvList } from '@/lib/geo/utils'
 import { listGeoBusinessProfiles, type GeoBusinessProfile } from '@/lib/geo/profile'
 import type { ChatMode } from '@/lib/chat/modes'
 import type { GeoEngineResult } from '@/lib/geo/types'
-import { serverEnv } from '@/lib/config/env'
-
-const RESEARCH_MODEL = serverEnv.WEEKLY_RESEARCH_MODEL || 'openai/gpt-5.5'
-const FALLBACK_RESEARCH_MODEL = serverEnv.WEEKLY_RESEARCH_FALLBACK_MODEL || 'openai/gpt-5.4'
+import { generateResearchSummary } from './generate-summary'
 
 type ResearchMode = Extract<ChatMode, 'seo' | 'geo'>
 type GeoPromptInput = typeof geoPrompts.$inferSelect | {
@@ -294,45 +290,5 @@ Keep this strictly GEO/AEO-focused. Do not blend in classic SEO unless it direct
         visibilityScore: result.analysis.visibilityScore,
       })),
     },
-  }
-}
-
-async function generateResearchSummary(prompt: string, tag: string) {
-  try {
-    const result = await generateText({
-      model: vercelGateway.languageModel(RESEARCH_MODEL),
-      prompt,
-      providerOptions: {
-        gateway: {
-          tags: [`feature:${tag}`, 'mode:weekly-research'],
-        },
-      },
-    })
-
-    return {
-      summary: result.text,
-      model: RESEARCH_MODEL,
-      rawJson: { usage: result.usage },
-    }
-  } catch (error) {
-    console.warn(`[Research] ${RESEARCH_MODEL} failed, falling back to ${FALLBACK_RESEARCH_MODEL}:`, error)
-    const result = await generateText({
-      model: vercelGateway.languageModel(FALLBACK_RESEARCH_MODEL),
-      prompt,
-      providerOptions: {
-        gateway: {
-          tags: [`feature:${tag}`, 'mode:fallback-research'],
-        },
-      },
-    })
-
-    return {
-      summary: result.text,
-      model: FALLBACK_RESEARCH_MODEL,
-      rawJson: {
-        usage: result.usage,
-        fallbackReason: error instanceof Error ? error.message : String(error),
-      },
-    }
   }
 }
