@@ -28,6 +28,14 @@ vi.mock('@/lib/ai/gateway-provider', () => ({
   vercelGateway: { languageModel: vi.fn(() => 'mock-model') },
 }))
 
+vi.mock('@/lib/research/generate-summary', () => ({
+  generateResearchSummary: vi.fn(async () => ({
+    summary: '# Weekly summary',
+    model: 'test/model',
+    rawJson: { usage: {} },
+  })),
+}))
+
 vi.mock('@/lib/research/weekly', () => ({
   runWeeklyResearch: vi.fn(async (mode: string) => ({
     jobId: `job-${mode}`,

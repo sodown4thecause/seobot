@@ -13,20 +13,14 @@
  * it into the Content-mode RAG namespace.
  */
 
-import { generateText } from 'ai'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { businessProfiles, researchJobs, type Json } from '@/lib/db/schema'
-import { vercelGateway } from '@/lib/ai/gateway-provider'
-import { serverEnv } from '@/lib/config/env'
 import { runWeeklyResearch } from '@/lib/research/weekly'
+import { generateResearchSummary } from '@/lib/research/generate-summary'
 import { ingestRagDocument } from './ingest'
 import type { ChatMode } from '@/lib/chat/modes'
 import { CHAT_MODES } from '@/lib/chat/modes'
-
-const RESEARCH_MODEL = serverEnv.WEEKLY_RESEARCH_MODEL || 'openai/gpt-5.5'
-const FALLBACK_RESEARCH_MODEL =
-  serverEnv.WEEKLY_RESEARCH_FALLBACK_MODEL || 'openai/gpt-5.4'
 
 export interface WeeklyIngestionResult {
   mode: ChatMode
@@ -34,43 +28,6 @@ export interface WeeklyIngestionResult {
   chunkCount: number
   jobId?: string
   error?: string
-}
-
-async function generateResearchSummary(prompt: string, tag: string) {
-  try {
-    const result = await generateText({
-      model: vercelGateway.languageModel(RESEARCH_MODEL),
-      prompt,
-      providerOptions: {
-        gateway: { tags: [`feature:${tag}`, 'mode:weekly-research'] },
-      },
-    })
-    return {
-      summary: result.text,
-      model: RESEARCH_MODEL,
-      rawJson: { usage: result.usage } as Record<string, unknown>,
-    }
-  } catch (error) {
-    console.warn(
-      `[WeeklyIngestion] ${RESEARCH_MODEL} failed, falling back to ${FALLBACK_RESEARCH_MODEL}:`,
-      error
-    )
-    const result = await generateText({
-      model: vercelGateway.languageModel(FALLBACK_RESEARCH_MODEL),
-      prompt,
-      providerOptions: {
-        gateway: { tags: [`feature:${tag}`, 'mode:fallback-research'] },
-      },
-    })
-    return {
-      summary: result.text,
-      model: FALLBACK_RESEARCH_MODEL,
-      rawJson: {
-        usage: result.usage,
-        fallbackReason: error instanceof Error ? error.message : String(error),
-      } as Record<string, unknown>,
-    }
-  }
 }
 
 /**
@@ -113,6 +70,14 @@ Keep this strictly focused on content strategy and creation.`
 
     const summary = await generateResearchSummary(prompt, 'weekly-content-research')
 
+    const ingest = await ingestRagDocument({
+      mode: 'content',
+      sourceType: 'weekly_research',
+      title: `CONTENT weekly research ${new Date().toISOString().slice(0, 10)}`,
+      rawMarkdown: summary.summary,
+      metadata: { researchJobId: job.id, generatedBy: summary.model },
+    })
+
     await db
       .update(researchJobs)
       .set({
@@ -122,14 +87,6 @@ Keep this strictly focused on content strategy and creation.`
         completedAt: new Date(),
       })
       .where(eq(researchJobs.id, job.id))
-
-    const ingest = await ingestRagDocument({
-      mode: 'content',
-      sourceType: 'weekly_research',
-      title: `CONTENT weekly research ${new Date().toISOString().slice(0, 10)}`,
-      rawMarkdown: summary.summary,
-      metadata: { researchJobId: job.id, generatedBy: summary.model },
-    })
 
     return {
       mode: 'content',

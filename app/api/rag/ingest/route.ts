@@ -29,14 +29,20 @@ export async function GET(req: Request) {
 
   try {
     const modesParam = new URL(req.url).searchParams.get('modes')
-    const requested: ChatMode[] = modesParam
-      ? modesParam
-          .split(',')
-          .map(value => value.trim())
-          .filter((value): value is ChatMode => isChatMode(value))
-      : [...CHAT_MODES]
-
-    const modes = requested.length > 0 ? requested : [...CHAT_MODES]
+    let modes: ChatMode[]
+    if (modesParam) {
+      const raw = modesParam.split(',').map(v => v.trim())
+      const invalid = raw.filter(v => !isChatMode(v))
+      if (invalid.length > 0) {
+        return NextResponse.json(
+          { success: false, error: `Invalid mode(s): ${invalid.join(', ')}. Valid modes: ${CHAT_MODES.join(', ')}` },
+          { status: 400 }
+        )
+      }
+      modes = raw as ChatMode[]
+    } else {
+      modes = [...CHAT_MODES]
+    }
     const results = await runWeeklyIngestion(modes)
     const failed = results.filter(result => result.status === 'failed')
 
