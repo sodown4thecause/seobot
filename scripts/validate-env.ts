@@ -30,7 +30,11 @@ const serverEnvSchema = z.object({
   CLERK_SECRET_KEY: z.string().min(1, 'CLERK_SECRET_KEY is required'),
 
   // DataForSEO
-  DATAFORSEO_USERNAME: z.string().email({ message: 'DATAFORSEO_USERNAME must be a valid email' }),
+  DATAFORSEO_LOGIN: z.string().min(1).optional(),
+  DATAFORSEO_USERNAME: z.preprocess(
+    (val) => (typeof val === 'string' && val.trim().length > 0 ? val : process.env.DATAFORSEO_LOGIN),
+    z.string().min(1, 'DATAFORSEO_USERNAME or DATAFORSEO_LOGIN is required')
+  ),
   DATAFORSEO_PASSWORD: z.string().min(1, 'DATAFORSEO_PASSWORD is required'),
 }).passthrough()
 

@@ -5,10 +5,29 @@ import { useMemo, useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
 import { useAgent } from '@/components/providers/agent-provider'
-import { useUser } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 import { buildWorkflowAutoSendKey } from '@/lib/chat/conversation-bootstrap'
 import { getWorkflowLaunchConfig } from '@/lib/workflows/launch-config'
-import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
+
+function normalizeOnboardingUrl(rawValue?: string): string | undefined {
+  if (!rawValue) return undefined
+  const trimmed = rawValue.trim()
+  if (!trimmed) return undefined
+
+  const candidate = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+    ? trimmed
+    : `https://${trimmed}`
+
+  try {
+    const parsed = new URL(candidate)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return undefined
+    }
+    return parsed.toString()
+  } catch {
+    return undefined
+  }
+}
 
 export default function DashboardPage() {
   return (
@@ -21,12 +40,13 @@ export default function DashboardPage() {
 function DashboardInner() {
   const { state, actions } = useAgent()
   const activeAgentId = state.activeAgent?.id
-  const { user, isLoaded } = useUser()
-  const { ready: clerkReady, timedOut: clerkTimedOut } = useClerkLoadGuard(isLoaded, 5000)
+  const { data: session, isPending } = authClient.useSession()
+  const user = session?.user ?? null
+  const isLoaded = !isPending
   const searchParams = useSearchParams()
   const workflowId = searchParams?.get('workflow') ?? undefined
   const explicitConversationId = searchParams?.get('conversationId') ?? undefined
-  const onboardingUrl = searchParams?.get('url') ?? undefined
+  const onboardingUrl = normalizeOnboardingUrl(searchParams?.get('url') ?? undefined)
   const shouldStartOnboarding = searchParams?.has('startOnboarding')
 
   const [isNewUser, setIsNewUser] = useState(false)
@@ -40,6 +60,12 @@ function DashboardInner() {
   const resolvedConversationId = explicitConversationId
   const workflowMessage = workflowLaunch?.initialPrompt
   const workflowAutoSendKey = buildWorkflowAutoSendKey(workflowId, resolvedConversationId)
+
+  useEffect(() => {
+    if (isLoaded && !user) {
+      window.location.href = '/sign-in'
+    }
+  }, [isLoaded, user])
 
   // Check if user has a business profile (first-time user detection)
   useEffect(() => {
@@ -60,11 +86,11 @@ function DashboardInner() {
         }
 
         // Get user name from Clerk
-        const fullName = user.fullName || user.firstName || ''
+        const fullName = user.name || ''
         if (fullName) {
           setUserName(fullName)
-        } else if (user.emailAddresses?.[0]?.emailAddress) {
-          setUserName(user.emailAddresses[0].emailAddress.split('@')[0])
+        } else if (user.email) {
+          setUserName(user.email.split('@')[0])
         }
 
         // Fetch profile with retry logic for cold DB connections
@@ -194,30 +220,7 @@ function DashboardInner() {
     [isNewUser, resolvedConversationId]
   )
 
-  if (!isLoaded || isLoading) {
-    if (!clerkReady && !isLoaded) {
-      return (
-        <div className="relative h-full flex flex-col items-center justify-center">
-          <div className="animate-pulse text-gray-400">Loading...</div>
-        </div>
-      )
-    }
-
-    if (clerkTimedOut && !isLoaded) {
-      return (
-        <div className="relative h-full flex flex-col items-center justify-center px-6 text-center">
-          <div className="max-w-xl rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
-            Clerk auth is not loading in the browser. Verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, then restart `npm run dev`.
-            <div className="mt-2">
-              <a className="underline" href="/sign-in">
-                Open sign in
-              </a>
-            </div>
-          </div>
-        </div>
-      )
-    }
-
+  if (!isLoaded || !user || isLoading) {
     return (
       <div className="relative h-full flex flex-col items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading...</div>

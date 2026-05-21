@@ -17,6 +17,10 @@ function notConfigured(engine: GeoEngine, input: GeoEngineAdapterInput, reason: 
   }
 }
 
+function isDataForSeoConfigurationError(statusCode?: number): boolean {
+  return statusCode === 401 || statusCode === 402 || statusCode === 403 || statusCode === 404
+}
+
 function failed(engine: GeoEngine, input: GeoEngineAdapterInput, reason: string): GeoEngineResult {
   return {
     engine,
@@ -48,7 +52,11 @@ class DataForSeoChatGptAdapter implements GeoEngineAdapter {
   async runPrompt(input: GeoEngineAdapterInput): Promise<GeoEngineResult> {
     const result = await llmResponsesLive({ prompt: input.prompt })
     if (!result.success) {
-      return notConfigured('chatgpt', input, result.error?.message || 'DataForSEO ChatGPT LLM responses unavailable')
+      const reason = result.error?.message || 'DataForSEO ChatGPT LLM responses unavailable'
+      if (isDataForSeoConfigurationError(result.error?.statusCode)) {
+        return notConfigured('chatgpt', input, reason)
+      }
+      return failed('chatgpt', input, reason)
     }
 
     const text = JSON.stringify(result.data)

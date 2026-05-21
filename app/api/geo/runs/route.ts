@@ -1,4 +1,5 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { geoRuns, type Json } from '@/lib/db/schema'
@@ -17,7 +18,8 @@ interface GeoRunRequest {
 }
 
 export async function POST(request: Request) {
-  const { userId } = await auth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const userId = session?.user?.id
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -35,7 +37,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'brand is required or the user must complete business profile setup' }, { status: 400 })
   }
 
-  const competitors = body.competitors?.length ? body.competitors : profile?.competitors || splitEnvList(serverEnv.GEO_COMPETITORS)
+  const explicitCompetitors = body.competitors?.map(item => item.trim()).filter(Boolean) ?? []
+  const profileCompetitors = profile?.competitors?.map(item => item.trim()).filter(Boolean) ?? []
+  const envCompetitors = splitEnvList(serverEnv.GEO_COMPETITORS)
+  const competitors = explicitCompetitors.length > 0
+    ? explicitCompetitors
+    : (profileCompetitors.length > 0 ? profileCompetitors : envCompetitors)
   const engines = parseGeoEngines(body.engines || serverEnv.GEO_ENABLED_ENGINES)
   const results = []
 

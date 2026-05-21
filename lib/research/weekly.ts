@@ -9,13 +9,54 @@ import { getGeoEngineAdapter } from '@/lib/geo/adapters'
 import { parseGeoEngines, splitEnvList } from '@/lib/geo/utils'
 import { listGeoBusinessProfiles, type GeoBusinessProfile } from '@/lib/geo/profile'
 import type { ChatMode } from '@/lib/chat/modes'
-import type { GeoEngineResult } from '@/lib/geo/types'
+import type { GeoEngine, GeoEngineResult } from '@/lib/geo/types'
 import { serverEnv } from '@/lib/config/env'
-
-const RESEARCH_MODEL = 'openai/gpt-5.5'
-const FALLBACK_RESEARCH_MODEL = 'openai/gpt-5.4'
+const RESEARCH_MODEL = serverEnv.GEO_RESEARCH_MODEL
+const FALLBACK_RESEARCH_MODEL = serverEnv.GEO_RESEARCH_FALLBACK_MODEL
+const GEO_WEEKLY_PROFILE_LIMIT = serverEnv.GEO_WEEKLY_PROFILE_LIMIT
+const GEO_WEEKLY_PROMPT_LIMIT = serverEnv.GEO_WEEKLY_PROMPT_LIMIT
+const GEO_WEEKLY_MAX_RUNS = serverEnv.GEO_WEEKLY_MAX_RUNS
+const GEO_WEEKLY_RUN_CONCURRENCY = serverEnv.GEO_WEEKLY_RUN_CONCURRENCY
 
 type ResearchMode = Extract<ChatMode, 'seo' | 'geo'>
+
+type GeoWeeklyRunResult = {
+  profile: GeoBusinessProfile
+  row: typeof geoRuns.$inferInsert
+  engineResult: GeoEngineResult
+  analysis: Awaited<ReturnType<typeof analyzeGeoVisibility>>
+}
+
+type GeoWeeklyRunTask = {
+  profile: GeoBusinessProfile
+  geoPromptId: string | null
+  prompt: string
+  topic?: string | null
+  brand: string
+  competitors: string[]
+  engine: GeoEngine
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return []
+
+  const safeConcurrency = Math.max(1, Math.min(concurrency, items.length))
+  const results = new Array<R>(items.length)
+  let nextIndex = 0
+
+  await Promise.all(Array.from({ length: safeConcurrency }, async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex++
+      results[index] = await worker(items[index], index)
+    }
+  }))
+
+  return results
+}
 
 export async function runWeeklyResearch(mode: ResearchMode) {
   const [job] = await db.insert(researchJobs).values({
@@ -99,26 +140,28 @@ Keep this strictly SEO-focused. Do not blend in GEO/AEO unless it materially aff
 }
 
 async function runWeeklyGeoResearch() {
-  const profiles = await listGeoBusinessProfiles(50)
+  const profiles = await listGeoBusinessProfiles(GEO_WEEKLY_PROFILE_LIMIT)
   if (profiles.length === 0) {
     throw new Error('No business profiles found for weekly GEO research')
   }
 
   const fallbackTopics = splitEnvList(serverEnv.GEO_DEFAULT_TOPICS)
-  const runResults: Array<{ profile: GeoBusinessProfile; row: typeof geoRuns.$inferInsert; engineResult: GeoEngineResult; analysis: Awaited<ReturnType<typeof analyzeGeoVisibility>> }> = []
+  const runTasks: GeoWeeklyRunTask[] = []
 
   for (const profile of profiles) {
-    const promptRows = await db
-      .select()
-      .from(geoPrompts)
-      .where(and(
-        eq(geoPrompts.active, true),
-        or(eq(geoPrompts.userId, profile.userId), isNull(geoPrompts.userId)),
-      ))
-      .limit(25)
+    const selectedPromptRows = (
+      await db
+        .select()
+        .from(geoPrompts)
+        .where(and(
+          eq(geoPrompts.active, true),
+          or(eq(geoPrompts.userId, profile.userId), isNull(geoPrompts.userId)),
+        ))
+        .limit(25)
+    ).slice(0, GEO_WEEKLY_PROMPT_LIMIT)
 
-    const prompts = promptRows.length > 0
-      ? promptRows
+    const prompts = selectedPromptRows.length > 0
+      ? selectedPromptRows
       : (fallbackTopics.length > 0 ? fallbackTopics : ['AI visibility', 'answer engine optimization', 'Google AI Overview citations']).map(topic => ({
           id: null,
           userId: profile.userId,
@@ -135,49 +178,70 @@ async function runWeeklyGeoResearch() {
       const engines = parseGeoEngines(promptRow.engines as string[] | null)
 
       for (const engine of engines) {
-        const adapter = getGeoEngineAdapter(engine)
-        const engineResult = await adapter.runPrompt({
+        runTasks.push({
+          profile,
+          geoPromptId: promptRow.id ?? null,
           prompt: promptRow.prompt,
-          brand,
-          competitors,
           topic: promptRow.topic || undefined,
-        })
-        const analysis = await analyzeGeoVisibility({
           brand,
           competitors,
-          prompt: promptRow.prompt,
           engine,
-          responseText: engineResult.responseText,
-          citedUrls: engineResult.citedUrls,
         })
-
-        const [row] = await db.insert(geoRuns).values({
-          userId: profile.userId,
-          geoPromptId: promptRow.id,
-          engine,
-          prompt: promptRow.prompt,
-          brand,
-          competitors,
-          responseText: engineResult.responseText,
-          citedUrls: engineResult.citedUrls,
-          citedDomains: engineResult.citedDomains,
-          mentionedBrands: analysis.mentionedBrands,
-          competitorMentions: analysis.competitorMentions as Json,
-          sentiment: analysis.sentiment,
-          brandPosition: analysis.brandPosition,
-          visibilityScore: analysis.visibilityScore,
-          status: engineResult.status,
-          rawJson: ({
-            engineResult,
-            analysis,
-          } as unknown) as Json,
-          capturedAt: new Date(engineResult.capturedAt),
-        }).returning()
-
-        runResults.push({ profile, row, engineResult, analysis })
       }
     }
   }
+
+  const totalPlannedRuns = runTasks.length
+  const tasksToRun = runTasks.slice(0, GEO_WEEKLY_MAX_RUNS)
+  const skippedRuns = Math.max(0, totalPlannedRuns - tasksToRun.length)
+
+  const runResults = await mapWithConcurrency(tasksToRun, GEO_WEEKLY_RUN_CONCURRENCY, async (task): Promise<GeoWeeklyRunResult> => {
+    const adapter = getGeoEngineAdapter(task.engine)
+    const engineResult = await adapter.runPrompt({
+      prompt: task.prompt,
+      brand: task.brand,
+      competitors: task.competitors,
+      topic: task.topic || undefined,
+    })
+    const analysis = await analyzeGeoVisibility({
+      brand: task.brand,
+      competitors: task.competitors,
+      prompt: task.prompt,
+      engine: task.engine,
+      responseText: engineResult.responseText,
+      citedUrls: engineResult.citedUrls,
+    })
+
+    const [row] = await db.insert(geoRuns).values({
+      userId: task.profile.userId,
+      geoPromptId: task.geoPromptId,
+      engine: task.engine,
+      prompt: task.prompt,
+      brand: task.brand,
+      competitors: task.competitors,
+      responseText: engineResult.responseText,
+      citedUrls: engineResult.citedUrls,
+      citedDomains: engineResult.citedDomains,
+      mentionedBrands: analysis.mentionedBrands,
+      competitorMentions: analysis.competitorMentions as Json,
+      sentiment: analysis.sentiment,
+      brandPosition: analysis.brandPosition,
+      visibilityScore: analysis.visibilityScore,
+      status: engineResult.status,
+      rawJson: ({
+        engineResult,
+        analysis,
+      } as unknown) as Json,
+      capturedAt: new Date(engineResult.capturedAt),
+    }).returning()
+
+    return {
+      profile: task.profile,
+      row,
+      engineResult,
+      analysis,
+    }
+  })
 
   const prompt = `Create a weekly GEO/AEO deep research summary for SEOBOT's GEO-mode RAG.
 
@@ -192,7 +256,8 @@ ${JSON.stringify(runResults.map((result, index) => ({
   sentiment: result.analysis.sentiment,
   citedDomainsCount: result.engineResult.citedDomains.length,
   mentionedBrandsCount: result.analysis.mentionedBrands.length,
-  recommendedContentActions: result.analysis.recommendedContentActions,
+  competitorMentionCount: Object.values(result.analysis.competitorMentions || {}).reduce((sum, count) => sum + (typeof count === 'number' ? count : 0), 0),
+  analysisMethod: result.analysis.analysisMethod,
 })), null, 2)}
 
 Produce structured Markdown with:
@@ -216,6 +281,9 @@ Keep this strictly GEO/AEO-focused. Do not blend in classic SEO unless it direct
     rawJson: {
       ...summary.rawJson,
       runCount: runResults.length,
+      plannedRunCount: totalPlannedRuns,
+      skippedRunCount: skippedRuns,
+      concurrency: GEO_WEEKLY_RUN_CONCURRENCY,
       runs: runResults.map(result => ({
         id: result.row.id,
         engine: result.row.engine,

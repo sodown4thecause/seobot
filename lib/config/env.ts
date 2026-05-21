@@ -30,7 +30,11 @@ const serverEnvSchema = z.object({
   AI_GATEWAY_API_KEY: z.string().min(1).optional(),
   AI_GATEWAY_BASE_URL: z.string().url().optional(),
   // External APIs
-  DATAFORSEO_USERNAME: z.string().min(1, 'DATAFORSEO_USERNAME is required'),
+  DATAFORSEO_LOGIN: z.string().min(1).optional(),
+  DATAFORSEO_USERNAME: z.preprocess(
+    (val) => (typeof val === 'string' && val.trim().length > 0 ? val : process.env.DATAFORSEO_LOGIN),
+    z.string().min(1, 'DATAFORSEO_USERNAME or DATAFORSEO_LOGIN is required')
+  ),
   DATAFORSEO_PASSWORD: z.string().min(1, 'DATAFORSEO_PASSWORD is required'),
   DATAFORSEO_MCP_URL: z.string().url().optional(),
   DATAFORSEO_BASIC_AUTH: z.string().optional(),
@@ -92,6 +96,25 @@ const serverEnvSchema = z.object({
   GEO_ENABLED_ENGINES: z.string().optional(),
   GEO_COMPETITORS: z.string().optional(),
   GEO_DEFAULT_TOPICS: z.string().optional(),
+  GEO_RESEARCH_MODEL: z.string().default('openai/gpt-5.5'),
+  GEO_RESEARCH_FALLBACK_MODEL: z.string().default('openai/gpt-5.4'),
+  GEO_VISIBILITY_ANALYSIS_MODEL: z.string().default('openai/gpt-5.5'),
+  GEO_WEEKLY_PROFILE_LIMIT: z.preprocess(
+    (val) => (val ? Number(val) : undefined),
+    z.number().int().min(1).max(100).default(20)
+  ),
+  GEO_WEEKLY_PROMPT_LIMIT: z.preprocess(
+    (val) => (val ? Number(val) : undefined),
+    z.number().int().min(1).max(25).default(5)
+  ),
+  GEO_WEEKLY_MAX_RUNS: z.preprocess(
+    (val) => (val ? Number(val) : undefined),
+    z.number().int().min(1).max(1000).default(240)
+  ),
+  GEO_WEEKLY_RUN_CONCURRENCY: z.preprocess(
+    (val) => (val ? Number(val) : undefined),
+    z.number().int().min(1).max(24).default(6)
+  ),
   SCRAPINGBEE_API_KEY: z.string().min(1).optional(),
 
   // Site Configuration

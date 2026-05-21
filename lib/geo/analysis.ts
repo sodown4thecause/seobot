@@ -1,6 +1,7 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
+import { serverEnv } from '@/lib/config/env'
 import { countMentions, extractDomains } from './utils'
 import type { GeoEngine, GeoVisibilityAnalysis } from './types'
 
@@ -29,7 +30,7 @@ export async function analyzeGeoVisibility(input: {
 
   try {
     const { object } = await generateObject({
-      model: vercelGateway.languageModel('openai/gpt-5.5'),
+      model: vercelGateway.languageModel(serverEnv.GEO_VISIBILITY_ANALYSIS_MODEL),
       schema: analysisSchema,
       prompt: `Analyze this GEO/AEO engine response for brand visibility.
 
