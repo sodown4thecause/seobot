@@ -50,20 +50,25 @@ import {
   DialogTrigger 
 } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
-import {
-  transcribeAndOptimizePodcast,
-  generateBlogPostFromPodcast,
-  generateSocialMediaCalendar,
-  PodcastTranscription,
-  SEOOptimizedContent,
-  ContentRepurposing
-} from '@/lib/podcast/podcast-service'
+import type { PodcastTranscription } from '@/lib/podcast/podcast-service'
 
 interface PodcastTranscriberProps {
   userId: string
 }
 
-export function PodcastTranscriber({ userId }: PodcastTranscriberProps) {
+interface SocialMediaCalendar {
+  calendar?: Array<{
+    date: string
+    posts: Array<{
+      platform: string
+      content: string
+      hashtags: string[]
+      optimalTime: string
+    }>
+  }>
+}
+
+export function PodcastTranscriber({ userId: _userId }: PodcastTranscriberProps) {
   const [audioUrl, setAudioUrl] = useState('')
   const [podcastTitle, setPodcastTitle] = useState('')
   const [podcastDescription, setPodcastDescription] = useState('')
@@ -73,7 +78,7 @@ export function PodcastTranscriber({ userId }: PodcastTranscriberProps) {
   const [transcription, setTranscription] = useState<PodcastTranscription | null>(null)
   const [activeTab, setActiveTab] = useState('upload')
   const [generatedBlogPost, setGeneratedBlogPost] = useState('')
-  const [socialMediaCalendar, setSocialMediaCalendar] = useState<any>(null)
+  const [socialMediaCalendar, setSocialMediaCalendar] = useState<SocialMediaCalendar | null>(null)
 
   const { toast } = useToast()
 
@@ -91,13 +96,12 @@ export function PodcastTranscriber({ userId }: PodcastTranscriberProps) {
     try {
       const keywords = targetKeywords.split(',').map(k => k.trim()).filter(k => k)
       
-      const result = await transcribeAndOptimizePodcast({
+      const result = await postPodcastApi<PodcastTranscription>('/api/podcast/transcribe', {
         audioUrl,
         podcastTitle,
         podcastDescription: podcastDescription.trim() || undefined,
         episodeNumber: episodeNumber ? parseInt(episodeNumber) : undefined,
         targetKeywords: keywords,
-        userId
       })
 
       setTranscription(result)
@@ -123,7 +127,7 @@ export function PodcastTranscriber({ userId }: PodcastTranscriberProps) {
     if (!transcription) return
 
     try {
-      const blogPost = await generateBlogPostFromPodcast({
+      const blogPost = await postPodcastApi<string>('/api/podcast/blog-post', {
         podcastId: transcription.id,
         targetAudience: 'Marketing professionals',
         tone,
@@ -149,7 +153,7 @@ export function PodcastTranscriber({ userId }: PodcastTranscriberProps) {
     if (!transcription) return
 
     try {
-      const calendar = await generateSocialMediaCalendar({
+      const calendar = await postPodcastApi<SocialMediaCalendar>('/api/podcast/social-calendar', {
         podcastId: transcription.id,
         platforms: ['twitter', 'linkedin', 'facebook', 'instagram'],
         duration: 7,
@@ -823,14 +827,14 @@ export function PodcastTranscriber({ userId }: PodcastTranscriberProps) {
             <CardContent>
               {socialMediaCalendar ? (
                 <div className="space-y-4">
-                  {socialMediaCalendar.calendar?.map((day: any, index: number) => (
+                  {socialMediaCalendar.calendar?.map((day, index) => (
                     <div key={index} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="font-medium text-gray-900">{day.date}</h4>
                         <Badge variant="outline">{day.posts.length} posts</Badge>
                       </div>
                       <div className="space-y-3">
-                        {day.posts.map((post: any, pidx: number) => (
+                        {day.posts.map((post, pidx) => (
                           <div key={pidx} className="flex items-start space-x-3 p-3 bg-gray-50 rounded">
                             <div className="p-1 bg-white rounded">
                               {getPlatformIcon(post.platform)}
@@ -873,4 +877,22 @@ export function PodcastTranscriber({ userId }: PodcastTranscriberProps) {
       </Tabs>
     </div>
   )
+}
+
+async function postPodcastApi<T>(url: string, payload: Record<string, unknown>): Promise<T> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const body = await response.json()
+
+  if (!response.ok) {
+    throw new Error(body?.message || body?.error || 'Podcast request failed')
+  }
+
+  return body.data as T
 }
