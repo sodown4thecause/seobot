@@ -79,8 +79,8 @@ describe('AgentRouter', () => {
       it('should include content generation tools', () => {
         const result = AgentRouter.routeQuery('write me a blog post about productivity')
         
-        expect(result.tools).toContain('generate_researched_content')
-        expect(result.tools).toContain('perplexity_search')
+        expect(result.tools).toContain('perplexity_research')
+        expect(result.tools).toContain('keyword_search_volume')
       })
 
       it('should prioritize content over SEO when explicit content intent is present', () => {
@@ -156,9 +156,9 @@ describe('AgentRouter', () => {
         const result = AgentRouter.routeQuery('analyze my SEO performance and ranking')
         
         expect(result.agent).toBe(AGENT_IDS.SEO_AEO)
-        expect(result.tools).toContain('keywords_data_google_ads_search_volume')
-        expect(result.tools).toContain('serp_organic_live_advanced')
-        expect(result.tools).toContain('n8n_backlinks')
+        expect(result.tools).toContain('keyword_search_volume')
+        expect(result.tools).toContain('google_rankings')
+        expect(result.tools).toContain('backlinks_overview')
       })
     })
 
@@ -187,8 +187,8 @@ describe('AgentRouter', () => {
       it('should include basic tools for general agent', () => {
         const result = AgentRouter.routeQuery('hello there')
         
-        expect(result.tools).toContain('perplexity_search')
-        expect(result.tools).toContain('client_ui')
+        expect(result.tools).toContain('perplexity_research')
+        expect(result.tools).toContain('keyword_search_volume')
       })
     })
 

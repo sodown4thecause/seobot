@@ -588,7 +588,7 @@ You receive the user's business profile (industry, website, goals, brand voice, 
 
 // Article Writer Agent Configuration
 const articleWriterConfig: AgentConfig = {
-  id: 'article_writer',
+  id: AGENT_IDS.CONTENT,
   name: 'Article Writer',
   description: 'Expert content creator focused on SEO-optimized articles and engaging writing',
   personality: {

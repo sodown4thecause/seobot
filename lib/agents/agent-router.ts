@@ -5,6 +5,7 @@
  */
 
 import { AGENT_IDS, type AgentId } from './constants'
+import { agentRegistry } from './registry'
 
 export type AgentType = AgentId
 
@@ -19,106 +20,12 @@ export interface AgentRoutingResult {
 // Tool constants to avoid duplication and ensure consistency
 const ONBOARDING_TOOLS = ['client_ui', 'onboarding_progress'] as const
 
-const CONTENT_TOOLS = [
-  // Core content tools
-  'generate_content_package',
-  'generate_researched_content',
-  'perplexity_search',
-  // Firecrawl (Research)
-  'firecrawl_scrape',
-  'firecrawl_search',
-  'firecrawl_crawl',
-  // Content Analysis
-  'content_analysis_search',
-  'content_analysis_summary',
-  'content_analysis_phrase_trends',
-  // Keyword Optimization
-  'keywords_data_google_ads_search_volume',
-  'dataforseo_labs_search_intent',
-  'dataforseo_labs_google_keyword_suggestions',
-  // Jina advanced tools
-  'read_url',
-  'search_web',
-  'expand_query',
-  'parallel_search_web',
-  'sort_by_relevance',
-] as const
-
-const SEO_TOOLS = [
-  // Keyword Research
-  'keywords_data_google_ads_search_volume',
-  'dataforseo_labs_google_keyword_ideas',
-  'dataforseo_labs_google_keyword_suggestions',
-  'dataforseo_labs_google_keyword_overview',
-  'dataforseo_labs_bulk_keyword_difficulty',
-  'dataforseo_labs_search_intent',
-  'dataforseo_labs_google_keywords_for_site',
-  'dataforseo_labs_google_related_keywords',
-  // SERP Analysis
-  'serp_organic_live_advanced',
-  'serp_locations',
-  'dataforseo_labs_google_serp_competitors',
-  'dataforseo_labs_google_historical_serp',
-  'dataforseo_labs_google_top_searches',
-  // YouTube SEO
-  'serp_youtube_organic_live_advanced',
-  'serp_youtube_video_info_live_advanced',
-  'serp_youtube_video_comments_live_advanced',
-  'serp_youtube_video_subtitles_live_advanced',
-  'serp_youtube_locations',
-  // Competitor Analysis
-  'dataforseo_labs_google_ranked_keywords',
-  'dataforseo_labs_google_competitors_domain',
-  'dataforseo_labs_google_domain_intersection',
-  'dataforseo_labs_google_page_intersection',
-  'dataforseo_labs_google_relevant_pages',
-  'dataforseo_labs_google_subdomains',
-  // Domain Analysis
-  'dataforseo_labs_google_domain_rank_overview',
-  'dataforseo_labs_google_historical_rank_overview',
-  'dataforseo_labs_bulk_traffic_estimation',
-  'domain_analytics_whois_overview',
-  'domain_analytics_technologies_domain_technologies',
-  // Backlinks
-  'n8n_backlinks',
-  // Trends
-  'keywords_data_google_trends_explore',
-  'keywords_data_dataforseo_trends_explore',
-  'keywords_data_dataforseo_trends_demography',
-  // Technical SEO
-  'on_page_lighthouse',
-  'on_page_content_parsing',
-  'on_page_instant_pages',
-  // AI/AEO Optimization
-  'ai_optimization_keyword_data_search_volume',
-  'ai_optimization_keyword_data_locations_and_languages',
-  // Content Analysis
-  'content_analysis_search',
-  'content_analysis_summary',
-  'content_analysis_phrase_trends',
-  // Business Data
-  'business_data_business_listings_search',
-  // Firecrawl (Web Scraping)
-  'firecrawl_scrape',
-  'firecrawl_search',
-  'firecrawl_crawl',
-  'firecrawl_map',
-  'firecrawl_extract',
-  'firecrawl_check_crawl_status',
-] as const
-
-const GENERAL_TOOLS = [
-  'web_search_competitors',
-  'perplexity_search',
-  'client_ui',
-] as const
-
-const IMAGE_TOOLS = [
-  'generate_article_images',
-  'generate_hero_image',
-] as const
-
 export class AgentRouter {
+  private static getRegisteredAgentToolNames(agentId: AgentId): string[] {
+    const agent = agentRegistry.getAgent(agentId)
+    return agent?.tools.map(tool => tool.name) ?? []
+  }
+
   /**
    * Route user query to appropriate specialized agent
    * Uses word boundary matching for precise keyword detection
@@ -175,7 +82,7 @@ export class AgentRouter {
         reasoning: hasExplicitContentIntent
           ? 'Explicit content creation request detected'
           : `Content creation query: ${contentMatches.slice(0, 3).join(', ')}`,
-        tools: [...CONTENT_TOOLS],
+        tools: this.getRegisteredAgentToolNames(AGENT_IDS.CONTENT),
         matchedKeywords: contentMatches,
       }
     }
@@ -186,7 +93,7 @@ export class AgentRouter {
         agent: AGENT_IDS.IMAGE,
         confidence: this.calculateConfidence(imageMatches.length, 0.85, 0.95),
         reasoning: `Image generation request: ${imageMatches.slice(0, 3).join(', ')}`,
-        tools: [...IMAGE_TOOLS],
+        tools: this.getRegisteredAgentToolNames(AGENT_IDS.IMAGE),
         matchedKeywords: imageMatches,
       }
     }
@@ -197,7 +104,7 @@ export class AgentRouter {
         agent: AGENT_IDS.SEO_AEO,
         confidence: this.calculateConfidence(seoMatches.length, 0.8, 0.95),
         reasoning: `SEO analytics query: ${seoMatches.slice(0, 3).join(', ')}`,
-        tools: [...SEO_TOOLS],
+        tools: this.getRegisteredAgentToolNames(AGENT_IDS.SEO_AEO),
         matchedKeywords: seoMatches,
       }
     }
@@ -207,7 +114,7 @@ export class AgentRouter {
       agent: AGENT_IDS.GENERAL,
       confidence: 0.7,
       reasoning: 'General query - no specialized agent keywords detected',
-      tools: [...GENERAL_TOOLS],
+      tools: this.getRegisteredAgentToolNames(AGENT_IDS.GENERAL),
     }
   }
 
