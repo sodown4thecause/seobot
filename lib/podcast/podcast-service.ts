@@ -7,19 +7,46 @@ const google = createGoogleGenerativeAI({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
-// TODO: Migrate to Drizzle ORM - currently stubbed after Supabase removal
-// In-memory store for development/testing only - NOT for production use
-const inMemoryTranscriptions = new Map<string, PodcastTranscription>()
+/**
+ * Environment flag to enable mock podcast transcription and in-memory persistence.
+ *
+ * TODO: Migrate to Drizzle ORM and real speech-to-text persistence.
+ */
+const ALLOW_MOCK_PODCAST_SERVICE =
+  process.env.NODE_ENV === 'development' ||
+  process.env.ALLOW_MOCK_PODCAST_SERVICE === 'true'
+
+const mockPodcastTranscriptionStore = ALLOW_MOCK_PODCAST_SERVICE
+  ? new Map<string, PodcastTranscription>()
+  : null
+
+if (!ALLOW_MOCK_PODCAST_SERVICE) {
+  console.warn(
+    '[Podcast Service] Mock transcription and in-memory persistence are disabled. ' +
+    'Set ALLOW_MOCK_PODCAST_SERVICE=true for dev/test, or wire production persistence and transcription.'
+  )
+}
+
+function getMockPodcastTranscriptionStore(): Map<string, PodcastTranscription> {
+  if (!mockPodcastTranscriptionStore) {
+    throw new Error(
+      'Podcast transcription persistence is unavailable. Set ALLOW_MOCK_PODCAST_SERVICE=true for dev/test, or wire production persistence.'
+    )
+  }
+
+  return mockPodcastTranscriptionStore
+}
 
 function createAdminClient() {
   return {
     from: (table: string) => {
       if (table === 'podcast_transcriptions') {
+        const store = getMockPodcastTranscriptionStore()
         return {
           select: (columns: string | string[] = '*') => ({
             eq: (field: string, value: string) => ({
               single: async () => {
-                const transcription = Array.from(inMemoryTranscriptions.values()).find(t => t.id === value)
+                const transcription = Array.from(store.values()).find(t => t.id === value)
                 if (!transcription) {
                   return { data: null, error: { message: 'Podcast transcription not found' } }
                 }
@@ -70,7 +97,7 @@ function createAdminClient() {
                   createdAt: data.created_at || new Date().toISOString(),
                   updatedAt: data.updated_at || new Date().toISOString()
                 }
-                inMemoryTranscriptions.set(transcription.id, transcription)
+                store.set(transcription.id, transcription)
                 return {
                   data: {
                     id: transcription.id,
@@ -334,8 +361,21 @@ async function transcribeAudio(audioUrl: string): Promise<string> {
     // - Azure Speech Services
     // - AWS Transcribe
     
-    // For now, return mock transcript
-    return `Welcome to today's episode where we discuss the latest trends in digital marketing and SEO optimization. 
+    return createMockPodcastTranscript(audioUrl)
+  } catch (error) {
+    console.error('Failed to transcribe audio:', error)
+    throw error
+  }
+}
+
+function createMockPodcastTranscript(_audioUrl: string): string {
+  if (!ALLOW_MOCK_PODCAST_SERVICE) {
+    throw new Error(
+      'Podcast transcription is unavailable. Set ALLOW_MOCK_PODCAST_SERVICE=true for dev/test, or wire a production speech-to-text provider.'
+    )
+  }
+
+  return `Welcome to today's episode where we discuss the latest trends in digital marketing and SEO optimization. 
 
 Our guest today is Sarah Johnson, a renowned marketing expert with over 15 years of experience in helping businesses grow their online presence.
 
@@ -362,10 +402,6 @@ Host: "Thank you so much for sharing your expertise, Sarah! This has been incred
 Sarah: "It was my pleasure! Remember, SEO is a marathon, not a sprint. Consistency and quality always win in the long run."
 
 Host: "And that's all for today's episode. Join us next week when we'll be discussing social media marketing strategies with industry expert Mike Chen. Don't forget to subscribe and leave us a review!"`
-  } catch (error) {
-    console.error('Failed to transcribe audio:', error)
-    throw error
-  }
 }
 
 /**
