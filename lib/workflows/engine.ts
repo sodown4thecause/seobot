@@ -13,6 +13,29 @@ import { analytics } from './analytics'
 import { workflowPersistence } from './persistence'
 import { nanoid } from 'nanoid'
 
+const CONTENT_QUALITY_TOOL_NAMES = [
+  'validate_content',
+  'check_plagiarism',
+  'check_ai_content',
+  'generate_seo_content',
+  'generate_blog_section',
+  'generate_meta_title',
+  'generate_meta_description',
+  'improve_content',
+  'expand_content',
+  'validate_content_quality',
+  'analyze_seo_content',
+  'fact_check_content',
+] as const
+
+const COMPOSITE_TOOL_NAMES = [
+  'keyword_intelligence',
+  'competitor_content_gap',
+  'bulk_traffic_estimator',
+] as const
+
+type WorkflowToolExecutor = (params?: Record<string, any>) => Promise<any>
+
 export class WorkflowEngine {
   private execution: WorkflowExecution
   private context: WorkflowContext
@@ -344,35 +367,8 @@ export class WorkflowEngine {
 
       console.log(`[Workflow] Executing tool: ${toolName}`, effectiveParams)
 
-      // Route to appropriate tool executor
-      let data: any
-
-      // External API tools
-      if (toolName === 'jina_reader') {
-        data = await this.executeJinaTool(effectiveParams)
-      } else if (toolName === 'perplexity_search') {
-        data = await this.executePerplexityTool(effectiveParams)
-      } else if (toolName === 'grok_text') {
-        data = await this.executeGrokTool(effectiveParams)
-      } else if (toolName === 'gemini_text') {
-        data = await this.executeGeminiTool(effectiveParams)
-      }
-      // Firecrawl tools
-      else if (toolName.startsWith('firecrawl_') || toolName === 'scrape' || toolName === 'crawl' || toolName === 'map') {
-        data = await this.executeFirecrawlTool(toolName, effectiveParams)
-      }
-      // Content Quality tools (Winston/Rytr)
-      else if (['validate_content', 'check_plagiarism', 'check_ai_content', 'generate_seo_content', 'generate_blog_section', 'generate_meta_title', 'generate_meta_description', 'improve_content', 'expand_content', 'validate_content_quality', 'analyze_seo_content', 'fact_check_content'].includes(toolName)) {
-        data = await this.executeContentQualityTool(toolName, effectiveParams)
-      }
-      // Composite SEO Tools
-      else if (['keyword_intelligence', 'competitor_content_gap', 'bulk_traffic_estimator'].includes(toolName)) {
-        data = await this.executeCompositeTool(toolName, effectiveParams)
-      }
-      // DataForSEO tools (via MCP or direct API)
-      else {
-        data = await this.executeDataForSEOTool(toolName, effectiveParams)
-      }
+      const execute = this.getToolExecutor(toolName)
+      const data = await execute(effectiveParams)
 
       const duration = Date.now() - startTime
 
@@ -407,6 +403,45 @@ export class WorkflowEngine {
         duration,
       }
     }
+  }
+
+  private getToolExecutor(toolName: string): WorkflowToolExecutor {
+    const executors: Record<string, WorkflowToolExecutor> = {
+      jina_reader: (params) => this.executeJinaTool(params),
+      perplexity_search: (params) => this.executePerplexityTool(params),
+      grok_text: (params) => this.executeGrokTool(params),
+      gemini_text: (params) => this.executeGeminiTool(params),
+    }
+
+    if (executors[toolName]) {
+      return executors[toolName]
+    }
+
+    if (this.isFirecrawlTool(toolName)) {
+      return (params) => this.executeFirecrawlTool(toolName, params)
+    }
+
+    if (this.isContentQualityTool(toolName)) {
+      return (params) => this.executeContentQualityTool(toolName, params)
+    }
+
+    if (this.isCompositeTool(toolName)) {
+      return (params) => this.executeCompositeTool(toolName, params)
+    }
+
+    return (params) => this.executeDataForSEOTool(toolName, params)
+  }
+
+  private isFirecrawlTool(toolName: string): boolean {
+    return toolName.startsWith('firecrawl_') || toolName === 'scrape' || toolName === 'crawl' || toolName === 'map'
+  }
+
+  private isContentQualityTool(toolName: string): boolean {
+    return CONTENT_QUALITY_TOOL_NAMES.includes(toolName as (typeof CONTENT_QUALITY_TOOL_NAMES)[number])
+  }
+
+  private isCompositeTool(toolName: string): boolean {
+    return COMPOSITE_TOOL_NAMES.includes(toolName as (typeof COMPOSITE_TOOL_NAMES)[number])
   }
 
   /**
