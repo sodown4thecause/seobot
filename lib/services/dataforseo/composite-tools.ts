@@ -93,6 +93,10 @@ export async function generateKeywordIntelligenceReport(
     } = {}
 ): Promise<ApiResult<KeywordIntelligenceReport>> {
     try {
+        if (!areDataForSEOCompositeCallsWired()) {
+            return dataforseoCompositeUnavailable('Keyword intelligence report')
+        }
+
         const {
             location_name: _location_name = 'United States',
             language_code: _language_code = 'en',
@@ -270,6 +274,10 @@ export async function generateCompetitorContentGapReport(
     } = {}
 ): Promise<ApiResult<CompetitorContentGapReport>> {
     try {
+        if (!areDataForSEOCompositeCallsWired()) {
+            return dataforseoCompositeUnavailable('Competitor content gap report')
+        }
+
         const { location_name: _location_name = 'United States', limit = 50 } = options
 
         // Get content gap analysis
@@ -386,6 +394,10 @@ export async function estimateBulkTraffic(
     } = {}
 ): Promise<ApiResult<BulkTrafficEstimation>> {
     try {
+        if (!areDataForSEOCompositeCallsWired()) {
+            return dataforseoCompositeUnavailable('Bulk traffic estimation')
+        }
+
         const {
             location_name: _location_name = 'United States',
             language_code: _language_code = 'en',
@@ -484,6 +496,21 @@ export async function estimateBulkTraffic(
 // ==========================================
 // Helper Functions
 // ==========================================
+
+function areDataForSEOCompositeCallsWired(): boolean {
+    return false
+}
+
+function dataforseoCompositeUnavailable<T>(toolName: string): ApiResult<T> {
+    return {
+        success: false,
+        error: {
+            code: 'DATAFORSEO_COMPOSITE_UNAVAILABLE',
+            message: `${toolName} requires DataForSEO composite calls that are not wired yet.`,
+            statusCode: 501
+        }
+    }
+}
 
 function mapCompetition(level: string): 'high' | 'medium' | 'low' {
     if (level === 'HIGH') return 'high'
