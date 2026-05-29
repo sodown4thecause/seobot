@@ -19,11 +19,24 @@ export interface AgentRoutingResult {
 
 // Tool constants to avoid duplication and ensure consistency
 const ONBOARDING_TOOLS = ['client_ui', 'onboarding_progress'] as const
+const LOCAL_TOOL_NAMES_BY_REGISTRY_NAME: Record<string, string> = {
+  perplexity_research: 'perplexity_search',
+  jina_crawl_page: 'read_url',
+  generate_image: 'generate_hero_image',
+}
 
 export class AgentRouter {
-  private static getRegisteredAgentToolNames(agentId: AgentId): string[] {
+  private static getRegisteredAgentExecutableToolNames(agentId: AgentId): string[] {
     const agent = agentRegistry.getAgent(agentId)
-    return agent?.tools.map(tool => tool.name) ?? []
+    const toolNames = agent?.tools.flatMap(tool => {
+      if (tool.mcpToolNames?.length) {
+        return tool.mcpToolNames
+      }
+
+      return LOCAL_TOOL_NAMES_BY_REGISTRY_NAME[tool.name] ?? tool.name
+    }) ?? []
+
+    return [...new Set(toolNames)]
   }
 
   /**
@@ -82,7 +95,7 @@ export class AgentRouter {
         reasoning: hasExplicitContentIntent
           ? 'Explicit content creation request detected'
           : `Content creation query: ${contentMatches.slice(0, 3).join(', ')}`,
-        tools: this.getRegisteredAgentToolNames(AGENT_IDS.CONTENT),
+        tools: this.getRegisteredAgentExecutableToolNames(AGENT_IDS.CONTENT),
         matchedKeywords: contentMatches,
       }
     }
@@ -93,7 +106,7 @@ export class AgentRouter {
         agent: AGENT_IDS.IMAGE,
         confidence: this.calculateConfidence(imageMatches.length, 0.85, 0.95),
         reasoning: `Image generation request: ${imageMatches.slice(0, 3).join(', ')}`,
-        tools: this.getRegisteredAgentToolNames(AGENT_IDS.IMAGE),
+        tools: this.getRegisteredAgentExecutableToolNames(AGENT_IDS.IMAGE),
         matchedKeywords: imageMatches,
       }
     }
@@ -104,7 +117,7 @@ export class AgentRouter {
         agent: AGENT_IDS.SEO_AEO,
         confidence: this.calculateConfidence(seoMatches.length, 0.8, 0.95),
         reasoning: `SEO analytics query: ${seoMatches.slice(0, 3).join(', ')}`,
-        tools: this.getRegisteredAgentToolNames(AGENT_IDS.SEO_AEO),
+        tools: this.getRegisteredAgentExecutableToolNames(AGENT_IDS.SEO_AEO),
         matchedKeywords: seoMatches,
       }
     }
@@ -114,7 +127,7 @@ export class AgentRouter {
       agent: AGENT_IDS.GENERAL,
       confidence: 0.7,
       reasoning: 'General query - no specialized agent keywords detected',
-      tools: this.getRegisteredAgentToolNames(AGENT_IDS.GENERAL),
+      tools: this.getRegisteredAgentExecutableToolNames(AGENT_IDS.GENERAL),
     }
   }
 

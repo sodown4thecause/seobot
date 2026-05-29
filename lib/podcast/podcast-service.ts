@@ -14,6 +14,7 @@ const google = createGoogleGenerativeAI({
  */
 const ALLOW_MOCK_PODCAST_SERVICE =
   process.env.NODE_ENV === 'development' ||
+  process.env.NODE_ENV === 'test' ||
   process.env.ALLOW_MOCK_PODCAST_SERVICE === 'true'
 
 const mockPodcastTranscriptionStore = ALLOW_MOCK_PODCAST_SERVICE
@@ -665,6 +666,7 @@ async function extractPodcastMetadata(audioUrl: string): Promise<PodcastMetadata
  */
 export async function generateBlogPostFromPodcast(params: {
   podcastId: string
+  userId: string
   targetAudience: string
   tone: 'professional' | 'casual' | 'educational'
   includeQuotes: boolean
@@ -679,7 +681,12 @@ export async function generateBlogPostFromPodcast(params: {
       .eq('id', params.podcastId)
       .single()
 
-    if (error || !podcast) throw error || new Error('Podcast not found')
+    if (error || !podcast) {
+      throw new Error('Podcast not found')
+    }
+    if (podcast.user_id !== params.userId) {
+      throw new Error('Podcast not found')
+    }
 
     const prompt = `Write a comprehensive blog post based on this podcast episode.
 
@@ -719,6 +726,7 @@ Return only the blog post content, no explanations.`
  */
 export async function generateSocialMediaCalendar(params: {
   podcastId: string
+  userId: string
   platforms: ('twitter' | 'linkedin' | 'facebook' | 'instagram')[]
   duration: number // Number of days
   postsPerDay: number
@@ -733,7 +741,12 @@ export async function generateSocialMediaCalendar(params: {
       .eq('id', params.podcastId)
       .single()
 
-    if (error || !podcast) throw error || new Error('Podcast not found')
+    if (error || !podcast) {
+      throw new Error('Podcast not found')
+    }
+    if (podcast.user_id !== params.userId) {
+      throw new Error('Podcast not found')
+    }
 
     const prompt = `Create a ${params.duration}-day social media content calendar for this podcast.
 
