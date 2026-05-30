@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { sendRedditGapEmail } from '@/lib/reddit-gap/email'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/redis/rate-limit'
 import type { RedditGapResults } from '@/lib/reddit-gap/types'
 

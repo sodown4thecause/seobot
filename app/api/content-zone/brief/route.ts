@@ -1,10 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { createContentZoneBrief, contentZoneBriefRequestSchema } from '@/lib/content-zone/brief'
 import { ZodError } from 'zod'
-
-export const runtime = 'edge'
 
 export async function POST(req: NextRequest) {
   try {

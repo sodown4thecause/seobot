@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { guidedWorkflowEngine } from '@/lib/proactive'
 import { getConversationForUser } from '@/lib/chat/storage'
 import { logError } from '@/lib/errors/logger'
@@ -54,16 +54,14 @@ function setCachedConversation(userId: string, conversationId: string, data: any
 }
 
 export async function GET(request: NextRequest) {
-    let userId: string | null = null
+    const user = await getCurrentUser()
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = user.id
 
     try {
-        const user = await getCurrentUser()
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        userId = user.id
-
         const { searchParams } = new URL(request.url)
         const conversationId = searchParams.get('conversationId')
 

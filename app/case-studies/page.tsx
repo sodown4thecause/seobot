@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Navbar } from '@/components/navbar'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 import { getCaseStudies } from '@/lib/webflow'
@@ -43,19 +44,35 @@ export default async function CaseStudiesPage() {
               <Link
                 key={study.id}
                 href={`/case-studies/${study.slug}`}
-                className="group block bg-gray-800/50 rounded-lg p-6 hover:bg-gray-800/70 transition-colors"
+                className="group block overflow-hidden rounded-lg bg-gray-800/50 transition-colors hover:bg-gray-800/70"
               >
-                <div className="w-8 h-1 mb-4 bg-blue-400 rounded-full" />
-                <h3 className="text-xl font-semibold mb-2 group-hover:text-blue-400 transition-colors">
-                  {study.name}
-                </h3>
-                <p className="text-gray-400 text-sm">
-                  {new Date(study.createdOn).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
+                {study.thumbnailImage && (
+                  <div className="relative h-48 w-full overflow-hidden">
+                    <Image
+                      src={study.thumbnailImage}
+                      alt={study.name}
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
+                  </div>
+                )}
+                <div className="p-6">
+                  <div className="w-8 h-1 mb-4 bg-blue-400 rounded-full" />
+                  <h3 className="text-xl font-semibold mb-2 group-hover:text-blue-400 transition-colors">
+                    {study.name}
+                  </h3>
+                  {study.summary && (
+                    <p className="mb-4 line-clamp-3 text-sm text-gray-400">{study.summary}</p>
+                  )}
+                  <p className="text-gray-500 text-sm">
+                    {new Date(study.createdOn).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </p>
+                </div>
               </Link>
             ))}
           </div>

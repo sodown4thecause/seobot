@@ -9,9 +9,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
-
-export const runtime = 'edge'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 
 interface CitationRecord {
   id: string
@@ -45,7 +44,8 @@ interface CitationsResponse {
 export async function GET(req: NextRequest) {
   try {
     // Authenticate user
-    const { userId } = await auth()
+    const session = await auth.api.getSession({ headers: await headers() })
+    const userId = session?.user?.id
     if (!userId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -117,7 +117,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Authenticate user
-    const { userId } = await auth()
+    const session = await auth.api.getSession({ headers: await headers() })
+    const userId = session?.user?.id
     if (!userId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

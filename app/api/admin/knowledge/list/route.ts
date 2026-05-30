@@ -1,7 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
-
-export const runtime = 'edge'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {

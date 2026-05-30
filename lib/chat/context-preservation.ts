@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Chat Context Preservation
  * Handles preserving context across conversations
  * 
@@ -6,7 +6,7 @@
  * Currently uses in-memory storage after Supabase removal
  */
 
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 
 export type ContextType = 'workflow' | 'analysis' | 'business' | 'preference'
 

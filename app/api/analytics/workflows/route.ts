@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Workflow Analytics API Endpoint
  * 
  * Provides performance metrics for tool executions and workflows.
@@ -8,9 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 // TODO: Implement workflow analytics module
 // import { analytics } from '@/lib/workflows/analytics'
-import { requireUserId } from '@/lib/auth/clerk'
-
-export const runtime = 'edge'
+import { requireUserId } from '@/lib/auth'
 
 // TODO: Replace with real analytics module
 const analytics = {

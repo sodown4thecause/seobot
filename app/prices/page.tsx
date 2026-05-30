@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import Link from 'next/link'
 import { Check, Lock } from 'lucide-react'
 import { EmailLink } from '@/components/email-link'
@@ -24,7 +25,8 @@ interface PricesPageProps {
 }
 
 export default async function PricesPage({ searchParams }: PricesPageProps) {
-  const { userId } = await auth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const userId = session?.user?.id
   const params = await searchParams
   const requiresSubscription = params.requires_subscription === '1'
   const primaryCtaHref = userId ? '/billing/checkout' : '/sign-up'

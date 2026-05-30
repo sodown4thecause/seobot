@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Instant Campaign API
  * 
  * Streamlined endpoint for 3-minute campaigns with SSE progress streaming
@@ -12,11 +12,9 @@
 import { NextRequest } from 'next/server'
 import { executeWorkflow, formatWorkflowResults } from '@/lib/workflows/executor'
 import { getWorkflow } from '@/lib/workflows/registry'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import { nanoid } from 'nanoid'
 import { createSmoothStreamResponse, sendProgressUpdate, sendStepComplete, sendError } from '@/lib/utils/smooth-stream'
-
-export const runtime = 'edge'
 
 // Campaign type to workflow ID mapping
 const CAMPAIGN_WORKFLOW_MAP: Record<string, string> = {

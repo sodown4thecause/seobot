@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { getRedisClient } from '@/lib/redis/client'
@@ -309,7 +310,8 @@ export async function POST(request: NextRequest) {
       return jsonResponse({ ok: false, stage: 'detected', message: runError }, 400)
     }
 
-    const { userId } = await auth()
+    const session = await auth.api.getSession({ headers: await headers() })
+    const userId = session?.user?.id
 
     const ipAddress = getRequestIp(request)
 

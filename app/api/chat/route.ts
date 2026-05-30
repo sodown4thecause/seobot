@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Chat API Route
  *
  * Handles chat messages by orchestrating intent classification, tool assembly,
@@ -21,7 +21,7 @@ import {
   updateActiveTrace,
 } from '@langfuse/tracing'
 
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { handleApiError } from '@/lib/errors/handlers'
 import {

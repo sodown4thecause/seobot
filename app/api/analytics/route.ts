@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Analytics API
  *
  * Provides usage analytics and insights
@@ -8,13 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { writingFrameworks, chatMessages } from '@/lib/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { cacheGet, cacheSet, CACHE_PREFIXES } from '@/lib/redis/client'
-
-export const runtime = 'edge'
 
 interface AnalyticsData {
   overview: {

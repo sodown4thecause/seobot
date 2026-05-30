@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Chat Orchestrator Module
  * 
  * Orchestrates the chat flow by coordinating:
@@ -32,7 +32,7 @@ import {
 } from './intent-classifier'
 import { assembleTools } from './tool-assembler'
 import { buildStreamResponse, getCoreTools, type StreamOptions } from './stream-builder'
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { AgentRouter } from '@/lib/agents/agent-router'
 import { ensureChatForUser } from './persistence'
 

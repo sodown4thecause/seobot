@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUser } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 import { motion } from 'framer-motion'
 import { ArrowRight, AlertCircle, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -60,7 +60,9 @@ const EMPTY_QUALITY_SCORES: ContentQualityScores = {
 }
 
 function ContentZoneInner() {
-  const { user, isLoaded } = useUser()
+  const { data: session, isPending } = authClient.useSession()
+  const user = session?.user ?? null
+  const isLoaded = !isPending
   const router = useRouter()
   const [onboardingUrl, setOnboardingUrl] = useState('')
   const {

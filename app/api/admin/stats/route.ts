@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getAllCacheStats, pruneAllCaches } from '@/lib/utils/cache';
 import { getRateLimitStats } from '@/lib/redis/rate-limit';
-import { requireUserId } from '@/lib/auth/clerk';
+import { requireUserId } from '@/lib/auth';
 import { isAdmin } from '@/lib/auth/admin-check';
 
 /**

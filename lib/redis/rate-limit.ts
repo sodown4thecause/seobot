@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rate Limiting Utility
  *
  * Implements sliding window rate limiting using Upstash Redis
@@ -8,7 +8,7 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { NextRequest } from 'next/server'
 import { getRedisClient } from './client'
-import { getUserId } from '@/lib/auth/clerk'
+import { getUserId } from '@/lib/auth'
 import { trackAPICall } from '@/lib/analytics/api-tracker'
 
 // Configure rate limits for different endpoints

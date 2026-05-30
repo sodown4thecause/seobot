@@ -1,10 +1,8 @@
-// Workflow Execution API Endpoint
+﻿// Workflow Execution API Endpoint
 
 import { NextRequest, NextResponse } from 'next/server'
 import { executeWorkflow, formatWorkflowResults } from '@/lib/workflows/executor'
-import { requireUserId } from '@/lib/auth/clerk'
-
-export const runtime = 'edge'
+import { requireUserId } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {

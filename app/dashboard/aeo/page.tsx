@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,8 +9,8 @@ import { ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAgent } from '@/components/providers/agent-provider'
 import { launchWorkflowChat } from '@/lib/workflows/launch-workflow-chat'
-import { useUser } from '@clerk/nextjs'
-import { useClerkLoadGuard } from '@/hooks/use-clerk-load-guard'
+import { authClient } from '@/lib/auth-client'
+
 import { AeoInsightsWorkspace } from '@/components/dashboard/aeo-insights-workspace'
 
 const AEO_WORKFLOWS = [
@@ -40,8 +40,15 @@ const AEO_WORKFLOWS = [
 export default function AEOCommandCenterPage() {
     const router = useRouter()
     const { state, actions } = useAgent()
-    const { user, isLoaded } = useUser()
-    const { ready: clerkReady, timedOut: clerkTimedOut } = useClerkLoadGuard(isLoaded, 5000)
+    const { data: session, isPending } = authClient.useSession()
+    const user = session?.user ?? null
+    const isLoaded = !isPending
+
+    useEffect(() => {
+        if (isLoaded && !user) {
+            router.push('/sign-in')
+        }
+    }, [isLoaded, router, user])
 
     const handleStartWorkflow = async (workflowId: string) => {
         if (!isLoaded || !user) {
@@ -61,7 +68,7 @@ export default function AEOCommandCenterPage() {
         }
     }
 
-    if (!isLoaded && !clerkReady) {
+    if (!isLoaded) {
         return (
             <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
                 <div className="animate-pulse text-gray-400">Loading...</div>
@@ -69,14 +76,8 @@ export default function AEOCommandCenterPage() {
         )
     }
 
-    if (clerkTimedOut && !isLoaded) {
-        return (
-            <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center px-6 text-center">
-                <div className="max-w-xl rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
-                    Clerk auth is not loading in the browser. Verify `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, then restart `npm run dev`.
-                </div>
-            </div>
-        )
+    if (!user) {
+        return null
     }
 
     return (

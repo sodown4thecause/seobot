@@ -1,10 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth'
 // import { db } from '@/lib/db'
 // import { apiUsageLogs } from '@/lib/db/schema'
 // import { eq, gte, and } from 'drizzle-orm'
-
-export const runtime = 'edge'
 
 export async function GET(request: NextRequest) {
   try {

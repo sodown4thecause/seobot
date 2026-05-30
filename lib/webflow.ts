@@ -3,13 +3,6 @@ import { serverEnv } from '@/lib/config/env'
 
 const WEBFLOW_API_BASE = 'https://api.webflow.com/v2'
 
-type WebflowImageField = {
-  url: string
-  alt?: string
-  width?: number
-  height?: number
-}
-
 type WebflowItemFieldData = Record<string, unknown>
 
 type WebflowCollectionItem = {
@@ -32,23 +25,6 @@ type WebflowCollectionItemsResponse = {
   }
 }
 
-type WebflowCollectionField = {
-  id: string
-  type: string
-  slug: string
-  displayName: string
-  isRequired: boolean
-  validations?: Record<string, unknown>
-}
-
-type WebflowCollection = {
-  id: string
-  displayName: string
-  singularName: string
-  slug: string
-  fields: WebflowCollectionField[]
-}
-
 export type BlogPost = {
   id: string
   slug: string
@@ -68,6 +44,10 @@ export type CaseStudy = {
   id: string
   slug: string
   name: string
+  body: string | null
+  summary: string | null
+  mainImage: string | null
+  thumbnailImage: string | null
   lastPublished: string | null
   lastUpdated: string
   createdOn: string
@@ -164,6 +144,10 @@ function mapCaseStudy(item: WebflowCollectionItem): CaseStudy {
     id: item.id,
     slug: fd.slug as string ?? '',
     name: fd.name as string ?? '',
+    body: (fd['post-body'] as string) ?? null,
+    summary: (fd['post-summary'] as string) ?? null,
+    mainImage: extractImageUrl(fd['main-image']),
+    thumbnailImage: extractImageUrl(fd['thumbnail-image']),
     lastPublished: item.lastPublished,
     lastUpdated: item.lastUpdated,
     createdOn: item.createdOn,

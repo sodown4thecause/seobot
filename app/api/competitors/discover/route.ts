@@ -1,11 +1,9 @@
-import { NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+﻿import { NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { competitors } from '@/lib/db/schema'
 import { sql } from 'drizzle-orm'
 import { competitorAnalysis, domainMetrics } from '@/lib/api/dataforseo-service'
-
-export const runtime = 'edge'
 
 interface RequestBody {
   domain: string

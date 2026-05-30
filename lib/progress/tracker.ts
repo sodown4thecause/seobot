@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Progress Tracker - Drizzle ORM Implementation
  * Main service for tracking user progress, skills, and achievements
  */
 
 import { db, businessProfiles, userProgress } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { eq, and, desc } from 'drizzle-orm'
 import type { SEOProgress, Skill, SkillCategory, Achievement, AchievementCategory, AchievementRarity, MetricsCorrelation } from './types'
 import { getSkillCategoryDefinition, calculateXpForNextLevel } from './skill-categories'

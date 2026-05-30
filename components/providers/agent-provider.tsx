@@ -4,7 +4,7 @@
 'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
-import { useUser } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 import { agentRegistry } from '@/lib/agents/registry'
 
 // Types
@@ -314,7 +314,9 @@ const AgentContext = createContext<{
 // Provider component
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(agentReducer, initialState)
-  const { user, isLoaded } = useUser()
+  const { data: session, isPending } = authClient.useSession()
+  const user = session?.user ?? null
+  const isLoaded = !isPending
 
   // Initialize with default agent
   useEffect(() => {
@@ -921,7 +923,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         console.warn('[AgentProvider] Failed to load conversations:', err)
       })
     }
-  }, [isLoaded, user?.id, state.activeAgent?.id, state.conversations.length])
+  }, [isLoaded, session?.user?.id, state.activeAgent?.id, state.conversations.length])
 
   return (
     <AgentContext.Provider value={{ state, dispatch, actions }}>

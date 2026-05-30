@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getUserId } from '@/lib/auth/clerk'
+import { getUserId } from '@/lib/auth'
 import { getDiagnosticResult, toPublicDiagnosticResult } from '@/lib/diagnostic-store'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
-
-export const runtime = 'edge'
 
 export async function GET(
   _request: NextRequest,

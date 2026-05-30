@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { requireUserId } from '@/lib/auth'
 import { getUserId, rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { generateText } from 'ai'
 import { createGateway } from '@ai-sdk/gateway'

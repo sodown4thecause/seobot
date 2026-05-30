@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Admin Usage Analytics API
  * Provides aggregated usage statistics per user and provider
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 import { isAdmin } from '@/lib/auth/admin-check'
 
 export async function GET(req: NextRequest) {

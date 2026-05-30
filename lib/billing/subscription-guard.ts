@@ -7,11 +7,14 @@
 
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, or } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth } from '@/lib/auth-config'
+import { user as authUsers } from '@/lib/auth-schema'
+import { headers } from 'next/headers'
 import { isSubscriptionActive, type SubscriptionStatus } from './subscription-status'
+import { isAdminEmail } from '@/lib/auth/admin'
 
 export interface SubscriptionCheckResult {
   hasSubscription: boolean
@@ -27,9 +30,21 @@ export interface SubscriptionCheckResult {
  * Returns detailed subscription information without redirecting
  */
 export async function checkSubscription(
-  clerkId: string | null | undefined
+  userId: string | null | undefined,
+  email?: string | null
 ): Promise<SubscriptionCheckResult> {
-  if (!clerkId) {
+  if (isAdminEmail(email)) {
+    return {
+      hasSubscription: true,
+      status: 'active',
+      userId: userId ?? null,
+      clerkId: userId ?? null,
+      polarSubscriptionId: null,
+      currentPeriodEnd: null,
+    }
+  }
+
+  if (!userId) {
     return {
       hasSubscription: false,
       status: null,
@@ -50,30 +65,56 @@ export async function checkSubscription(
         currentPeriodEnd: users.currentPeriodEnd,
       })
       .from(users)
-      .where(eq(users.clerkId, clerkId))
+      .where(or(
+        eq(users.betterAuthId, userId),
+        eq(users.clerkId, userId),
+        ...(email ? [eq(users.email, email)] : []),
+      ))
       .limit(1)
 
-    if (!user) {
+    if (user) {
+      const status = user.subscriptionStatus as SubscriptionStatus
+      const hasSubscription = isSubscriptionActive(status)
+
+      return {
+        hasSubscription,
+        status,
+        userId: user.id,
+        clerkId: user.clerkId,
+        polarSubscriptionId: user.polarSubscriptionId,
+        currentPeriodEnd: user.currentPeriodEnd,
+      }
+    }
+
+    const [authUser] = await db
+      .select({
+        id: authUsers.id,
+        subscriptionStatus: authUsers.subscriptionStatus,
+      })
+      .from(authUsers)
+      .where(eq(authUsers.id, userId))
+      .limit(1)
+
+    if (!authUser) {
       return {
         hasSubscription: false,
         status: null,
         userId: null,
-        clerkId,
+        clerkId: userId,
         polarSubscriptionId: null,
         currentPeriodEnd: null,
       }
     }
 
-    const status = user.subscriptionStatus as SubscriptionStatus
-    const hasSubscription = isSubscriptionActive(status)
+    const status = authUser.subscriptionStatus as SubscriptionStatus
 
     return {
-      hasSubscription,
+      hasSubscription: isSubscriptionActive(status),
       status,
-      userId: user.id,
-      clerkId: user.clerkId,
-      polarSubscriptionId: user.polarSubscriptionId,
-      currentPeriodEnd: user.currentPeriodEnd,
+      userId: authUser.id,
+      clerkId: userId,
+      polarSubscriptionId: null,
+      currentPeriodEnd: null,
     }
   } catch (error) {
     console.error('[Subscription Guard] Error checking subscription:', error)
@@ -82,7 +123,7 @@ export async function checkSubscription(
       hasSubscription: false,
       status: null,
       userId: null,
-      clerkId,
+      clerkId: userId,
       polarSubscriptionId: null,
       currentPeriodEnd: null,
     }
@@ -96,16 +137,18 @@ export async function checkSubscription(
 export async function requireSubscription(
   redirectTo: string = '/prices?requires_subscription=1'
 ): Promise<SubscriptionCheckResult> {
-  const { userId: clerkId } = await auth()
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
 
-  if (!clerkId) {
+  if (!session?.user?.id) {
     redirect('/sign-in?redirect_url=' + encodeURIComponent(redirectTo))
   }
 
-  const result = await checkSubscription(clerkId)
+  const result = await checkSubscription(session.user.id, session.user.email)
 
   if (!result.hasSubscription) {
-    console.log(`[Subscription Guard] Denied access to ${clerkId} (status: ${result.status})`)
+    console.log(`[Subscription Guard] Denied access to ${session.user.id} (status: ${result.status})`)
     redirect(redirectTo)
   }
 
@@ -117,13 +160,13 @@ export async function requireSubscription(
  * Returns NextResponse for edge middleware usage
  */
 export async function middlewareCheckSubscription(
-  clerkId: string | null | undefined
+  userId: string | null | undefined
 ): Promise<{ allowed: boolean; status: SubscriptionStatus }> {
-  if (!clerkId) {
+  if (!userId) {
     return { allowed: false, status: null }
   }
 
-  const result = await checkSubscription(clerkId)
+  const result = await checkSubscription(userId)
   return { allowed: result.hasSubscription, status: result.status }
 }
 
@@ -152,9 +195,11 @@ export interface ApiSubscriptionResult {
  * ```
  */
 export async function requireApiSubscription(): Promise<ApiSubscriptionResult> {
-  const { userId: clerkId } = await auth()
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
 
-  if (!clerkId) {
+  if (!session?.user?.id) {
     return {
       success: false,
       userId: null,
@@ -167,13 +212,13 @@ export async function requireApiSubscription(): Promise<ApiSubscriptionResult> {
     }
   }
 
-  const subscription = await checkSubscription(clerkId)
+  const subscription = await checkSubscription(session.user.id, session.user.email)
 
   if (!subscription.hasSubscription) {
-    console.log(`[API Subscription Guard] Denied access to ${clerkId} (status: ${subscription.status})`)
+    console.log(`[API Subscription Guard] Denied access to ${session.user.id} (status: ${subscription.status})`)
     return {
       success: false,
-      userId: clerkId,
+      userId: session.user.id,
       subscription,
       error: {
         code: 'subscription_required',
@@ -185,7 +230,7 @@ export async function requireApiSubscription(): Promise<ApiSubscriptionResult> {
 
   return {
     success: true,
-    userId: clerkId,
+    userId: session.user.id,
     subscription,
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth/clerk'
+import { getCurrentUser } from '@/lib/auth'
 import { roadmapTracker } from '@/lib/proactive/roadmap-tracker'
 
 export async function GET(_req: NextRequest) {

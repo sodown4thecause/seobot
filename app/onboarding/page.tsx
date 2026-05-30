@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation'
+﻿import { redirect } from 'next/navigation'
 import { ConversationalOnboarding } from '@/components/onboarding/conversational-onboarding'
-import { requireUserId } from '@/lib/auth/clerk'
+import { requireUserId } from '@/lib/auth'
 
 export default async function OnboardingPage() {
   const userId = await requireUserId()

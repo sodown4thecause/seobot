@@ -3,13 +3,32 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const authMock = vi.fn()
-const currentUserMock = vi.fn()
-const createCheckoutMock = vi.fn()
+const authMock = vi.hoisted(() => vi.fn())
+const createCheckoutMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@clerk/nextjs', () => ({
-  SignUp: ({ fallbackRedirectUrl }: { fallbackRedirectUrl: string }) =>
-    createElement('div', { 'data-fallback-redirect-url': fallbackRedirectUrl }, 'Mock SignUp'),
+vi.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: vi.fn(),
+    signIn: {
+      email: vi.fn(),
+    },
+    signUp: {
+      email: vi.fn(),
+    },
+    signOut: vi.fn(),
+  },
+}))
+
+vi.mock('@/lib/auth', () => ({
+  auth: {
+    api: {
+      getSession: authMock,
+    },
+  },
+}))
+
+vi.mock('next/headers', () => ({
+  headers: vi.fn(async () => new Headers()),
 }))
 
 vi.mock('@polar-sh/sdk', () => ({
@@ -20,26 +39,20 @@ vi.mock('@polar-sh/sdk', () => ({
   })),
 }))
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: authMock,
-  currentUser: currentUserMock,
-}))
-
 describe('pricing page flow', () => {
   beforeEach(() => {
     vi.resetModules()
     authMock.mockReset()
-    currentUserMock.mockReset()
     createCheckoutMock.mockReset()
     delete process.env.POLAR_PRODUCT_ID
     delete process.env.POLAR_ACCESS_TOKEN
   })
 
   it('renders the updated public pricing copy', async () => {
-    authMock.mockResolvedValue({ userId: null })
+    authMock.mockResolvedValue(null)
 
     const { default: PricesPage } = await import('@/app/prices/page')
-    const element = await PricesPage()
+    const element = await PricesPage({ searchParams: Promise.resolve({}) })
     const html = renderToStaticMarkup(element)
 
     expect(html).toContain('$39.99')
@@ -47,23 +60,20 @@ describe('pricing page flow', () => {
     expect(html).toContain('Start 30-day free trial')
   })
 
-  it('keeps signup redirecting through billing checkout', async () => {
+  it('renders the Better Auth signup form with Google auth', async () => {
     const { default: SignUpPage } = await import('@/app/sign-up/[[...sign-up]]/page')
     const html = renderToStaticMarkup(createElement(SignUpPage))
 
-    expect(html).toContain('/billing/checkout')
+    expect(html).toContain('Sign up with Google')
   })
 
   it('redirects authenticated users from billing checkout to the hosted Polar link', async () => {
-    authMock.mockResolvedValue({ userId: 'user_123' })
-    currentUserMock.mockResolvedValue({
-      firstName: 'Test',
-      lastName: 'User',
-      username: 'test-user',
-      primaryEmailAddress: {
-        emailAddress: 'test@example.com',
+    authMock.mockResolvedValue({
+      user: {
+        id: 'user_123',
+        email: 'test@example.com',
+        name: 'Test User',
       },
-      emailAddresses: [{ emailAddress: 'test@example.com' }],
     })
 
     const { GET } = await import('@/app/billing/checkout/route')
@@ -88,15 +98,12 @@ describe('pricing page flow', () => {
       url: 'https://polar.sh/checkout/session_123',
     })
 
-    authMock.mockResolvedValue({ userId: 'user_123' })
-    currentUserMock.mockResolvedValue({
-      firstName: 'Test',
-      lastName: 'User',
-      username: 'test-user',
-      primaryEmailAddress: {
-        emailAddress: 'test@example.com',
+    authMock.mockResolvedValue({
+      user: {
+        id: 'user_123',
+        email: 'test@example.com',
+        name: 'Test User',
       },
-      emailAddresses: [{ emailAddress: 'test@example.com' }],
     })
 
     const { GET } = await import('@/app/billing/checkout/route')
@@ -119,15 +126,12 @@ describe('pricing page flow', () => {
     process.env.POLAR_PRODUCT_ID = 'prod_123'
     createCheckoutMock.mockRejectedValue(new Error('polar unavailable'))
 
-    authMock.mockResolvedValue({ userId: 'user_123' })
-    currentUserMock.mockResolvedValue({
-      firstName: 'Test',
-      lastName: 'User',
-      username: 'test-user',
-      primaryEmailAddress: {
-        emailAddress: 'test@example.com',
+    authMock.mockResolvedValue({
+      user: {
+        id: 'user_123',
+        email: 'test@example.com',
+        name: 'Test User',
       },
-      emailAddresses: [{ emailAddress: 'test@example.com' }],
     })
 
     const { GET } = await import('@/app/billing/checkout/route')

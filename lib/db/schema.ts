@@ -36,7 +36,8 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
  */
 export const users = pgTable('users', {
     id: uuid('id').primaryKey().defaultRandom(),
-    clerkId: text('clerk_id').notNull().unique(),
+    clerkId: text('clerk_id').unique(),
+    betterAuthId: text('better_auth_id').unique(),
     email: text('email').notNull(),
     firstName: text('first_name'),
     lastName: text('last_name'),
@@ -52,6 +53,7 @@ export const users = pgTable('users', {
 }, (table) => {
     return {
         clerkIdIdx: index('idx_users_clerk_id').on(table.clerkId),
+        betterAuthIdIdx: index('idx_users_better_auth_id').on(table.betterAuthId),
         emailIdx: index('idx_users_email').on(table.email),
         polarSubIdx: index('idx_users_polar_sub_id').on(table.polarSubscriptionId),
     }
