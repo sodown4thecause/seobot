@@ -214,14 +214,14 @@ export async function checkAiContent(text: string): Promise<{
  * Validate content for SEO compliance
  * Checks both plagiarism and AI detection
  */
-export async function validateContentForSEO(text: string): Promise<{
+export async function validateContentForSEO(text: string, checkAiContent = true): Promise<{
   isValid: boolean
   plagiarismScore: number
   aiScore: number
   issues: string[]
   recommendations: string[]
 }> {
-  const result = await checkPlagiarism({ text, checkAiContent: true })
+  const result = await checkPlagiarism({ text, checkAiContent })
 
   const issues: string[] = []
   const recommendations: string[] = []

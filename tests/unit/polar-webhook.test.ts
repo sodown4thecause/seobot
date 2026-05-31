@@ -20,7 +20,7 @@ vi.mock('@/lib/db', () => ({
 
 vi.mock('@/lib/db/schema', () => ({
   users: {
-    clerkId: 'clerkId',
+    betterAuthId: 'betterAuthId',
     polarSubscriptionId: 'polarSubscriptionId',
   },
 }))
@@ -40,7 +40,7 @@ describe('Polar webhook route', () => {
     process.env.POLAR_WEBHOOK_SECRET = 'test-secret'
   })
 
-  it('updates subscriptions by Clerk ID when metadata contains the Clerk user id', async () => {
+  it('updates subscriptions by Better Auth ID when metadata contains the auth user id', async () => {
     validateEventMock.mockReturnValue({
       type: 'subscription.updated',
       data: {
@@ -65,6 +65,6 @@ describe('Polar webhook route', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
-    expect(eqMock).toHaveBeenCalledWith('clerkId', 'user_123')
+    expect(eqMock).toHaveBeenCalledWith('betterAuthId', 'user_123')
   })
 })

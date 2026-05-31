@@ -140,5 +140,3 @@ export async function GET(request: NextRequest) {
  * GET /api/analytics/workflows?type=tool&name=jina_reader
  * GET /api/analytics/workflows?type=workflow&id=aeo-comprehensive-audit
  */
-
-

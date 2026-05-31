@@ -49,6 +49,8 @@
     "scripts/test-*.ts",
     "test-rag-retrieval.ts",
     "tmp-librarian",
-    "remotion-ad"
+    "remotion-ad",
+    ".codex-worktrees",
+    ".pi"
   ]
 }

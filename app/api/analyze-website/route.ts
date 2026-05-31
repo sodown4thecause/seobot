@@ -146,4 +146,3 @@ async function analyzeWithGemini(content: string, url: string): Promise<Analysis
     throw error
   }
 }
-

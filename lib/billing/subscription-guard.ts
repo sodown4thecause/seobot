@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth-config'
 import { headers } from 'next/headers'
 import { isSubscriptionActive, type SubscriptionStatus } from './subscription-status'
+import { isAdminEmail } from '@/lib/auth/admin'
 
 export interface SubscriptionCheckResult {
   hasSubscription: boolean
@@ -28,8 +29,20 @@ export interface SubscriptionCheckResult {
  * Returns detailed subscription information without redirecting
  */
 export async function checkSubscription(
-  authUserId: string | null | undefined
+  authUserId: string | null | undefined,
+  email?: string | null
 ): Promise<SubscriptionCheckResult> {
+  if (isAdminEmail(email)) {
+    return {
+      hasSubscription: true,
+      status: 'active',
+      userId: null,
+      authUserId: authUserId ?? null,
+      polarSubscriptionId: null,
+      currentPeriodEnd: null,
+    }
+  }
+
   if (!authUserId) {
     return {
       hasSubscription: false,
@@ -97,17 +110,6 @@ export async function checkSubscription(
 export async function requireSubscription(
   redirectTo: string = '/prices?requires_subscription=1'
 ): Promise<SubscriptionCheckResult> {
-  if (process.env.NODE_ENV === 'development') {
-    return {
-      hasSubscription: true,
-      status: 'active',
-      userId: 'dev-user',
-      authUserId: 'dev-user',
-      polarSubscriptionId: null,
-      currentPeriodEnd: null,
-    }
-  }
-
   const session = await auth.api.getSession({
     headers: await headers(),
   })
@@ -116,7 +118,7 @@ export async function requireSubscription(
     redirect('/login?redirect_url=' + encodeURIComponent(redirectTo))
   }
 
-  const result = await checkSubscription(session.user.id)
+  const result = await checkSubscription(session.user.id, session.user.email)
 
   if (!result.hasSubscription) {
     console.log(`[Subscription Guard] Denied access to ${session.user.id} (status: ${result.status})`)
@@ -183,7 +185,7 @@ export async function requireApiSubscription(): Promise<ApiSubscriptionResult> {
     }
   }
 
-  const subscription = await checkSubscription(session.user.id)
+  const subscription = await checkSubscription(session.user.id, session.user.email)
 
   if (!subscription.hasSubscription) {
     console.log(`[API Subscription Guard] Denied access to ${session.user.id} (status: ${subscription.status})`)

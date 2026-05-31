@@ -10,6 +10,7 @@ import { listGeoBusinessProfiles, type GeoBusinessProfile } from '@/lib/geo/prof
 import type { ChatMode } from '@/lib/chat/modes'
 import type { GeoEngineResult } from '@/lib/geo/types'
 import { generateResearchSummary } from './generate-summary'
+import { serverEnv } from '@/lib/config/env'
 
 type ResearchMode = Extract<ChatMode, 'seo' | 'geo'>
 type GeoPromptInput = typeof geoPrompts.$inferSelect | {

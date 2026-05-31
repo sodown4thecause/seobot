@@ -71,7 +71,23 @@ export default function AEOAuditorLandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(auditorSchema) }}
       />
       <div className="min-h-screen bg-[#0a0a0a] text-white">
-        <div className="container mx-auto px-6 py-16 max-w-6xl">
+        {/* TL;DR Section */}
+        <section className="border-b border-zinc-800 bg-zinc-900/30">
+          <div className="container mx-auto px-6 py-6 max-w-4xl">
+            <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-5">
+              <h2 className="text-sm font-mono uppercase tracking-widest text-blue-400 mb-2">
+                TL;DR — Key Takeaways
+              </h2>
+              <p className="text-zinc-300 text-sm leading-relaxed">
+                Answer Engine Optimization (AEO) is the practice of optimizing content for AI answer platforms like ChatGPT, Perplexity, and Gemini. 
+                Brands with strong AEO strategies see 3x more accurate AI representations and 2-3x higher conversion rates from AI-driven traffic. 
+                Our free AEO audit shows how AI platforms currently describe your brand and provides a step-by-step plan to improve.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div className="container mx-auto px-6 py-12 max-w-6xl">
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-200">
               Free AEO Auditor
@@ -115,6 +131,48 @@ export default function AEOAuditorLandingPage() {
               <p className="text-sm text-zinc-400">{x.desc}</p>
             </div>
           ))}
+        </div>
+
+        {/* What is AEO — Definition Section */}
+        <div className="max-w-4xl mx-auto mt-16 grid md:grid-cols-2 gap-8">
+          <div className="bg-white/5 rounded-xl p-8 border border-white/10">
+            <h2 className="text-xl font-bold mb-4 text-white">
+              What Is Answer Engine Optimization (AEO)?
+            </h2>
+            <p className="text-zinc-400 mb-4 leading-relaxed">
+              Answer Engine Optimization (AEO) is the strategic practice of optimizing digital content to be accurately sourced, cited, and referenced by AI answer engines like ChatGPT, Perplexity, Gemini, and Claude. Unlike traditional SEO which targets search engine rankings, AEO focuses on becoming the authoritative source that AI systems quote in their responses.
+            </p>
+            <p className="text-zinc-400 leading-relaxed">
+              AEO combines entity clarity, structured data markup (schema), quotable content formats, and corroboration signals from authoritative third-party sources to build AI trust and visibility.
+            </p>
+          </div>
+          <div className="bg-white/5 rounded-xl p-8 border border-white/10">
+            <h2 className="text-xl font-bold mb-4 text-white">
+              AEO Statistics
+            </h2>
+            <ul className="space-y-3 text-zinc-400">
+              <li className="flex items-start gap-3">
+                <span className="text-blue-400 font-bold text-lg">→</span>
+                <span><strong className="text-white">73%</strong> of AI-generated answers contain brand mentions — ensuring accuracy is critical</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-blue-400 font-bold text-lg">→</span>
+                <span><strong className="text-white">68%</strong> of businesses have inaccurate or missing AI representations</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-blue-400 font-bold text-lg">→</span>
+                <span><strong className="text-white">3x</strong> more accurate AI representations for brands with clear entity definitions</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-blue-400 font-bold text-lg">→</span>
+                <span><strong className="text-white">2-3x</strong> higher conversion rates from AI-driven traffic vs. traditional search</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-blue-400 font-bold text-lg">→</span>
+                <span><strong className="text-white">100M+</strong> weekly users on ChatGPT alone asking brand-related questions</span>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div className="max-w-5xl mx-auto mt-16 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-white/10 rounded-2xl p-10">

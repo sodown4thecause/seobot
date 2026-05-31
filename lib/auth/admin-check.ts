@@ -6,6 +6,7 @@
 
 import { auth } from '@/lib/auth-config'
 import { headers } from 'next/headers'
+import { isAdminEmail } from './admin'
 
 export async function isAdmin(userId?: string | null): Promise<boolean> {
   try {
@@ -19,6 +20,10 @@ export async function isAdmin(userId?: string | null): Promise<boolean> {
 
     if (userId && session.user.id !== userId) {
       return false
+    }
+
+    if (isAdminEmail(session.user.email)) {
+      return true
     }
 
     if (session.user.role === 'admin') {

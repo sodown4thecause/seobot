@@ -4,7 +4,7 @@ import { EmailLink } from '@/components/email-link'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 
 export const metadata: Metadata = buildPageMetadata({
-  title: 'FlowIntent Terms of Service',
+  title: 'FlowIntent Terms of Service | Platform Usage Agreement & Guidelines',
   description: 'Read the terms and conditions for using the FlowIntent platform and services.',
   path: '/terms',
 })

@@ -58,4 +58,3 @@ export async function POST(req: Request) {
     return handleApiError(error, 'Failed to generate content');
   }
 }
-

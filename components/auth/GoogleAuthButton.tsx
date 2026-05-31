@@ -26,10 +26,7 @@ function getSafeCallbackURL() {
   return '/dashboard'
 }
 
-const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-
 export function GoogleAuthButton({ label }: { label: string }) {
-  if (!googleClientId) return null
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 

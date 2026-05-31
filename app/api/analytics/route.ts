@@ -215,4 +215,3 @@ export async function GET(_req: NextRequest) {
 export async function OPTIONS(_req: NextRequest) {
   return NextResponse.json({ message: 'Analytics API' })
 }
-

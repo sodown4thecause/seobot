@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionCookie } from 'better-auth/cookies'
 
-const isDev = process.env.NODE_ENV === 'development'
-
 const publicRoutes = [
   '/',
   '/robots.txt',
@@ -46,10 +44,6 @@ export default async function proxy(request: NextRequest) {
 
   if (url.pathname === '/chat') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  if (isDev) {
-    return NextResponse.next()
   }
 
   // Better Auth session validation depends on the Node runtime and database-backed auth config.

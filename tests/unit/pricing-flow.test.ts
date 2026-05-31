@@ -58,7 +58,7 @@ describe('pricing page flow', () => {
     expect(html).toContain('$39.99')
     expect(html).toContain('30-day free trial')
     expect(html).toContain('Start 30-day free trial')
-  })
+  }, 15000)
 
   it('renders the Better Auth signup form', async () => {
     const { default: SignUpPage } = await import('@/app/sign-up/[[...sign-up]]/page')

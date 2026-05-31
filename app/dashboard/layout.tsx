@@ -6,8 +6,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Verify subscription - redirects to /prices if not subscribed
-  await requireSubscription('/prices?requires_subscription=1')
+  await requireSubscription('/billing/checkout')
 
   return (
     <DashboardClientLayout>
