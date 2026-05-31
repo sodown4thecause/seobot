@@ -181,7 +181,7 @@ export default function RootLayout({
             width="0"
             style={{ display: 'none', visibility: 'hidden' }}
           />
-        </ noscript>
+        </noscript>
         <AIStateProvider>
           {children}
         </AIStateProvider>

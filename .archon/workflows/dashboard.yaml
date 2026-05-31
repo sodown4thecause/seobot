@@ -1,0 +1,57 @@
+name: dashboard
+description: Build a new SEO dashboard — scaffolds the page, data fetching, widgets, and wires up DataForSEO
+
+worktree:
+  baseBranch: main
+
+nodes:
+  research:
+    prompt: |
+      Dashboard to build: $ARGUMENTS
+
+      Before writing code:
+      1. Read .planning/ROADMAP.md to find the requirements for this dashboard
+      2. Look at app/ directory structure to understand existing dashboard patterns
+      3. Find any existing DataForSEO MCP tools in mcps/ or lib/api/ relevant to this dashboard
+      4. Check components/ for existing chart/table/widget components to reuse
+
+      Summarise: what the dashboard needs to show, which DataForSEO endpoints to use, which components already exist.
+
+  scaffold:
+    depends_on: [research]
+    prompt: |
+      Research:
+      $research.output
+
+      Scaffold the dashboard: $ARGUMENTS
+
+      Follow the existing dashboard pattern:
+      - Page component in app/(dashboard)/<name>/page.tsx
+      - Data fetching with TanStack Query + SWR pattern from existing dashboards
+      - Use existing Widget, DataTable, Chart wrapper components
+      - "Refresh Now" button wired to the job queue pattern (Inngest)
+      - "Last updated" timestamp with freshness color coding (<24h green, 24-48h yellow, >48h red)
+      - Loading skeleton while data fetches
+      - Graceful degradation when DataForSEO is unavailable (show cached data + warning banner)
+
+      Build the complete implementation including:
+      - Page + layout
+      - Server action or API route for data fetching
+      - Supabase caching layer (store results, check TTL before re-fetching)
+      - At least one widget fully implemented end-to-end as the pattern example
+
+  validate:
+    depends_on: [scaffold]
+    bash: |
+      npm run typecheck 2>&1 && npm run lint 2>&1
+    prompt: |
+      $validate.output
+
+      Fix any type or lint errors, then confirm clean.
+
+  open_pr:
+    depends_on: [validate]
+    prompt: |
+      Open a PR for the $ARGUMENTS dashboard.
+      Title: "feat: add [dashboard name] dashboard"
+      Body: list the widgets built, DataForSEO endpoints used, and how to test it locally.

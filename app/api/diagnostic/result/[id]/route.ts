@@ -4,6 +4,8 @@ import { getUserId } from '@/lib/auth'
 import { getDiagnosticResult, toPublicDiagnosticResult } from '@/lib/diagnostic-store'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 
+export const runtime = 'nodejs'
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

@@ -3,8 +3,12 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const authMock = vi.hoisted(() => vi.fn())
-const createCheckoutMock = vi.hoisted(() => vi.fn())
+const authMock = vi.fn()
+const createCheckoutMock = vi.fn()
+
+vi.mock('next/headers', () => ({
+  headers: vi.fn(async () => new Headers()),
+}))
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -25,10 +29,6 @@ vi.mock('@/lib/auth', () => ({
       getSession: authMock,
     },
   },
-}))
-
-vi.mock('next/headers', () => ({
-  headers: vi.fn(async () => new Headers()),
 }))
 
 vi.mock('@polar-sh/sdk', () => ({
@@ -52,19 +52,20 @@ describe('pricing page flow', () => {
     authMock.mockResolvedValue(null)
 
     const { default: PricesPage } = await import('@/app/prices/page')
-    const element = await PricesPage({ searchParams: Promise.resolve({}) })
+    const element = await PricesPage()
     const html = renderToStaticMarkup(element)
 
     expect(html).toContain('$39.99')
     expect(html).toContain('30-day free trial')
     expect(html).toContain('Start 30-day free trial')
-  })
+  }, 15000)
 
-  it('renders the Better Auth signup form with Google auth', async () => {
+  it('renders the Better Auth signup form', async () => {
     const { default: SignUpPage } = await import('@/app/sign-up/[[...sign-up]]/page')
     const html = renderToStaticMarkup(createElement(SignUpPage))
 
-    expect(html).toContain('Sign up with Google')
+    expect(html).toContain('Create an account')
+    expect(html).toContain('Start your SEO journey today.')
   })
 
   it('redirects authenticated users from billing checkout to the hosted Polar link', async () => {

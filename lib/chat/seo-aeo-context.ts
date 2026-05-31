@@ -95,7 +95,7 @@ export async function buildSeoAeoContext(
         retrieveRelevantChunks(queryEmbedding, {
           mode,
           threshold: 0.3,
-          limit: mode === 'geo' ? 6 : 3,
+          limit: mode === 'geo' ? 6 : mode === 'content' ? 5 : 3,
         }),
         signal,
       ).catch((error) => {

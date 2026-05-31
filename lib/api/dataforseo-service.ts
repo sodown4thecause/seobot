@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { serverEnv } from '@/lib/config/env'
 import type {
   DataForSEOKeywordResponse,
@@ -12,12 +13,8 @@ import type {
 const BASE_URL = 'https://api.dataforseo.com/v3'
 
 function basicAuthHeader() {
-  const username = serverEnv.DATAFORSEO_USERNAME || serverEnv.DATAFORSEO_LOGIN
-  if (!username) {
-    throw new Error('DATAFORSEO_USERNAME or DATAFORSEO_LOGIN must be configured')
-  }
   const auth = Buffer.from(
-    `${username}:${serverEnv.DATAFORSEO_PASSWORD}`
+    `${serverEnv.DATAFORSEO_USERNAME}:${serverEnv.DATAFORSEO_PASSWORD}`
   ).toString('base64')
   return `Basic ${auth}`
 }
@@ -45,10 +42,10 @@ async function doFetch<T>(path: string, body: unknown): Promise<ApiResult<T>> {
 
     const json = (await res.json()) as T
     return { success: true, data: json }
-  } catch (e: any) {
+  } catch (e: unknown) {
     const error: ApiError = {
       code: 'DATAFORSEO_NETWORK_ERROR',
-      message: e?.message ?? 'Network error',
+      message: e instanceof Error ? e.message : 'Network error',
       statusCode: 0,
     }
     return { success: false, error }
@@ -88,6 +85,73 @@ export async function serpAnalysis(params: {
       device: 'desktop',
     }
   )
+}
+
+export type DataForSEOGoogleAiOverviewReference = {
+  title?: string
+  url?: string
+  domain?: string
+  source?: string
+  text?: string
+}
+
+export type DataForSEOGoogleAiOverviewItem = {
+  type?: string
+  rank_group?: number
+  rank_absolute?: number
+  position?: string
+  text?: string
+  markdown?: string
+  items?: unknown[]
+  references?: DataForSEOGoogleAiOverviewReference[]
+  [key: string]: unknown
+}
+
+export type DataForSEOGoogleAiOverviewResponse = {
+  version?: string
+  status_code?: number
+  status_message?: string
+  cost?: number
+  tasks?: Array<{
+    id?: string
+    status_code?: number
+    status_message?: string
+    cost?: number
+    data?: Record<string, unknown>
+    result?: Array<{
+      keyword?: string
+      type?: string
+      se_domain?: string
+      location_code?: number
+      language_code?: string
+      check_url?: string
+      datetime?: string
+      spell?: unknown
+      item_types?: string[]
+      items_count?: number
+      items?: DataForSEOGoogleAiOverviewItem[]
+    }>
+  }>
+}
+
+export async function googleAiOverviewSerp(params: {
+  query: string
+  location_code?: number
+  language_code?: string
+  device?: 'desktop' | 'mobile'
+  os?: 'windows' | 'macos' | 'android' | 'ios'
+  depth?: number
+}) {
+  return doFetch<DataForSEOGoogleAiOverviewResponse>('/serp/google/organic/live/advanced', {
+    keyword: params.query,
+    location_code: params.location_code ?? 2840,
+    language_code: params.language_code ?? 'en',
+    device: params.device ?? 'desktop',
+    os: params.os ?? 'windows',
+    depth: params.depth ?? 10,
+    load_async_ai_overview: true,
+    expand_ai_overview: true,
+  })
 }
 
 export async function domainMetrics(params: { domain: string }) {

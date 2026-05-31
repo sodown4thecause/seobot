@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,19 +40,13 @@ const AEO_WORKFLOWS = [
 export default function AEOCommandCenterPage() {
     const router = useRouter()
     const { state, actions } = useAgent()
-    const { data: session, isPending } = authClient.useSession()
+    const { data: session } = authClient.useSession()
     const user = session?.user ?? null
-    const isLoaded = !isPending
-
-    useEffect(() => {
-        if (isLoaded && !user) {
-            router.push('/sign-in')
-        }
-    }, [isLoaded, router, user])
+    const isLoaded = !!session
 
     const handleStartWorkflow = async (workflowId: string) => {
         if (!isLoaded || !user) {
-            router.push('/sign-in')
+            router.push('/login')
             return
         }
 
@@ -74,10 +68,6 @@ export default function AEOCommandCenterPage() {
                 <div className="animate-pulse text-gray-400">Loading...</div>
             </div>
         )
-    }
-
-    if (!user) {
-        return null
     }
 
     return (

@@ -313,6 +313,86 @@ export async function retrieveRelevantChunks(
     }
 }
 
+export interface UserDocumentSearchOptions extends VectorSearchOptions {
+    userId: string
+    sourceType?: string
+    mode?: ChatMode
+}
+
+/**
+ * Search agent documents scoped to a single user via metadata.userId.
+ *
+ * Used by the per-user RAG namespaces (progressive profiling, keyword history)
+ * where documents are tagged with `metadata.userId` rather than living in a
+ * dedicated column. Unlike retrieveRelevantChunks, the mode filter is optional
+ * so profile signals can be retrieved across every mode the user has used.
+ *
+ * @param queryEmbedding - 1536-dimensional embedding vector
+ * @param options - Must include userId; sourceType and mode are optional filters
+ * @returns Array of matching documents with similarity scores
+ */
+export async function searchUserAgentDocuments(
+    queryEmbedding: number[],
+    options: UserDocumentSearchOptions
+): Promise<AgentDocumentSearchResult[]> {
+    const { threshold = 0.3, limit = 5, userId, sourceType, mode } = options
+
+    if (!userId) {
+        console.error('[Vector Search] User document search requires a userId')
+        return []
+    }
+    if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
+        console.error('[Vector Search] Invalid embedding: must be non-empty array')
+        return []
+    }
+
+    try {
+        const embeddingStr = `[${queryEmbedding.join(',')}]`
+        const sourceTypeFilter = sourceType ? sql`AND source_type = ${sourceType}` : sql``
+        const modeFilter = mode ? sql`AND mode = ${mode}` : sql``
+
+        const results = await db.execute(sql`
+            SELECT
+                id,
+                agent_type,
+                mode,
+                title,
+                content,
+                source_type,
+                url,
+                engine,
+                topic,
+                metadata,
+                1 - (embedding <=> ${embeddingStr}::vector) as similarity
+            FROM agent_documents
+            WHERE metadata->>'userId' = ${userId}
+              AND embedding IS NOT NULL
+              AND 1 - (embedding <=> ${embeddingStr}::vector) > ${threshold}
+              ${sourceTypeFilter}
+              ${modeFilter}
+            ORDER BY embedding <=> ${embeddingStr}::vector
+            LIMIT ${limit}
+        `)
+
+        return (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
+            id: row.id,
+            agentType: row.agent_type,
+            mode: row.mode,
+            title: row.title,
+            content: row.content,
+            sourceType: row.source_type,
+            url: row.url,
+            engine: row.engine,
+            topic: row.topic,
+            metadata: row.metadata,
+            similarity: parseFloat(String(row.similarity)),
+        }))
+    } catch (error) {
+        console.error('[Vector Search] User document search failed:', error)
+        return []
+    }
+}
+
 /**
  * Search content learnings by semantic similarity
  * Used for cross-user learning and pattern retrieval

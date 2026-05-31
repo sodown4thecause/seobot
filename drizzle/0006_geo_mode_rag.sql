@@ -1,5 +1,70 @@
 -- Add explicit SEO/GEO/Content mode separation for RAG and GEO runs.
 
+ALTER TABLE users
+  ALTER COLUMN clerk_id DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS better_auth_id text;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_better_auth_id ON users(better_auth_id);
+
+CREATE TABLE IF NOT EXISTS "user" (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  email text NOT NULL UNIQUE,
+  "emailVerified" boolean NOT NULL DEFAULT false,
+  image text,
+  "createdAt" timestamp NOT NULL DEFAULT now(),
+  "updatedAt" timestamp NOT NULL DEFAULT now(),
+  role text,
+  banned boolean DEFAULT false,
+  "banReason" text,
+  "banExpires" timestamp,
+  "clerkId" text,
+  "subscriptionStatus" text DEFAULT 'inactive'
+);
+
+CREATE TABLE IF NOT EXISTS session (
+  id text PRIMARY KEY,
+  "expiresAt" timestamp NOT NULL,
+  token text NOT NULL UNIQUE,
+  "createdAt" timestamp NOT NULL DEFAULT now(),
+  "updatedAt" timestamp NOT NULL,
+  "ipAddress" text,
+  "userAgent" text,
+  "userId" text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  "impersonatedBy" text
+);
+
+CREATE INDEX IF NOT EXISTS "session_userId_idx" ON session("userId");
+
+CREATE TABLE IF NOT EXISTS account (
+  id text PRIMARY KEY,
+  "accountId" text NOT NULL,
+  "providerId" text NOT NULL,
+  "userId" text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  "accessToken" text,
+  "refreshToken" text,
+  "idToken" text,
+  "accessTokenExpiresAt" timestamp,
+  "refreshTokenExpiresAt" timestamp,
+  scope text,
+  password text,
+  "createdAt" timestamp NOT NULL DEFAULT now(),
+  "updatedAt" timestamp NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS "account_userId_idx" ON account("userId");
+
+CREATE TABLE IF NOT EXISTS verification (
+  id text PRIMARY KEY,
+  identifier text NOT NULL,
+  value text NOT NULL,
+  "expiresAt" timestamp NOT NULL,
+  "createdAt" timestamp NOT NULL DEFAULT now(),
+  "updatedAt" timestamp NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS "verification_identifier_idx" ON verification(identifier);
+
 ALTER TABLE agent_documents
   ADD COLUMN IF NOT EXISTS mode text NOT NULL DEFAULT 'seo',
   ADD COLUMN IF NOT EXISTS url text,
@@ -27,6 +92,73 @@ WHERE mode IS NULL OR mode NOT IN ('seo', 'geo', 'content');
 CREATE INDEX IF NOT EXISTS idx_agent_documents_mode ON agent_documents(mode);
 CREATE INDEX IF NOT EXISTS idx_agent_documents_mode_source_type ON agent_documents(mode, source_type);
 CREATE INDEX IF NOT EXISTS idx_agent_documents_mode_topic ON agent_documents(mode, topic);
+
+CREATE INDEX IF NOT EXISTS agent_documents_embedding_seo_hnsw_idx
+ON agent_documents
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64)
+WHERE mode = 'seo' AND embedding IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS agent_documents_embedding_geo_hnsw_idx
+ON agent_documents
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64)
+WHERE mode = 'geo' AND embedding IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS agent_documents_embedding_content_hnsw_idx
+ON agent_documents
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64)
+WHERE mode = 'content' AND embedding IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION match_agent_documents_by_mode(
+    query_embedding vector(1536),
+    mode_param text DEFAULT 'seo',
+    match_threshold float DEFAULT 0.3,
+    match_count int DEFAULT 5,
+    topic_param text DEFAULT NULL,
+    source_type_param text DEFAULT NULL
+)
+RETURNS TABLE (
+    id uuid,
+    agent_type text,
+    mode text,
+    title text,
+    content text,
+    source_type text,
+    url text,
+    engine text,
+    topic text,
+    metadata jsonb,
+    similarity float
+)
+LANGUAGE plpgsql
+STABLE
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        ad.id,
+        ad.agent_type,
+        ad.mode,
+        ad.title,
+        ad.content,
+        ad.source_type,
+        ad.url,
+        ad.engine,
+        ad.topic,
+        ad.metadata,
+        1 - (ad.embedding <=> query_embedding) AS similarity
+    FROM agent_documents ad
+    WHERE ad.mode = mode_param
+      AND ad.embedding IS NOT NULL
+      AND 1 - (ad.embedding <=> query_embedding) > match_threshold
+      AND (topic_param IS NULL OR ad.topic = topic_param)
+      AND (source_type_param IS NULL OR ad.source_type = source_type_param)
+    ORDER BY ad.embedding <=> query_embedding
+    LIMIT match_count;
+END;
+$$;
 
 CREATE TABLE IF NOT EXISTS geo_prompts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,

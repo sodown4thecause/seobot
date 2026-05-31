@@ -9,7 +9,7 @@ const mockEq = vi.fn((...args) => ({ type: 'eq', args }))
 const mockAnd = vi.fn((...args) => ({ type: 'and', args }))
 const mockDesc = vi.fn((arg) => ({ type: 'desc', arg }))
 
-vi.mock('@/lib/auth/clerk', () => ({
+vi.mock('@/lib/auth', () => ({
   getUserId: mockGetUserId,
 }))
 

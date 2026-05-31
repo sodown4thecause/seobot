@@ -3,8 +3,7 @@ import { WebhookVerificationError, validateEvent } from '@polar-sh/sdk/webhooks'
 import { db } from '@/lib/db'
 import { resolvePolarUserId } from '@/lib/billing/polar-metadata'
 import { users } from '@/lib/db/schema'
-import { user as authUsers } from '@/lib/auth-schema'
-import { eq, or } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 type PolarSubscriptionPayload = {
   metadata?: Record<string, unknown>
@@ -97,14 +96,7 @@ async function handleSubscriptionUpdate(data: PolarSubscriptionPayload) {
                 currentPeriodEnd: currentPeriodEnd,
                 updatedAt: new Date()
             })
-            .where(or(eq(users.betterAuthId, userId), eq(users.clerkId, userId)))
-
-        await db.update(authUsers)
-            .set({
-                subscriptionStatus: status,
-                updatedAt: new Date()
-            })
-            .where(eq(authUsers.id, userId))
+            .where(eq(users.betterAuthId, userId))
     } else if (polarSubscriptionId) {
         // Try to find user by subscription ID
         await db.update(users)

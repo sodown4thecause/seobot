@@ -9,26 +9,6 @@ import { authClient } from '@/lib/auth-client'
 import { buildWorkflowAutoSendKey } from '@/lib/chat/conversation-bootstrap'
 import { getWorkflowLaunchConfig } from '@/lib/workflows/launch-config'
 
-function normalizeOnboardingUrl(rawValue?: string): string | undefined {
-  if (!rawValue) return undefined
-  const trimmed = rawValue.trim()
-  if (!trimmed) return undefined
-
-  const candidate = trimmed.startsWith('http://') || trimmed.startsWith('https://')
-    ? trimmed
-    : `https://${trimmed}`
-
-  try {
-    const parsed = new URL(candidate)
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return undefined
-    }
-    return parsed.toString()
-  } catch {
-    return undefined
-  }
-}
-
 export default function DashboardPage() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
@@ -40,19 +20,18 @@ export default function DashboardPage() {
 function DashboardInner() {
   const { state, actions } = useAgent()
   const activeAgentId = state.activeAgent?.id
-  const { data: session, isPending } = authClient.useSession()
+  const { data: session, isPending: isSessionPending } = authClient.useSession()
   const user = session?.user ?? null
-  const isLoaded = !isPending
+  const isLoaded = !isSessionPending
   const searchParams = useSearchParams()
   const workflowId = searchParams?.get('workflow') ?? undefined
   const explicitConversationId = searchParams?.get('conversationId') ?? undefined
-  const onboardingUrl = normalizeOnboardingUrl(searchParams?.get('url') ?? undefined)
+  const onboardingUrl = searchParams?.get('url') ?? undefined
   const shouldStartOnboarding = searchParams?.has('startOnboarding')
 
   const [isNewUser, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [initialMessage, setInitialMessage] = useState<string | undefined>()
-  const [_userName, setUserName] = useState<string>('')
   const workflowLaunch = useMemo(
     () => (workflowId ? getWorkflowLaunchConfig(workflowId) : null),
     [workflowId]
@@ -60,12 +39,6 @@ function DashboardInner() {
   const resolvedConversationId = explicitConversationId
   const workflowMessage = workflowLaunch?.initialPrompt
   const workflowAutoSendKey = buildWorkflowAutoSendKey(workflowId, resolvedConversationId)
-
-  useEffect(() => {
-    if (isLoaded && !user) {
-      window.location.href = '/sign-in'
-    }
-  }, [isLoaded, user])
 
   // Check if user has a business profile (first-time user detection)
   useEffect(() => {
@@ -75,7 +48,7 @@ function DashboardInner() {
 
     async function checkUserProfile() {
       try {
-        // Wait for Clerk to load user data
+        // Wait for Better Auth to finish loading user data.
         if (!isLoaded) {
           return
         }
@@ -83,14 +56,6 @@ function DashboardInner() {
         if (!user) {
           setIsLoading(false)
           return
-        }
-
-        // Get user name from Clerk
-        const fullName = user.name || ''
-        if (fullName) {
-          setUserName(fullName)
-        } else if (user.email) {
-          setUserName(user.email.split('@')[0])
         }
 
         // Fetch profile with retry logic for cold DB connections
@@ -141,8 +106,8 @@ function DashboardInner() {
             setInitialMessage('__START_ONBOARDING__')
           }
         } else if (response.status === 401) {
-          // Unauthorized - redirect to sign-in
-          window.location.href = '/sign-in'
+          // Unauthorized - redirect to login
+          window.location.href = '/login'
         } else {
           // Server error or other issues - show error state
           console.error(`[Dashboard] Profile fetch failed with status ${response.status}`)
@@ -220,7 +185,7 @@ function DashboardInner() {
     [isNewUser, resolvedConversationId]
   )
 
-  if (!isLoaded || !user || isLoading) {
+  if (!isLoaded || isLoading) {
     return (
       <div className="relative h-full flex flex-col items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading...</div>

@@ -10,15 +10,15 @@
 import { Inngest } from 'inngest'
 import { z } from 'zod'
 
-import { costTrackingMiddleware, executeTrackedDataForSeoCall } from '@/lib/jobs/middleware/cost-tracking'
+import { executeTrackedDataForSeoCall } from '@/lib/jobs/middleware/cost-tracking'
 
 // ============================================================================
 // Environment Validation
 // ============================================================================
 
 const envSchema = z.object({
-  INNGEST_EVENT_KEY: z.string().min(1, 'INNGEST_EVENT_KEY is required'),
-  INNGEST_SIGNING_KEY: z.string().min(1, 'INNGEST_SIGNING_KEY is required'),
+  INNGEST_EVENT_KEY: z.string().min(1).optional(),
+  INNGEST_SIGNING_KEY: z.string().min(1).optional(),
 })
 
 const env = envSchema.parse(process.env)
@@ -104,8 +104,13 @@ export const inngest = new Inngest({
   id: 'seobot-dashboard',
   name: 'SEOBOT Dashboard Jobs',
   eventKey: env.INNGEST_EVENT_KEY,
-  middleware: [costTrackingMiddleware],
 })
+
+function requireInngestEventKey(): void {
+  if (!env.INNGEST_EVENT_KEY) {
+    throw new Error('INNGEST_EVENT_KEY is required to send Inngest events')
+  }
+}
 
 // ============================================================================
 // Event Type Definitions (for TypeScript inference)
@@ -142,6 +147,8 @@ export async function sendRefreshRequest(
   jobType: RefreshRequestedEvent['data']['jobType'],
   competitorUrls?: string[]
 ): Promise<void> {
+  requireInngestEventKey()
+
   await inngest.send({
     name: 'dashboard/refresh.requested',
     data: {
@@ -165,6 +172,8 @@ export async function sendProgressUpdate(
   message?: string,
   metadata?: Record<string, unknown>
 ): Promise<void> {
+  requireInngestEventKey()
+
   await inngest.send({
     name: 'dashboard/refresh.progress',
     data: {

@@ -1,6 +1,8 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth'
 import { db, libraryItems } from '@/lib/db'
+
+export const runtime = 'nodejs'
 
 interface SaveLibraryItemRequest {
   content?: string
@@ -71,4 +73,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-

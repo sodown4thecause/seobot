@@ -1,0 +1,78 @@
+name: feature
+description: Implement a GitHub issue end-to-end — reads planning docs, writes code, validates, opens PR
+
+worktree:
+  baseBranch: main
+
+nodes:
+  read_context:
+    prompt: |
+      Read the following project context files and summarise the current state in 3-5 bullet points:
+      - .planning/STATE.md
+      - .planning/ROADMAP.md
+      - .planning/REQUIREMENTS.md (if it exists)
+
+      Focus on: current phase, what's complete, what's next, and any constraints.
+    output_format:
+      type: object
+      properties:
+        summary: { type: string }
+        current_phase: { type: string }
+        next_priorities: { type: array, items: { type: string } }
+      required: [summary, current_phase, next_priorities]
+
+  plan:
+    depends_on: [read_context]
+    prompt: |
+      Project context:
+      $read_context.output
+
+      Task: $ARGUMENTS
+
+      Create a concrete implementation plan:
+      1. Which files to create or modify (with paths)
+      2. Key interfaces/types to define
+      3. Dependencies or env vars needed
+      4. How to validate it works
+
+      Be specific to this Next.js 16 + Supabase + TypeScript stack.
+
+  implement:
+    depends_on: [plan]
+    prompt: |
+      Project context:
+      $read_context.output
+
+      Plan:
+      $plan.output
+
+      Implement the plan fully. Rules:
+      - Follow existing patterns in the codebase (check similar files first)
+      - Use the Vercel AI SDK patterns already in lib/
+      - Supabase client from lib/supabase/
+      - shadcn/ui components from components/ui/
+      - Add Vitest unit tests for any new utility functions
+      - Do not break existing functionality
+
+  validate:
+    depends_on: [implement]
+    bash: |
+      npm run typecheck 2>&1 && npm run lint 2>&1 && npm run test -- --run 2>&1
+    prompt: |
+      Validation output:
+      $validate.output
+
+      If there are errors, fix them all before continuing.
+      If clean, confirm with a one-line summary.
+
+  open_pr:
+    depends_on: [validate]
+    prompt: |
+      All validation passed. Create a pull request for this feature.
+
+      Task: $ARGUMENTS
+
+      Use gh pr create with:
+      - A concise title (under 60 chars)
+      - Body describing what was built and how to test it
+      - Base branch: main

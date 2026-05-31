@@ -6,15 +6,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'cdn.sanity.io',
-      },
-      {
-        protocol: 'https',
         hostname: 'flow-intent-126ee12.ingress-erytho.ewp.live',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.gravatar.com',
       },
       {
         protocol: 'https',

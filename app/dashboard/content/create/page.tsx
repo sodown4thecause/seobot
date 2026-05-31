@@ -10,9 +10,9 @@ import { authClient } from '@/lib/auth-client'
 function CreateContentForm() {
   const searchParams = useSearchParams()
   const keywordFromUrl = searchParams?.get('keyword') || ''
-  const { data: session, isPending } = authClient.useSession()
+  const { data: session } = authClient.useSession()
   const user = session?.user ?? null
-  const userLoaded = !isPending
+  const userLoaded = !!session
   
   interface ContentAnalysisData {
     keyword: string

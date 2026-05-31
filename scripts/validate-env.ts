@@ -23,24 +23,19 @@ config({ path: resolve(process.cwd(), '.env') })
 // These match the schemas in lib/config/env.ts
 const serverEnvSchema = z.object({
   // Database (Neon)
-  DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid URL' }),
+  DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid URL' }).optional(),
 
-  // Authentication (Clerk)
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1, 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required'),
-  CLERK_SECRET_KEY: z.string().min(1, 'CLERK_SECRET_KEY is required'),
+  // Authentication (Better Auth)
+  BETTER_AUTH_SECRET: z.string().min(1).optional(),
+  BETTER_AUTH_URL: z.string().url().optional(),
 
   // DataForSEO
-  DATAFORSEO_LOGIN: z.string().min(1).optional(),
-  DATAFORSEO_USERNAME: z.preprocess(
-    (val) => (typeof val === 'string' && val.trim().length > 0 ? val : process.env.DATAFORSEO_LOGIN),
-    z.string().min(1, 'DATAFORSEO_USERNAME or DATAFORSEO_LOGIN is required')
-  ),
-  DATAFORSEO_PASSWORD: z.string().min(1, 'DATAFORSEO_PASSWORD is required'),
+  DATAFORSEO_USERNAME: z.string().min(1).optional(),
+  DATAFORSEO_PASSWORD: z.string().min(1).optional(),
 }).passthrough()
 
 const clientEnvSchema = z.object({
-  // Authentication (Clerk)
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1, 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required'),
+  NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
 }).passthrough()
 
 // Parse process.env directly (same as env.ts does)

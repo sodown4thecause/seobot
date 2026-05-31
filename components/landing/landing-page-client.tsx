@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, MessageSquare, Search, Brain, LucideIcon } from 'lucide-react'
+import { ArrowRight, MessageSquare, Search, Brain, PenLine, LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, type Variants } from 'framer-motion'
 import { Navbar } from '@/components/navbar'
@@ -166,27 +166,56 @@ export function LandingPageClient() {
         </div>
       </section>
 
+      {/* Platform Modes Intro */}
+      <section className="relative z-10 py-20 px-6 border-b border-white/5">
+        <div className="container mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={itemVariants}
+            className="max-w-3xl mx-auto text-center space-y-4 mb-16"
+          >
+            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">The Platform</p>
+            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">
+              Three Modes. One Platform.
+              <br />
+              <span className="text-zinc-500">No Other SEO Tool Does This.</span>
+            </h2>
+            <p className="text-zinc-400 text-lg leading-relaxed">
+              Most SEO tools give you data. Flow Intent gives you an AI assistant that thinks in three distinct modes — SEO, GEO/AEO, and Content — each purpose-built for a different job.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
       <section id="features" className="relative z-10 py-32 px-6">
         <div className="container mx-auto">
           <div className="max-w-4xl mx-auto">
             <div className="grid gap-24">
               <ValueProp
                 number="01"
-                title="Enter Your Topic"
-                description="Tell us what you sell or write about. No complex setup — just a topic and optional competitor URL to focus the analysis."
-                icon={MessageSquare}
+                label="SEO Mode"
+                title="Rank Higher, Faster"
+                description="Deep keyword research, live SERP analysis, competitor gap identification and technical SEO audits — all powered by DataForSEO. Ask in plain English, get actionable data back instantly."
+                icon={Search}
+                accent="emerald"
               />
               <ValueProp
                 number="02"
-                title="We Scan Reddit"
-                description="Our agents discover relevant subreddits, analyze thousands of threads in real-time, and extract high-intent questions your competitors are ignoring."
-                icon={Search}
+                label="GEO / AEO Mode"
+                title="Own the AI Answer Box"
+                description="Track how your brand appears across ChatGPT, Gemini, Perplexity, Claude and Google AI Overviews. Inspired by the open-source GEO tracking movement — the only way to know if AI models are citing you or your competitors."
+                icon={Brain}
+                accent="violet"
               />
               <ValueProp
                 number="03"
-                title="Get Your Brief"
-                description="Receive a prioritized content gap report with source threads, engagement scores, and a 7/30/90-day action plan — ready to execute or hand to your team."
-                icon={Brain}
+                label="Content Mode"
+                title="Publish in Minutes"
+                description="Tell the AI what to write. It generates a full blog post, automatically creates a hero image and thumbnail, and outputs a polished artifact you can copy, download as Markdown, or hand straight to your CMS."
+                icon={PenLine}
+                accent="amber"
               />
             </div>
           </div>
@@ -200,34 +229,30 @@ export function LandingPageClient() {
             whileInView="visible"
             viewport={{ once: true, margin: '-100px' }}
             variants={itemVariants}
-            className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10"
+            className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6"
           >
-              <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Discovery</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Find hidden subreddits</h3>
-              <p className="text-zinc-400 leading-relaxed">
-                Auto-detect the communities where your audience hangs out. We surface relevant subreddits you might not even know exist.
+            <div className="bg-black/40 border border-emerald-500/20 p-8 rounded-none">
+              <div className="w-8 h-1 bg-emerald-400 mb-4" />
+              <p className="text-sm font-mono uppercase tracking-widest text-emerald-500 mb-3">SEO Mode</p>
+              <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">SERP & Keyword Intelligence</h3>
+              <p className="text-zinc-400 leading-relaxed text-sm">
+                Live keyword volumes, difficulty scores, competitor rankings, backlink profiles and SERP feature tracking — queried conversationally.
               </p>
             </div>
-            <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Analysis</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Extract real questions</h3>
-              <p className="text-zinc-400 leading-relaxed">
-                Parse thousands of threads to find the exact questions your audience asks — ranked by engagement, intent, and competitive gap.
+            <div className="bg-black/40 border border-violet-500/20 p-8 rounded-none">
+              <div className="w-8 h-1 bg-violet-400 mb-4" />
+              <p className="text-sm font-mono uppercase tracking-widest text-violet-500 mb-3">GEO / AEO Mode</p>
+              <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">AI Visibility Tracking</h3>
+              <p className="text-zinc-400 leading-relaxed text-sm">
+                Monitor your brand mentions across every major AI platform. Understand which sources AI models trust and how to get cited more.
               </p>
             </div>
-            <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Briefs</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Get ready-to-publish briefs</h3>
-              <p className="text-zinc-400 leading-relaxed">
-                Each content gap comes with source threads, recommended content type, and priority ranking — everything you need to start writing.
-              </p>
-            </div>
-            <div className="bg-black/40 border border-white/10 p-8 rounded-none">
-              <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">Scorecard</p>
-              <h3 className="text-2xl font-bold uppercase tracking-tight mb-3">Measure your gap score</h3>
-              <p className="text-zinc-400 leading-relaxed">
-                Get an overall gap score, opportunity breakdown, and 7/30/90-day action plan prioritized by effort and impact.
+            <div className="bg-black/40 border border-amber-500/20 p-8 rounded-none">
+              <div className="w-8 h-1 bg-amber-400 mb-4" />
+              <p className="text-sm font-mono uppercase tracking-widest text-amber-500 mb-3">Content Mode</p>
+              <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">Blog Posts with Images</h3>
+              <p className="text-zinc-400 leading-relaxed text-sm">
+                Auto-generated hero images and thumbnails ship with every piece of content. Copy the markdown, export to your CMS — done.
               </p>
             </div>
           </motion.div>
@@ -303,17 +328,28 @@ export function LandingPageClient() {
   )
 }
 
+const ACCENT_COLORS: Record<string, { border: string; text: string; icon: string }> = {
+  emerald: { border: 'group-hover:border-emerald-400', text: 'text-emerald-400', icon: 'group-hover:text-emerald-400' },
+  violet: { border: 'group-hover:border-violet-400', text: 'text-violet-400', icon: 'group-hover:text-violet-400' },
+  amber: { border: 'group-hover:border-amber-400', text: 'text-amber-400', icon: 'group-hover:text-amber-400' },
+}
+
 function ValueProp({
   number,
+  label,
   title,
   description,
   icon: Icon,
+  accent = 'emerald',
 }: {
   number: string
+  label?: string
   title: string
   description: string
   icon: LucideIcon
+  accent?: string
 }) {
+  const colors = ACCENT_COLORS[accent] ?? ACCENT_COLORS.emerald
   return (
     <motion.div
       initial="hidden"
@@ -325,11 +361,14 @@ function ValueProp({
       <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-start">
         <div className="flex-shrink-0">
           <span className="text-sm font-mono text-zinc-700 block mb-2">{number}</span>
-          <div className="w-16 h-16 bg-white/[0.03] border border-white/10 flex items-center justify-center text-zinc-400 group-hover:border-white group-hover:text-white transition-all duration-500">
+          <div className={`w-16 h-16 bg-white/[0.03] border border-white/10 flex items-center justify-center text-zinc-400 ${colors.icon} ${colors.border} transition-all duration-500`}>
             <Icon className="w-8 h-8 font-light" />
           </div>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
+          {label && (
+            <p className={`text-xs font-mono uppercase tracking-[0.3em] ${colors.text}`}>{label}</p>
+          )}
           <h3 className="text-4xl md:text-5xl font-bold uppercase tracking-tight group-hover:italic transition-all duration-500 text-white">
             {title}
           </h3>

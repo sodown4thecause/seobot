@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Content Validation API
  * 
  * Validates content for SEO compliance using Winston AI
@@ -10,6 +10,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth'
 import { validateContentForSEO } from '@/lib/external-apis/winston-ai'
+
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
@@ -56,4 +58,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-

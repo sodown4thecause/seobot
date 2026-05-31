@@ -1,4 +1,4 @@
-﻿import { requireUserId } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth'
 import { db, businessProfiles } from '@/lib/db'
 import { sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
@@ -6,6 +6,8 @@ import { extractCleanText } from '@/lib/api/jina-service'
 // import { serverEnv } from '@/lib/config/env'
 // import { GoogleGenerativeAI } from '@google/generative-ai' // Removed, using gateway
 // import { z } from 'zod'
+
+export const runtime = 'nodejs'
 
 interface AnalysisResult {
   url: string

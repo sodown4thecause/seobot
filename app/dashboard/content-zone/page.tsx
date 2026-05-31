@@ -60,9 +60,9 @@ const EMPTY_QUALITY_SCORES: ContentQualityScores = {
 }
 
 function ContentZoneInner() {
-  const { data: session, isPending } = authClient.useSession()
+  const { data: session } = authClient.useSession()
   const user = session?.user ?? null
-  const isLoaded = !isPending
+  const isLoaded = !!session
   const router = useRouter()
   const [onboardingUrl, setOnboardingUrl] = useState('')
   const {

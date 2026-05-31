@@ -521,8 +521,8 @@ H2: Step 1: Choose Your Blogging Niche
   - Image: niche selection infographic
 
 H2: Step 2: Select a Blogging Platform
-  - Comparison table: WordPress vs. other platforms
-  - H3: Why We Recommend WordPress
+  - Comparison table: Webflow vs. other platforms
+  - H3: Why We Recommend Webflow
   - H3: Other Options Worth Considering
 
 [Continue with steps 3-7...]

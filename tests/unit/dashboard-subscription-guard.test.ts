@@ -37,25 +37,15 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/db/schema', () => ({
   users: {
     id: 'users.id',
-    clerkId: 'users.clerkId',
     betterAuthId: 'users.betterAuthId',
-    email: 'users.email',
     subscriptionStatus: 'users.subscriptionStatus',
     polarSubscriptionId: 'users.polarSubscriptionId',
     currentPeriodEnd: 'users.currentPeriodEnd',
   },
 }))
 
-vi.mock('@/lib/auth-schema', () => ({
-  user: {
-    id: 'authUser.id',
-    subscriptionStatus: 'authUser.subscriptionStatus',
-  },
-}))
-
 vi.mock('drizzle-orm', () => ({
   eq: vi.fn((column, value) => ({ column, value })),
-  or: vi.fn((...conditions) => ({ conditions })),
 }))
 
 describe('dashboard subscription guard', () => {
@@ -73,7 +63,7 @@ describe('dashboard subscription guard', () => {
         email: 'customer@example.com',
       },
     })
-    selectRowsQueue.push([], [{ id: 'user_123', subscriptionStatus: 'inactive' }])
+    selectRowsQueue.push([{ id: 'app_user_123', authUserId: 'user_123', subscriptionStatus: 'inactive' }])
 
     const { requireSubscription } = await import('@/lib/billing/subscription-guard')
 
@@ -96,7 +86,7 @@ describe('dashboard subscription guard', () => {
     await expect(requireSubscription('/billing/checkout')).resolves.toMatchObject({
       hasSubscription: true,
       status: 'active',
-      userId: 'admin_123',
+      authUserId: 'admin_123',
     })
     expect(redirectMock).not.toHaveBeenCalled()
   })

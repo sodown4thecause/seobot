@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Chat API Route
  *
  * Handles chat messages by orchestrating intent classification, tool assembly,
@@ -30,7 +30,7 @@ import {
   convertToModelFormat,
   type RequestBody,
 } from '@/lib/chat/message-handler'
-import { classifyUserIntent, buildAgentSystemPrompt } from '@/lib/chat/intent-classifier'
+import { classifyUserIntent, buildAgentSystemPrompt, type AgentType } from '@/lib/chat/intent-classifier'
 import { assembleTools } from '@/lib/chat/tool-assembler'
 import { buildStreamResponse, type StreamOptions } from '@/lib/chat/stream-builder'
 import { saveUIMessage } from '@/lib/chat/storage'
@@ -60,10 +60,12 @@ const handler = async (req: Request) => {
       messagesCount: body.messages?.length,
       hasContext: !!body.context,
       chatId: body.chatId,
+      mode: body.context?.mode,
     }))
 
     const { messages: incomingMessages, chatId, context } = body
     const mode = normalizeChatMode(context?.mode)
+    const modeContext = { ...(context || {}), mode, chatMode: mode }
     const agentId = context?.agentId || 'general'
     const isOnboarding = context?.page === 'onboarding' || !!context?.onboarding
 
@@ -128,7 +130,7 @@ const handler = async (req: Request) => {
     // Has a 5s internal timeout - falls back to keyword-based routing if LLM is slow
     const classification = await classifyUserIntent({
       query: lastUserMessageContent,
-      context,
+      context: modeContext,
     })
 
     console.log('[Chat API] Agent routing result:', {
@@ -159,15 +161,20 @@ const handler = async (req: Request) => {
     })
 
     // 10. Build system prompt for the selected agent
-    const effectiveAgent = classification.agent === 'onboarding' || classification.agent === 'image'
-      ? classification.agent
-      : mode === 'content'
-        ? 'content'
-        : 'seo-aeo'
+    let effectiveAgent: AgentType
+    if (classification.agent === 'onboarding' || classification.agent === 'image') {
+      effectiveAgent = classification.agent
+    } else if (mode === 'content') {
+      effectiveAgent = 'content'
+    } else if (mode === 'geo') {
+      effectiveAgent = 'geo'
+    } else {
+      effectiveAgent = 'seo-aeo'
+    }
 
     const systemPrompt = buildAgentSystemPrompt(
       effectiveAgent,
-      { ...context, mode },
+      modeContext,
       classification.allIntents
     )
 
@@ -183,7 +190,7 @@ const handler = async (req: Request) => {
         userId: user?.id,
         request: req,
       }),
-      effectiveAgent === 'seo-aeo' || effectiveAgent === 'content'
+      effectiveAgent === 'seo-aeo' || effectiveAgent === 'content' || effectiveAgent === 'geo'
         ? (async () => {
             const controller = new AbortController()
             let timeoutId: ReturnType<typeof setTimeout> | undefined
@@ -258,7 +265,7 @@ const handler = async (req: Request) => {
       userId: user?.id,
       conversationId: activeConversationId || undefined,
       agentType: effectiveAgent,
-      context: { ...(context as Record<string, unknown>), mode },
+      context: modeContext as Record<string, unknown>,
       originalMessages: incomingMessages!,
       onFinish: async ({ messages: uiMessages }) => {
         console.log('[Chat API] toUIMessageStreamResponse onFinish:', {

@@ -46,6 +46,9 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
+  // Better Auth session validation depends on the Node runtime and database-backed auth config.
+  // Keep middleware as a lightweight route gate; protected handlers/pages must validate the
+  // session with getUserId(), requireUserId(), or auth.api.getSession() before returning data.
   const sessionCookie = getSessionCookie(request)
 
   if (sessionCookie && (
@@ -58,7 +61,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (!sessionCookie && !isPublicRoute(url.pathname)) {
-    return NextResponse.redirect(new URL('/sign-in', request.url))
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   return NextResponse.next()

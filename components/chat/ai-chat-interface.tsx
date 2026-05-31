@@ -9,6 +9,7 @@ import { Terminal, Check, Copy, ChevronDown, ChevronRight, Loader2, Sparkles, Se
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
+import { ChatModeSelector } from '@/components/chat/chat-mode-selector'
 import { renderMessageComponent } from './message-types'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -23,7 +24,9 @@ import { useArtifactStore } from '@/lib/artifacts/artifact-store'
 import { bootstrapConversationRecord } from '@/lib/chat/conversation-bootstrap'
 import { KeywordArtifact } from './artifacts/keyword-artifact'
 import { BacklinkArtifact } from './artifacts/backlink-artifact'
+import { BlogArtifact } from './artifacts/blog-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
+import { useChatModeOptional } from './chat-mode-context'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // AI Elements Imports
@@ -97,6 +100,10 @@ const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComp
   const isLoading = state !== 'result'
   const isSuccess = state === 'result'
   const [isOpen, setIsOpen] = useState(false)
+
+  if (toolName === 'generate_content_package' && isSuccess && result?.success) {
+    return <ContentPackagePreview output={result} />
+  }
 
   // 1. Handle specialized client UI
   if (toolName === 'client_ui') {
@@ -265,6 +272,10 @@ const ToolPartInvocation = ({
   const isSuccess = !isLoading
   const [isOpen, setIsOpen] = useState(false)
 
+  if (toolName === 'generate_content_package' && isSuccess && output?.success) {
+    return <ContentPackagePreview output={output} />
+  }
+
   // Use the same specialized component logic as ToolInvocation
   const SpecializedComponent = TOOL_COMPONENTS[toolName]
   if (SpecializedComponent) {
@@ -345,6 +356,61 @@ const ToolPartInvocation = ({
           </div>
         </CollapsibleContent>
       </Collapsible>
+    </div>
+  )
+}
+
+type ContentPackageImagePreview = {
+  type: 'main' | 'thumbnail'
+  url?: string
+  previewUrl?: string
+  altText?: string
+  saveStatus?: 'saved' | 'preview_only' | 'failed'
+}
+
+type ContentPackagePreviewOutput = {
+  title?: string
+  images?: {
+    main?: ContentPackageImagePreview
+    thumbnail?: ContentPackageImagePreview
+  }
+}
+
+const ContentPackagePreview = ({ output }: { output: ContentPackagePreviewOutput }) => {
+  const images = output.images || {}
+  const mainImage = images.main
+  const thumbnail = images.thumbnail
+
+  return (
+    <div className="my-4 overflow-hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
+      <div className="border-b border-white/10 p-4">
+        <p className="text-sm font-semibold text-emerald-100">Content package saved</p>
+        <p className="mt-1 text-xs text-zinc-400">{output.title}</p>
+      </div>
+      <div className="grid gap-3 p-4 md:grid-cols-2">
+        {[mainImage, thumbnail].filter((image): image is ContentPackageImagePreview => Boolean(image)).map((image) => {
+          const imageSrc = image.url || image.previewUrl
+
+          return (
+            <figure key={image.type} className="overflow-hidden rounded-xl border border-white/10 bg-black/30">
+              {imageSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageSrc} alt={image.altText || image.type} className="aspect-video w-full object-cover" />
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center bg-zinc-950 px-4 text-center text-xs text-zinc-500">
+                  Image generated, but persistent preview storage is not configured.
+                </div>
+              )}
+              <figcaption className="space-y-1 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-300">
+                  {image.type === 'main' ? 'Main image' : 'Thumbnail'}
+                </p>
+                <p className="text-xs text-zinc-500">{image.saveStatus === 'saved' ? 'Saved to library' : 'Preview only'}</p>
+              </figcaption>
+            </figure>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -491,6 +557,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   autoSendKey,
 }, ref) => {
   // 1. Initial State & Context
+  const { chatMode } = useChatModeOptional()
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null)
   const { artifacts, updateArtifact } = useArtifactStore()
@@ -531,15 +598,26 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     ...(chatContext || {}),
     agentId: agentPreference,
     conversationId,
-  }), [contextKey, agentPreference, conversationId])
+    mode: chatMode,
+    chatMode,
+  }), [contextKey, agentPreference, conversationId, chatMode])
+
+  const latestRequestRef = useRef({
+    chatId: conversationId,
+    context: mergedContext,
+  })
+
+  useEffect(() => {
+    latestRequestRef.current = {
+      chatId: conversationId,
+      context: mergedContext,
+    }
+  }, [conversationId, mergedContext])
 
   const transport = useMemo(() => new DefaultChatTransport({
     api: '/api/chat',
-    body: () => ({
-      chatId: conversationId,
-      context: mergedContext,
-    }),
-  }), [conversationId, mergedContext])
+    body: () => latestRequestRef.current,
+  }), [])
 
   // 4. useChat Hook
   const {
@@ -991,36 +1069,294 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // Empty State View - with styled ProactiveSuggestions
   if (messages.length === 0) {
-    // Default suggestions for empty state - using new Suggestions format
-    const defaultSuggestions = [
-      {
-        id: 'competitor-topical-map',
-        text: 'Analyze my top competitors and find content gaps and write me a topical map.',
-        icon: 'target' as const,
-      },
-      {
-        id: 'content-pillars',
-        text: 'Generate 10 content pillars that will rank well for my website.',
-        icon: 'lightbulb' as const,
-      },
-      {
-        id: 'eeat-improvement',
-        text: 'How can I improve my content for better EEAT?',
-        icon: 'sparkles' as const,
-      },
-      {
-        id: 'link-building-plan',
-        text: 'Write a high-quality, SEO/AEO-optimized link building plan for my website',
-        icon: 'zap' as const,
-      },
+    const seoSuggestions = [
+      { id: 'keyword-gap', text: 'Analyze flowintent.com and tell me the top 5 keyword opportunities I\'m missing vs my competitors', icon: 'target' as const },
+      { id: 'keyword-target', text: 'What keywords should I target to rank for "AI SEO tools" — give me search volume, difficulty, and intent', icon: 'search' as const },
+      { id: 'competitor-scrape', text: 'Run a full competitor analysis for the keyword "content marketing platform" and scrape the top 3 ranking pages', icon: 'lightbulb' as const },
+      { id: 'backlink-profile', text: 'Check the backlink profile for ahrefs.com and identify their top referring domains', icon: 'zap' as const },
     ]
+    const geoSuggestions = [
+      { id: 'ai-brand-visibility', text: 'My brand is "Flow Intent" (flowintent.com) — check if I appear across ChatGPT, Claude, Gemini, Perplexity, and Google AI Overview for "best AI SEO tools"', icon: 'sparkles' as const },
+      { id: 'geo-competitor', text: 'Track my brand "Flow Intent" for the query "alternatives to Ahrefs" and tell me which competitors appear', icon: 'target' as const },
+      { id: 'geo-optimize', text: 'How can I optimize my content to get cited in AI-generated answers?', icon: 'search' as const },
+      { id: 'geo-new-brand', text: 'I want to start tracking my brand across AI platforms — where do I begin?', icon: 'zap' as const },
+    ]
+    const contentSuggestions = [
+      { id: 'pillar-page', text: 'Write a comprehensive pillar page on "AI SEO" — research top-ranking competitors first', icon: 'lightbulb' as const },
+      { id: 'comparison-article', text: 'Create a comparison article for the top 5 AI writing tools, targeting "best AI writer" (check search volume first)', icon: 'target' as const },
+      { id: 'faq-page', text: 'Write an FAQ page targeting "People Also Ask" questions for the keyword "content marketing strategy"', icon: 'sparkles' as const },
+      { id: 'blog-post', text: 'Generate a blog post about Core Web Vitals optimization — include current Google benchmarks', icon: 'zap' as const },
+    ]
+    const modeMap = { seo: seoSuggestions, geo: geoSuggestions, content: contentSuggestions }
+    const defaultSuggestions = modeMap[chatMode] ?? seoSuggestions
+
+    const modeDescriptions = {
+      seo: 'Keyword research, SERP analysis & technical SEO',
+      geo: 'Track brand visibility across AI platforms & overviews',
+      content: 'Generate blog posts & articles with AI-powered images',
+    }
+
+    // GEO mode gets a dedicated workflow onboarding panel
+    if (chatMode === 'geo') {
+      return (
+        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
+          <div className="w-full max-w-3xl space-y-6 py-4">
+            <div className="flex justify-center">
+              <ChatModeSelector />
+            </div>
+
+            {/* Hero */}
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">GEO / AEO Mode</h1>
+              <p className="text-zinc-400 text-base max-w-xl mx-auto">
+                Track how often your brand appears inside ChatGPT, Claude, Gemini, Perplexity, and Google AI Overview responses — and get actionable steps to increase your AI visibility.
+              </p>
+            </div>
+
+            {/* How it works */}
+            <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5 space-y-4">
+              <p className="text-xs font-mono uppercase tracking-widest text-violet-400">How this works</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { step: '1', label: 'Tell us your brand', detail: 'Share your brand name, website, and industry so we know what to track.' },
+                  { step: '2', label: 'Pick your queries', detail: 'Choose what people search for — we suggest the best ones based on your niche.' },
+                  { step: '3', label: 'We query the AI models', detail: 'We send your queries to ChatGPT, Claude, Gemini, Perplexity, and Google AI Overview in real time and capture their responses.' },
+                  { step: '4', label: 'Get actionable insights', detail: 'See exactly where you appear, what your competitors say, and which content will get you cited.' },
+                ].map(({ step, label, detail }) => (
+                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                    <div className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* What we track */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+              {[
+                { label: 'ChatGPT', sub: 'gpt-4.1-mini' },
+                { label: 'Claude', sub: 'claude-3-5-haiku-latest' },
+                { label: 'Gemini', sub: 'gemini-2.5-flash' },
+                { label: 'Perplexity', sub: 'sonar + citations' },
+                { label: 'Google AI Overview', sub: 'live SERP overview' },
+              ].map(({ label, sub }) => (
+                <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+                  <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Chat input */}
+            <div className="w-full">
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSubmit={() => handleSendMessage({ text: input })}
+                disabled={isLoading}
+                placeholder="Tell me your brand name and what you want to track..."
+                className="bg-transparent"
+              />
+            </div>
+
+            {/* Starter prompts */}
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {geoSuggestions.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSendMessage({ text: s.text })}
+                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-violet-500/40 hover:bg-violet-500/5 hover:text-zinc-100 transition-all duration-200"
+                  >
+                    {s.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // SEO mode gets a dedicated workflow onboarding panel
+    if (chatMode === 'seo') {
+      return (
+        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
+          <div className="w-full max-w-3xl space-y-6 py-4">
+            <div className="flex justify-center">
+              <ChatModeSelector />
+            </div>
+
+            {/* Hero */}
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">SEO Mode</h1>
+              <p className="text-zinc-400 text-base max-w-xl mx-auto">
+                Data-driven keyword research, competitor intelligence, backlink audits, and technical SEO — every recommendation backed by real DataForSEO and Firecrawl data.
+              </p>
+            </div>
+
+            {/* How it works */}
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-4">
+              <p className="text-xs font-mono uppercase tracking-widest text-emerald-400">How this works</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { step: '1', label: 'Share your domain', detail: 'Drop in your website or a target keyword — we pull live ranking and search data instantly.' },
+                  { step: '2', label: 'Analyze the SERP', detail: 'We check who currently ranks, search volume, difficulty, and intent for your terms.' },
+                  { step: '3', label: 'Find the gaps', detail: 'We compare you against competitors to surface the keyword and content gaps worth chasing.' },
+                  { step: '4', label: 'Build the strategy', detail: 'Get prioritized actions — quick wins first, then the longer-term plays with projected impact.' },
+                ].map(({ step, label, detail }) => (
+                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                    <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* What we cover */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {['Keyword Research', 'Competitor Analysis', 'Backlinks', 'Technical Audit', 'Trends', 'YouTube SEO'].map(pill => (
+                <span key={pill} className="rounded-full border border-zinc-800 bg-zinc-900/40 px-3 py-1.5 text-xs font-medium text-zinc-300">
+                  {pill}
+                </span>
+              ))}
+            </div>
+
+            {/* Chat input */}
+            <div className="w-full">
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSubmit={() => handleSendMessage({ text: input })}
+                disabled={isLoading}
+                placeholder="Share your domain or a keyword to start..."
+                className="bg-transparent"
+              />
+            </div>
+
+            {/* Starter prompts */}
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {seoSuggestions.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSendMessage({ text: s.text })}
+                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-emerald-500/40 hover:bg-emerald-500/5 hover:text-zinc-100 transition-all duration-200"
+                  >
+                    {s.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Content mode gets a dedicated workflow onboarding panel
+    if (chatMode === 'content') {
+      return (
+        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
+          <div className="w-full max-w-3xl space-y-6 py-4">
+            <div className="flex justify-center">
+              <ChatModeSelector />
+            </div>
+
+            {/* Hero */}
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">Content Intelligence</h1>
+              <p className="text-zinc-400 text-base max-w-xl mx-auto">
+                Research-first content that ranks on Google and gets cited by AI answer engines — keyword data, competitor analysis, and quality writing in one workflow.
+              </p>
+            </div>
+
+            {/* How it works */}
+            <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 p-5 space-y-4">
+              <p className="text-xs font-mono uppercase tracking-widest text-sky-400">How this works</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { step: '1', label: 'Choose your topic', detail: 'Tell us what you want to create and the goal — rank, convert, or earn AI citations.' },
+                  { step: '2', label: 'Research the keywords', detail: 'We pull search volume, difficulty, and intent, then study who already ranks.' },
+                  { step: '3', label: 'Generate the content', detail: 'We write SEO and AEO-optimized content with images, structured for featured snippets.' },
+                  { step: '4', label: 'Optimize and refine', detail: 'Quality scoring and a revision pass ensure the piece is ready to publish.' },
+                ].map(({ step, label, detail }) => (
+                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                    <div className="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Content types */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+              {[
+                { label: 'Blog Post', sub: '1000-2500 words' },
+                { label: 'Landing Page', sub: 'conversion-focused' },
+                { label: 'FAQ Page', sub: 'PAA-optimized' },
+                { label: 'Comparison', sub: 'best X / X vs Y' },
+                { label: 'Pillar Page', sub: '3000+ words' },
+              ].map(({ label, sub }) => (
+                <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+                  <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Chat input */}
+            <div className="w-full">
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSubmit={() => handleSendMessage({ text: input })}
+                disabled={isLoading}
+                placeholder="What content do you want to create today?"
+                className="bg-transparent"
+              />
+            </div>
+
+            {/* Starter prompts */}
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {contentSuggestions.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSendMessage({ text: s.text })}
+                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-sky-500/40 hover:bg-sky-500/5 hover:text-zinc-100 transition-all duration-200"
+                  >
+                    {s.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-zinc-950 font-chat", className)}>
-        <div className="w-full max-w-4xl space-y-8">
-          <div className="text-center space-y-3">
+        <div className="w-full max-w-4xl space-y-6">
+          <div className="text-center space-y-2">
             <h1 className="text-4xl md:text-5xl font-semibold text-zinc-100 tracking-tight">Flow Intent</h1>
-            <p className="text-lg md:text-xl text-zinc-500">Your AI-powered SEO and content assistant</p>
+            <p className="text-base md:text-lg text-zinc-500">{modeDescriptions[chatMode]}</p>
+          </div>
+          {/* Mode Selector */}
+          <div className="flex justify-center">
+            <ChatModeSelector />
           </div>
           <div className="w-full max-w-3xl mx-auto">
             <ChatInput
@@ -1032,7 +1368,6 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               className="bg-transparent"
             />
           </div>
-          {/* New Suggestions component in empty state */}
           <div className="max-w-3xl mx-auto">
             <Suggestions
               suggestions={defaultSuggestions}
@@ -1051,20 +1386,32 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       <div className={cn("flex flex-col h-full transition-all duration-500", activeArtifact ? "w-1/2 border-r border-zinc-800" : "w-full")}>
         <Conversation>
           <ConversationContent className="px-4 py-2 max-w-3xl mx-auto">
-            {messages.map((m, idx) => (
-              <AIMessage key={m.id || idx} from={m.role as any}>
-                <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
-                <MessageContent>
-                  {renderMessageContent(m, getMessageText(m), idx === messages.length - 1)}
-                  {/* Only show regenerate button on last assistant message */}
-                  {m.role === 'assistant' && idx === messages.length - 1 && !isLoading && (
-                    <div className="mt-1">
-                      <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
-                    </div>
-                  )}
-                </MessageContent>
-              </AIMessage>
-            ))}
+            {messages.map((m, idx) => {
+              const isLastMsg = idx === messages.length - 1
+              const text = getMessageText(m)
+              const isContentAssistant = chatMode === 'content' && m.role === 'assistant' && text.length > 200
+
+              return (
+                <AIMessage key={m.id || idx} from={m.role as any}>
+                  <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
+                  <MessageContent>
+                    {isContentAssistant ? (
+                      <BlogArtifact
+                        content={text}
+                        isStreaming={isLastMsg && isLoading}
+                      />
+                    ) : (
+                      renderMessageContent(m, text, isLastMsg)
+                    )}
+                    {m.role === 'assistant' && isLastMsg && !isLoading && !isContentAssistant && (
+                      <div className="mt-1">
+                        <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
+                      </div>
+                    )}
+                  </MessageContent>
+                </AIMessage>
+              )
+            })}
             {isLoading && (
               <AIMessage from="assistant">
                 <MessageAvatar isUser={false} name="AI" />
@@ -1076,16 +1423,15 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 </MessageContent>
               </AIMessage>
             )}
-            
+
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
 
         <div className="p-4">
           <div className="max-w-3xl mx-auto space-y-3">
-            {/* Convert proactiveSuggestions to new format */}
             {proactiveSuggestions.length > 0 && (
-              <Suggestions 
+              <Suggestions
                 suggestions={proactiveSuggestions.map(s => ({
                   id: s.taskKey,
                   text: s.prompt,
@@ -1098,8 +1444,14 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 title="Suggested next steps"
               />
             )}
+            {/* Mode selector above input */}
+            <div className="flex justify-start">
+              <ChatModeSelector />
+            </div>
             <div className="flex items-center gap-3">
-              <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />
+              <div className="min-w-0 flex-1">
+                <ChatInput value={input} onChange={setInput} onSubmit={() => handleSendMessage({ text: input })} placeholder={placeholder} disabled={isLoading} />
+              </div>
               {isLoading && (
                 <button
                   type="button"

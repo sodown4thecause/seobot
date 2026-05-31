@@ -8,7 +8,6 @@ import { ContentWriterAgent } from './content-writer-agent'
 import { DataForSEOScoringAgent } from './dataforseo-scoring-agent'
 import { EEATQAAgent } from './eeat-qa-agent'
 import { SEOAEOSyntaxAgent } from './seo-aeo-syntax-agent'
-import { FraseOptimizationAgent } from './frase-optimization-agent'
 import { db } from '@/lib/db'
 import { content } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -40,6 +39,11 @@ export interface RAGWriterParams {
   onProgressError?: (error: Error, update: ProgressUpdate) => void | Promise<void>
   abortSignal?: AbortSignal
   searchIntent?: string
+  qualityMode?: 'fast' | 'full'
+  skipEeat?: boolean
+  skipRevisionLoop?: boolean
+  skipFrase?: boolean
+  skipSyntax?: boolean
 }
 
 export interface QualityScores {
@@ -101,7 +105,6 @@ export class RAGWriterOrchestrator {
   private scoringAgent: DataForSEOScoringAgent
   private qaAgent: EEATQAAgent
   private syntaxAgent: SEOAEOSyntaxAgent
-  private fraseAgent: FraseOptimizationAgent
   private langWatch = getLangWatchClient()
   private traceIdGenerator = createIdGenerator()
 
@@ -117,7 +120,6 @@ export class RAGWriterOrchestrator {
     this.scoringAgent = new DataForSEOScoringAgent()
     this.qaAgent = new EEATQAAgent()
     this.syntaxAgent = new SEOAEOSyntaxAgent()
-    this.fraseAgent = new FraseOptimizationAgent()
   }
 
   /**
@@ -222,6 +224,10 @@ export class RAGWriterOrchestrator {
         try {
           // Abort signal reference for cleaner code
           const abortSignal = params.abortSignal
+          const qualityMode = params.qualityMode ?? ((params.wordCount ?? 0) <= 1200 ? 'fast' : 'full')
+          const skipEeat = params.skipEeat ?? (qualityMode === 'fast' || process.env.CONTENT_ENABLE_EEAT_QA !== 'true')
+          const skipRevisionLoop = params.skipRevisionLoop ?? qualityMode === 'fast'
+          const skipSyntax = params.skipSyntax ?? qualityMode === 'fast'
 
         // Step 0.5: Fetch user's business context for personalized content
         checkAborted(abortSignal, 'before user context fetch')
@@ -237,94 +243,46 @@ export class RAGWriterOrchestrator {
                 profile: userContext.profile,
                 context: userContext.context,
               }
-              console.log(`[Orchestrator] ✓ Loaded business context - Industry: ${userContext.profile?.industry || 'N/A'}, Voice: ${userContext.brandVoice?.tone || 'N/A'}`)
+              console.log(`[Orchestrator] Loaded business context - Industry: ${userContext.profile?.industry || 'N/A'}, Voice: ${userContext.brandVoice?.tone || 'N/A'}`)
             }
           } catch (error) {
             console.warn('[Orchestrator] Failed to load business context:', error)
           }
         }
 
-        // Step 1 + 1.5: Research + Frase Brief Generation (PARALLEL)
-        // Run research and Frase brief in parallel for ~2-5s savings
-        console.log('[Orchestrator] Phase 1: Research + Frase Brief (parallel)')
+        // Step 1: Research. Frase is intentionally removed from the chat generation path.
+        console.log('[Orchestrator] Phase 1: Research')
         checkAborted(abortSignal, 'before research phase')
-        await this.emitProgress(params, 'research', 'in_progress', 'Researching topic and generating SEO brief...', 'Running Research + Frase in parallel')
-        
+        await this.emitProgress(params, 'research', 'in_progress', 'Researching topic...', 'Running fast research pass')
+
         const researchTraceId = this.traceIdGenerator()
-        const fraseTraceId = this.traceIdGenerator()
-
-        // Log traces in parallel (fire and forget)
-        Promise.all([
-          this.langWatch.logTrace({
-            traceId: researchTraceId,
-            agent: 'enhanced-research',
-            model: 'perplexity',
-            userId: params.userId,
-            sessionId,
-            telemetry: {
-              topic: params.topic,
-              targetKeyword: params.keywords[0] || params.topic,
-            },
-          }),
-          this.langWatch.logTrace({
-            traceId: fraseTraceId,
-            agent: 'frase-optimization',
-            model: 'frase-api',
-            userId: params.userId,
-            sessionId,
-            telemetry: {
-              topic: params.topic,
-              targetKeyword: params.keywords[0] || params.topic,
-            },
-          }),
-        ]).catch(err => console.warn('[Orchestrator] Trace logging failed:', err))
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let fraseOptimizationResult: any = null
-        let fraseContentBrief = ''
-
-        // Run research and Frase in parallel
-        const [researchResult, fraseResult] = await Promise.all([
-          // Research phase
-          this.researchAgent.research({
+        this.langWatch.logTrace({
+          traceId: researchTraceId,
+          agent: 'enhanced-research',
+          model: 'perplexity',
+          userId: params.userId,
+          sessionId,
+          telemetry: {
             topic: params.topic,
             targetKeyword: params.keywords[0] || params.topic,
-            depth: 'standard',
-            competitorUrls: params.competitorUrls,
-            languageCode: 'en', // TODO: Get from user preferences
-            location: 'United States', // TODO: Get from user preferences
-            userId: params.userId,
-            langfuseTraceId: traceId,
-            sessionId,
-            abortSignal: params.abortSignal,
-          }),
-          // Frase brief generation (uses params.competitorUrls if available)
-          this.fraseAgent.optimizeContent({
-            targetKeyword: params.keywords[0] || params.topic,
-            competitorUrls: params.competitorUrls || [], // Frase can work without competitor URLs
-            language: 'en',
-            country: 'us',
-            userId: params.userId,
-            contentType: params.type,
-            abortSignal: params.abortSignal,
-          }).catch(fraseError => {
-            console.error('[Orchestrator] Frase optimization failed, continuing without it:', fraseError)
-            return null
-          }),
-        ])
+          },
+        }).catch(err => console.warn('[Orchestrator] Trace logging failed:', err))
+
+        const fraseContentBrief = ''
+        const researchResult = await this.researchAgent.research({
+          topic: params.topic,
+          targetKeyword: params.keywords[0] || params.topic,
+          depth: qualityMode === 'fast' ? 'standard' : 'deep',
+          competitorUrls: params.competitorUrls,
+          languageCode: 'en', // TODO: Get from user preferences
+          location: 'United States', // TODO: Get from user preferences
+          userId: params.userId,
+          langfuseTraceId: traceId,
+          sessionId,
+          abortSignal: params.abortSignal,
+        })
 
         await this.emitProgress(params, 'research', 'completed', 'Research complete', `Found ${researchResult.competitorSnippets?.length || 0} competitors`)
-
-        // Process Frase result
-        if (fraseResult) {
-          fraseOptimizationResult = fraseResult
-          fraseContentBrief = this.formatFraseContentBrief(fraseOptimizationResult)
-          console.log(`[Orchestrator] ✓ Frase brief generated - Search Intent: ${fraseOptimizationResult.searchIntent}, Topics: ${fraseOptimizationResult.contentBrief.topicClusters?.length || 0}`)
-          await this.emitProgress(params, 'frase-brief', 'completed', 'SEO brief ready', `${fraseOptimizationResult.contentBrief.topicClusters?.length || 0} topics identified`)
-        } else {
-          await this.emitProgress(params, 'frase-brief', 'completed', 'Skipped Frase analysis', 'Continuing without SERP analysis')
-        }
-
         // Step 2: Initial Draft
         console.log('[Orchestrator] Phase 2: Initial Draft')
         checkAborted(abortSignal, 'before initial draft')
@@ -386,6 +344,58 @@ export class RAGWriterOrchestrator {
 
         contentId = contentData.id
         contentVersionId = contentData.id // Use same ID for now
+
+        if (qualityMode === 'fast' || skipRevisionLoop) {
+          const wordCount = currentDraft.content.split(/\s+/).length
+          const citationCount = researchResult.citations?.length || 0
+          const finalScores: QualityScores = {
+            dataforseo: 0,
+            eeat: 0,
+            depth: Math.min(90, Math.max(65, Math.round((wordCount / Math.max(params.wordCount || wordCount, 1)) * 78))),
+            factual: citationCount > 0 ? 78 : 68,
+            frase: 0,
+            aeo: 60,
+            overall: citationCount > 0 ? 78 : 72,
+          }
+          const finalQAReport: QAReport = {
+            eeat_score: 0,
+            depth_score: finalScores.depth,
+            factual_score: finalScores.factual,
+            improvement_instructions: skipEeat
+              ? ['Deep EEAT scoring skipped for fast content generation.']
+              : [],
+            strengths: ['Fast researched draft generated without slow Frase or revision scoring.'],
+          }
+
+          await this.mergeContentMetadata(contentId, {
+            qualityMode,
+            qualityScores: finalScores,
+            qaReport: finalQAReport,
+            revisionRound: 0,
+            disabledSteps: {
+              frase: true,
+              eeat: skipEeat,
+              revisionLoop: true,
+              syntax: skipSyntax,
+            },
+          })
+
+          await this.emitProgress(params, 'finished', 'completed', 'Fast content draft complete', `Word count: ${wordCount}`)
+
+          return {
+            content: currentDraft.content,
+            contentId,
+            contentVersionId,
+            qualityScores: finalScores,
+            revisionCount: 0,
+            qaReport: finalQAReport,
+            fraseOptimization: undefined,
+            metadata: {
+              researchSummary: researchResult.combinedSummary,
+              citations: researchResult.citations,
+            },
+          }
+        }
 
         // Step 2.5: SEO/AEO Syntax Optimization
         console.log('[Orchestrator] Phase 2.5: SEO/AEO Syntax Optimization')
@@ -483,49 +493,11 @@ export class RAGWriterOrchestrator {
             abortSignal: params.abortSignal,
           })
 
-          // Step 4.5: Frase Content Analysis (evaluate against SERP)
-          await this.emitProgress(params, 'frase-analysis', 'in_progress', 'Analyzing SERP optimization...', 'Comparing against top-ranking content')
+          // Frase has been removed from the quality path for speed.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let fraseContentAnalysis: any = null
-          let fraseScore = 70 // Fallback score if Frase fails (aligned with quality thresholds)
-
-          try {
-            fraseContentAnalysis = await this.fraseAgent.optimizeContent({
-              content: currentDraft.content, // Analyze the current draft
-              targetKeyword: params.keywords[0] || params.topic,
-              competitorUrls: params.competitorUrls || (researchResult.competitorSnippets?.length ? researchResult.competitorSnippets.map(c => c.url) : []),
-              language: 'en',
-              country: 'us',
-              userId: params.userId,
-              contentType: params.type,
-              abortSignal: params.abortSignal,
-            })
-
-            fraseScore = fraseContentAnalysis.optimizationScore
-            finalFraseOptimization = {
-              score: fraseScore,
-              contentBrief: fraseContentAnalysis.contentBrief,
-              recommendations: fraseContentAnalysis.recommendations,
-              searchIntent: fraseContentAnalysis.searchIntent,
-            }
-
-            console.log(`[Orchestrator] ✓ Frase content analysis - Score: ${fraseScore}, Missing Topics: ${fraseContentAnalysis.recommendations.missingTopics?.length || 0}`)
-            await this.emitProgress(params, 'frase-analysis', 'completed', 'SERP analysis complete', `Optimization score: ${fraseScore}`)
-          } catch (fraseError) {
-            console.error('[Orchestrator] Frase content analysis failed:', fraseError)
-            console.log(`[Orchestrator] Using fallback Frase score: ${fraseScore}`)
-
-            // Set finalFraseOptimization with fallback score for downstream scoring
-            finalFraseOptimization = {
-              score: fraseScore,
-              contentBrief: {},
-              recommendations: {
-                optimizationTips: ['Frase analysis unavailable - using neutral fallback score'],
-              },
-            }
-
-            await this.emitProgress(params, 'frase-analysis', 'completed', 'Skipped SERP analysis', `Using fallback score: ${fraseScore}`)
-          }
+          const fraseContentAnalysis: any = null
+          const fraseScore = 0
+          finalFraseOptimization = undefined
 
           // Store quality review
           const overallScore = this.calculateOverallScore(

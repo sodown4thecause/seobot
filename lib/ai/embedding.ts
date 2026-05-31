@@ -15,7 +15,9 @@ import { serverEnv } from '@/lib/config/env'
  * 1536 dimensions, cost-effective ($0.02/M tokens) and high performance
  * Uses Vercel AI Gateway for routing/caching/monitoring
  */
-const embeddingModel = vercelGateway.textEmbeddingModel('openai/text-embedding-3-small')
+function getEmbeddingModel() {
+  return vercelGateway.textEmbeddingModel('openai/text-embedding-3-small')
+}
 
 /**
  * Configuration for embedding generation
@@ -87,7 +89,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     const result = await withRetry(
       async () =>
         embed({
-          model: embeddingModel,
+          model: getEmbeddingModel(),
           value: sanitizedText,
         }),
       'generateEmbedding'
@@ -130,7 +132,7 @@ export async function generateEmbeddings(
           const result = await withRetry(
             async () =>
               embed({
-                model: embeddingModel,
+                model: getEmbeddingModel(),
                 value: text,
               }),
             `generateEmbeddings[${index}]`

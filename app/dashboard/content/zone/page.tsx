@@ -44,9 +44,9 @@ function parseSseEventChunk(chunk: string): { event?: string; data?: string } {
 }
 
 export default function ContentZonePage() {
-  const { data: session, isPending } = authClient.useSession()
+  const { data: session } = authClient.useSession()
   const user = session?.user ?? null
-  const isLoaded = !isPending
+  const isLoaded = !!session
 
   const [topic, setTopic] = useState('')
   const [primaryKeyword, setPrimaryKeyword] = useState('')

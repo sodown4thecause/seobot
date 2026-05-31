@@ -29,11 +29,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Use Gemini 2.5 Flash Image via Vercel AI Gateway or direct Google
+    // Use Gemini 3 Pro Image via Vercel AI Gateway or direct Google.
     const model = gateway
-      ? gateway('google/gemini-2.5-flash-image')
+      ? gateway('google/gemini-3-pro-image')
       : google
-        ? google('gemini-2.5-flash-image')
+        ? google('gemini-3-pro-image')
         : null
 
     if (model) {

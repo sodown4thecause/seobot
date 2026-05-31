@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const validateEventMock = vi.fn()
 const eqMock = vi.fn()
-const orMock = vi.fn()
 const whereMock = vi.fn()
 const setMock = vi.fn(() => ({ where: whereMock }))
 const updateMock = vi.fn(() => ({ set: setMock }))
@@ -21,23 +20,13 @@ vi.mock('@/lib/db', () => ({
 
 vi.mock('@/lib/db/schema', () => ({
   users: {
-    clerkId: 'clerkId',
     betterAuthId: 'betterAuthId',
     polarSubscriptionId: 'polarSubscriptionId',
   },
 }))
 
-vi.mock('@/lib/auth-schema', () => ({
-  user: {
-    id: 'authUserId',
-    subscriptionStatus: 'authSubscriptionStatus',
-    updatedAt: 'authUpdatedAt',
-  },
-}))
-
 vi.mock('drizzle-orm', () => ({
   eq: eqMock,
-  or: orMock,
 }))
 
 describe('Polar webhook route', () => {
@@ -45,7 +34,6 @@ describe('Polar webhook route', () => {
     vi.resetModules()
     validateEventMock.mockReset()
     eqMock.mockReset()
-    orMock.mockReset()
     whereMock.mockReset()
     setMock.mockClear()
     updateMock.mockClear()
@@ -53,8 +41,6 @@ describe('Polar webhook route', () => {
   })
 
   it('updates subscriptions by Better Auth ID when metadata contains the auth user id', async () => {
-    orMock.mockReturnValue('better-auth-or-clerk-match')
-
     validateEventMock.mockReturnValue({
       type: 'subscription.updated',
       data: {
@@ -80,8 +66,5 @@ describe('Polar webhook route', () => {
 
     expect(response.status).toBe(200)
     expect(eqMock).toHaveBeenCalledWith('betterAuthId', 'user_123')
-    expect(eqMock).toHaveBeenCalledWith('clerkId', 'user_123')
-    expect(eqMock).toHaveBeenCalledWith('authUserId', 'user_123')
-    expect(whereMock).toHaveBeenCalledWith('better-auth-or-clerk-match')
   })
 })

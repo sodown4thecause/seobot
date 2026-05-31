@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,17 +17,11 @@ import { authClient } from '@/lib/auth-client'
 export default function CampaignsPage() {
     const router = useRouter()
     const { state, actions } = useAgent()
-    const { data: session, isPending } = authClient.useSession()
+    const { data: session } = authClient.useSession()
     const user = session?.user ?? null
-    const isLoaded = !isPending
+    const isLoaded = !!session
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-
-    useEffect(() => {
-        if (isLoaded && !user) {
-            router.push('/sign-in')
-        }
-    }, [isLoaded, router, user])
 
     const workflows = getAllWorkflows()
 
@@ -46,7 +40,7 @@ export default function CampaignsPage() {
 
     const handleStartCampaign = async (workflow: Workflow) => {
         if (!isLoaded || !user) {
-            router.push('/sign-in')
+            router.push('/login')
             return
         }
 
@@ -68,10 +62,6 @@ export default function CampaignsPage() {
                 <div className="animate-pulse text-gray-400">Loading...</div>
             </div>
         )
-    }
-
-    if (!user) {
-        return null
     }
 
     return (

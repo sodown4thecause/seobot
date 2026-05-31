@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Rytr Content Generation API
  * 
  * Generates SEO-optimized content using Rytr AI
@@ -21,6 +21,8 @@ import {
   type RytrTone,
   type RytrUseCase,
 } from '@/lib/external-apis/rytr'
+
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
@@ -134,4 +136,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-

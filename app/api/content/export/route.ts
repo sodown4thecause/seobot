@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Content Export API
  *
  * Exports generated content in multiple formats:
@@ -11,6 +11,8 @@
 import { NextRequest } from 'next/server'
 import { getUserId } from '@/lib/auth'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
+
+export const runtime = 'nodejs'
 
 interface ExportRequest {
   content: string

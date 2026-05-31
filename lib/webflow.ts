@@ -61,6 +61,14 @@ function getApiToken(): string {
   return token
 }
 
+function hasWebflowConfig(type: 'blog' | 'case-studies'): boolean {
+  const collectionId = type === 'blog'
+    ? serverEnv.WEBFLOW_BLOG_ID
+    : serverEnv.WEBFLOW_CASESTUDIES_ID
+
+  return Boolean(serverEnv.WEBFLOW_API_TOKEN && collectionId)
+}
+
 function getCollectionId(type: 'blog' | 'case-studies'): string {
   if (type === 'blog') {
     const id = serverEnv.WEBFLOW_BLOG_ID
@@ -155,6 +163,11 @@ function mapCaseStudy(item: WebflowCollectionItem): CaseStudy {
 }
 
 export async function getBlogPosts(revalidateSeconds = 300): Promise<BlogPost[]> {
+  if (!hasWebflowConfig('blog')) {
+    console.warn('[Webflow] Blog CMS is not configured; returning no posts.')
+    return []
+  }
+
   const collectionId = getCollectionId('blog')
   const items: BlogPost[] = []
   let offset = 0
@@ -174,6 +187,11 @@ export async function getBlogPosts(revalidateSeconds = 300): Promise<BlogPost[]>
 }
 
 export async function getBlogPost(slug: string, revalidateSeconds = 300): Promise<BlogPost | null> {
+  if (!hasWebflowConfig('blog')) {
+    console.warn(`[Webflow] Blog CMS is not configured; skipping post lookup for ${slug}.`)
+    return null
+  }
+
   const collectionId = getCollectionId('blog')
   const data = await webflowFetch<WebflowCollectionItemsResponse>(
     `/collections/${collectionId}/items/live?slug=${encodeURIComponent(slug)}&limit=1`,
@@ -186,6 +204,11 @@ export async function getBlogPost(slug: string, revalidateSeconds = 300): Promis
 }
 
 export async function getCaseStudies(revalidateSeconds = 300): Promise<CaseStudy[]> {
+  if (!hasWebflowConfig('case-studies')) {
+    console.warn('[Webflow] Case studies CMS is not configured; returning no case studies.')
+    return []
+  }
+
   const collectionId = getCollectionId('case-studies')
   const items: CaseStudy[] = []
   let offset = 0
@@ -205,6 +228,11 @@ export async function getCaseStudies(revalidateSeconds = 300): Promise<CaseStudy
 }
 
 export async function getCaseStudy(slug: string, revalidateSeconds = 300): Promise<CaseStudy | null> {
+  if (!hasWebflowConfig('case-studies')) {
+    console.warn(`[Webflow] Case studies CMS is not configured; skipping case study lookup for ${slug}.`)
+    return null
+  }
+
   const collectionId = getCollectionId('case-studies')
   const data = await webflowFetch<WebflowCollectionItemsResponse>(
     `/collections/${collectionId}/items/live?slug=${encodeURIComponent(slug)}&limit=1`,

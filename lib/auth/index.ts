@@ -1,7 +1,7 @@
 /**
  * Better Auth Server Utilities
  *
- * Replaces lib/auth/clerk.ts with Better Auth equivalents.
+ * Shared Better Auth helpers for server routes and components.
  * Provides server-side auth helpers for API routes and server components.
  */
 

@@ -1,6 +1,8 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth'
 import { analyzeRankedKeywords, compareKeywordProfiles } from '@/lib/services/dataforseo/ranked-keywords-analysis'
+
+export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {

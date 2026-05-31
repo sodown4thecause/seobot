@@ -314,9 +314,9 @@ const AgentContext = createContext<{
 // Provider component
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(agentReducer, initialState)
-  const { data: session, isPending } = authClient.useSession()
+  const { data: session, isPending: isSessionPending } = authClient.useSession()
   const user = session?.user ?? null
-  const isLoaded = !isPending
+  const isLoaded = !isSessionPending
 
   // Initialize with default agent
   useEffect(() => {

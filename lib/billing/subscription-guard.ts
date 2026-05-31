@@ -7,11 +7,10 @@
 
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { eq, or } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth-config'
-import { user as authUsers } from '@/lib/auth-schema'
 import { headers } from 'next/headers'
 import { isSubscriptionActive, type SubscriptionStatus } from './subscription-status'
 import { isAdminEmail } from '@/lib/auth/admin'
@@ -20,7 +19,7 @@ export interface SubscriptionCheckResult {
   hasSubscription: boolean
   status: SubscriptionStatus
   userId: string | null
-  clerkId: string | null
+  authUserId: string | null
   polarSubscriptionId: string | null
   currentPeriodEnd: Date | null
 }
@@ -30,26 +29,26 @@ export interface SubscriptionCheckResult {
  * Returns detailed subscription information without redirecting
  */
 export async function checkSubscription(
-  userId: string | null | undefined,
+  authUserId: string | null | undefined,
   email?: string | null
 ): Promise<SubscriptionCheckResult> {
   if (isAdminEmail(email)) {
     return {
       hasSubscription: true,
       status: 'active',
-      userId: userId ?? null,
-      clerkId: userId ?? null,
+      userId: null,
+      authUserId: authUserId ?? null,
       polarSubscriptionId: null,
       currentPeriodEnd: null,
     }
   }
 
-  if (!userId) {
+  if (!authUserId) {
     return {
       hasSubscription: false,
       status: null,
       userId: null,
-      clerkId: null,
+      authUserId: null,
       polarSubscriptionId: null,
       currentPeriodEnd: null,
     }
@@ -59,62 +58,36 @@ export async function checkSubscription(
     const [user] = await db
       .select({
         id: users.id,
-        clerkId: users.clerkId,
+        authUserId: users.betterAuthId,
         subscriptionStatus: users.subscriptionStatus,
         polarSubscriptionId: users.polarSubscriptionId,
         currentPeriodEnd: users.currentPeriodEnd,
       })
       .from(users)
-      .where(or(
-        eq(users.betterAuthId, userId),
-        eq(users.clerkId, userId),
-        ...(email ? [eq(users.email, email)] : []),
-      ))
+      .where(eq(users.betterAuthId, authUserId))
       .limit(1)
 
-    if (user) {
-      const status = user.subscriptionStatus as SubscriptionStatus
-      const hasSubscription = isSubscriptionActive(status)
-
-      return {
-        hasSubscription,
-        status,
-        userId: user.id,
-        clerkId: user.clerkId,
-        polarSubscriptionId: user.polarSubscriptionId,
-        currentPeriodEnd: user.currentPeriodEnd,
-      }
-    }
-
-    const [authUser] = await db
-      .select({
-        id: authUsers.id,
-        subscriptionStatus: authUsers.subscriptionStatus,
-      })
-      .from(authUsers)
-      .where(eq(authUsers.id, userId))
-      .limit(1)
-
-    if (!authUser) {
+    if (!user) {
       return {
         hasSubscription: false,
         status: null,
         userId: null,
-        clerkId: userId,
+        authUserId,
         polarSubscriptionId: null,
         currentPeriodEnd: null,
       }
     }
 
-    const status = authUser.subscriptionStatus as SubscriptionStatus
+    const status = user.subscriptionStatus as SubscriptionStatus
+    const hasSubscription = isSubscriptionActive(status)
 
     return {
-      hasSubscription: isSubscriptionActive(status),
+      hasSubscription,
       status,
-      userId: authUser.id,
-      clerkId: userId,
-      polarSubscriptionId: null,
-      currentPeriodEnd: null,
+      userId: user.id,
+      authUserId: user.authUserId,
+      polarSubscriptionId: user.polarSubscriptionId,
+      currentPeriodEnd: user.currentPeriodEnd,
     }
   } catch (error) {
     console.error('[Subscription Guard] Error checking subscription:', error)
@@ -123,7 +96,7 @@ export async function checkSubscription(
       hasSubscription: false,
       status: null,
       userId: null,
-      clerkId: userId,
+      authUserId,
       polarSubscriptionId: null,
       currentPeriodEnd: null,
     }
@@ -142,7 +115,7 @@ export async function requireSubscription(
   })
 
   if (!session?.user?.id) {
-    redirect('/sign-in?redirect_url=' + encodeURIComponent(redirectTo))
+    redirect('/login?redirect_url=' + encodeURIComponent(redirectTo))
   }
 
   const result = await checkSubscription(session.user.id, session.user.email)

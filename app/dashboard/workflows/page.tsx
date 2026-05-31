@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertCircle } from 'lucide-react'
 import { QuickStartGrid } from '@/components/dashboard/quick-start-grid'
@@ -13,16 +13,10 @@ import { authClient } from '@/lib/auth-client'
 export default function WorkflowsPage() {
     const router = useRouter()
     const { state, actions } = useAgent()
-    const { data: session, isPending } = authClient.useSession()
+    const { data: session } = authClient.useSession()
     const user = session?.user ?? null
-    const isLoaded = !isPending
+    const isLoaded = !!session
     const [launchError, setLaunchError] = useState<string | null>(null)
-
-    useEffect(() => {
-        if (isLoaded && !user) {
-            router.push('/sign-in')
-        }
-    }, [isLoaded, router, user])
 
     // Create a fresh conversation, then navigate with workflow query param.
     // The dashboard chat picks up ?workflow= and auto-sends the guided prompt.
@@ -30,7 +24,7 @@ export default function WorkflowsPage() {
         setLaunchError(null)
 
         if (!isLoaded || !user) {
-            router.push('/sign-in')
+            router.push('/login')
             return
         }
 
@@ -57,10 +51,6 @@ export default function WorkflowsPage() {
                 <div className="animate-pulse text-gray-400">Loading...</div>
             </div>
         )
-    }
-
-    if (!user) {
-        return null
     }
 
     return (

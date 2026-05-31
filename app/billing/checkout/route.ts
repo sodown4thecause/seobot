@@ -1,11 +1,10 @@
 import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { Polar } from '@polar-sh/sdk'
 import { OFFICIAL_POLAR_CHECKOUT_URL } from '@/lib/billing/pricing'
 
 export async function GET(request: NextRequest) {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await auth.api.getSession({ headers: request.headers })
   const userId = session?.user?.id
 
   if (!userId) {
@@ -13,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!session?.user) {
-    return NextResponse.redirect(new URL('/sign-in', request.url))
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   const checkoutUrl = new URL(OFFICIAL_POLAR_CHECKOUT_URL)

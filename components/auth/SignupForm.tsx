@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { authClient } from '@/lib/auth-client'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import Link from 'next/link'
+import { GoogleAuthButton } from './GoogleAuthButton'
 
 export default function SignupForm() {
   const [name, setName] = useState('')
@@ -11,7 +12,6 @@ export default function SignupForm() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [googleLoading, setGoogleLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,26 +30,7 @@ export default function SignupForm() {
       return
     }
 
-    window.location.href = getPostAuthURL()
-  }
-
-  const handleGoogleSignUp = async () => {
-    setError('')
-    setGoogleLoading(true)
-
-    const callbackURL = getPostAuthURL()
-
-    const { error: signUpError } = await authClient.signIn.social({
-      provider: 'google',
-      callbackURL,
-      errorCallbackURL: '/signup',
-      newUserCallbackURL: callbackURL,
-    })
-
-    if (signUpError) {
-      setError(signUpError.message || 'Google sign up failed')
-      setGoogleLoading(false)
-    }
+    window.location.href = '/dashboard'
   }
 
   return (
@@ -58,22 +39,9 @@ export default function SignupForm() {
         <CardTitle className="text-2xl text-zinc-100">Create an account</CardTitle>
         <CardDescription className="text-zinc-400">Start your SEO journey today.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 pt-4">
-        <div className="space-y-4">
-          {error && (
-            <p className="text-sm text-red-400 text-center">{error}</p>
-          )}
-          <button
-            type="button"
-            onClick={handleGoogleSignUp}
-            disabled={loading || googleLoading}
-            className="w-full bg-zinc-950 border border-zinc-700 text-white hover:bg-zinc-900 font-black uppercase tracking-wider rounded-none text-sm h-12 disabled:opacity-50 flex items-center justify-center gap-3"
-          >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-sm font-black text-black">
-              G
-            </span>
-            {googleLoading ? 'Connecting...' : 'Sign up with Google'}
-          </button>
+      <CardContent className="pt-4">
+        <div className="mb-5 space-y-5">
+          <GoogleAuthButton label="Sign up with Google" />
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-zinc-800" />
             <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">or</span>
@@ -81,6 +49,9 @@ export default function SignupForm() {
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <p className="text-sm text-red-400 text-center">{error}</p>
+          )}
           <div className="space-y-2">
             <label className="text-zinc-400 uppercase text-xs tracking-wider font-medium">
               Name
@@ -123,7 +94,7 @@ export default function SignupForm() {
           </div>
           <button
             type="submit"
-            disabled={loading || googleLoading}
+            disabled={loading}
             className="w-full bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-wider rounded-none text-sm h-12 disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Sign up'}
@@ -140,19 +111,4 @@ export default function SignupForm() {
       </CardFooter>
     </Card>
   )
-}
-
-function getPostAuthURL() {
-  if (typeof window === 'undefined') return '/dashboard'
-
-  const redirectURL = new URLSearchParams(window.location.search).get('redirect_url')
-  if (!redirectURL) return '/dashboard'
-
-  try {
-    const parsed = new URL(redirectURL, window.location.origin)
-    if (parsed.origin !== window.location.origin) return '/dashboard'
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`
-  } catch {
-    return '/dashboard'
-  }
 }

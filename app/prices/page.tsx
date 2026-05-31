@@ -24,7 +24,9 @@ interface PricesPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default async function PricesPage({ searchParams }: PricesPageProps) {
+export default async function PricesPage({
+  searchParams = Promise.resolve({}),
+}: Partial<PricesPageProps> = {}) {
   const session = await auth.api.getSession({ headers: await headers() })
   const userId = session?.user?.id
   const params = await searchParams
