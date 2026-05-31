@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Validate content for SEO
-    const validation = await validateContentForSEO(text)
+    const validation = await validateContentForSEO(text, checkAi)
 
     console.log('[Content Validation] Validation complete:', {
       isValid: validation.isValid,
