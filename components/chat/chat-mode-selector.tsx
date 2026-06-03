@@ -2,28 +2,14 @@
 
 import { Search, Brain, PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { type ChatMode, useChatModeOptional } from './chat-mode-context'
+import { CHAT_MODE_LIST, getChatModeAccentClasses, type ChatMode } from '@/lib/chat/modes'
+import { useChatModeOptional } from './chat-mode-context'
 
-const MODES: { id: ChatMode; label: string; icon: React.ElementType; description: string }[] = [
-  {
-    id: 'seo',
-    label: 'SEO Mode',
-    icon: Search,
-    description: 'Keyword research, SERP analysis & technical SEO',
-  },
-  {
-    id: 'geo',
-    label: 'GEO / AEO',
-    icon: Brain,
-    description: 'Track brand mentions across ChatGPT, Gemini, Perplexity & AI Overviews',
-  },
-  {
-    id: 'content',
-    label: 'Content Mode',
-    icon: PenLine,
-    description: 'Generate blog posts, articles & content with AI-powered images',
-  },
-]
+const MODE_ICONS: Record<ChatMode, React.ElementType> = {
+  seo: Search,
+  geo: Brain,
+  content: PenLine,
+}
 
 interface ChatModeSelectorProps {
   className?: string
@@ -34,15 +20,16 @@ export function ChatModeSelector({ className }: ChatModeSelectorProps) {
 
   return (
     <div className={cn('flex items-center gap-1 p-1 rounded-xl bg-zinc-900 border border-zinc-800', className)}>
-      {MODES.map((mode) => {
-        const Icon = mode.icon
+      {CHAT_MODE_LIST.map((mode) => {
+        const Icon = MODE_ICONS[mode.id]
         const isActive = chatMode === mode.id
+        const accent = getChatModeAccentClasses(mode.id)
         return (
           <button
             key={mode.id}
             type="button"
             onClick={() => setChatMode(mode.id)}
-            title={mode.description}
+            title={mode.selectorDescription}
             className={cn(
               'relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
               isActive
@@ -50,16 +37,21 @@ export function ChatModeSelector({ className }: ChatModeSelectorProps) {
                 : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
             )}
           >
-            <Icon className={cn('h-3.5 w-3.5 shrink-0', isActive && mode.id === 'seo' && 'text-emerald-400', isActive && mode.id === 'geo' && 'text-violet-400', isActive && mode.id === 'content' && 'text-amber-400')} />
-            <span className="hidden sm:inline">{mode.label}</span>
-            <span className="sm:hidden text-xs">{mode.label.split(' ')[0]}</span>
+            <Icon
+              className={cn(
+                'h-3.5 w-3.5 shrink-0',
+                isActive && accent.selectorActiveIcon
+              )}
+            />
+            <span className="hidden sm:inline">{mode.selectorLabel}</span>
+            <span className="sm:hidden text-xs">{mode.selectorLabel.split(' ')[0]}</span>
             {isActive && (
-              <span className={cn(
-                'absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full',
-                mode.id === 'seo' && 'bg-emerald-400',
-                mode.id === 'geo' && 'bg-violet-400',
-                mode.id === 'content' && 'bg-amber-400',
-              )} />
+              <span
+                className={cn(
+                  'absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full',
+                  accent.selectorDot
+                )}
+              />
             )}
           </button>
         )

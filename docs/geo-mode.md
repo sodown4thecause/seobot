@@ -61,7 +61,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/week
 curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/weekly-geo-research
 ```
 
-Then use the chat selector to test SEO, GEO / AEO, and Content Intelligence modes. Each mode should retrieve only matching RAG rows unless the user explicitly asks for cross-mode comparison.
+Then use the chat selector to test SEO Mode, GEO / AEO Mode, and Content Mode. Each mode should retrieve only matching RAG rows unless the user explicitly asks for cross-mode comparison.
 
 Run an authenticated GEO prompt manually:
 

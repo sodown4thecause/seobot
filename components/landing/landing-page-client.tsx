@@ -185,6 +185,21 @@ export function LandingPageClient() {
             <p className="text-zinc-400 text-lg leading-relaxed">
               Most SEO tools give you data. Flow Intent gives you an AI assistant that thinks in three distinct modes — SEO, GEO/AEO, and Content — each purpose-built for a different job.
             </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+              <Link
+                href="/sign-up"
+                className="inline-flex items-center gap-2 border border-white bg-white px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-black transition-colors hover:bg-zinc-200"
+              >
+                Open the platform
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/reddit-gap"
+                className="inline-flex items-center gap-2 border border-white/20 px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition-colors hover:border-white hover:bg-white/5"
+              >
+                Try free Reddit audit
+              </Link>
+            </div>
           </motion.div>
         </div>
       </section>

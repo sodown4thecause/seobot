@@ -27,6 +27,7 @@ import { BacklinkArtifact } from './artifacts/backlink-artifact'
 import { BlogArtifact } from './artifacts/blog-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
 import { useChatModeOptional } from './chat-mode-context'
+import { getChatModeAccentClasses, getChatModeUi } from '@/lib/chat/modes'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // AI Elements Imports
@@ -1090,11 +1091,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     const modeMap = { seo: seoSuggestions, geo: geoSuggestions, content: contentSuggestions }
     const defaultSuggestions = modeMap[chatMode] ?? seoSuggestions
 
-    const modeDescriptions = {
-      seo: 'Keyword research, SERP analysis & technical SEO',
-      geo: 'Track brand visibility across AI platforms & overviews',
-      content: 'Generate blog posts & articles with AI-powered images',
-    }
+    const activeModeUi = getChatModeUi(chatMode)
 
     // GEO mode gets a dedicated workflow onboarding panel
     if (chatMode === 'geo') {
@@ -1263,6 +1260,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
     // Content mode gets a dedicated workflow onboarding panel
     if (chatMode === 'content') {
+      const contentUi = getChatModeUi('content')
+      const contentAccent = getChatModeAccentClasses('content')
       return (
         <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
           <div className="w-full max-w-3xl space-y-6 py-4">
@@ -1272,15 +1271,13 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
             {/* Hero */}
             <div className="text-center space-y-2">
-              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">Content Intelligence</h1>
-              <p className="text-zinc-400 text-base max-w-xl mx-auto">
-                Research-first content that ranks on Google and gets cited by AI answer engines — keyword data, competitor analysis, and quality writing in one workflow.
-              </p>
+              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">{contentUi.heroTitle}</h1>
+              <p className="text-zinc-400 text-base max-w-xl mx-auto">{contentUi.tagline}</p>
             </div>
 
             {/* How it works */}
-            <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 p-5 space-y-4">
-              <p className="text-xs font-mono uppercase tracking-widest text-sky-400">How this works</p>
+            <div className={cn('rounded-2xl border p-5 space-y-4', contentAccent.borderPanel, contentAccent.bgPanel)}>
+              <p className={cn('text-xs font-mono uppercase tracking-widest', contentAccent.textLabel)}>How this works</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { step: '1', label: 'Choose your topic', detail: 'Tell us what you want to create and the goal — rank, convert, or earn AI citations.' },
@@ -1289,7 +1286,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   { step: '4', label: 'Optimize and refine', detail: 'Quality scoring and a revision pass ensure the piece is ready to publish.' },
                 ].map(({ step, label, detail }) => (
                   <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
-                    <div className="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+                    <div className={cn('w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 mt-0.5', contentAccent.stepRing)}>{step}</div>
                     <div>
                       <p className="text-sm font-semibold text-zinc-200">{label}</p>
                       <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
@@ -1335,7 +1332,11 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   <button
                     key={s.id}
                     onClick={() => handleSendMessage({ text: s.text })}
-                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-sky-500/40 hover:bg-sky-500/5 hover:text-zinc-100 transition-all duration-200"
+                    className={cn(
+                      'text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:text-zinc-100 transition-all duration-200',
+                      contentAccent.promptHoverBorder,
+                      contentAccent.promptHoverBg
+                    )}
                   >
                     {s.text}
                   </button>
@@ -1352,7 +1353,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         <div className="w-full max-w-4xl space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-4xl md:text-5xl font-semibold text-zinc-100 tracking-tight">Flow Intent</h1>
-            <p className="text-base md:text-lg text-zinc-500">{modeDescriptions[chatMode]}</p>
+            <p className="text-base md:text-lg text-zinc-500">{activeModeUi.selectorDescription}</p>
           </div>
           {/* Mode Selector */}
           <div className="flex justify-center">
