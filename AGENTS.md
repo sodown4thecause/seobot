@@ -137,3 +137,52 @@ git push origin main
 - OpenTelemetry instrumentation via `@vercel/otel`
 - Langfuse for AI observability
 - Tests exclude patterns: `**/*.test.ts`, `test-*.ts` in tsconfig
+
+## Cursor Cloud specific instructions
+
+Single Next.js 16 app. Standard commands live in `package.json` (`dev`, `lint`,
+`test:unit`, `build`); deps install via `npm install` (already run on startup).
+Auth is **Better Auth + Neon Postgres via Drizzle** (the Clerk/Supabase mentions
+above are stale).
+
+- **Run dev:** `npm run dev` (serves on `http://localhost:3000`). The marketing
+  landing page renders with **no env vars**. Auth/dashboard/most `app/api/*`
+  routes need a Postgres `DATABASE_URL` — `lib/db/index.ts` calls `neon(...)` at
+  module load, so DB-backed routes 500 (and `/dashboard` redirects to login)
+  when it's unset. Env validation (`lib/config/env.ts` / `npm run validate:env`)
+  is lenient (all-optional, passthrough); missing keys don't crash boot, features
+  just fail lazily when exercised.
+- **Required `.env.local` for full dev (auth + dashboard):** `DATABASE_URL`
+  (Neon serverless Postgres), `BETTER_AUTH_SECRET` (`openssl rand -hex 32`),
+  `BETTER_AUTH_URL=http://localhost:3000`, `NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000`.
+  Feature keys (AI providers / `AI_GATEWAY_API_KEY`, `DATAFORSEO_*`, `JINA_API_KEY`,
+  `PERPLEXITY_API_KEY`, `FIRECRAWL_API_KEY`, `POLAR_*`, Upstash, Webflow, Inngest)
+  stay optional and only matter for their specific feature. See `.env.example`.
+- **DB schema setup (gotcha):** use `npx drizzle-kit push`, NOT `drizzle-kit migrate`.
+  The committed `drizzle/` migrations have ordering conflicts (`0000` uses the
+  `vector` type before the extension exists; `0001` redefines `0000`'s
+  `match_frameworks` function) and `migrate` runs the whole batch in one
+  transaction, so it rolls everything back. Before pushing, enable pgvector:
+  `CREATE EXTENSION IF NOT EXISTS vector;`. Also note `drizzle.config.ts` only
+  references `lib/db/schema.ts`, so the Better Auth tables in `lib/auth-schema.ts`
+  (`user`/`session`/`account`/`verification`) are NOT created by a default push —
+  push a config whose `schema` includes both files, or you can sign up but the
+  `user` table will be missing.
+- **Hello-world:** sign up at `/sign-up` (or `POST /api/auth/sign-up/email`).
+  On success Better Auth creates the `user` + `session` rows and a DB hook mirrors
+  the row into the app `users` table; the new user is auto-redirected to the Polar
+  checkout/trial page.
+- **Production build is currently broken** (pre-existing, not an env issue):
+  `npm run build` fails prerendering `/_not-found` with `Cannot read properties of
+  null (reading 'useState')`. Use `npm run dev` for development.
+- **Secrets vs `.env.local` (cloud gotcha):** injected Cloud secrets
+  (`DATABASE_URL`, `BETTER_AUTH_SECRET`, …) are present in the Shell tool's
+  command environment but are NOT inherited by tmux-spawned login shells, so a
+  dev server started inside tmux sees them as empty and DB routes 500. Fix: write
+  the needed values into a gitignored `.env.local` (Next.js loads it regardless of
+  launch method) before `npm run dev`, or launch the server from a shell that
+  already has the secrets exported.
+- If `DATABASE_URL` points at an already-migrated database (the provided dev DB
+  has the full schema), do NOT run `drizzle-kit push`/`migrate` against it — the
+  schema is already present and `push --force` can drop/alter real data. Only run
+  schema sync against a fresh/empty database.
