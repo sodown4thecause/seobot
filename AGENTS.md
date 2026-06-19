@@ -175,3 +175,14 @@ above are stale).
 - **Production build is currently broken** (pre-existing, not an env issue):
   `npm run build` fails prerendering `/_not-found` with `Cannot read properties of
   null (reading 'useState')`. Use `npm run dev` for development.
+- **Secrets vs `.env.local` (cloud gotcha):** injected Cloud secrets
+  (`DATABASE_URL`, `BETTER_AUTH_SECRET`, …) are present in the Shell tool's
+  command environment but are NOT inherited by tmux-spawned login shells, so a
+  dev server started inside tmux sees them as empty and DB routes 500. Fix: write
+  the needed values into a gitignored `.env.local` (Next.js loads it regardless of
+  launch method) before `npm run dev`, or launch the server from a shell that
+  already has the secrets exported.
+- If `DATABASE_URL` points at an already-migrated database (the provided dev DB
+  has the full schema), do NOT run `drizzle-kit push`/`migrate` against it — the
+  schema is already present and `push --force` can drop/alter real data. Only run
+  schema sync against a fresh/empty database.
