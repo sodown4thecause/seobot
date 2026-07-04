@@ -147,4 +147,37 @@ describe('POST /api/conversations', () => {
     expect(mockInsert).not.toHaveBeenCalled()
     expect(mockUpdate).toHaveBeenCalled()
   })
+
+  it('returns 400 for invalid JSON on PATCH', async () => {
+    mockGetUserId.mockResolvedValue('user-123')
+
+    const { PATCH } = await import('@/app/api/conversations/route')
+
+    const request = {
+      json: vi.fn().mockRejectedValue(new SyntaxError('Unexpected token')),
+    } as unknown as NextRequest
+
+    const response = await PATCH(request)
+
+    expect(response.body).toEqual({ error: 'Invalid JSON body' })
+    expect(response.status).toBe(400)
+  })
+
+  it('returns 400 when conversationIds exceeds bulk limit on PATCH', async () => {
+    mockGetUserId.mockResolvedValue('user-123')
+
+    const { PATCH } = await import('@/app/api/conversations/route')
+
+    const request = {
+      json: vi.fn().mockResolvedValue({
+        conversationIds: Array.from({ length: 51 }, (_, i) => `id-${i}`),
+        updates: { title: 'Too many' },
+      }),
+    } as unknown as NextRequest
+
+    const response = await PATCH(request)
+
+    expect(response.body).toEqual({ error: 'conversationIds exceeds limit of 50' })
+    expect(response.status).toBe(400)
+  })
 })

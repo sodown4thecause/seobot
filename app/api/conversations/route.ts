@@ -11,6 +11,62 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 
+const MAX_BULK_CONVERSATION_IDS = 50
+
+type ParsedBulkBody =
+  | { ok: true; conversationIds: string[]; updates: Record<string, unknown> }
+  | { ok: false; response: NextResponse }
+
+async function parseBulkConversationBody(
+  request: NextRequest
+): Promise<ParsedBulkBody> {
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }),
+    }
+  }
+
+  if (!body || typeof body !== 'object') {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Invalid request body' }, { status: 400 }),
+    }
+  }
+
+  const record = body as Record<string, unknown>
+  const conversationIds = Array.isArray(record.conversationIds)
+    ? record.conversationIds.filter((id): id is string => typeof id === 'string')
+    : []
+
+  if (conversationIds.length === 0) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'conversationIds is required' }, { status: 400 }),
+    }
+  }
+
+  if (conversationIds.length > MAX_BULK_CONVERSATION_IDS) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: `conversationIds exceeds limit of ${MAX_BULK_CONVERSATION_IDS}` },
+        { status: 400 }
+      ),
+    }
+  }
+
+  const updates =
+    record.updates && typeof record.updates === 'object' && !Array.isArray(record.updates)
+      ? (record.updates as Record<string, unknown>)
+      : {}
+
+  return { ok: true, conversationIds, updates }
+}
+
 /**
  * GET /api/conversations
  * List conversations for the authenticated user
@@ -173,15 +229,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const conversationIds: string[] = Array.isArray(body.conversationIds)
-      ? body.conversationIds
-      : []
-    const updates = body.updates ?? {}
-
-    if (conversationIds.length === 0) {
-      return NextResponse.json({ error: 'conversationIds is required' }, { status: 400 })
+    const parsed = await parseBulkConversationBody(request)
+    if (!parsed.ok) {
+      return parsed.response
     }
+
+    const { conversationIds, updates } = parsed
 
     const patchValues: {
       title?: string
@@ -250,14 +303,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const conversationIds: string[] = Array.isArray(body.conversationIds)
-      ? body.conversationIds
-      : []
-
-    if (conversationIds.length === 0) {
-      return NextResponse.json({ error: 'conversationIds is required' }, { status: 400 })
+    const parsed = await parseBulkConversationBody(request)
+    if (!parsed.ok) {
+      return parsed.response
     }
+
+    const { conversationIds } = parsed
 
     const archivedRows = await db
       .update(conversations)

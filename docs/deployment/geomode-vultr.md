@@ -16,7 +16,7 @@ Optional:
 
 | Variable | Purpose |
 |---|---|
-| `ELMO_POSTGRES_PASSWORD` | Postgres password (auto-generated if omitted) |
+| `ELMO_POSTGRES_PASSWORD` | Postgres password for Elmo compose (default: `postgres`) |
 | `GEOMODE_USE_FORK=1` | Clone `GEOMODE_REPO` and run `elmo init --dev` |
 | `GEOMODE_REPO` | Fork URL (default: sodown4thecause/geomode) |
 | `PUBLIC_APP_PORT` | Local Elmo UI port (default: 1515) |
