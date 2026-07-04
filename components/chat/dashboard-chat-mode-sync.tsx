@@ -29,6 +29,8 @@ export function DashboardChatModeSync() {
   }, [urlMode, setChatMode])
 
   useEffect(() => {
+    if (urlMode) return
+
     const conv = state.activeConversation
     if (!conv) {
       lastRestoredConversationId.current = null
@@ -44,7 +46,7 @@ export function DashboardChatModeSync() {
     if (fromConversation) {
       setChatMode(fromConversation)
     }
-  }, [state.activeConversation, setChatMode])
+  }, [state.activeConversation, setChatMode, urlMode])
 
   useEffect(() => {
     const conv = state.activeConversation

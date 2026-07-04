@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  CHAT_MODE_LABELS,
   CHAT_MODE_LIST,
   CHAT_MODE_UI,
   CHAT_MODES,
@@ -43,7 +44,16 @@ describe('chat modes config', () => {
     expect(geo.tagline).not.toMatch(/Claude|Gemini/)
   })
 
-  it('describes workspace saves for content mode', () => {
-    expect(getChatModeUi('content').tagline).toMatch(/workspace/i)
+  it('keeps short LLM labels separate from marketing mode names', () => {
+    expect(CHAT_MODE_LABELS.seo).toBe('SEO')
+    expect(CHAT_MODE_LABELS.geo).toBe('GEO / AEO')
+    expect(CHAT_MODE_LABELS.content).toBe('Content')
+    expect(CHAT_MODE_UI.seo.label).toBe('SEO Mode')
+  })
+
+  it('describes artifacts and workspace for content mode', () => {
+    const content = getChatModeUi('content').tagline
+    expect(content).toMatch(/workspace/i)
+    expect(content).toMatch(/artifacts/i)
   })
 })

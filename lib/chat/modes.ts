@@ -90,17 +90,17 @@ export const CHAT_MODE_UI: Record<ChatMode, ChatModeUiConfig> = {
     selectorLabel: 'Content Mode',
     heroTitle: 'Content Mode',
     tagline:
-      'Research-first posts with hero and thumbnail images—saved to your workspace so you can edit, export, or ship to your CMS.',
-    selectorDescription: 'Blog posts, images & metadata saved to workspace',
+      'AI SDK 6 chat for publishing—drafts, hero and thumbnail images. Preview in artifacts, save to workspace, export or ship to your CMS.',
+    selectorDescription: 'Publish via chat — save artifacts to workspace',
     accent: 'amber',
   },
 }
 
-/** @deprecated Prefer CHAT_MODE_UI[id].label */
+/** Short labels for LLM/RAG prompts — not the marketing-facing mode names. */
 export const CHAT_MODE_LABELS: Record<ChatMode, string> = {
-  seo: CHAT_MODE_UI.seo.label,
-  geo: CHAT_MODE_UI.geo.selectorLabel,
-  content: CHAT_MODE_UI.content.label,
+  seo: 'SEO',
+  geo: 'GEO / AEO',
+  content: 'Content',
 }
 
 export const CHAT_MODE_LIST = CHAT_MODES.map((id) => CHAT_MODE_UI[id])

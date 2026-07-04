@@ -36,8 +36,10 @@ compose_cmd() {
 random_secret() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -hex 32
+  elif command -v dd >/dev/null 2>&1 && command -v xxd >/dev/null 2>&1; then
+    dd if=/dev/urandom bs=32 count=1 2>/dev/null | xxd -p -c 64 | tr -d '\n'
   else
-    tr -dc 'a-f0-9' </dev/urandom | head -c 64
+    die "Need openssl or dd+xxd to generate secrets"
   fi
 }
 
@@ -79,6 +81,7 @@ log "Installing Docker, Node.js, npm, jq..."
 apt-get install -y \
   ca-certificates \
   curl \
+  git \
   gnupg \
   jq \
   lsb-release \
@@ -114,7 +117,7 @@ if [[ ! -f "${ELMO_DIR}/.env" ]]; then
       fi
       elmo --dir "${ELMO_DIR}" init --dev --docker-dir "${GEOMODE_DIR}" || die "elmo init --dev failed"
     else
-      elmo --dir "${ELMO_DIR}" init --yes 2>/dev/null || elmo --dir "${ELMO_DIR}" init || die "elmo init failed — run interactively or set ELMO_NONINTERACTIVE=1 with provider keys"
+      elmo --dir "${ELMO_DIR}" init --yes || die "elmo init --yes failed in non-interactive mode (check @elmohq/cli version and provider env vars)"
     fi
   else
     log "Running interactive elmo init in ${ELMO_DIR}..."
@@ -157,12 +160,11 @@ Useful commands:
   elmo --dir ${ELMO_DIR} compose down
 
 Next step: install cloudflared and route geo.<your-domain> -> http://127.0.0.1:${PUBLIC_APP_PORT}
-(see docs/plans/2026-06-12-geomode-vps-bringup.md, Task 3)
+(see docs/specs/2026-06-12-geomode-geo-tracking-design.md — VPS bring-up section)
 
 FlowIntent env (Vercel) — set AFTER the tunnel is up:
   ELMO_API_URL=https://geo.<your-domain>
-  ELMO_API_KEY=<from ${ELMO_DIR}/.env after geomode run API is enabled>
-  GEO_ELMO_ENABLED=true
+  ELMO_API_KEY=<from ${ELMO_DIR}/.env ADMIN_API_KEYS after geomode is deployed>
 
 Tear-down backup (before destroying VPS):
   elmo --dir ${ELMO_DIR} compose exec -T postgres pg_dumpall -U elmo > /root/elmo-pg-backup.sql

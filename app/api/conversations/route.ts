@@ -1,5 +1,8 @@
 import { getUserId } from '@/lib/auth'
-import { mergeMetadataWithChatMode } from '@/lib/chat/conversation-mode'
+import {
+  getChatModeFromMetadata,
+  mergeMetadataWithChatMode,
+} from '@/lib/chat/conversation-mode'
 import { isChatMode } from '@/lib/chat/modes'
 import { db, conversations, messages } from '@/lib/db'
 import type { Json } from '@/lib/db/schema'
@@ -34,8 +37,10 @@ export async function GET(request: NextRequest) {
     // Build where conditions
     const conditions = [eq(conversations.userId, userId)]
 
-    // Filter by status if specified
-    if (status === 'active' || status === 'archived') {
+    // Filter by status if specified (pinned threads stay visible in active lists)
+    if (status === 'active') {
+      conditions.push(inArray(conversations.status, ['active', 'pinned']))
+    } else if (status === 'archived' || status === 'pinned') {
       conditions.push(eq(conversations.status, status))
     }
 
@@ -102,6 +107,30 @@ export async function POST(request: NextRequest) {
         .where(eq(messages.conversationId, latestConversation.id))
 
       if (latestConversationMessages.length === 0) {
+        const requestedMode =
+          chatMode && isChatMode(chatMode) ? chatMode : null
+        const storedMode = getChatModeFromMetadata(
+          latestConversation.metadata as Record<string, unknown> | null
+        )
+
+        if (requestedMode && storedMode !== requestedMode) {
+          const [updatedConversation] = await db
+            .update(conversations)
+            .set({
+              metadata: mergeMetadataWithChatMode(
+                latestConversation.metadata as Record<string, unknown> | null,
+                requestedMode
+              ) as Json,
+              updatedAt: new Date(),
+            })
+            .where(eq(conversations.id, latestConversation.id))
+            .returning()
+
+          return NextResponse.json({
+            conversation: updatedConversation ?? latestConversation,
+          })
+        }
+
         return NextResponse.json({ conversation: latestConversation })
       }
     }
@@ -168,16 +197,16 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (updates.chatMode && isChatMode(updates.chatMode)) {
-      const existing = await db
-        .select({ id: conversations.id, metadata: conversations.metadata })
-        .from(conversations)
-        .where(
-          and(eq(conversations.userId, userId), inArray(conversations.id, conversationIds))
-        )
+      const updatedCount = await db.transaction(async (tx) => {
+        const existing = await tx
+          .select({ id: conversations.id, metadata: conversations.metadata })
+          .from(conversations)
+          .where(
+            and(eq(conversations.userId, userId), inArray(conversations.id, conversationIds))
+          )
 
-      await Promise.all(
-        existing.map((row) =>
-          db
+        for (const row of existing) {
+          await tx
             .update(conversations)
             .set({
               ...patchValues,
@@ -187,20 +216,23 @@ export async function PATCH(request: NextRequest) {
               ) as Json,
             })
             .where(eq(conversations.id, row.id))
-        )
-      )
+        }
 
-      return NextResponse.json({ updated: existing.length })
+        return existing.length
+      })
+
+      return NextResponse.json({ updated: updatedCount })
     }
 
-    await db
+    const updatedRows = await db
       .update(conversations)
       .set(patchValues)
       .where(
         and(eq(conversations.userId, userId), inArray(conversations.id, conversationIds))
       )
+      .returning({ id: conversations.id })
 
-    return NextResponse.json({ updated: conversationIds.length })
+    return NextResponse.json({ updated: updatedRows.length })
   } catch (error) {
     console.error('[Conversations API] PATCH error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -227,14 +259,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'conversationIds is required' }, { status: 400 })
     }
 
-    await db
+    const archivedRows = await db
       .update(conversations)
       .set({ status: 'archived', updatedAt: new Date() })
       .where(
         and(eq(conversations.userId, userId), inArray(conversations.id, conversationIds))
       )
+      .returning({ id: conversations.id })
 
-    return NextResponse.json({ archived: conversationIds.length })
+    return NextResponse.json({ archived: archivedRows.length })
   } catch (error) {
     console.error('[Conversations API] DELETE error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

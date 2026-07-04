@@ -87,11 +87,20 @@ const serverEnvSchema = z.object({
 
   // Cron & Security
   CRON_SECRET: z.string().min(1).optional(),
+  BETTER_AUTH_URL: z.string().url().optional(),
+  BETTER_AUTH_SECRET: z.string().min(1).optional(),
 
   // GEO / AEO mode configuration
   GEO_ENABLED_ENGINES: z.string().optional(),
   GEO_COMPETITORS: z.string().optional(),
   GEO_DEFAULT_TOPICS: z.string().optional(),
+  ELMO_API_URL: z.string().url().optional(),
+  ELMO_API_KEY: z.string().min(1).optional(),
+  GEO_ELMO_ENABLED: z.string().optional(),
+  GEO_API_URL: z.string().url().optional(),
+  GEO_API_KEY: z.string().min(1).optional(),
+  GEO_API_CLIENT_ID: z.string().min(1).optional(),
+  GEO_TRACKING_BRAND: z.string().min(1).optional(),
   WEEKLY_RESEARCH_MODEL: z.string().optional(),
   WEEKLY_RESEARCH_FALLBACK_MODEL: z.string().optional(),
   SCRAPINGBEE_API_KEY: z.string().min(1).optional(),
@@ -139,6 +148,7 @@ const serverEnvSchema = z.object({
 // Client-side environment schema (only public variables)
 const clientEnvSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_BETTER_AUTH_URL: z.string().url().optional(),
 })
 
 /**

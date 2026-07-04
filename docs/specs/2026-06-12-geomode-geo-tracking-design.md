@@ -1,7 +1,7 @@
 # geomode GEO/AEO Tracking Engine + Daily TUI Report — Design
 
 **Date:** 2026-06-12
-**Status:** Approved design, pending implementation plan
+**Status:** Implemented in seobot (FlowIntent consumer + companion/TUI packages); VPS bring-up still required
 **Repo under design:** [sodown4thecause/geomode](https://github.com/sodown4thecause/geomode) (fork of [Elmo](https://github.com/elmohq/elmo)) — companion service and TUI live there; this doc lives in seobot because FlowIntent is a consumer.
 
 ## Summary
@@ -113,11 +113,11 @@ Every step records status in `companion.job_runs` and retries with backoff via p
 |---|---|
 | `DATABASE_URL` | Local Postgres (shared with geomode stack) |
 | `NEON_DATABASE_URL` | Neon sync target (`geo_tracking` schema) |
-| `DATAFORSEO_LOGIN` / `DATAFORSEO_PASSWORD` | SERP collection |
+| `DATAFORSEO_USERNAME` / `DATAFORSEO_PASSWORD` | SERP collection (FlowIntent uses `DATAFORSEO_USERNAME`; Elmo template uses `DATAFORSEO_LOGIN`) |
 | `AI_GATEWAY_API_KEY` (or `OPENROUTER_API_KEY`) + `SUGGESTIONS_MODEL` | Nightly suggestions |
 | AI engine keys | Per Elmo's own configuration |
 
-FlowIntent side (already present in seobot env schema): `GEO_ELMO_ENABLED`, `ELMO_API_URL`, `ELMO_API_KEY`.
+FlowIntent side (add to seobot env when geomode is live): `ELMO_API_URL`, `ELMO_API_KEY`. Optional feature flag: `GEO_ELMO_ENABLED=true`.
 
 ## Testing
 

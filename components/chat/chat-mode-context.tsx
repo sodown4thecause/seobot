@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { DEFAULT_CHAT_MODE, type ChatMode } from '@/lib/chat/modes'
+import { DEFAULT_CHAT_MODE, isChatMode, type ChatMode } from '@/lib/chat/modes'
 
 export type { ChatMode } from '@/lib/chat/modes'
 
@@ -23,8 +23,8 @@ export function ChatModeProvider({ children }: ChatModeProviderProps) {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY) as ChatMode | null
-      if (saved && ['seo', 'geo', 'content'].includes(saved)) {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved && isChatMode(saved)) {
         setChatModeState(saved)
       }
     } catch {}
