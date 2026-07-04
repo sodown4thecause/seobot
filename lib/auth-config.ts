@@ -17,18 +17,51 @@ import * as authSchema from '@/lib/auth-schema'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
+function toOrigin(url: string): string | null {
+  try {
+    return new URL(url).origin
+  } catch {
+    return null
+  }
+}
+
+function getLoopbackAliases(origin: string): string[] {
+  try {
+    const url = new URL(origin)
+    const port = url.port ? `:${url.port}` : ''
+    const aliases = [origin]
+
+    if (url.hostname === 'localhost') {
+      aliases.push(`${url.protocol}//127.0.0.1${port}`)
+    } else if (url.hostname === '127.0.0.1') {
+      aliases.push(`${url.protocol}//localhost${port}`)
+    }
+
+    return aliases
+  } catch {
+    return [origin]
+  }
+}
+
 function getTrustedOrigins() {
   const origins = new Set<string>()
   const candidates = [
     process.env.BETTER_AUTH_URL,
+    process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.NEXT_PUBLIC_SITE_URL,
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
     process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : undefined,
+    process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:3000' : undefined,
   ]
 
   for (const candidate of candidates) {
-    if (candidate) origins.add(candidate)
+    if (!candidate) continue
+
+    const origin = toOrigin(candidate) ?? candidate
+    for (const alias of getLoopbackAliases(origin)) {
+      origins.add(alias)
+    }
   }
 
   return Array.from(origins)

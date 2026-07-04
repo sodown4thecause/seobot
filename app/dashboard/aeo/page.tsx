@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAgent } from '@/components/providers/agent-provider'
 import { launchWorkflowChat } from '@/lib/workflows/launch-workflow-chat'
@@ -79,11 +80,23 @@ export default function AEOCommandCenterPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
             >
-                <div>
-                    <h1 className="text-2xl font-semibold text-zinc-100 mb-2">AEO Command Center</h1>
-                    <p className="text-sm text-zinc-400">
-                        Optimize for AI Search Engines — ChatGPT, Perplexity, Claude, Google AI
-                    </p>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-zinc-100 mb-2">AEO Command Center</h1>
+                        <p className="text-sm text-zinc-400">
+                            Optimize for AI Search Engines — ChatGPT, Perplexity, Claude, Google AI
+                        </p>
+                    </div>
+                    <Button
+                        asChild
+                        variant="outline"
+                        className="border-violet-500/40 text-violet-200 hover:bg-violet-500/10 shrink-0"
+                    >
+                        <Link href="/dashboard?mode=geo">
+                            Open GEO / AEO chat
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
                 </div>
             </motion.div>
 

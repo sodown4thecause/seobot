@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronRight,
   MessageSquarePlus,
+  MessageSquare,
   Clock,
   Trash2,
   Search,
@@ -16,11 +17,13 @@ import {
   FileText,
   Sparkles,
 } from 'lucide-react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useAgent, type Conversation } from '@/components/providers/agent-provider'
+import { useChatModeOptional } from '@/components/chat/chat-mode-context'
+import { buildDashboardChatHref } from '@/lib/chat/conversation-mode'
 
 export interface SidebarProps {
   open: boolean
@@ -29,20 +32,35 @@ export interface SidebarProps {
 
 const DEFAULT_VISIBLE_RECENT_CHATS = 5
 
-const DASHBOARD_LINKS = [
-  { name: 'Website Audit', href: '/dashboard/website-audit', icon: Search },
-  { name: 'Rank Tracker', href: '/dashboard/rank-tracker', icon: TrendingUp },
-  { name: 'Competitor Monitor', href: '/dashboard/competitor-monitor', icon: Users },
-  { name: 'Keyword Opportunities', href: '/dashboard/keyword-opportunities', icon: KeyRound },
-  { name: 'Backlink Profile', href: '/dashboard/backlink-profile', icon: LinkIcon },
-  { name: 'Content Performance', href: '/dashboard/content-performance', icon: FileText },
-  { name: 'AEO Insights', href: '/dashboard/aeo', icon: Sparkles },
+const DASHBOARD_LINK_GROUPS = [
+  {
+    title: 'SEO & content data',
+    hint: 'Rankings, keywords, audits — pairs with SEO & Content modes',
+    links: [
+      { name: 'Website Audit', href: '/dashboard/website-audit', icon: Search },
+      { name: 'Rank Tracker', href: '/dashboard/rank-tracker', icon: TrendingUp },
+      { name: 'Competitor Monitor', href: '/dashboard/competitor-monitor', icon: Users },
+      { name: 'Keyword Opportunities', href: '/dashboard/keyword-opportunities', icon: KeyRound },
+      { name: 'Backlink Profile', href: '/dashboard/backlink-profile', icon: LinkIcon },
+      { name: 'Content Performance', href: '/dashboard/content-performance', icon: FileText },
+    ],
+  },
+  {
+    title: 'GEO / AEO',
+    hint: 'AI visibility snapshots — pairs with GEO / AEO mode',
+    links: [
+      { name: 'AEO Insights', href: '/dashboard/aeo', icon: Sparkles },
+      { name: 'GEO / AEO Chat', href: '/dashboard?mode=geo', icon: MessageSquare },
+    ],
+  },
 ] as const
 
 export function Sidebar({ open, onToggle }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const { state, actions } = useAgent()
+  const { chatMode } = useChatModeOptional()
   const hasFetchedRef = React.useRef(false)
   const [showAllConversations, setShowAllConversations] = React.useState(false)
   const visibleConversations = showAllConversations
@@ -60,18 +78,25 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
   const handleNewChat = React.useCallback(async () => {
     const agentId = state.activeAgent?.id ?? 'general'
     try {
-      const conversation = await actions.createConversation(agentId, 'New Conversation')
+      const conversation = await actions.createConversation(
+        agentId,
+        'New Conversation',
+        chatMode
+      )
       if (!conversation) return
       actions.setActiveConversation(conversation)
-      router.push(`/dashboard?conversationId=${conversation.id}`)
+      router.push(
+        buildDashboardChatHref({ conversationId: conversation.id, mode: chatMode })
+      )
     } catch (error) {
       console.error('[Sidebar] Failed to start a new chat:', error)
     }
-  }, [actions, router, state.activeAgent?.id])
+  }, [actions, chatMode, router, state.activeAgent?.id])
 
   const handleSelectConversation = React.useCallback((conv: Conversation) => {
     actions.setActiveConversation(conv)
-    router.push(`/dashboard?conversationId=${conv.id}`)
+    const mode = conv.chatMode ?? undefined
+    router.push(buildDashboardChatHref({ conversationId: conv.id, mode }))
   }, [actions, router])
 
   const handleDeleteConversation = React.useCallback(async (e: React.MouseEvent, id: string) => {
@@ -143,32 +168,46 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
 
         <ScrollArea className="flex-1 px-3">
           {/* ── Dashboard pages ── */}
-          <div className="py-2 border-b border-zinc-800/60">
+          <div className="py-2 border-b border-zinc-800/60 space-y-3">
             <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
-              Dashboard
+              Analytics workspaces
             </p>
-            <nav className="space-y-0.5">
-              {DASHBOARD_LINKS.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`)
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      'flex items-center rounded-lg px-2 py-1.5 text-sm transition-colors gap-2',
-                      isActive
-                        ? 'bg-emerald-500/10 text-emerald-300'
-                        : 'text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200'
-                    )}
-                    aria-current={isActive ? 'page' : undefined}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="text-sm">{item.name}</span>
-                  </Link>
-                )
-              })}
-            </nav>
+            {DASHBOARD_LINK_GROUPS.map((group) => (
+              <div key={group.title} className="space-y-0.5">
+                <p className="px-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                  {group.title}
+                </p>
+                <p className="px-2 pb-1 text-[10px] leading-snug text-zinc-600">{group.hint}</p>
+                <nav className="space-y-0.5">
+                  {group.links.map((item) => {
+                    const Icon = item.icon
+                    const isGeoChatLink = item.href.includes('mode=geo')
+                    const isActive = isGeoChatLink
+                      ? pathname === '/dashboard' && searchParams?.get('mode') === 'geo'
+                      : pathname === item.href || pathname?.startsWith(`${item.href}/`)
+                    const isGeoGroup = group.title === 'GEO / AEO'
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          'flex items-center rounded-lg px-2 py-1.5 text-sm transition-colors gap-2',
+                          isActive
+                            ? isGeoGroup
+                              ? 'bg-violet-500/10 text-violet-300'
+                              : 'bg-emerald-500/10 text-emerald-300'
+                            : 'text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200'
+                        )}
+                        aria-current={isActive ? 'page' : undefined}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="text-sm">{item.name}</span>
+                      </Link>
+                    )
+                  })}
+                </nav>
+              </div>
+            ))}
           </div>
 
           {/* ── Conversation history ── */}
