@@ -16,6 +16,7 @@ import {
   Link as LinkIcon,
   FileText,
   Sparkles,
+  FolderOpen,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,11 @@ export interface SidebarProps {
 const DEFAULT_VISIBLE_RECENT_CHATS = 5
 
 const DASHBOARD_LINK_GROUPS = [
+  {
+    title: 'Workspace',
+    hint: 'Saved artifacts and library items from all modes',
+    links: [{ name: 'Workspace', href: '/dashboard/workspace', icon: FolderOpen }],
+  },
   {
     title: 'SEO & content data',
     hint: 'Rankings, keywords, audits — pairs with SEO & Content modes',

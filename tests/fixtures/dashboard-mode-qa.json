@@ -1,0 +1,33 @@
+{
+  "recordedAt": "2026-06-03",
+  "environment": "local-dev",
+  "notes": "Automated API smoke where auth permits; full browser login QA requires valid Better Auth session.",
+  "modes": [
+    {
+      "mode": "seo",
+      "url": "/dashboard?mode=seo",
+      "prompt": "What keyword opportunities exist for \"coffee shop Brisbane\" and who ranks on page one?",
+      "expectedUi": ["data-KeywordMetrics", "data-SerpResults", "tool-ui tables"],
+      "status": "pending-manual-or-api"
+    },
+    {
+      "mode": "geo",
+      "url": "/dashboard?mode=geo",
+      "prompt": "How can a Brisbane coffee brand improve citations in ChatGPT and Perplexity for \"best coffee Brisbane\"?",
+      "expectedUi": ["data-AIPlatformMetrics", "data-CitationRecommendations"],
+      "status": "pending-manual-or-api"
+    },
+    {
+      "mode": "content",
+      "url": "/dashboard?mode=content",
+      "prompt": "Write a blog about coffee in Brisbane",
+      "expectedUi": ["generate_researched_content", "data-ContentGapMatrix", "data-ContentStrategy"],
+      "status": "pending-manual-or-api"
+    }
+  ],
+  "implementationBaseline": {
+    "aiSdkDataParts": true,
+    "createUIMessageStream": true,
+    "generativeUiRegistry": "components/chat/generative-ui/registry.tsx"
+  }
+}

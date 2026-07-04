@@ -18,7 +18,7 @@ import { getContentQualityTools } from '@/lib/ai/content-quality-tools'
 import { getEnhancedContentQualityTools } from '@/lib/ai/content-quality-enhancements'
 import { getAEOTools } from '@/lib/ai/aeo-tools'
 import { getAEOPlatformTools } from '@/lib/ai/aeo-platform-tools'
-import { getGEOTools } from '@/lib/geo/brand-tracker'
+import { getGEOTools, getGeoExecutionTools } from '@/lib/geo/brand-tracker'
 import { searchWithPerplexity } from '@/lib/external-apis/perplexity'
 import {
   researchAgentTool,
@@ -372,42 +372,11 @@ export function createPerplexityTool() {
 }
 
 /**
- * Create the keyword suggestion tool (mock data for now).
- */
-export function createKeywordSuggestionTool() {
-  return tool({
-    description: "Suggest related keywords with metrics (volume, difficulty, CPC). Use this when the user asks for keyword suggestions, keyword ideas, or related terms.",
-    inputSchema: z.object({
-      topic: z.string().describe("The main topic to generate keywords for"),
-    }),
-    execute: async ({ topic }) => {
-      console.log('[Tool Assembler] Generating keyword suggestions for:', topic)
-
-      const baseVolume = topic.length * 1000
-      return {
-        status: 'success',
-        topic,
-        keywords: [
-          { keyword: `${topic} tools`, volume: baseVolume * 1.5, difficulty: 65, cpc: 2.50, intent: 'Commercial' },
-          { keyword: `best ${topic}`, volume: baseVolume * 1.2, difficulty: 72, cpc: 3.20, intent: 'Commercial' },
-          { keyword: `how to do ${topic}`, volume: baseVolume * 3.0, difficulty: 45, cpc: 1.10, intent: 'Informational' },
-          { keyword: `${topic} strategy`, volume: baseVolume * 0.8, difficulty: 55, cpc: 4.50, intent: 'Informational' },
-          { keyword: `${topic} services`, volume: baseVolume * 0.5, difficulty: 80, cpc: 8.50, intent: 'Transactional' },
-          { keyword: `cheap ${topic}`, volume: baseVolume * 0.4, difficulty: 30, cpc: 1.50, intent: 'Transactional' },
-          { keyword: `${topic} guide`, volume: baseVolume * 0.9, difficulty: 40, cpc: 0.80, intent: 'Informational' },
-          { keyword: `${topic} software`, volume: baseVolume * 0.7, difficulty: 75, cpc: 5.00, intent: 'Commercial' },
-        ]
-      }
-    }
-  })
-}
-
-/**
  * Assemble all tools for a given agent and intent classification.
  * This is the main entry point for tool assembly.
  */
 export async function assembleTools(options: ToolAssemblyOptions): Promise<Record<string, Tool>> {
-  const { agent, intentTools } = options
+  const { agent, intentTools, userId } = options
 
   console.log(`[Tool Assembler] Loading tools for ${agent} agent`)
 
@@ -445,8 +414,8 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
     // - dataforseo_labs_google_competitors_domain (find similar domains)
     // - firecrawl_scrape (get competitor content)
 
-    // Keyword suggestion tool
-    suggest_keywords: createKeywordSuggestionTool(),
+    // For real keyword data, use DataForSEO MCP tools loaded below:
+    // keywords_data_google_ads_search_volume, dataforseo_labs_google_keyword_suggestions, etc.
 
     // Agent specific tools
     ...(agent === 'content' ? { ...contentQualityTools, ...enhancedContentTools } : {}),
@@ -461,10 +430,10 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
     ...((agent === 'seo-aeo' || intentTools?.includes('n8n_backlinks')) ? { n8n_backlinks: createBacklinksTool() } : {}),
 
     // AEO Tools - Only for SEO/AEO agent (citation analysis, EEAT detection, platform optimization)
-    ...(agent === 'seo-aeo' ? { ...getAEOTools(), ...getAEOPlatformTools() } : {}),
+    ...(agent === 'seo-aeo' ? { ...getAEOTools(), ...getAEOPlatformTools(), ...getGeoExecutionTools(userId) } : {}),
 
     // GEO Tools - Only for GEO agent (real-time brand mentions across ChatGPT, Gemini, Perplexity)
-    ...(agent === 'geo' ? getGEOTools() : {}),
+    ...(agent === 'geo' ? getGEOTools(userId) : {}),
 
     // MCP Tools - Use intent-based filtering for SEO/AEO, otherwise load by agent type
     ...(intentTools && intentTools.length > 0

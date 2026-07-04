@@ -2,81 +2,71 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Navbar } from '@/components/navbar'
 import { buildPageMetadata } from '@/lib/seo/metadata'
-import { getCaseStudies } from '@/lib/webflow'
+import { getCaseStudies } from '@/lib/case-studies'
+import { CHAT_MODE_UI, CHAT_MODE_ACCENT_CLASSES } from '@/lib/chat/modes'
 
 export const metadata = buildPageMetadata({
-  title: 'SEO Case Studies & Results | FlowIntent',
+  title: 'Case Studies | FlowIntent',
   description:
-    'See how teams improved rankings, traffic, and AI visibility with FlowIntent strategies across industries.',
+    'How teams use FlowIntent — SEO, GEO / AEO, and Content modes — to find gaps, publish, and get cited by AI answer engines.',
   path: '/case-studies',
-  keywords: ['SEO case studies', 'AEO results', 'GEO case study', 'AI visibility examples'],
+  type: 'website',
 })
 
-export const revalidate = 300
-
-export default async function CaseStudiesPage() {
-  const studies = await getCaseStudies()
+export default function CaseStudiesPage() {
+  const caseStudies = getCaseStudies()
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+    <div className="min-h-screen bg-black text-white">
       <Navbar />
-      <div className="container mx-auto px-4 py-16 pt-32 max-w-6xl">
+      <div className="container mx-auto max-w-6xl px-6 py-16 pt-32">
         <div className="mb-12">
-          <Link href="/" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">
+          <Link
+            href="/"
+            className="mb-4 inline-block font-mono text-xs uppercase tracking-[0.2em] text-zinc-500 hover:text-white"
+          >
             &larr; Back to Home
           </Link>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Case Studies</h1>
-          <p className="text-xl text-gray-400">
-            Real-world results and success stories
+          <h1 className="text-4xl font-black uppercase italic tracking-tight md:text-6xl">
+            Case Studies
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg text-zinc-400">
+            Real workflows across the three modes — from a free Reddit gap audit
+            to AI Overview citations.
           </p>
         </div>
 
-        {studies.length === 0 ? (
-          <div className="bg-gray-800/50 rounded-lg p-8 text-center">
-            <p className="text-gray-300 mb-4">Case studies coming soon.</p>
-            <p className="text-gray-400 text-sm">
-              Check back later for detailed case studies showcasing SEO and AEO results.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {studies.map((study) => (
+        <div className="grid gap-8 md:grid-cols-2">
+          {caseStudies.map((study) => {
+            const accent = CHAT_MODE_ACCENT_CLASSES[CHAT_MODE_UI[study.mode].accent]
+            return (
               <Link
-                key={study.id}
+                key={study.slug}
                 href={`/case-studies/${study.slug}`}
-                className="group block overflow-hidden rounded-lg bg-gray-800/50 transition-colors hover:bg-gray-800/70"
+                className={`group block overflow-hidden rounded-none border ${accent.borderPanel} bg-white/[0.02] transition-colors hover:bg-white/[0.04]`}
               >
-                {study.thumbnailImage && (
-                  <div className="relative h-48 w-full overflow-hidden">
-                    <Image
-                      src={study.thumbnailImage}
-                      alt={study.name}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />
-                  </div>
-                )}
+                <div className="relative aspect-video w-full overflow-hidden">
+                  <Image
+                    src={study.image}
+                    alt={study.title}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                  />
+                </div>
                 <div className="p-6">
-                  <div className="w-8 h-1 mb-4 bg-blue-400 rounded-full" />
-                  <h3 className="text-xl font-semibold mb-2 group-hover:text-blue-400 transition-colors">
-                    {study.name}
-                  </h3>
-                  {study.summary && (
-                    <p className="mb-4 line-clamp-3 text-sm text-gray-400">{study.summary}</p>
-                  )}
-                  <p className="text-gray-500 text-sm">
-                    {new Date(study.createdOn).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
+                  <p className={`mb-3 font-mono text-[11px] uppercase tracking-[0.3em] ${accent.textLabel}`}>
+                    {CHAT_MODE_UI[study.mode].selectorLabel} · {study.client}
                   </p>
+                  <h2 className="mb-2 text-xl font-bold leading-tight tracking-tight text-white">
+                    {study.title}
+                  </h2>
+                  <p className="line-clamp-2 text-sm text-zinc-400">{study.summary}</p>
                 </div>
               </Link>
-            ))}
-          </div>
-        )}
+            )
+          })}
+        </div>
       </div>
     </div>
   )

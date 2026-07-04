@@ -52,20 +52,23 @@ export const faqSections: FaqSection[] = [
     questions: [
       {
         q: 'What are SEO Mode, GEO / AEO Mode, and Content Mode?',
-        a: 'FlowIntent runs three specialized AI modes in one paywalled chat workspace. SEO Mode handles keyword research, SERP analysis, backlinks, and technical SEO with live DataForSEO data. GEO / AEO Mode tracks whether your brand is mentioned or cited in ChatGPT, Perplexity, and Google AI Overviews (more engines as we scale). Content Mode generates publish-ready articles with hero images and thumbnails and saves them to your workspace.',
+        a: 'FlowIntent runs three AI SDK 6 chat modes inside the paywalled dashboard. SEO Mode handles keyword research, SERP analysis, backlinks, and technical SEO with live DataForSEO data. GEO / AEO Mode covers generative and answer-engine optimization—whether ChatGPT, Perplexity, or Google AI Overviews mention or cite your brand (more engines as we scale). Content Mode is research-first publishing: drafts, hero images, thumbnails, and metadata saved to your workspace.',
       },
       {
         q: 'When should I use each mode?',
-        a: 'Use SEO Mode for rankings data, competitor gaps, and technical SEO. Use GEO / AEO Mode when you care how AI answer engines talk about your brand versus competitors. Use Content Mode when you are ready to publish—research, draft, images, and metadata in one flow. A common path is SEO discover → GEO / AEO measure → Content publish, but you can use any mode in any order.',
+        a: 'Use SEO Mode for rankings data, competitor gaps, and technical SEO. Use GEO / AEO Mode when you care how AI answer engines talk about your brand versus competitors. Use Content Mode when you are ready to publish. A common path is SEO discover → GEO / AEO measure → Content publish, but you can use any mode in any order.',
       },
       {
-        q: 'What is the dashboard experience?',
-        a: 'The paid product is a single mode-aware chat stream. Pick SEO, GEO / AEO, or Content at the top; each mode uses its own AI context so questions stay on-topic. Tool results that need a saved UI—keyword tables, backlink views, blog drafts—open in an artifact side panel. Finished posts and content packages live in your workspace for later.',
-        links: [{ label: 'Sign up', href: '/sign-up' }],
+        q: 'What are artifacts and workspace?',
+        a: 'Artifacts are structured UI panels from AI SDK 6 tool calls in chat—keyword metrics, backlink tables, GEO visibility snapshots, content previews, and more. Any mode can produce them. Workspace is where you keep saved artifacts and library items (posts, briefs, exports) after the chat. Start with the free Reddit content gap audit; the full chat, artifacts, and workspace are in the paywalled dashboard.',
+        links: [
+          { label: 'Try Reddit audit', href: '/reddit-gap' },
+          { label: 'Sign up', href: '/sign-up' },
+        ],
       },
       {
         q: 'Why three modes instead of one chat?',
-        a: 'SEO, AI visibility, and content creation need different tools and memory. Modes keep SEO questions from pulling GEO context (and vice versa) so answers stay accurate. FlowIntent began as DataForSEO-powered SEO chat and grew into GEO / AEO and Content as those jobs became first-class.',
+        a: 'SEO, GEO / AEO, and content creation need different tools and memory. Modes keep SEO questions from pulling GEO context (and vice versa) so answers stay accurate. FlowIntent began as DataForSEO-powered SEO chat and added GEO / AEO and Content as separate AI SDK 6 lanes.',
       },
     ],
   },

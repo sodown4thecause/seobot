@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { LandingPageClient } from '@/components/landing/landing-page-client'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 import { faqSchema } from '@/lib/faq'
@@ -31,7 +32,9 @@ export default function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <LandingPageClient />
+      <Suspense fallback={null}>
+        <LandingPageClient />
+      </Suspense>
     </>
   )
 }

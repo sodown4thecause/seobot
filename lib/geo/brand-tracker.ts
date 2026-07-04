@@ -8,6 +8,13 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
+import { createAICrawlabilityAuditTool } from '@/lib/geo/crawlability-audit'
+import { getGEODigestTools } from '@/lib/geo/digest-tool'
+import { isElmoConfigured } from '@/lib/geo/elmo-client'
+import { getElmoTools } from '@/lib/geo/elmo-tools'
+import { createGeoGenerateFixTool } from '@/lib/geo/fix-generator'
+import { deriveRecommendedFixes } from '@/lib/geo/recommended-fixes'
+import { createSchemaMarkupTool } from '@/lib/geo/schema-markup-tool'
 
 interface LLMResponseResult {
   response: string
@@ -311,6 +318,17 @@ export function createGEOBrandScanTool() {
         sentiments.includes('negative') ? 'Negative' :
         mentionedCount > 0 ? 'Neutral' : 'Not mentioned'
 
+      const recommendedFixes = deriveRecommendedFixes({
+        brand,
+        query,
+        platforms: platformResults,
+        summary: {
+          totalPlatforms: PLATFORMS.length,
+          mentionedOn: mentionedCount,
+          shareOfVoice,
+        },
+      })
+
       return {
         success: true,
         brand,
@@ -322,13 +340,28 @@ export function createGEOBrandScanTool() {
           shareOfVoice,
           overallSentiment,
         },
+        recommendedFixes,
       }
     },
   })
 }
 
-export function getGEOTools() {
+export function getGEOTools(userId?: string) {
   return {
     geo_brand_scan: createGEOBrandScanTool(),
+    geo_generate_fix: createGeoGenerateFixTool(userId),
+    generate_schema_markup: createSchemaMarkupTool(),
+    ai_crawlability_audit: createAICrawlabilityAuditTool(),
+    ...getGEODigestTools(),
+    ...(isElmoConfigured() ? getElmoTools(userId) : {}),
+  }
+}
+
+/** Shared GEO execution tools also used in SEO mode for technical AI visibility. */
+export function getGeoExecutionTools(userId?: string) {
+  return {
+    generate_schema_markup: createSchemaMarkupTool(),
+    ai_crawlability_audit: createAICrawlabilityAuditTool(),
+    geo_generate_fix: createGeoGenerateFixTool(userId),
   }
 }

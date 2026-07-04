@@ -6,53 +6,59 @@ Next.js 16 App Router with pages and API routes.
 
 ```
 app/
-├── api/                    # API Route Handlers (~50 routes)
-│   ├── chat/              # Main chat streaming
-│   ├── content/           # Content generation, validation
-│   ├── dataforseo/        # DataForSEO API proxies
-│   ├── onboarding/        # Onboarding steps
-│   ├── admin/             # Admin-only endpoints
+├── api/                    # Route Handlers
+│   ├── chat/              # Main chat streaming (mode-aware)
+│   ├── geo/               # GEO digest, health, trends, runs
+│   ├── library/           # Workspace save/list
+│   ├── content-zone/      # Brief builder API
+│   ├── content/           # Content generation
+│   ├── dataforseo/        # DataForSEO proxies
+│   ├── cron/              # Weekly SEO/GEO research
 │   └── workflows/         # Workflow execution
-├── dashboard/             # Main app pages
-│   ├── workflows/
-│   ├── content/create/
-│   └── analytics/
-├── admin/                 # Admin dashboard (protected)
-├── (auth pages)           # sign-in/, sign-up/, user-profile/
-└── (marketing)            # blog/, guides/, resources/, case-studies/ (Webflow-powered)
+├── dashboard/             # Paywalled app
+│   ├── page.tsx           # Mode-aware chat (default)
+│   ├── workspace/         # Workspace browser (canonical)
+│   ├── content-zone/      # Legacy workspace alias
+│   └── content/           # Content routes + brief builder
+├── login/                 # Better Auth login
+├── sign-in/ sign-up/      # Auth entry points
+└── (marketing)            # Landing, blog, case-studies (Webflow)
 ```
 
 ## API ROUTES
 
 | Route | Purpose | Auth |
 |-------|---------|------|
-| `/api/chat` | Main chat streaming | Required |
-| `/api/content/*` | Content generation | Required |
+| `POST /api/chat` | Streaming chat (`mode: seo\|geo\|content`) | Required + paywall |
+| `/api/library/*` | Workspace CRUD | Required |
+| `/api/geo/*` | GEO runs, digest, trends | Required |
+| `/api/content-zone/brief` | Brief builder | Required |
 | `/api/dataforseo/*` | DataForSEO proxies | Required |
-| `/api/onboarding/*` | Onboarding handlers | Required |
+| `/api/cron/*` | Scheduled research | `CRON_SECRET` |
 | `/api/admin/*` | Admin endpoints | Admin only |
-| `/api/workflows/*` | Workflow execution | Required |
 
 ## PATTERNS
 
 ### Route Handler Pattern
 ```typescript
-// app/api/example/route.ts
+import { auth } from '@/lib/auth'
+
 export async function POST(req: Request) {
-  const { userId } = await auth()
-  if (!userId) return new Response('Unauthorized', { status: 401 })
+  const session = await auth.api.getSession({ headers: req.headers })
+  if (!session?.user) return new Response('Unauthorized', { status: 401 })
   // ...
 }
 ```
 
 ### Streaming Response
 ```typescript
-// For AI chat responses
-return new StreamingTextResponse(stream)
+return result.toUIMessageStreamResponse()
 ```
 
 ## NOTES
 
-- Auth via Clerk middleware - see `middleware.ts`
-- Protected routes: `/dashboard/*`, `/admin/*`, `/api/*`
-- Public routes: marketing pages, blog, auth pages
+- Auth via **Better Auth** — config in `lib/auth-config.ts`, edge gate in `proxy.ts`
+- Protected routes: `/dashboard/*`, `/api/*` (except public/cron/webhooks)
+- Public routes: marketing, `/reddit-gap`, auth pages
+- **No onboarding** — removed permanently; do not reintroduce
+- Deep-link chat mode: `/dashboard?mode=seo|geo|content`

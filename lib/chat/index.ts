@@ -35,6 +35,7 @@ export {
   isAssistantMessage,
   getLastMessage,
   extractToolInvocations,
+  trimMessagesForContext,
   type ChatContext,
   type RequestBody,
 } from './message-handler'
@@ -54,7 +55,6 @@ export {
   loadMCPTools,
   createBacklinksTool,
   createPerplexityTool,
-  createKeywordSuggestionTool,
   type ToolAssemblyOptions,
 } from './tool-assembler'
 
@@ -68,11 +68,11 @@ export {
   type StreamOptions,
 } from './stream-builder'
 
-// Storage
+// Storage (canonical: persistence.ts)
 export {
-  ensureConversationForUser,
+  ensureChatForUser as ensureConversationForUser,
   loadConversationMessages,
   normalizeUIMessage,
-  saveConversationMessage,
+  saveChatUIMessage as saveConversationMessage,
   type GenericUIMessage,
 } from './storage'

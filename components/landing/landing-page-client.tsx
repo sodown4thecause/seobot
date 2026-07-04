@@ -1,11 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, MessageSquare, Search, Brain, PenLine, LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, type Variants } from 'framer-motion'
 import { Navbar } from '@/components/navbar'
 import { SymbolBackground } from '@/components/landing/symbol-background'
+import { ModeSkillPicker } from '@/components/landing/mode-skill-picker'
 import { LandingFaqSection } from '@/components/landing/landing-faq-section'
 import { EmailLink } from '@/components/email-link'
 import {
@@ -26,6 +29,17 @@ const itemVariants: Variants = {
 }
 
 export function LandingPageClient() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const authError = searchParams.get('error')
+    if (!authError) return
+
+    const params = new URLSearchParams(searchParams.toString())
+    router.replace(`/login?${params.toString()}`)
+  }, [router, searchParams])
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white/20 font-sans">
       <SymbolBackground />
@@ -208,6 +222,17 @@ export function LandingPageClient() {
               </Link>
             </div>
           </motion.div>
+
+          {/* Interactive mode + subskill picker (Cursor-composer pattern) */}
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={itemVariants}
+            className="mt-16"
+          >
+            <ModeSkillPicker />
+          </motion.div>
         </div>
       </section>
 
@@ -235,7 +260,7 @@ export function LandingPageClient() {
                 number="03"
                 label="Content Mode"
                 title="Publish in Minutes"
-                description="Tell the AI what to write in Content Mode. It generates the post, hero image, and thumbnail, then saves the package to your workspace—copy, export Markdown, or send to your CMS."
+                description="Content Mode is AI SDK 6 chat for publishing—drafts, hero image, and thumbnail. Save artifacts to your workspace or export Markdown for your CMS."
                 icon={PenLine}
                 accent="amber"
               />
@@ -274,7 +299,7 @@ export function LandingPageClient() {
               <p className="text-sm font-mono uppercase tracking-widest text-amber-500 mb-3">Content Mode</p>
               <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">Blog Posts with Images</h3>
               <p className="text-zinc-400 leading-relaxed text-sm">
-                Posts, hero images, and thumbnails saved to your workspace—export Markdown or hand off to your CMS when you are ready.
+                Chat in Content Mode, preview artifacts in the side panel, save to workspace—export when you are ready.
               </p>
             </div>
           </motion.div>

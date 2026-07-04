@@ -1,6 +1,14 @@
 # GEO Mode Setup
 
-SEOBOT now separates chat and RAG context into three modes:
+> **Planned production engine:** GEO / AEO browser capture will run through the
+> [`sodown4thecause/geomode`](https://github.com/sodown4thecause/geomode) fork
+> of Elmo using CloakBrowser on Azure. See
+> [`docs/architecture/geo-elmo-cloakbrowser-azure.md`](architecture/geo-elmo-cloakbrowser-azure.md).
+> Vultr PoC deployment: [`docs/deployment/geomode-vultr.md`](deployment/geomode-vultr.md).
+> The current OneGlanse/DataForSEO facade remains the transitional adapter until
+> the Elmo run API is wired into FlowIntent.
+
+FlowIntent (internal repo: seobot) separates chat and RAG context into three modes:
 
 - `seo`: SERP, keyword, technical SEO, backlinks, and ranking strategy.
 - `geo`: AI visibility, answer-engine citations, brand mentions, competitor mentions, sentiment, and source inclusion.
@@ -32,6 +40,21 @@ GEO_DEFAULT_TOPICS=AI visibility,answer engine optimization,Google AI Overview c
 Brand names are not configured globally. GEO runs use each authenticated user's business profile and derive a default brand from the profile website URL unless a request or `geo_prompts` row provides a more specific brand. Weekly GEO research iterates active business profiles so new users are covered without changing environment variables.
 
 All AI summarization and GEO analysis uses Vercel AI Gateway. Weekly research uses `openai/gpt-5.5` and falls back to `openai/gpt-5.4`.
+
+### Elmo / geomode browser capture (optional)
+
+By default, GEO engine runs use the transitional OneGlanse facade (`lib/geo/oneglanse-client.ts`). When the geomode stack exposes its run API on Vultr or Azure, enable Elmo routing:
+
+```bash
+GEO_ELMO_ENABLED=true
+ELMO_API_URL=https://geo.flowintent.com
+ELMO_API_KEY=your-elmo-api-key
+GEO_API_URL=https://geo-api.flowintent.com
+GEO_API_CLIENT_ID=
+GEO_API_KEY=
+```
+
+Browser engines (`chatgpt`, `perplexity`, `google_ai_overview`) call `lib/geo/elmo-client.ts` when enabled; gateway/DataForSEO engines keep using the facade as fallback. Deploy the Elmo stack per [`docs/deployment/geomode-vultr.md`](deployment/geomode-vultr.md).
 
 ## Seed GEO Prompts
 

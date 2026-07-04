@@ -32,6 +32,7 @@ yarn-debug.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+scripts/deploy/geomode-vultr.env
 
 # vercel
 .vercel
@@ -46,6 +47,9 @@ tmp-librarian/
 sessions/
 
 # Local agent/tooling folders
+.codex-worktrees/
+.pi/
+meta-harness/
 .agent/
 .agents/
 .gemini/
@@ -125,7 +129,9 @@ STRATEGIC_SEO_AEO_AUDIT.md
 
 # One-off scripts (keep in repo if reusable)
 scripts/benchmark-sandbox-codemode.ts
+scripts/_patch-stream-builder.js
 scripts/clear-rate-limits.js
 scripts/publish-all-articles.ts
 scripts/publish-json-to-sanity.ts
 scripts/test-chat-questions.ts
+.firecrawl/

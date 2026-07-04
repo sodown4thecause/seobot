@@ -118,6 +118,21 @@ const IMAGE_TOOLS = [
   'generate_hero_image',
 ] as const
 
+const GEO_TOOLS = [
+  'geo_brand_scan',
+  'geo_generate_fix',
+  'generate_schema_markup',
+  'ai_crawlability_audit',
+  'geo_setup_tracking',
+  'geo_tracked_prompts',
+  'geo_prompt_snapshot',
+  'geo_competitors',
+  'geo_visibility_report',
+  'geo_daily_digest',
+] as const
+
+export type ChatModeId = 'seo' | 'geo' | 'content'
+
 export class AgentRouter {
   /**
    * Route user query to appropriate specialized agent
@@ -138,17 +153,6 @@ export class AgentRouter {
         confidence: 0.98,
         reasoning: 'User is in onboarding flow',
         tools: [...ONBOARDING_TOOLS],
-      }
-    }
-
-    const onboardingMatches = this.matchKeywords(messageLower, this.getOnboardingKeywords())
-    if (onboardingMatches.length > 0) {
-      return {
-        agent: AGENT_IDS.ONBOARDING,
-        confidence: this.calculateConfidence(onboardingMatches.length, 0.85, 0.98),
-        reasoning: `Onboarding query detected: ${onboardingMatches.slice(0, 3).join(', ')}`,
-        tools: [...ONBOARDING_TOOLS],
-        matchedKeywords: onboardingMatches,
       }
     }
 
@@ -208,6 +212,37 @@ export class AgentRouter {
       confidence: 0.7,
       reasoning: 'General query - no specialized agent keywords detected',
       tools: [...GENERAL_TOOLS],
+    }
+  }
+
+  /**
+   * Default agent + tool set when the UI mode is explicitly selected.
+   * Skips LLM intent classification for faster time-to-first-token.
+   */
+  static getModeRouting(chatMode: ChatModeId): AgentRoutingResult {
+    switch (chatMode) {
+      case 'geo':
+        return {
+          agent: AGENT_IDS.GEO,
+          confidence: 1.0,
+          reasoning: 'GEO mode selected by user',
+          tools: [...GEO_TOOLS],
+        }
+      case 'content':
+        return {
+          agent: AGENT_IDS.CONTENT,
+          confidence: 1.0,
+          reasoning: 'Content mode selected by user',
+          tools: [...CONTENT_TOOLS],
+        }
+      case 'seo':
+      default:
+        return {
+          agent: AGENT_IDS.SEO_AEO,
+          confidence: 1.0,
+          reasoning: 'SEO mode selected by user',
+          tools: [...SEO_TOOLS],
+        }
     }
   }
 
@@ -856,10 +891,23 @@ Zero mentions is valuable data, not a failure. Tell the user exactly:
   3 third-party directories, publish an original industry data study this quarter")
 
 TOOL USAGE RULES:
+- geo_brand_scan: instant live scan across 5 platforms via DataForSEO — use for ad-hoc query checks
+- geo_generate_fix: turn a visibility gap into an actionable content brief; set generateContent=true to also write the draft in the same turn
+- generate_schema_markup: produce ready-to-paste Organization, Product, or FAQPage JSON-LD for entity clarity
+- ai_crawlability_audit: check robots.txt, llms.txt, and AI crawler access (GPTBot, PerplexityBot, ClaudeBot, etc.)
+- geo_setup_tracking: first-time setup or inspect the user's persistent Elmo tracking brand (requires sign-in + business profile)
+- geo_tracked_prompts: manage ongoing tracked prompts in Elmo (list/add/enable/disable/delete)
+- geo_prompt_snapshot: historical mention + citation stats for a tracked prompt (date range YYYY-MM-DD)
+- geo_competitors: manage competitors in Elmo tracking
+- geo_visibility_report: one-shot multi-engine visibility report; if still running, poll again with reportId
+- geo_daily_digest: nightly digest from geomode companion (trends, suggestions, SERP movers)
 - Always call geo_brand_scan with a specific brand name and a single query string
 - Never run a scan without a real brand name — if the user hasn't provided one, ask first
 - After the tool returns, always write a full text interpretation of the results
 - Never end a turn with only raw tool output — always add strategic commentary
+- When geo_brand_scan returns recommendedFixes, highlight the top 1–2 fixes and offer to run geo_generate_fix
+- For technical blockers (site not crawlable by AI bots), run ai_crawlability_audit before content recommendations
+- For entity/schema gaps, use generate_schema_markup to produce implementation-ready JSON-LD
 
 PROGRESS TRACKING GUIDANCE:
 Recommend users run the same set of queries every 4 weeks to track Share of Voice trends.

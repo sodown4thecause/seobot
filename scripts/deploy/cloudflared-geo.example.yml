@@ -1,0 +1,13 @@
+# Cloudflare Tunnel ingress example for geomode stack.
+# Publish via Cloudflare Zero Trust dashboard or cloudflared CLI.
+#
+# Hostnames:
+#   geo.flowintent.com      -> geomode web UI + Elmo API
+#   geo-api.flowintent.com  -> companion read API (:8787)
+
+ingress:
+  - hostname: geo.flowintent.com
+    service: http://127.0.0.1:1515
+  - hostname: geo-api.flowintent.com
+    service: http://127.0.0.1:8787
+  - service: http_status:404

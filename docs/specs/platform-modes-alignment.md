@@ -1,22 +1,36 @@
 # Platform modes alignment (landing + dashboard)
 
-**Status:** Superseded for product truth  
+**Status:** Active checklist  
+**Last updated:** 2026-07-04  
 **Canonical spec:** [platform-modes.md](./platform-modes.md)  
 **Elevator pitch:** `lib/product/elevator-pitch.ts`
 
-This file retains the original P0 implementation checklist. For mode definitions, UX, GEO engines, Content Zone deprecation, and marketing rules, use **platform-modes.md**.
-
 ## P0 (done)
 
-1. `lib/chat/modes.ts` — `CHAT_MODE_UI`, accent class tokens, helpers.
-2. Chat selector + content empty state use shared config (amber, “Content Mode”).
-3. FAQ “Platform Modes” section — aligned with platform-modes.md (2026-06-03).
-4. Landing “Three Modes” — elevator pitch + intro from `lib/product/elevator-pitch.ts`.
-5. Sidebar grouped: SEO & content data vs GEO / AEO.
+1. `lib/chat/modes.ts` — `CHAT_MODE_UI`, accent tokens.
+2. Chat selector + empty states use shared config.
+3. FAQ Platform Modes — chat → artifacts → workspace.
+4. Landing three modes + elevator pitch (`components/landing/mode-skill-picker.tsx`).
+5. Workspace UI at `/dashboard/workspace` (legacy `/dashboard/content-zone` kept).
 
-## P1
+## P1 (done)
 
-- [x] Persist `chatMode` on `conversations.metadata`
+- [x] Persist `chatMode` on conversations
 - [x] Deep-link `/dashboard?mode=geo`
-- [x] Content Zone routes redirect to `/dashboard?mode=content`; brief API returns 410
-- [ ] Landing hero dual-track test (Reddit lead magnet vs platform modes)
+- [x] Restore workspace routes (no redirect/410)
+- [x] Sidebar: Workspace link → `/dashboard/workspace`
+- [x] Artifact registry in `lib/artifacts/registry.ts`
+- [x] Library API (`/api/library`, `/api/library/save`)
+- [x] GEO Elmo client + digest tools (`lib/geo/elmo-client.ts`)
+
+## P2 (in progress)
+
+- [ ] Landing hero dual-track (Reddit vs platform)
+- [ ] Full artifact type coverage in workspace browser
+- [ ] Elmo run API as default GEO engine path (OneGlanse facade fallback)
+
+## Docs sync (2026-07-04)
+
+- [x] `README.md` — FlowIntent product overview
+- [x] `AGENTS.md` + `app/`, `lib/`, `components/` AGENTS.md
+- [x] This checklist + `platform-modes.md` workspace routes

@@ -37,6 +37,7 @@ export function GoogleAuthButton({ label }: { label: string }) {
     const { error: socialError } = await authClient.signIn.social({
       provider: 'google',
       callbackURL: getSafeCallbackURL(),
+      errorCallbackURL: '/login',
     })
 
     if (socialError) {
