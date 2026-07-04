@@ -73,11 +73,11 @@ describe('dashboard subscription guard', () => {
     expect(redirectMock).toHaveBeenCalledWith('/billing/checkout')
   })
 
-  it('always allows the admin email through dashboard subscription gating', async () => {
+  it('always allows configured admin emails through dashboard subscription gating', async () => {
     getSessionMock.mockResolvedValue({
       user: {
         id: 'admin_123',
-        email: 'liam@flowintent.com',
+        email: 'liam.wilson1990@gmail.com',
       },
     })
 
