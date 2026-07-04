@@ -1,3 +1,5 @@
+import { FLOWINTENT_ELEVATOR_PITCH } from '@/lib/product/elevator-pitch'
+
 export type FaqLink = { label: string; href: string }
 export type FaqItem = { q: string; a: string; links?: FaqLink[] }
 export type FaqSection = { category: string; questions: FaqItem[] }
@@ -50,16 +52,20 @@ export const faqSections: FaqSection[] = [
     questions: [
       {
         q: 'What are SEO Mode, GEO / AEO Mode, and Content Mode?',
-        a: 'FlowIntent runs three specialized AI modes in one dashboard. SEO Mode handles keyword research, SERP analysis, backlinks, and technical SEO with live DataForSEO data. GEO / AEO Mode tracks how your brand appears in ChatGPT, Gemini, Perplexity, Claude, and Google AI Overviews. Content Mode researches topics and generates publish-ready articles with hero images and thumbnails.',
+        a: 'FlowIntent runs three specialized AI modes in one paywalled chat workspace. SEO Mode handles keyword research, SERP analysis, backlinks, and technical SEO with live DataForSEO data. GEO / AEO Mode tracks whether your brand is mentioned or cited in ChatGPT, Perplexity, and Google AI Overviews (more engines as we scale). Content Mode generates publish-ready articles with hero images and thumbnails and saves them to your workspace.',
       },
       {
         q: 'When should I use each mode?',
-        a: 'Use SEO Mode when you need rankings data, competitor gaps, or technical audits. Use GEO / AEO Mode when you care whether AI assistants mention or cite your brand. Use Content Mode when you are ready to write or refresh pages and want research, structure, and assets in one flow. Keyword research in SEO or GEO can inform Content Mode later.',
+        a: 'Use SEO Mode for rankings data, competitor gaps, and technical SEO. Use GEO / AEO Mode when you care how AI answer engines talk about your brand versus competitors. Use Content Mode when you are ready to publish—research, draft, images, and metadata in one flow. A common path is SEO discover → GEO / AEO measure → Content publish, but you can use any mode in any order.',
       },
       {
-        q: 'How is the dashboard chat different from AEO Insights?',
-        a: 'The main dashboard chat is conversational: pick a mode and ask questions in plain English. AEO Insights and Content Performance are structured workspaces with KPIs, snapshots, and action queues backed by DataForSEO and enrichment APIs — best for monitoring trends over time.',
+        q: 'What is the dashboard experience?',
+        a: 'The paid product is a single mode-aware chat stream. Pick SEO, GEO / AEO, or Content at the top; each mode uses its own AI context so questions stay on-topic. Tool results that need a saved UI—keyword tables, backlink views, blog drafts—open in an artifact side panel. Finished posts and content packages live in your workspace for later.',
         links: [{ label: 'Sign up', href: '/sign-up' }],
+      },
+      {
+        q: 'Why three modes instead of one chat?',
+        a: 'SEO, AI visibility, and content creation need different tools and memory. Modes keep SEO questions from pulling GEO context (and vice versa) so answers stay accurate. FlowIntent began as DataForSEO-powered SEO chat and grew into GEO / AEO and Content as those jobs became first-class.',
       },
     ],
   },
@@ -68,7 +74,7 @@ export const faqSections: FaqSection[] = [
     questions: [
       {
         q: 'What does FlowIntent do?',
-        a: 'FlowIntent is an AI-powered SEO platform built for both traditional search engines and AI answer engines. It combines AI Trust Audits, competitor analysis, and three chat modes (SEO, GEO / AEO, and Content) for the AI search era.',
+        a: FLOWINTENT_ELEVATOR_PITCH,
       },
       {
         q: 'What is an AI Trust Audit?',

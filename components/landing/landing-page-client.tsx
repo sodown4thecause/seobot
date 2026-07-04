@@ -8,6 +8,10 @@ import { Navbar } from '@/components/navbar'
 import { SymbolBackground } from '@/components/landing/symbol-background'
 import { LandingFaqSection } from '@/components/landing/landing-faq-section'
 import { EmailLink } from '@/components/email-link'
+import {
+  FLOWINTENT_ELEVATOR_PITCH,
+  FLOWINTENT_PLATFORM_MODES_INTRO,
+} from '@/lib/product/elevator-pitch'
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -183,7 +187,10 @@ export function LandingPageClient() {
               <span className="text-zinc-500">No Other SEO Tool Does This.</span>
             </h2>
             <p className="text-zinc-400 text-lg leading-relaxed">
-              Most SEO tools give you data. Flow Intent gives you an AI assistant that thinks in three distinct modes — SEO, GEO/AEO, and Content — each purpose-built for a different job.
+              {FLOWINTENT_ELEVATOR_PITCH}
+            </p>
+            <p className="text-zinc-500 text-sm leading-relaxed max-w-2xl mx-auto">
+              {FLOWINTENT_PLATFORM_MODES_INTRO}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link
@@ -220,7 +227,7 @@ export function LandingPageClient() {
                 number="02"
                 label="GEO / AEO Mode"
                 title="Own the AI Answer Box"
-                description="Track how your brand appears across ChatGPT, Gemini, Perplexity, Claude and Google AI Overviews. Inspired by the open-source GEO tracking movement — the only way to know if AI models are citing you or your competitors."
+                description="Track mentions and citations in ChatGPT, Perplexity, and Google AI Overviews—the engines we run today—so you know whether AI answers name you or your competitors."
                 icon={Brain}
                 accent="violet"
               />
@@ -228,7 +235,7 @@ export function LandingPageClient() {
                 number="03"
                 label="Content Mode"
                 title="Publish in Minutes"
-                description="Tell the AI what to write. It generates a full blog post, automatically creates a hero image and thumbnail, and outputs a polished artifact you can copy, download as Markdown, or hand straight to your CMS."
+                description="Tell the AI what to write in Content Mode. It generates the post, hero image, and thumbnail, then saves the package to your workspace—copy, export Markdown, or send to your CMS."
                 icon={PenLine}
                 accent="amber"
               />
@@ -259,7 +266,7 @@ export function LandingPageClient() {
               <p className="text-sm font-mono uppercase tracking-widest text-violet-500 mb-3">GEO / AEO Mode</p>
               <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">AI Visibility Tracking</h3>
               <p className="text-zinc-400 leading-relaxed text-sm">
-                Monitor your brand mentions across every major AI platform. Understand which sources AI models trust and how to get cited more.
+                Monitor brand mentions and citations in ChatGPT, Perplexity, and Google AI Overviews—with more engines as integrations scale.
               </p>
             </div>
             <div className="bg-black/40 border border-amber-500/20 p-8 rounded-none">
@@ -267,7 +274,7 @@ export function LandingPageClient() {
               <p className="text-sm font-mono uppercase tracking-widest text-amber-500 mb-3">Content Mode</p>
               <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">Blog Posts with Images</h3>
               <p className="text-zinc-400 leading-relaxed text-sm">
-                Auto-generated hero images and thumbnails ship with every piece of content. Copy the markdown, export to your CMS — done.
+                Posts, hero images, and thumbnails saved to your workspace—export Markdown or hand off to your CMS when you are ready.
               </p>
             </div>
           </motion.div>

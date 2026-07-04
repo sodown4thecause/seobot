@@ -79,9 +79,9 @@ export const CHAT_MODE_UI: Record<ChatMode, ChatModeUiConfig> = {
     selectorLabel: 'GEO / AEO',
     heroTitle: 'GEO / AEO Mode',
     tagline:
-      'Track how often your brand appears inside ChatGPT, Claude, Gemini, Perplexity, and Google AI Overview responses — and get actionable steps to increase your AI visibility.',
+      'Track how often your brand is mentioned or cited in ChatGPT, Perplexity, and Google AI Overviews — and get actionable steps to increase your AI visibility.',
     selectorDescription:
-      'Track brand mentions across ChatGPT, Gemini, Perplexity & AI Overviews',
+      'Brand mentions across ChatGPT, Perplexity & Google AI Overviews',
     accent: 'violet',
   },
   content: {
@@ -90,8 +90,8 @@ export const CHAT_MODE_UI: Record<ChatMode, ChatModeUiConfig> = {
     selectorLabel: 'Content Mode',
     heroTitle: 'Content Mode',
     tagline:
-      'Research-first content that ranks on Google and gets cited by AI answer engines — keyword data, competitor analysis, and quality writing in one workflow.',
-    selectorDescription: 'Generate blog posts, articles & content with AI-powered images',
+      'Research-first posts with hero and thumbnail images—saved to your workspace so you can edit, export, or ship to your CMS.',
+    selectorDescription: 'Blog posts, images & metadata saved to workspace',
     accent: 'amber',
   },
 }

@@ -1,3 +1,6 @@
-import ContentZonePage from '../content-zone/page'
+import { redirect } from 'next/navigation'
 
-export default ContentZonePage
+/** @deprecated Content Zone removed — use dashboard chat in Content Mode */
+export default function DashboardContentRedirectPage() {
+  redirect('/dashboard?mode=content')
+}

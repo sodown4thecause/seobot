@@ -34,4 +34,16 @@ describe('chat modes config', () => {
     expect(contentAccent.borderPanel).toContain('amber')
     expect(getChatModeUi('geo').selectorLabel).toBe('GEO / AEO')
   })
+
+  it('names supported GEO engines in public copy', () => {
+    const geo = getChatModeUi('geo')
+    expect(geo.tagline).toMatch(/ChatGPT/)
+    expect(geo.tagline).toMatch(/Perplexity/)
+    expect(geo.tagline).toMatch(/Google AI Overviews/)
+    expect(geo.tagline).not.toMatch(/Claude|Gemini/)
+  })
+
+  it('describes workspace saves for content mode', () => {
+    expect(getChatModeUi('content').tagline).toMatch(/workspace/i)
+  })
 })

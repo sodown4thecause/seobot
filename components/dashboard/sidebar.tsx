@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronRight,
   MessageSquarePlus,
+  MessageSquare,
   Clock,
   Trash2,
   Search,
@@ -16,11 +17,13 @@ import {
   FileText,
   Sparkles,
 } from 'lucide-react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useAgent, type Conversation } from '@/components/providers/agent-provider'
+import { useChatModeOptional } from '@/components/chat/chat-mode-context'
+import { buildDashboardChatHref } from '@/lib/chat/conversation-mode'
 
 export interface SidebarProps {
   open: boolean
@@ -45,14 +48,19 @@ const DASHBOARD_LINK_GROUPS = [
   {
     title: 'GEO / AEO',
     hint: 'AI visibility snapshots — pairs with GEO / AEO mode',
-    links: [{ name: 'AEO Insights', href: '/dashboard/aeo', icon: Sparkles }],
+    links: [
+      { name: 'AEO Insights', href: '/dashboard/aeo', icon: Sparkles },
+      { name: 'GEO / AEO Chat', href: '/dashboard?mode=geo', icon: MessageSquare },
+    ],
   },
 ] as const
 
 export function Sidebar({ open, onToggle }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const { state, actions } = useAgent()
+  const { chatMode } = useChatModeOptional()
   const hasFetchedRef = React.useRef(false)
   const [showAllConversations, setShowAllConversations] = React.useState(false)
   const visibleConversations = showAllConversations
@@ -70,18 +78,25 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
   const handleNewChat = React.useCallback(async () => {
     const agentId = state.activeAgent?.id ?? 'general'
     try {
-      const conversation = await actions.createConversation(agentId, 'New Conversation')
+      const conversation = await actions.createConversation(
+        agentId,
+        'New Conversation',
+        chatMode
+      )
       if (!conversation) return
       actions.setActiveConversation(conversation)
-      router.push(`/dashboard?conversationId=${conversation.id}`)
+      router.push(
+        buildDashboardChatHref({ conversationId: conversation.id, mode: chatMode })
+      )
     } catch (error) {
       console.error('[Sidebar] Failed to start a new chat:', error)
     }
-  }, [actions, router, state.activeAgent?.id])
+  }, [actions, chatMode, router, state.activeAgent?.id])
 
   const handleSelectConversation = React.useCallback((conv: Conversation) => {
     actions.setActiveConversation(conv)
-    router.push(`/dashboard?conversationId=${conv.id}`)
+    const mode = conv.chatMode ?? undefined
+    router.push(buildDashboardChatHref({ conversationId: conv.id, mode }))
   }, [actions, router])
 
   const handleDeleteConversation = React.useCallback(async (e: React.MouseEvent, id: string) => {
@@ -166,8 +181,10 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                 <nav className="space-y-0.5">
                   {group.links.map((item) => {
                     const Icon = item.icon
-                    const isActive =
-                      pathname === item.href || pathname?.startsWith(`${item.href}/`)
+                    const isGeoChatLink = item.href.includes('mode=geo')
+                    const isActive = isGeoChatLink
+                      ? pathname === '/dashboard' && searchParams?.get('mode') === 'geo'
+                      : pathname === item.href || pathname?.startsWith(`${item.href}/`)
                     const isGeoGroup = group.title === 'GEO / AEO'
                     return (
                       <Link

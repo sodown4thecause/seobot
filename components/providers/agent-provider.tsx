@@ -44,6 +44,8 @@ export interface Conversation {
   agent: Agent
   createdAt: string
   updatedAt: string
+  chatMode?: 'seo' | 'geo' | 'content'
+  metadata?: Record<string, unknown> | null
   messageCount?: number
   lastMessage?: {
     content: string
@@ -288,7 +290,11 @@ const AgentContext = createContext<{
 
     // Conversation actions
     setActiveConversation: (conversation: Conversation | null) => void
-    createConversation: (agentId: string, title?: string) => Promise<Conversation | null>
+    createConversation: (
+      agentId: string,
+      title?: string,
+      chatMode?: 'seo' | 'geo' | 'content'
+    ) => Promise<Conversation | null>
     loadConversations: () => Promise<void>
     updateConversation: (id: string, updates: Partial<Conversation>) => Promise<void>
     deleteConversation: (id: string) => Promise<void>
@@ -416,7 +422,11 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: conversation })
     },
 
-    createConversation: async (agentId: string, title?: string): Promise<Conversation | null> => {
+    createConversation: async (
+      agentId: string,
+      title?: string,
+      chatMode?: 'seo' | 'geo' | 'content'
+    ): Promise<Conversation | null> => {
       try {
         if (!isLoaded) {
           dispatch({ type: 'SET_ERROR', payload: 'Authentication is still loading. Please try again.' })
@@ -444,6 +454,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({
             agentId: agent.id,
             title: title || 'New Conversation',
+            ...(chatMode ? { chatMode } : {}),
           }),
         })
 
@@ -455,11 +466,17 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         const { conversation: conv } = await response.json()
 
         // Transform to match Conversation type
+        const metadata = conv.metadata as Record<string, unknown> | null | undefined
         const conversation: Conversation = {
           id: conv.id,
           agentId: conv.agentType || conv.agent_type || agent.id,
           title: conv.title,
           status: conv.status,
+          metadata: metadata ?? null,
+          chatMode:
+            metadata && typeof metadata === 'object' && 'chatMode' in metadata
+              ? (metadata.chatMode as Conversation['chatMode'])
+              : undefined,
           agent: conv.agent ? {
             id: conv.agent.id,
             name: conv.agent.name,
@@ -511,11 +528,18 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         const { conversations } = await response.json()
 
         // Transform conversations to match our Conversation type
-        const transformedConversations: Conversation[] = conversations.map((conv: any) => ({
+        const transformedConversations: Conversation[] = conversations.map((conv: any) => {
+          const metadata = conv.metadata as Record<string, unknown> | null | undefined
+          return {
           id: conv.id,
           agentId: conv.agentType || conv.agent_type || 'general',
           title: conv.title,
           status: conv.status,
+          metadata: metadata ?? null,
+          chatMode:
+            metadata && typeof metadata === 'object' && 'chatMode' in metadata
+              ? (metadata.chatMode as Conversation['chatMode'])
+              : undefined,
           agent: conv.agent ? {
             id: conv.agent.id,
             name: conv.agent.name,
@@ -535,7 +559,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           updatedAt: conv.updatedAt || conv.updated_at,
           messageCount: conv.messageCount,
           lastMessage: conv.lastMessage,
-        }))
+        }})
 
         dispatch({ type: 'SET_CONVERSATIONS', payload: transformedConversations })
       } catch (error) {
@@ -549,6 +573,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch('/api/conversations', {
           method: 'PATCH',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
           },
