@@ -1,5 +1,5 @@
 import type { UIMessage } from 'ai'
-import type { GenerativeUiComponent } from './harness-contracts'
+import type { GenerativeUiComponent } from './generative-ui-types'
 import type { KeywordMetric } from '@/components/chat/generative-ui/keyword-metrics'
 import type { SerpResultsProps } from '@/components/chat/generative-ui/serp-results'
 import type { DomainAnalyticsData } from '@/components/chat/generative-ui/domain-analytics'

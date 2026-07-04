@@ -20,6 +20,7 @@ export interface SaveToLibraryButtonProps {
   variant?: 'default' | 'outline' | 'ghost'
   size?: 'default' | 'sm' | 'lg' | 'icon'
   label?: string
+  disabled?: boolean
 }
 
 export function SaveToLibraryButton({
@@ -36,6 +37,7 @@ export function SaveToLibraryButton({
   variant = 'outline',
   size = 'sm',
   label = 'Save to Library',
+  disabled = false,
 }: SaveToLibraryButtonProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
@@ -89,7 +91,7 @@ export function SaveToLibraryButton({
   return (
     <Button
       onClick={handleSave}
-      disabled={isSaving || isSaved}
+      disabled={disabled || isSaving || isSaved}
       variant={variant}
       size={size}
       className={cn(

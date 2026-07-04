@@ -1012,9 +1012,9 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')
     const lastUserText = lastUserMessage ? getMessageText(lastUserMessage) : ''
     if (lastUserText.trim()) {
-      sendMessage({ text: lastUserText })
+      handleSendMessage({ text: lastUserText })
     }
-  }, [messages, regenerate, retryCountdown, sendMessage])
+  }, [messages, regenerate, retryCountdown, handleSendMessage])
 
   // Helper for safe JSON parsing
   const safeParseJSON = async (response: Response) => {

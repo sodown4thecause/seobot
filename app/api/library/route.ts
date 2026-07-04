@@ -7,14 +7,9 @@ import {
   isSavedArtifactItem,
 } from '@/lib/artifacts/preview'
 import type { SavedArtifactLibraryItem } from '@/lib/artifacts/types'
-import type { ChatMode } from '@/lib/chat/modes'
-import { CHAT_MODES } from '@/lib/chat/modes'
+import { isChatMode } from '@/lib/chat/modes'
 
 export const runtime = 'nodejs'
-
-function isChatMode(value: string | null): value is ChatMode {
-  return value !== null && (CHAT_MODES as readonly string[]).includes(value)
-}
 
 export async function GET(req: NextRequest) {
   try {

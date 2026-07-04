@@ -6,7 +6,7 @@ import {
 import { isChatMode } from '@/lib/chat/modes'
 import { db, conversations, messages } from '@/lib/db'
 import type { Json } from '@/lib/db/schema'
-import { eq, desc, and, inArray } from 'drizzle-orm'
+import { eq, desc, and, inArray, sql } from 'drizzle-orm'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -250,31 +250,19 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (updates.chatMode && isChatMode(updates.chatMode)) {
-      const updatedCount = await db.transaction(async (tx) => {
-        const existing = await tx
-          .select({ id: conversations.id, metadata: conversations.metadata })
-          .from(conversations)
-          .where(
-            and(eq(conversations.userId, userId), inArray(conversations.id, conversationIds))
-          )
+      const chatMode = updates.chatMode
+      const updatedRows = await db
+        .update(conversations)
+        .set({
+          ...patchValues,
+          metadata: sql`coalesce(${conversations.metadata}, '{}'::jsonb) || jsonb_build_object('chatMode', ${chatMode}::text)`,
+        })
+        .where(
+          and(eq(conversations.userId, userId), inArray(conversations.id, conversationIds))
+        )
+        .returning({ id: conversations.id })
 
-        for (const row of existing) {
-          await tx
-            .update(conversations)
-            .set({
-              ...patchValues,
-              metadata: mergeMetadataWithChatMode(
-                row.metadata as Record<string, unknown> | null,
-                updates.chatMode
-              ) as Json,
-            })
-            .where(eq(conversations.id, row.id))
-        }
-
-        return existing.length
-      })
-
-      return NextResponse.json({ updated: updatedCount })
+      return NextResponse.json({ updated: updatedRows.length })
     }
 
     const updatedRows = await db

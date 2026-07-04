@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { GenerativeUiComponent } from '@/lib/chat/harness-contracts'
+import type { GenerativeUiComponent } from '@/lib/chat/generative-ui-types'
 import { KeywordMetrics } from './keyword-metrics'
 import { SerpResults } from './serp-results'
 import { DomainAnalytics } from './domain-analytics'

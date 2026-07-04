@@ -202,19 +202,21 @@ function parseSerpResults(result: unknown): { keyword: string; results: SerpResu
     }
   }
 
-  const results: SerpResult[] = items
-    .map((item, index) => {
-      const row = asRecord(item)
-      if (!row?.url && !row?.title) return null
-      return {
-        position: Number(row.rank_group ?? row.rank_absolute ?? row.position ?? index + 1),
-        title: String(row.title ?? ''),
-        url: String(row.url ?? ''),
-        description: String(row.description ?? ''),
-        domain: row.domain ? String(row.domain) : undefined,
-      }
-    })
-    .filter((row): row is SerpResult => row !== null)
+  const results: SerpResult[] = items.flatMap((item, index) => {
+    const row = asRecord(item)
+    if (!row?.url && !row?.title) return []
+
+    const parsed: SerpResult = {
+      position: Number(row.rank_group ?? row.rank_absolute ?? row.position ?? index + 1),
+      title: String(row.title ?? ''),
+      url: String(row.url ?? ''),
+      description: String(row.description ?? ''),
+    }
+    if (row.domain) {
+      parsed.domain = String(row.domain)
+    }
+    return [parsed]
+  })
 
   return { keyword, results }
 }
