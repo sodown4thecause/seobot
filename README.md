@@ -1,92 +1,117 @@
-# SEO Platform - AI-Powered SEO & Content Creation
+# FlowIntent (seobot)
 
-An intelligent SEO and content creation platform that combines competitive analysis, keyword research, and AI-powered writing to help businesses create optimized content that ranks.
+**FlowIntent** is an AI-powered SEO, GEO / AEO, and content platform. Users chat in plain English across three paywalled modes, inspect structured tool results as artifacts, and save outputs to a workspace library. The public lead magnet is the free [Reddit content gap audit](/reddit-gap).
 
-## 🚀 Features
+> Internal repo name: **seobot**. User-facing brand: **FlowIntent** only.
 
-- **Conversational Onboarding**: AI-guided setup through natural conversation
-- **Competitor Analysis**: Automated competitor discovery and monitoring with DataForSEO
-- **Keyword Research**: Find untapped keyword opportunities with search volume and difficulty
-- **AI Content Generation**: Create SEO-optimized content using Gemini AI
-- **Brand Voice Extraction**: Learn your brand's voice from social media posts
-- **Real-time Research**: Get latest statistics and trends with Perplexity AI
-- **Content Extraction**: Clean text and metadata extraction with Jina AI
+## Product
 
-## 🛠️ Tech Stack
+| Surface | Access | Purpose |
+|---------|--------|---------|
+| `/reddit-gap` | Public | Lead magnet — Reddit content gap audit |
+| `/dashboard/*` | Signed in + paywall | Core product — mode-aware chat, artifacts, workspace |
 
-- **Frontend**: Next.js 16, React 19, TailwindCSS, shadcn/ui, Framer Motion
-- **Backend**: Next.js API Routes, Edge Runtime
-- **Database**: Supabase (PostgreSQL + Auth + Storage)
-- **AI/ML**: Gemini 2.0, Vercel AI SDK, Perplexity AI
-- **External APIs**: DataForSEO, Jina AI, Apify
+### Three chat modes
 
-## 📋 Prerequisites
+| Mode | Job | Primary data |
+|------|-----|--------------|
+| **SEO Mode** | Rankings, keywords, SERPs, backlinks, technical SEO | DataForSEO (live) |
+| **GEO / AEO Mode** | AI visibility — mentions and citations in answer engines | ChatGPT, Perplexity, Google AI Overviews |
+| **Content Mode** | Research-first drafts, images, metadata → workspace | AI SDK tools + RAG |
+
+**Core UX:** Chat → Artifacts (AI SDK 6 tool UI) → Workspace (saved library)
+
+Canonical spec: [`docs/specs/platform-modes.md`](docs/specs/platform-modes.md)
+
+## Tech stack
+
+- **Frontend:** Next.js 16, React 19, Tailwind CSS, shadcn/ui
+- **AI:** Vercel AI SDK 6, AI Gateway, Langfuse observability
+- **Auth:** Better Auth (Google sign-in)
+- **Billing:** Polar subscriptions
+- **Database:** Neon PostgreSQL + Drizzle ORM
+- **CMS:** Webflow (marketing blog + case studies)
+- **GEO tracking:** geomode (Elmo fork) on VPS — see [`docs/deployment/geomode-vultr.md`](docs/deployment/geomode-vultr.md)
+- **Integrations:** DataForSEO, Jina, Firecrawl, Perplexity (MCP wrappers in `lib/mcp/`)
+
+## Prerequisites
 
 - Node.js 18+ or 24+
 - npm
-- Supabase account
-- API keys: Google AI, DataForSEO, Perplexity, Jina, Apify (optional)
+- Neon database
+- API keys — copy [`.env.example`](.env.example) to `.env.local`
 
-## 🔧 Setup
+## Setup
 
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-2. **Environment variables** - Create `.env.local`:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your-url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-key
-   SUPABASE_SERVICE_ROLE_KEY=your-key
-   GOOGLE_API_KEY=your-key
-   DATAFORSEO_LOGIN=your-email
-   DATAFORSEO_PASSWORD=your-password
-   PERPLEXITY_API_KEY=your-key
-   JINA_API_KEY=your-key
-   APIFY_API_KEY=your-key
-   ```
-
-3. **Run Supabase migrations**
-   Apply migrations from `supabase/migrations/` to your Supabase project.
-
-4. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-## 📜 Scripts
-
-- `npm run dev` - Development server
-- `npm run build` - Production build
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix linting errors
-- `npm run typecheck` - Type checking
-
-## 🏗️ Project Structure
-
-```
-app/                  # Next.js pages and API routes
-components/           # React components
-  ui/                # shadcn/ui components
-  chat/              # Chat interface
-  onboarding/        # Onboarding flow
-lib/                 # Utilities and services
-  api/               # External API services
-  config/            # Environment validation
-  supabase/          # Database client
-  types/             # TypeScript types
-supabase/migrations/ # Database schema
+```bash
+npm install
+cp .env.example .env.local   # fill in secrets
+npx drizzle-kit migrate      # apply DB migrations
+npm run dev                  # http://localhost:3000
 ```
 
-## 🚧 Development Status
+## Scripts
 
-**Completed (12/20 phases)**: Landing page, onboarding, chat interface, API services, database schema, component library
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Development server |
+| `npm run build` | Production build (runs env validation) |
+| `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint |
+| `npm run test` | Vitest (unit + integration) |
+| `npm run test:unit` | Unit tests only |
+| `npm run seed:rag-documents` | Seed RAG documents |
+| `npm run mcp:generate:jina` | Regenerate Jina MCP bindings |
 
-**In Progress**: Real service integration, content creation, monitoring
+## Project structure
 
-**Planned**: CMS integrations, link building, analytics, testing
+```
+app/                    # Next.js App Router (pages + API routes)
+components/
+  chat/                 # Chat UI, tool-ui/, generative-ui/
+  workspace/            # Workspace browser
+  dashboard/            # Dashboard shell + sidebar
+lib/
+  agents/               # Agent orchestration (agent-router.ts)
+  artifacts/            # Artifact registry + sync from chat
+  chat/                 # Modes, stream builder, persistence
+  geo/                  # GEO/AEO tools, Elmo client, digest
+  mcp/                  # MCP client wrappers (never import mcps/ directly)
+  product/              # Elevator pitch + marketing copy
+docs/specs/             # Durable product + architecture specs
+drizzle/                # SQL migrations
+tests/                  # Vitest unit + integration tests
+```
 
-## 📄 License
+## Key routes
 
-Proprietary - All rights reserved
+| Route | Notes |
+|-------|-------|
+| `/dashboard` | Mode-aware chat (default SEO) |
+| `/dashboard?mode=geo\|content` | Deep-link chat mode |
+| `/dashboard/workspace` | Saved artifacts + library |
+| `/dashboard/content-zone` | Legacy alias → workspace |
+| `/api/chat` | Streaming chat API |
+| `/api/library/*` | Workspace save/list |
+
+## Deployment
+
+Production deploys from **`main`** on Vercel. Preview deploys from all other branches.
+
+```bash
+git checkout main && git pull origin main
+# trigger deploy if needed:
+git commit --allow-empty -m "chore: trigger production deployment"
+git push origin main
+```
+
+## Agent / contributor docs
+
+- [`AGENTS.md`](AGENTS.md) — repo knowledge base for AI agents
+- [`app/AGENTS.md`](app/AGENTS.md) — App Router patterns
+- [`lib/AGENTS.md`](lib/AGENTS.md) — core business logic
+- [`components/AGENTS.md`](components/AGENTS.md) — UI conventions
+
+## License
+
+Proprietary — All rights reserved

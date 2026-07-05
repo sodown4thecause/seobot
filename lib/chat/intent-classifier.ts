@@ -6,10 +6,11 @@
  */
 
 import { IntentToolRouter, type IntentClassification } from '@/lib/agents/intent-tool-router'
-import { AgentRouter } from '@/lib/agents/agent-router'
+import { AgentRouter, type ChatModeId } from '@/lib/agents/agent-router'
 import { AbortError } from '@/lib/errors/types'
 import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import type { OnboardingData, OnboardingStep } from '@/lib/onboarding/state'
+import { isChatMode } from '@/lib/chat/modes'
 
 export type AgentType = 'seo-aeo' | 'content' | 'general' | 'onboarding' | 'image' | 'geo'
 
@@ -26,8 +27,27 @@ export interface ClassifyOptions {
   query: string
   context?: {
     page?: string
+    chatMode?: string
+    mode?: string
     onboarding?: unknown
     [key: string]: unknown
+  }
+}
+
+function resolveChatMode(context?: ClassifyOptions['context']): ChatModeId | null {
+  const candidate = context?.chatMode ?? context?.mode
+  return isChatMode(candidate) ? candidate : null
+}
+
+function classificationFromModeRouting(chatMode: ChatModeId): ClassificationResult {
+  const modeRouting = AgentRouter.getModeRouting(chatMode)
+  return {
+    agent: modeRouting.agent as AgentType,
+    confidence: modeRouting.confidence,
+    reasoning: modeRouting.reasoning,
+    tools: [...modeRouting.tools],
+    classification: null,
+    allIntents: [modeRouting.agent],
   }
 }
 
@@ -37,35 +57,28 @@ export interface ClassifyOptions {
  */
 export async function classifyUserIntent(options: ClassifyOptions): Promise<ClassificationResult> {
   const { query, context } = options
-  const isOnboarding = context?.page === 'onboarding' || !!context?.onboarding
+  const isOnboardingPage = context?.page === 'onboarding'
 
-  // Skip LLM classification for onboarding
-  if (isOnboarding || AgentRouter.routeQuery(query, context).agent === 'onboarding') {
-    console.log('[Intent Classifier] Onboarding detected, skipping LLM classification')
+  // Onboarding page only — product no longer has a global onboarding gate
+  if (isOnboardingPage) {
+    console.log('[Intent Classifier] Onboarding page detected, skipping LLM classification')
     return {
       agent: 'onboarding',
       confidence: 1.0,
-      reasoning: 'Onboarding context detected',
+      reasoning: 'Onboarding page context detected',
       tools: [],
       classification: null,
       allIntents: [],
     }
   }
 
-  // GEO mode override — always route to geo agent when the UI mode is 'geo'
-  if (context?.chatMode === 'geo') {
-    return {
-      agent: 'geo',
-      confidence: 1.0,
-      reasoning: 'GEO mode selected by user',
-      tools: ['geo_brand_scan'],
-      classification: null,
-      allIntents: ['geo'],
-    }
+  // Mode-aware chat — skip LLM classifier for dashboard SEO / GEO / Content lanes
+  const chatMode = resolveChatMode(context)
+  if (chatMode) {
+    return classificationFromModeRouting(chatMode)
   }
 
   // Run keyword-based routing immediately (synchronous, 0ms) as a fallback
-  // This ensures we always have a result, even if the LLM classification times out
   const keywordRouting = AgentRouter.routeQuery(query, context)
   const CLASSIFICATION_TIMEOUT_MS = Number(process.env.INTENT_CLASSIFIER_TIMEOUT_MS || 3000)
   const controller = new AbortController()
@@ -96,12 +109,21 @@ export async function classifyUserIntent(options: ClassifyOptions): Promise<Clas
   } catch (error) {
     const isTimeout = isTimeoutAbort(error)
     if (isTimeout) {
-      console.warn('[Intent Classifier] LLM classification timed out; using keyword router fallback')
+      console.warn('[Intent Classifier] LLM classification timed out; using mode or keyword router fallback')
     } else {
       console.error('[Intent Classifier] LLM classification failed, falling back to keyword routing:', error)
     }
 
-    // Fallback to keyword-based routing (already computed above, zero cost here)
+    // On timeout, prefer the mode's compact tool set over the full AgentRouter list
+    if (isTimeout && chatMode) {
+      const modeFallback = classificationFromModeRouting(chatMode)
+      return {
+        ...modeFallback,
+        confidence: 0.7,
+        reasoning: 'Mode-based routing (LLM timeout fallback)',
+      }
+    }
+
     return {
       agent: keywordRouting.agent as AgentType,
       confidence: 0.7,
@@ -139,9 +161,9 @@ export function buildAgentSystemPrompt(
   context: ClassifyOptions['context'],
   allIntents: string[]
 ): string {
-  const isOnboarding = context?.page === 'onboarding' || !!context?.onboarding
+  const isOnboardingPage = context?.page === 'onboarding'
 
-  if (isOnboarding && context?.onboarding) {
+  if (isOnboardingPage && context?.onboarding) {
     const onboardingContext = context.onboarding as {
       currentStep?: number
       data?: OnboardingData

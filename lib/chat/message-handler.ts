@@ -7,6 +7,9 @@
 import { convertToModelMessages, type ModelMessage, type UIMessage } from 'ai'
 import type { ChatMode } from './modes'
 
+/** Max messages sent to the model per turn (user + assistant pairs). */
+const MAX_CONTEXT_MESSAGES = 40
+
 export interface ChatContext {
   page?: string
   mode?: ChatMode
@@ -55,20 +58,38 @@ export function extractLastUserMessageContent(messages: UIMessage[]): string {
 }
 
 /**
+ * Trim conversation history to the most recent messages before model conversion.
+ * Keeps long threads within a reasonable context window.
+ */
+export function trimMessagesForContext(messages: UIMessage[]): UIMessage[] {
+  if (messages.length <= MAX_CONTEXT_MESSAGES) {
+    return messages
+  }
+
+  const trimmed = messages.slice(-MAX_CONTEXT_MESSAGES)
+  console.log('[Message Handler] Trimmed context:', {
+    original: messages.length,
+    kept: trimmed.length,
+  })
+  return trimmed
+}
+
+/**
  * Convert UIMessage[] from useChat to ModelMessage[] for streamText.
  * AI SDK 6: Uses convertToModelMessages (renamed from convertToCoreMessages).
  */
 export async function convertToModelFormat(messages: UIMessage[]): Promise<ModelMessage[]> {
-  console.log('[Message Handler] Incoming messages count:', messages.length)
+  const trimmed = trimMessagesForContext(messages)
+  console.log('[Message Handler] Incoming messages count:', messages.length, 'trimmed:', trimmed.length)
 
   try {
-    const modelMessages = await convertToModelMessages(messages)
+    const modelMessages = await convertToModelMessages(trimmed)
     console.log('[Message Handler] Converted to ModelMessage[], count:', modelMessages.length)
     return modelMessages
   } catch (err) {
     console.error('[Message Handler] convertToModelMessages failed:', err)
     // Fallback: try again with type assertion (AI SDK 6 compatibility)
-    return await convertToModelMessages(messages as unknown as UIMessage[])
+    return await convertToModelMessages(trimmed as unknown as UIMessage[])
   }
 }
 

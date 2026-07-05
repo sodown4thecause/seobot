@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { DashboardChatModeSync } from '@/components/chat/dashboard-chat-mode-sync'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Sidebar } from '@/components/dashboard/sidebar'
@@ -23,8 +24,8 @@ const PAGE_NAMES: Record<string, string> = {
   'aeo-insights': 'AEO Insights',
   'aeo': 'AEO Insights',
   'workflows': 'Workflows',
-  'content': 'Content Creation',
-  'content-zone': 'Content Creation',
+  'content': 'Workspace',
+  'content-zone': 'Workspace',
   'image': 'Image Generation',
   'images': 'Image Generation',
 }
@@ -58,11 +59,16 @@ export function DashboardClientLayout({ children }: DashboardClientLayoutProps) 
           <ActionProvider>
             <ChatModeProvider>
               <AgentProvider>
+                <Suspense fallback={null}>
+                  <DashboardChatModeSync />
+                </Suspense>
                 <div className="relative flex h-screen overflow-hidden bg-zinc-950 text-foreground">
-                  <Sidebar
-                    open={sidebarOpen}
-                    onToggle={() => setSidebarOpen((v) => !v)}
-                  />
+                  <Suspense fallback={null}>
+                    <Sidebar
+                      open={sidebarOpen}
+                      onToggle={() => setSidebarOpen((v) => !v)}
+                    />
+                  </Suspense>
                   <main className={cn('relative z-10 flex h-full flex-1 flex-col')}>
                     <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
                       <DashboardBreadcrumbs currentPage={currentPage} />

@@ -7,6 +7,16 @@ import { z } from 'zod'
  * The 'server-only' import ensures this module cannot be bundled in client-side code
  */
 
+const emptyStringToUndefined = (val: unknown) =>
+  typeof val === 'string' && val.trim() === '' ? undefined : val
+
+const optionalUrl = z.preprocess(emptyStringToUndefined, z.string().url().optional())
+
+const optionalNonEmptyString = z.preprocess(
+  emptyStringToUndefined,
+  z.string().min(1).optional()
+)
+
 // Server-side environment schema
 const serverEnvSchema = z.object({
   // Database (Neon PostgreSQL)
@@ -86,12 +96,21 @@ const serverEnvSchema = z.object({
   ),
 
   // Cron & Security
-  CRON_SECRET: z.string().min(1).optional(),
+  CRON_SECRET: optionalNonEmptyString,
+  BETTER_AUTH_URL: optionalUrl,
+  BETTER_AUTH_SECRET: optionalNonEmptyString,
 
   // GEO / AEO mode configuration
   GEO_ENABLED_ENGINES: z.string().optional(),
   GEO_COMPETITORS: z.string().optional(),
   GEO_DEFAULT_TOPICS: z.string().optional(),
+  ELMO_API_URL: optionalUrl,
+  ELMO_API_KEY: optionalNonEmptyString,
+  GEO_ELMO_ENABLED: z.string().optional(),
+  GEO_API_URL: optionalUrl,
+  GEO_API_KEY: z.string().min(1).optional(),
+  GEO_API_CLIENT_ID: z.string().min(1).optional(),
+  GEO_TRACKING_BRAND: z.string().min(1).optional(),
   WEEKLY_RESEARCH_MODEL: z.string().optional(),
   WEEKLY_RESEARCH_FALLBACK_MODEL: z.string().optional(),
   SCRAPINGBEE_API_KEY: z.string().min(1).optional(),
@@ -138,7 +157,8 @@ const serverEnvSchema = z.object({
 
 // Client-side environment schema (only public variables)
 const clientEnvSchema = z.object({
-  NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SITE_URL: optionalUrl,
+  NEXT_PUBLIC_BETTER_AUTH_URL: optionalUrl,
 })
 
 /**

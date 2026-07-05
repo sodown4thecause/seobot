@@ -203,13 +203,13 @@ export default function ContentZonePage() {
   }
 
   if (!user) {
-    return <div className="p-8 text-zinc-300">Please sign in to use Content Zone.</div>
+    return <div className="p-8 text-zinc-300">Please sign in to use Workspace.</div>
   }
 
   return (
     <div className="max-w-5xl mx-auto p-8 text-zinc-100">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Content Zone</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Workspace</h1>
         <p className="mt-2 text-sm text-zinc-400">
           Generate an SEO/AEO brief (SERP + competitor + citations), then stream a draft with the RAG writer pipeline.
         </p>

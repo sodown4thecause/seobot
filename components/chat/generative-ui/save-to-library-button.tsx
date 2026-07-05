@@ -11,13 +11,16 @@ export interface SaveToLibraryButtonProps {
   data?: any
   imageUrl?: string
   title: string
-  itemType: 'response' | 'image' | 'data' | 'component'
+  itemType: 'response' | 'image' | 'data' | 'component' | 'artifact'
   conversationId?: string
   messageId?: string
   metadata?: Record<string, any>
+  tags?: string[]
   className?: string
   variant?: 'default' | 'outline' | 'ghost'
   size?: 'default' | 'sm' | 'lg' | 'icon'
+  label?: string
+  disabled?: boolean
 }
 
 export function SaveToLibraryButton({
@@ -29,9 +32,12 @@ export function SaveToLibraryButton({
   conversationId,
   messageId,
   metadata = {},
+  tags = [],
   className,
   variant = 'outline',
   size = 'sm',
+  label = 'Save to Library',
+  disabled = false,
 }: SaveToLibraryButtonProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
@@ -54,6 +60,7 @@ export function SaveToLibraryButton({
           conversationId,
           messageId,
           metadata,
+          tags,
         }),
       })
 
@@ -84,12 +91,12 @@ export function SaveToLibraryButton({
   return (
     <Button
       onClick={handleSave}
-      disabled={isSaving || isSaved}
+      disabled={disabled || isSaving || isSaved}
       variant={variant}
       size={size}
       className={cn(
         'transition-all',
-        isSaved && 'bg-green-50 text-green-700 border-green-200 hover:bg-green-50',
+        isSaved && 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/10',
         className
       )}
     >
@@ -106,10 +113,9 @@ export function SaveToLibraryButton({
       ) : (
         <>
           <BookmarkPlus className="w-4 h-4 mr-2" />
-          Save to Library
+          {label}
         </>
       )}
     </Button>
   )
 }
-

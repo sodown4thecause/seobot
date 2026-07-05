@@ -5,9 +5,12 @@ const mockGetUserId = vi.fn()
 const mockJson = vi.fn()
 const mockFrom = vi.fn()
 const mockInsert = vi.fn()
+const mockUpdate = vi.fn()
+const mockTransaction = vi.fn()
 const mockEq = vi.fn((...args) => ({ type: 'eq', args }))
 const mockAnd = vi.fn((...args) => ({ type: 'and', args }))
 const mockDesc = vi.fn((arg) => ({ type: 'desc', arg }))
+const mockInArray = vi.fn((...args) => ({ type: 'inArray', args }))
 
 vi.mock('@/lib/auth', () => ({
   getUserId: mockGetUserId,
@@ -19,12 +22,15 @@ vi.mock('@/lib/db', () => ({
       from: mockFrom,
     })),
     insert: mockInsert,
+    update: mockUpdate,
+    transaction: mockTransaction,
   },
   conversations: {
     id: 'id',
     userId: 'userId',
     status: 'status',
     updatedAt: 'updatedAt',
+    metadata: 'metadata',
   },
   messages: {
     id: 'id',
@@ -36,6 +42,7 @@ vi.mock('drizzle-orm', () => ({
   eq: mockEq,
   and: mockAnd,
   desc: mockDesc,
+  inArray: mockInArray,
 }))
 
 vi.mock('next/server', () => ({
@@ -49,6 +56,12 @@ describe('POST /api/conversations', () => {
     vi.resetModules()
     vi.clearAllMocks()
     mockJson.mockImplementation((body, init) => ({ body, status: init?.status ?? 200 }))
+    mockUpdate.mockReturnValue({
+      set: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([]),
+    })
+    mockTransaction.mockImplementation(async (fn) => fn({ select: vi.fn(), update: vi.fn() }))
   })
 
   it('reuses the latest empty active conversation before inserting a new one', async () => {
@@ -60,6 +73,7 @@ describe('POST /api/conversations', () => {
       title: 'New Conversation',
       agentType: 'general',
       status: 'active',
+      metadata: { chatMode: 'seo' },
       updatedAt: new Date('2026-03-10T00:00:00Z'),
     }
 
@@ -84,5 +98,86 @@ describe('POST /api/conversations', () => {
 
     expect(response.body).toEqual({ conversation: emptyConversation })
     expect(mockInsert).not.toHaveBeenCalled()
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it('updates empty conversation metadata when requested chatMode differs', async () => {
+    mockGetUserId.mockResolvedValue('user-123')
+
+    const emptyConversation = {
+      id: 'conv-empty',
+      userId: 'user-123',
+      title: 'New Conversation',
+      agentType: 'general',
+      status: 'active',
+      metadata: { chatMode: 'seo' },
+      updatedAt: new Date('2026-03-10T00:00:00Z'),
+    }
+    const updatedConversation = {
+      ...emptyConversation,
+      metadata: { chatMode: 'geo' },
+    }
+
+    const selectConversationChain = {
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([emptyConversation]),
+    }
+    const messageCountChain = {
+      where: vi.fn().mockResolvedValue([]),
+    }
+    const updateChain = {
+      set: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([updatedConversation]),
+    }
+
+    mockFrom.mockReturnValueOnce(selectConversationChain).mockReturnValueOnce(messageCountChain)
+    mockUpdate.mockReturnValueOnce(updateChain)
+
+    const { POST } = await import('@/app/api/conversations/route')
+
+    const request = {
+      json: vi.fn().mockResolvedValue({ agentId: 'general', chatMode: 'geo' }),
+    } as unknown as NextRequest
+
+    const response = await POST(request)
+
+    expect(response.body).toEqual({ conversation: updatedConversation })
+    expect(mockInsert).not.toHaveBeenCalled()
+    expect(mockUpdate).toHaveBeenCalled()
+  })
+
+  it('returns 400 for invalid JSON on PATCH', async () => {
+    mockGetUserId.mockResolvedValue('user-123')
+
+    const { PATCH } = await import('@/app/api/conversations/route')
+
+    const request = {
+      json: vi.fn().mockRejectedValue(new SyntaxError('Unexpected token')),
+    } as unknown as NextRequest
+
+    const response = await PATCH(request)
+
+    expect(response.body).toEqual({ error: 'Invalid JSON body' })
+    expect(response.status).toBe(400)
+  })
+
+  it('returns 400 when conversationIds exceeds bulk limit on PATCH', async () => {
+    mockGetUserId.mockResolvedValue('user-123')
+
+    const { PATCH } = await import('@/app/api/conversations/route')
+
+    const request = {
+      json: vi.fn().mockResolvedValue({
+        conversationIds: Array.from({ length: 51 }, (_, i) => `id-${i}`),
+        updates: { title: 'Too many' },
+      }),
+    } as unknown as NextRequest
+
+    const response = await PATCH(request)
+
+    expect(response.body).toEqual({ error: 'conversationIds exceeds limit of 50' })
+    expect(response.status).toBe(400)
   })
 })

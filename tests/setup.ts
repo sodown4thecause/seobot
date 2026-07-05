@@ -44,8 +44,8 @@ vi.mock('@/lib/auth', () => ({
 }))
 
 // Mock env config to bypass validation in tests
-vi.mock('@/lib/config/env', () => ({
-  getServerEnv: vi.fn(() => ({
+const { mockServerEnv } = vi.hoisted(() => ({
+  mockServerEnv: {
     SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
     DATAFORSEO_USERNAME: 'test@example.com',
     DATAFORSEO_PASSWORD: 'test-password',
@@ -53,12 +53,25 @@ vi.mock('@/lib/config/env', () => ({
     JINA_API_KEY: 'jina-test-key',
     GOOGLE_GENERATIVE_AI_API_KEY: 'test-gemini-key',
     OPENAI_API_KEY: 'sk-test-key',
-  })),
+    ELMO_API_URL: 'https://geo.flowintent.com',
+    ELMO_API_KEY: 'test-api-key',
+  },
+}))
+
+vi.mock('@/lib/config/env', () => ({
+  serverEnv: mockServerEnv,
+  getServerEnv: vi.fn(() => mockServerEnv),
+  clientEnv: {
+    NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key',
+  },
   getClientEnv: vi.fn(() => ({
     NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key',
   })),
 }))
+
+export { mockServerEnv }
 
 // Mock Supabase client
 vi.mock('@/lib/supabase/server', () => ({

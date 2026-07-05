@@ -7,13 +7,15 @@
  * Flow:
  * 1. Rate limiting
  * 2. Parse and validate request body
- * 3. Get user and resolve conversation
- * 4. Check for workflow triggers
- * 5. Orchestrate chat (classify, assemble tools, stream)
- * 6. Return streaming response
+ * 3. Subscription + credit limit checks
+ * 4. Get user and resolve conversation
+ * 5. Check for workflow triggers
+ * 6. Orchestrate chat (classify, assemble tools, stream)
+ * 7. Return streaming response
  */
 
 import { after } from 'next/server'
+import { NextRequest } from 'next/server'
 import { trace } from '@opentelemetry/api'
 import {
   observe,
@@ -22,6 +24,8 @@ import {
 } from '@langfuse/tracing'
 
 import { getCurrentUser } from '@/lib/auth'
+import { requireApiSubscription } from '@/lib/billing/subscription-guard'
+import { checkCreditLimit } from '@/lib/usage/limit-check'
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { handleApiError } from '@/lib/errors/handlers'
 import {
@@ -33,8 +37,12 @@ import {
 import { classifyUserIntent, buildAgentSystemPrompt, type AgentType } from '@/lib/chat/intent-classifier'
 import { assembleTools } from '@/lib/chat/tool-assembler'
 import { buildStreamResponse, type StreamOptions } from '@/lib/chat/stream-builder'
-import { saveUIMessage } from '@/lib/chat/storage'
-import { ensureChatForUser } from '@/lib/chat/persistence'
+import {
+  autosaveUserMessage,
+  persistAssistantMessages,
+  ensureChatForUser,
+  type PersistedMessage,
+} from '@/lib/chat/persistence'
 import { detectWorkflowTrigger } from '@/lib/chat/orchestrator'
 import { buildSeoAeoContext } from '@/lib/chat/seo-aeo-context'
 import { normalizeChatMode } from '@/lib/chat/modes'
@@ -44,14 +52,20 @@ export const maxDuration = 300 // 5 minutes
 const handler = async (req: Request) => {
   console.log('[Chat API] POST handler called')
 
+  const nextReq = req as unknown as NextRequest
+
   // 1. Rate limiting
-  const rateLimitResponse = await rateLimitMiddleware(
-    req as unknown as import('next/server').NextRequest,
-    'CHAT'
-  )
+  const rateLimitResponse = await rateLimitMiddleware(nextReq, 'CHAT')
   if (rateLimitResponse) {
     return rateLimitResponse
   }
+
+  // Wire request abort through the full handler lifecycle
+  const abortController = new AbortController()
+  req.signal.addEventListener('abort', () => {
+    console.log('[Chat API] Client disconnected, aborting chat stream')
+    abortController.abort()
+  })
 
   try {
     // 2. Parse request body
@@ -67,28 +81,67 @@ const handler = async (req: Request) => {
     const mode = normalizeChatMode(context?.mode)
     const modeContext = { ...(context || {}), mode, chatMode: mode }
     const agentId = context?.agentId || 'general'
-    const isOnboarding = context?.page === 'onboarding' || !!context?.onboarding
+    const isOnboardingPage = context?.page === 'onboarding'
 
     // 3. Validate messages
     const validationError = validateMessages(incomingMessages)
     if (validationError) return validationError
 
-    // 4. Get current user
-    const user = await getCurrentUser()
-
-    // Apply user-specific rate limiting if authenticated
-    if (user) {
-      const userRateLimitResponse = await rateLimitMiddleware(
-        req as unknown as import('next/server').NextRequest,
-        'CHAT',
-        user.id
+    // 4. Subscription + credit limit enforcement
+    const subscriptionCheck = await requireApiSubscription()
+    if (!subscriptionCheck.success) {
+      return new Response(
+        JSON.stringify({
+          error: subscriptionCheck.error?.code || 'subscription_required',
+          message: subscriptionCheck.error?.message || 'Active subscription required to use chat.',
+          code: subscriptionCheck.error?.code || 'subscription_required',
+        }),
+        {
+          status: subscriptionCheck.error?.status || 403,
+          headers: { 'Content-Type': 'application/json' },
+        }
       )
-      if (userRateLimitResponse) {
-        return userRateLimitResponse
-      }
     }
 
-    // 5. Resolve conversation
+    const authUserId = subscriptionCheck.userId
+    if (!authUserId) {
+      return new Response(
+        JSON.stringify({
+          error: 'authentication_required',
+          message: 'Authentication required',
+          code: 'authentication_required',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const creditCheck = await checkCreditLimit(authUserId, nextReq)
+    if (!creditCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: 'credit_limit_exceeded',
+          code: 'credit_limit_exceeded',
+          message: creditCheck.reason || 'Monthly usage limit reached. Please upgrade to continue.',
+          remainingUsd: creditCheck.remainingUsd,
+          limitUsd: creditCheck.limitUsd,
+          resetDate: creditCheck.resetDate?.toISOString(),
+          isPaused: creditCheck.isPaused ?? false,
+          pauseUntil: creditCheck.pauseUntil?.toISOString(),
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 5. Get current user (for display metadata; auth already verified above)
+    const user = await getCurrentUser()
+
+    // Apply user-specific rate limiting
+    const userRateLimitResponse = await rateLimitMiddleware(nextReq, 'CHAT', authUserId)
+    if (userRateLimitResponse) {
+      return userRateLimitResponse
+    }
+
+    // 6. Resolve conversation
     const requestedConversationId = chatId || context?.conversationId
     const resolvedAgentType = agentId || context?.agentType || 'general'
     let activeConversationId = requestedConversationId ?? null
@@ -104,15 +157,14 @@ const handler = async (req: Request) => {
         activeConversationId = conversationRecord.id
       } catch (error) {
         console.error('[Chat API] Conversation lookup/creation failed:', error)
-        // Continue without conversation persistence
         activeConversationId = null
       }
     }
 
-    // 6. Extract last user message for intent detection and workflow check
+    // 7. Extract last user message for intent detection and workflow check
     const lastUserMessageContent = extractLastUserMessageContent(incomingMessages!)
 
-    // 7. Check for workflow triggers
+    // 8. Check for workflow triggers
     const workflowResult = await detectWorkflowTrigger(lastUserMessageContent)
     if (workflowResult.isWorkflow && workflowResult.workflowId) {
       console.log('[Chat API] Workflow detected:', workflowResult.workflowId)
@@ -126,8 +178,7 @@ const handler = async (req: Request) => {
       )
     }
 
-    // 8. Classify user intent and route to agent
-    // Has a 5s internal timeout - falls back to keyword-based routing if LLM is slow
+    // 9. Classify user intent — skipped when chatMode is set (SEO/GEO/Content)
     const classification = await classifyUserIntent({
       query: lastUserMessageContent,
       context: modeContext,
@@ -140,7 +191,7 @@ const handler = async (req: Request) => {
       toolsCount: classification.tools.length,
     })
 
-    // 9. Update Langfuse trace with context
+    // 10. Update Langfuse trace with context
     updateActiveObservation({
       input: lastUserMessageContent,
     })
@@ -148,21 +199,20 @@ const handler = async (req: Request) => {
     updateActiveTrace({
       name: 'chat-message',
       sessionId: activeConversationId || undefined,
-      userId: user?.id || undefined,
+      userId: user?.id || authUserId,
       input: lastUserMessageContent,
       metadata: {
         agentType: classification.agent,
         mode,
         page: context?.page,
-        isOnboarding,
-        onboardingStep: (context?.onboarding as Record<string, unknown> | undefined)?.currentStep,
+        isOnboarding: isOnboardingPage,
         workflowId: workflowResult.workflowId || undefined,
       },
     })
 
-    // 10. Build system prompt for the selected agent
+    // 11. Build system prompt for the selected agent
     let effectiveAgent: AgentType
-    if (classification.agent === 'onboarding' || classification.agent === 'image') {
+    if (classification.agent === 'image') {
       effectiveAgent = classification.agent
     } else if (mode === 'content') {
       effectiveAgent = 'content'
@@ -178,10 +228,7 @@ const handler = async (req: Request) => {
       classification.allIntents
     )
 
-    // 11. Assemble tools + (for seo-aeo) fetch RAG context in parallel
-    // RAG is time-boxed to 6s - slow embedding/vector-search must NOT block streaming.
-    // Each DataForSEO live call is fast (~5-15s), so delaying the stream start for RAG
-    // that might take 60s+ is the key source of latency.
+    // 12. Assemble tools + (for seo-aeo) fetch RAG context in parallel
     const emptyRagContext = { systemPromptAddendum: '', ragDocsFound: 0 }
     const [tools, ragContext] = await Promise.all([
       assembleTools({
@@ -194,6 +241,9 @@ const handler = async (req: Request) => {
         ? (async () => {
             const controller = new AbortController()
             let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+            const onClientAbort = () => controller.abort()
+            abortController.signal.addEventListener('abort', onClientAbort)
 
             const ragPromise = buildSeoAeoContext(lastUserMessageContent, user?.id, {
               signal: controller.signal,
@@ -217,11 +267,16 @@ const handler = async (req: Request) => {
               ])
             } finally {
               if (timeoutId) clearTimeout(timeoutId)
+              abortController.signal.removeEventListener('abort', onClientAbort)
               controller.abort()
             }
           })()
         : Promise.resolve(emptyRagContext),
     ])
+
+    if (abortController.signal.aborted) {
+      return new Response(null, { status: 499 })
+    }
 
     if (ragContext.ragDocsFound > 0) {
       console.log(`[Chat API] Injecting ${ragContext.ragDocsFound} RAG docs into system prompt`)
@@ -232,41 +287,41 @@ const handler = async (req: Request) => {
       tools: Object.keys(tools),
     })
 
-    // 12. Convert messages to model format
+    // 13. Convert messages to model format (with context trimming)
     const modelMessages = await convertToModelFormat(incomingMessages!)
     console.log('[Chat API] Converted to ModelMessage[], count:', modelMessages.length)
 
-    // 12.5 Save the user message before streaming (AI SDK message persistence pattern)
+    // 13.5 Save user message off the critical path
     if (activeConversationId && user) {
       const lastUserMessage = incomingMessages![incomingMessages!.length - 1]
       if (lastUserMessage?.role === 'user') {
-        try {
-          await saveUIMessage(activeConversationId, user.id, lastUserMessage as {
-            id?: string
-            role: 'user' | 'assistant' | 'system'
-            content?: string
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            parts?: any[]
-          })
-          console.log('[Chat API] User message saved successfully')
-        } catch (saveError) {
-          console.error('[Chat API] Failed to save user message:', saveError)
-          // Continue with chat - don't block on persistence failure
-        }
+        after(async () => {
+          try {
+            await autosaveUserMessage({
+              userId: user.id,
+              chatId: activeConversationId!,
+              message: lastUserMessage as PersistedMessage,
+            })
+            console.log('[Chat API] User message saved (background)')
+          } catch (saveError) {
+            console.error('[Chat API] Failed to save user message:', saveError)
+          }
+        })
       }
     }
 
-    // 13. Build stream options (append RAG context to system prompt if available)
+    // 14. Build stream options
     const enrichedSystemPrompt = systemPrompt + ragContext.systemPromptAddendum
     const streamOptions: StreamOptions = {
       modelMessages,
       systemPrompt: enrichedSystemPrompt,
       tools,
-      userId: user?.id,
+      userId: user?.id ?? authUserId,
       conversationId: activeConversationId || undefined,
       agentType: effectiveAgent,
       context: modeContext as Record<string, unknown>,
       originalMessages: incomingMessages!,
+      abortSignal: abortController.signal,
       onFinish: async ({ messages: uiMessages }) => {
         console.log('[Chat API] toUIMessageStreamResponse onFinish:', {
           hasMessages: !!uiMessages?.length,
@@ -276,58 +331,27 @@ const handler = async (req: Request) => {
         })
 
         if (!uiMessages?.length || !activeConversationId || !user) {
-          console.warn('[Chat API] Skipping assistant message save - missing required data:', {
-            hasMessages: !!uiMessages?.length,
-            activeConversationId,
-            hasUser: !!user,
-          })
+          console.warn('[Chat API] Skipping assistant message save - missing required data')
           return
         }
 
-        const finalAssistantMessage = uiMessages[uiMessages.length - 1]
-        if (finalAssistantMessage?.role !== 'assistant') {
-          console.warn('[Chat API] Last message is not assistant, skipping save')
-          return
-        }
-
-        // Log tool invocations for debugging (AI SDK 6 uses parts)
-        const toolParts = (finalAssistantMessage as unknown as {
-          parts?: Array<{ type: string; toolInvocation?: Record<string, unknown> }>
-        }).parts?.filter((p) => p.type === 'tool-invocation') || []
-
-        if (toolParts.length > 0) {
-          console.log('[Chat API] Final assistant message tool invocations:', {
-            count: toolParts.length,
-            tools: toolParts.map((t) => ({
-              toolName: t.toolInvocation?.toolName,
-              hasResult: !!t.toolInvocation?.result,
-              resultKeys: t.toolInvocation?.result ? Object.keys(t.toolInvocation.result as Record<string, unknown>) : [],
-            })),
-          })
-        }
-
-        // Save the assistant message with full AI SDK 6 format (parts + tool invocations)
         try {
-          await saveUIMessage(activeConversationId, user.id, finalAssistantMessage as {
-            id?: string
-            role: 'user' | 'assistant' | 'system'
-            content?: string
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            parts?: any[]
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            toolInvocations?: any[]
+          await persistAssistantMessages({
+            userId: user.id,
+            chatId: activeConversationId,
+            messagesToPersist: uiMessages as PersistedMessage[],
           })
-          console.log('[Chat API] Assistant message saved successfully')
+          console.log('[Chat API] Assistant message(s) saved successfully')
         } catch (saveError) {
           console.error('[Chat API] Failed to save assistant message:', saveError)
         }
       },
     }
 
-    // 14. Build and return streaming response
+    // 15. Build and return streaming response
     const streamResponse = await buildStreamResponse(streamOptions)
 
-    // 15. Critical for serverless: flush traces before function terminates
+    // 16. Critical for serverless: flush traces before function terminates
     const langfuseSpanProcessor = (global as unknown as { langfuseSpanProcessor?: { forceFlush: () => Promise<void> } }).langfuseSpanProcessor
     if (langfuseSpanProcessor) {
       after(async () => await langfuseSpanProcessor.forceFlush())
@@ -337,7 +361,6 @@ const handler = async (req: Request) => {
   } catch (error) {
     console.error('Chat API error:', error)
 
-    // Update trace with error before returning
     updateActiveObservation({
       output: error instanceof Error ? error.message : String(error),
       level: 'ERROR',
@@ -347,15 +370,13 @@ const handler = async (req: Request) => {
     })
     trace.getActiveSpan()?.end()
 
-    // Use standardized error handler
     return handleApiError(error, 'Failed to process chat request')
   }
 }
 
-// Wrap handler with observe() to create a Langfuse trace
 export const POST = observe(handler, {
   name: 'handle-chat-message',
-  endOnExit: false, // Don't end observation until stream finishes
+  endOnExit: false,
 })
 
 // _review

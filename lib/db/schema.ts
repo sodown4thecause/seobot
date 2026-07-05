@@ -6,6 +6,7 @@
 
 import {
     pgTable,
+    pgSchema,
     text,
     timestamp,
     uuid,
@@ -16,6 +17,7 @@ import {
     uniqueIndex,
     vector,
     real,
+    date,
 } from 'drizzle-orm/pg-core'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { sql } from 'drizzle-orm'
@@ -74,6 +76,7 @@ export const businessProfiles = pgTable('business_profiles', {
     locations: jsonb('locations').$type<Json>(),
     goals: jsonb('goals').$type<Json>(),
     contentFrequency: text('content_frequency'),
+    elmoBrandId: text('elmo_brand_id'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -753,5 +756,41 @@ export const redditGapAudits = pgTable('reddit_gap_audits', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+// ============================================================================
+// GEO TRACKING (geomode companion nightly sync)
+// ============================================================================
+
+export const geoTrackingSchema = pgSchema('geo_tracking')
+
+export const geoTrackingDailyDigests = geoTrackingSchema.table('daily_digests', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    digestDate: date('digest_date').notNull(),
+    brand: text('brand').notNull(),
+    digest: jsonb('digest').$type<Json>().notNull(),
+    degradedSections: text('degraded_sections').array().notNull().default([]),
+    suggestions: jsonb('suggestions').$type<Json>(),
+    syncedAt: timestamp('synced_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+    digestDateUnique: uniqueIndex('daily_digests_digest_date_unique').on(table.digestDate),
+    digestDateIdx: index('idx_geo_tracking_daily_digests_date').on(table.digestDate),
+    brandIdx: index('idx_geo_tracking_daily_digests_brand').on(table.brand),
+}))
+
+export const geoTrackingDigestEmbeddings = geoTrackingSchema.table('digest_embeddings', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    digestId: uuid('digest_id').notNull().references(() => geoTrackingDailyDigests.id, { onDelete: 'cascade' }),
+    sectionKey: text('section_key').notNull(),
+    content: text('content').notNull(),
+    embedding: vector('embedding', { dimensions: 1536 }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+    digestSectionUnique: uniqueIndex('digest_embeddings_digest_section_unique').on(table.digestId, table.sectionKey),
+    digestIdIdx: index('idx_geo_tracking_digest_embeddings_digest_id').on(table.digestId),
+}))
+
+export type GeoTrackingDailyDigest = typeof geoTrackingDailyDigests.$inferSelect
+export type GeoTrackingDigestEmbedding = typeof geoTrackingDigestEmbeddings.$inferSelect
 
 // _review

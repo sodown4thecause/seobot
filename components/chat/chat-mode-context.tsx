@@ -1,8 +1,9 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { DEFAULT_CHAT_MODE, isChatMode, type ChatMode } from '@/lib/chat/modes'
 
-export type ChatMode = 'seo' | 'geo' | 'content'
+export type { ChatMode } from '@/lib/chat/modes'
 
 interface ChatModeContextValue {
   chatMode: ChatMode
@@ -18,12 +19,12 @@ interface ChatModeProviderProps {
 }
 
 export function ChatModeProvider({ children }: ChatModeProviderProps) {
-  const [chatMode, setChatModeState] = useState<ChatMode>('seo')
+  const [chatMode, setChatModeState] = useState<ChatMode>(DEFAULT_CHAT_MODE)
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY) as ChatMode | null
-      if (saved && ['seo', 'geo', 'content'].includes(saved)) {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved && isChatMode(saved)) {
         setChatModeState(saved)
       }
     } catch {}
@@ -50,5 +51,5 @@ export function useChatMode() {
 }
 
 export function useChatModeOptional() {
-  return useContext(ChatModeContext) ?? { chatMode: 'seo' as ChatMode, setChatMode: () => {} }
+  return useContext(ChatModeContext) ?? { chatMode: DEFAULT_CHAT_MODE, setChatMode: () => {} }
 }

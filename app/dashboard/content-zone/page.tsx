@@ -265,7 +265,7 @@ function ContentZoneInner() {
   if (!user) {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <div className="text-zinc-400">Please sign in to use Content Zone.</div>
+        <div className="text-zinc-400">Please sign in to use Workspace.</div>
       </div>
     )
   }
@@ -279,10 +279,10 @@ function ContentZoneInner() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-2xl font-semibold text-zinc-100 mb-2">Content Zone</h1>
+          <h1 className="text-2xl font-semibold text-zinc-100 mb-2">Workspace</h1>
           <p className="text-sm text-zinc-400 max-w-2xl">
-            Create SEO-optimized content powered by AI. We&apos;ll analyze your competitors,
-            research your topic, and generate high-quality content that ranks.
+            Saved artifacts and content from SEO, GEO / AEO, and Content mode—posts, briefs,
+            and exports you want to keep beyond the chat thread.
           </p>
         </motion.div>
 

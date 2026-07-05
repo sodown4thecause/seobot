@@ -1,30 +1,32 @@
-import { create } from 'zustand';
-
-export interface ArtifactState {
-    id: string;
-    type: 'keyword' | 'backlink' | 'toast' | 'serp';
-    title: string;
-    status: 'loading' | 'streaming' | 'complete' | 'error';
-    data: any;
-    metadata?: Record<string, any>;
-}
+import { create } from 'zustand'
+import type { ArtifactState } from '@/lib/artifacts/types'
 
 interface ArtifactStore {
-    artifacts: Record<string, ArtifactState>;
-    updateArtifact: (id: string, update: Partial<ArtifactState>) => void;
-    clearArtifacts: () => void;
+  artifacts: Record<string, ArtifactState>
+  updateArtifact: (id: string, update: Partial<ArtifactState>) => void
+  clearArtifacts: () => void
 }
 
 export const useArtifactStore = create<ArtifactStore>((set) => ({
-    artifacts: {},
-    updateArtifact: (id, update) => set((state) => ({
-        artifacts: {
-            ...state.artifacts,
-            [id]: {
-                ...(state.artifacts[id] || { id, status: 'loading', data: null }),
-                ...update,
-            } as ArtifactState,
-        },
+  artifacts: {},
+  updateArtifact: (id, update) =>
+    set((state) => ({
+      artifacts: {
+        ...state.artifacts,
+        [id]: {
+          ...(state.artifacts[id] ?? {
+            id,
+            type: 'keyword',
+            title: 'Artifact',
+            status: 'loading',
+            data: null,
+          }),
+          ...update,
+          id,
+        } as ArtifactState,
+      },
     })),
-    clearArtifacts: () => set({ artifacts: {} }),
-}));
+  clearArtifacts: () => set({ artifacts: {} }),
+}))
+
+export type { ArtifactState } from '@/lib/artifacts/types'

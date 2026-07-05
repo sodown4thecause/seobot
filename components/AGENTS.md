@@ -6,16 +6,16 @@ React components built on shadcn/ui + Radix UI + Tailwind.
 
 ```
 components/
-├── ui/              # shadcn/ui primitives (28 files)
+├── ui/              # shadcn/ui primitives
 ├── chat/            # Chat interface
-│   ├── tool-ui/     # Agent tool result UIs
-│   └── message-types/
-├── dashboard/       # Dashboard widgets
-├── workflows/       # Workflow visualization
-├── onboarding/      # Onboarding flow
-├── providers/       # React context providers
-├── tutorials/       # Interactive tutorials
-└── dataforseo/      # DataForSEO visualizations
+│   ├── tool-ui/     # Agent tool result UIs (match tool output schemas)
+│   ├── generative-ui/  # Save-to-library, registry
+│   └── artifacts/   # In-chat artifact panels
+├── workspace/       # Workspace browser (saved library)
+├── dashboard/       # Dashboard shell, sidebar, analytics widgets
+├── landing/         # Marketing landing (mode picker, FAQ)
+├── auth/            # GoogleAuthButton, LoginForm
+└── providers/       # React context providers
 ```
 
 ## WHERE TO LOOK
@@ -24,27 +24,33 @@ components/
 |------|----------|-------|
 | Add shadcn component | `ui/` | `npx shadcn@latest add <component>` |
 | Add tool UI | `chat/tool-ui/` | Match agent tool output schema |
-| Add dashboard widget | `dashboard/` | Follow existing card patterns |
-| Add workflow visual | `workflows/` | Uses @xyflow/react |
-| Add provider | `providers/` | Wrap in app layout.tsx |
+| Register generative UI | `chat/generative-ui/registry.tsx` | AI SDK 6 tool UI |
+| Workspace UI | `workspace/` | `/dashboard/workspace` |
+| Mode selector | `chat/chat-mode-selector.tsx` | Uses `lib/chat/modes.ts` |
+| Dashboard nav | `dashboard/sidebar.tsx` | Workspace → `/dashboard/workspace` |
+| Landing modes | `landing/mode-skill-picker.tsx` | Three-mode marketing |
 
 ## PATTERNS
 
 ### Tool UI Pattern
 ```
 chat/tool-ui/
-├── keyword-suggestions-table.tsx  # Matches keyword tool output
-├── competitor-analysis-table.tsx  # Matches competitor tool output
-└── serp-table.tsx                 # Matches SERP tool output
+├── keyword-suggestions-table.tsx
+├── geo-brand-scan-results.tsx
+├── crawlability-audit-result.tsx
+└── schema-markup-result.tsx
 ```
 
+### Mode accent classes
+Import from `CHAT_MODE_ACCENT_CLASSES` in `lib/chat/modes.ts` — never hardcode emerald/violet/amber per surface.
+
 ### Provider Organization
-- `agent-provider.tsx` - Agent state context
-- `jargon-provider.tsx` - SEO term explanations
-- `user-mode-provider.tsx` - User skill level
+- `agent-provider.tsx` — agent state
+- `user-mode-provider.tsx` — skill level
+- `chat-mode-context.tsx` — active chat mode
 
 ## NOTES
 
-- All UI primitives in `ui/` - extend, don't duplicate
-- Framer Motion for animations
-- Recharts for data visualization
+- User-facing label: **Workspace** (never Content Zone)
+- Framer Motion for animations; Recharts for charts
+- All UI primitives in `ui/` — extend, don't duplicate

@@ -13,9 +13,9 @@ import { trackAPICall } from '@/lib/analytics/api-tracker'
 
 // Configure rate limits for different endpoints
 export const RATE_LIMITS = {
-  // Chat: 10 requests per minute per IP
+  // Chat: 30 requests per minute per IP
   CHAT: {
-    limit: 10,
+    limit: 30,
     window: '1 m',
     message: 'Too many chat requests. Please wait before sending another message.',
   },

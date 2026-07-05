@@ -1,29 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { requireUserId } from '@/lib/auth'
-import { db, libraryItems } from '@/lib/db'
+import { db, libraryItems, type Json } from '@/lib/db'
+import { isArtifactType } from '@/lib/artifacts/registry'
+import { buildArtifactTags } from '@/lib/artifacts/build-save-payload'
+import { CHAT_MODES, type ChatMode } from '@/lib/chat/modes'
 
 export const runtime = 'nodejs'
 
-interface SaveLibraryItemRequest {
-  content?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data?: any
-  imageUrl?: string
-  title: string
-  itemType: 'response' | 'image' | 'data' | 'component'
-  conversationId?: string
-  messageId?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metadata?: Record<string, any>
-  tags?: string[]
-}
+const saveLibraryItemSchema = z.object({
+  content: z.string().optional(),
+  data: z.unknown().optional(),
+  imageUrl: z.string().optional(),
+  title: z.string().min(1),
+  itemType: z.enum(['response', 'image', 'data', 'component']),
+  conversationId: z.string().uuid().optional(),
+  messageId: z.string().uuid().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  tags: z.array(z.string()).optional(),
+})
+
+type SaveLibraryItemRequest = z.infer<typeof saveLibraryItemSchema>
 
 export async function POST(req: NextRequest) {
   try {
     // Get current user
     const userId = await requireUserId()
 
-    const body: SaveLibraryItemRequest = await req.json()
+    const parsed = saveLibraryItemSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request body', details: parsed.error.flatten() },
+        { status: 400 }
+      )
+    }
+
     const {
       content,
       data,
@@ -34,15 +45,46 @@ export async function POST(req: NextRequest) {
       messageId,
       metadata = {},
       tags = [],
-    } = body
+    } = parsed.data
 
-    // Validate required fields
-    if (!title || !itemType) {
-      return NextResponse.json(
-        { error: 'Missing required fields: title and itemType' },
-        { status: 400 }
-      )
+    const artifactTypeRaw = metadata.artifactType
+    if (typeof artifactTypeRaw === 'string') {
+      if (!isArtifactType(artifactTypeRaw)) {
+        return NextResponse.json(
+          { error: `Unknown artifactType: ${artifactTypeRaw}` },
+          { status: 400 }
+        )
+      }
+      if (itemType !== 'component') {
+        return NextResponse.json(
+          { error: 'Artifact saves require itemType "component"' },
+          { status: 400 }
+        )
+      }
     }
+
+    const chatModeRaw = metadata.chatMode
+    const chatMode: ChatMode | undefined =
+      typeof chatModeRaw === 'string' &&
+      (CHAT_MODES as readonly string[]).includes(chatModeRaw)
+        ? (chatModeRaw as ChatMode)
+        : undefined
+    const domain =
+      typeof metadata.domain === 'string' ? metadata.domain : undefined
+
+    const resolvedTags =
+      typeof artifactTypeRaw === 'string' && isArtifactType(artifactTypeRaw)
+        ? [...new Set([...tags, ...buildArtifactTags(artifactTypeRaw, chatMode, domain)])]
+        : tags
+
+    const resolvedMetadata =
+      typeof artifactTypeRaw === 'string' && isArtifactType(artifactTypeRaw)
+        ? {
+            ...metadata,
+            artifactType: artifactTypeRaw,
+            artifactVersion: metadata.artifactVersion ?? 1,
+          }
+        : metadata
 
     // Insert library item
     const [libraryItem] = await db
@@ -54,10 +96,10 @@ export async function POST(req: NextRequest) {
         itemType,
         title,
         content: content || null,
-        data: data || null,
+        data: (data ?? null) as Json,
         imageUrl: imageUrl || null,
-        tags,
-        metadata,
+        tags: resolvedTags,
+        metadata: resolvedMetadata as Json,
       })
       .returning()
 

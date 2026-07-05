@@ -1,13 +1,20 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, MessageSquare, Search, Brain, PenLine, LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, type Variants } from 'framer-motion'
 import { Navbar } from '@/components/navbar'
 import { SymbolBackground } from '@/components/landing/symbol-background'
+import { ModeSkillPicker } from '@/components/landing/mode-skill-picker'
 import { LandingFaqSection } from '@/components/landing/landing-faq-section'
 import { EmailLink } from '@/components/email-link'
+import {
+  FLOWINTENT_ELEVATOR_PITCH,
+  FLOWINTENT_PLATFORM_MODES_INTRO,
+} from '@/lib/product/elevator-pitch'
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -22,6 +29,17 @@ const itemVariants: Variants = {
 }
 
 export function LandingPageClient() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const authError = searchParams.get('error')
+    if (!authError) return
+
+    const params = new URLSearchParams(searchParams.toString())
+    router.replace(`/login?${params.toString()}`)
+  }, [router, searchParams])
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white/20 font-sans">
       <SymbolBackground />
@@ -183,8 +201,37 @@ export function LandingPageClient() {
               <span className="text-zinc-500">No Other SEO Tool Does This.</span>
             </h2>
             <p className="text-zinc-400 text-lg leading-relaxed">
-              Most SEO tools give you data. Flow Intent gives you an AI assistant that thinks in three distinct modes — SEO, GEO/AEO, and Content — each purpose-built for a different job.
+              {FLOWINTENT_ELEVATOR_PITCH}
             </p>
+            <p className="text-zinc-500 text-sm leading-relaxed max-w-2xl mx-auto">
+              {FLOWINTENT_PLATFORM_MODES_INTRO}
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+              <Link
+                href="/sign-up"
+                className="inline-flex items-center gap-2 border border-white bg-white px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-black transition-colors hover:bg-zinc-200"
+              >
+                Open the platform
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/reddit-gap"
+                className="inline-flex items-center gap-2 border border-white/20 px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition-colors hover:border-white hover:bg-white/5"
+              >
+                Try free Reddit audit
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Interactive mode + subskill picker (Cursor-composer pattern) */}
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={itemVariants}
+            className="mt-16"
+          >
+            <ModeSkillPicker />
           </motion.div>
         </div>
       </section>
@@ -205,7 +252,7 @@ export function LandingPageClient() {
                 number="02"
                 label="GEO / AEO Mode"
                 title="Own the AI Answer Box"
-                description="Track how your brand appears across ChatGPT, Gemini, Perplexity, Claude and Google AI Overviews. Inspired by the open-source GEO tracking movement — the only way to know if AI models are citing you or your competitors."
+                description="Track mentions and citations in ChatGPT, Perplexity, and Google AI Overviews—the engines we run today—so you know whether AI answers name you or your competitors."
                 icon={Brain}
                 accent="violet"
               />
@@ -213,7 +260,7 @@ export function LandingPageClient() {
                 number="03"
                 label="Content Mode"
                 title="Publish in Minutes"
-                description="Tell the AI what to write. It generates a full blog post, automatically creates a hero image and thumbnail, and outputs a polished artifact you can copy, download as Markdown, or hand straight to your CMS."
+                description="Content Mode is AI SDK 6 chat for publishing—drafts, hero image, and thumbnail. Save artifacts to your workspace or export Markdown for your CMS."
                 icon={PenLine}
                 accent="amber"
               />
@@ -244,7 +291,7 @@ export function LandingPageClient() {
               <p className="text-sm font-mono uppercase tracking-widest text-violet-500 mb-3">GEO / AEO Mode</p>
               <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">AI Visibility Tracking</h3>
               <p className="text-zinc-400 leading-relaxed text-sm">
-                Monitor your brand mentions across every major AI platform. Understand which sources AI models trust and how to get cited more.
+                Monitor brand mentions and citations in ChatGPT, Perplexity, and Google AI Overviews—with more engines as integrations scale.
               </p>
             </div>
             <div className="bg-black/40 border border-amber-500/20 p-8 rounded-none">
@@ -252,7 +299,7 @@ export function LandingPageClient() {
               <p className="text-sm font-mono uppercase tracking-widest text-amber-500 mb-3">Content Mode</p>
               <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">Blog Posts with Images</h3>
               <p className="text-zinc-400 leading-relaxed text-sm">
-                Auto-generated hero images and thumbnails ship with every piece of content. Copy the markdown, export to your CMS — done.
+                Chat in Content Mode, preview artifacts in the side panel, save to workspace—export when you are ready.
               </p>
             </div>
           </motion.div>

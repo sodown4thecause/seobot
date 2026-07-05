@@ -1,4 +1,5 @@
 import type { Viewport } from 'next'
+import { Suspense } from 'react'
 import LoginForm from '@/components/auth/LoginForm'
 import Link from 'next/link'
 import { SymbolBackground } from '@/components/landing/symbol-background'
@@ -37,7 +38,9 @@ export default function LoginPage({
         </div>
 
         <div className="flex items-center justify-center">
-          <LoginForm />
+          <Suspense fallback={null}>
+            <LoginForm />
+          </Suspense>
         </div>
 
         <div className="mt-10 text-center">

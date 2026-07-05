@@ -21,6 +21,7 @@ import { generateImageWithGatewayGemini } from '@/lib/ai/image-generation'
 import { generateAndSaveContentImageAsset } from '@/lib/ai/content-image-assets'
 import { db, libraryItems, type Json } from '@/lib/db'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
+import { logAIUsage } from '@/lib/analytics/usage-logger'
 import type { AgentType } from './intent-classifier'
 import type { Tool } from 'ai'
 import type { GatewayModelId } from '@ai-sdk/gateway'
@@ -42,6 +43,7 @@ export interface StreamOptions {
   agentType: AgentType
   context?: Record<string, unknown>
   originalMessages: UIMessage[]
+  abortSignal?: AbortSignal
   onFinish?: (params: { messages: UIMessage[] }) => Promise<void>
 }
 
@@ -526,6 +528,7 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
     context,
     originalMessages,
     onFinish,
+    abortSignal,
   } = options
 
   const serverMessageIdGenerator = createIdGenerator({ prefix: 'msg', size: 16 })
@@ -561,6 +564,7 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
     system: systemPrompt,
     tools: allTools,
     toolChoice: 'auto',
+    abortSignal,
     // AI SDK 6: Model fallbacks via Vercel AI Gateway - used if primary model fails
     providerOptions: {
       gateway: {
@@ -592,6 +596,29 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
         messagesCount: response.messages.length,
         usage,
       })
+
+      if (userId) {
+        try {
+          await logAIUsage({
+            userId,
+            conversationId,
+            agentType,
+            model: CHAT_MODEL_ID,
+            promptTokens: usage?.inputTokens ?? 0,
+            completionTokens: usage?.outputTokens ?? 0,
+            endpoint: 'chat-stream',
+            metadata: {
+              mode: context?.mode,
+              toolsCount: Object.keys(allTools).length,
+            },
+          })
+        } catch (logError) {
+          console.error('[Stream Builder] Failed to log AI usage:', logError)
+        }
+      }
+    },
+    onAbort: () => {
+      console.log('[Stream Builder] Stream aborted by client disconnect')
     },
   })
 

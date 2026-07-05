@@ -5,7 +5,7 @@ import { DefaultChatTransport } from 'ai'
 import { useEffect, useState, forwardRef, useMemo, useCallback, useRef } from 'react'
 import { useAIState } from '@/lib/context/ai-state-context'
 
-import { Terminal, Check, Copy, ChevronDown, ChevronRight, Loader2, Sparkles, Send, X } from 'lucide-react'
+import { Terminal, Check, Copy, ChevronDown, ChevronRight, Loader2, Sparkles, Send, X, AlertCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
@@ -19,14 +19,22 @@ import { BacklinksTable } from './tool-ui/backlinks-table'
 import { SERPTable } from './tool-ui/serp-table'
 import { FirecrawlResults } from './tool-ui/firecrawl-results'
 import { CompetitorAnalysisTable } from './tool-ui/competitor-analysis-table'
+import { GeoBrandScanResults } from './tool-ui/geo-brand-scan-results'
+import { SchemaMarkupResult } from './tool-ui/schema-markup-result'
+import { CrawlabilityAuditResult } from './tool-ui/crawlability-audit-result'
+import { GeoFixPlanResult } from './tool-ui/geo-fix-plan-result'
 import type { ProactiveSuggestion } from '@/lib/proactive/types'
 import { useArtifactStore } from '@/lib/artifacts/artifact-store'
+import { syncArtifactsFromMessages } from '@/lib/artifacts/sync-from-messages'
+import { ArtifactPanel } from '@/components/artifacts/artifact-panel'
 import { bootstrapConversationRecord } from '@/lib/chat/conversation-bootstrap'
-import { KeywordArtifact } from './artifacts/keyword-artifact'
-import { BacklinkArtifact } from './artifacts/backlink-artifact'
 import { BlogArtifact } from './artifacts/blog-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
 import { useChatModeOptional } from './chat-mode-context'
+import { getChatModeAccentClasses, getChatModeUi } from '@/lib/chat/modes'
+import { DEFAULT_GEO_ENGINES } from '@/lib/geo/utils'
+import { DataPartRenderer } from './generative-ui/registry'
+import { Skeleton } from '@/components/ui/skeleton'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // AI Elements Imports
@@ -66,6 +74,160 @@ const formatToolName = (name: string) => {
     .join(' ');
 }
 
+const GEO_TRACKED_ENGINE_LABELS = {
+  chatgpt: { label: 'ChatGPT', sub: 'OpenAI responses' },
+  perplexity: { label: 'Perplexity', sub: 'sonar + citations' },
+  google_ai_overview: { label: 'Google AI Overviews', sub: 'live SERP overview' },
+} as const
+
+type ParsedChatError = {
+  message: string
+  code: string | null
+  isRateLimited: boolean
+  retryAfterSeconds: number | null
+  resetDate: string | null
+  isPaused: boolean
+}
+
+const parseChatError = (err: Error | null | undefined): ParsedChatError | null => {
+  if (!err) return null
+
+  let message = err.message?.trim() || 'Something went wrong. Please try again.'
+  let code: string | null = null
+  let retryAfterSeconds: number | null = null
+  let resetDate: string | null = null
+  let isPaused = false
+  let isRateLimited = false
+
+  type ErrorPayload = {
+    error?: string
+    code?: string
+    retryAfter?: number
+    message?: string
+    resetDate?: string
+    isPaused?: boolean
+  }
+
+  const applyPayload = (payload: ErrorPayload) => {
+    if (typeof payload.code === 'string') code = payload.code
+    if (typeof payload.message === 'string') message = payload.message
+    else if (typeof payload.error === 'string') message = payload.error
+    if (typeof payload.retryAfter === 'number' && payload.retryAfter > 0) {
+      retryAfterSeconds = payload.retryAfter
+      isRateLimited = true
+    }
+    if (typeof payload.resetDate === 'string') resetDate = payload.resetDate
+    if (payload.isPaused === true) isPaused = true
+  }
+
+  try {
+    applyPayload(JSON.parse(message) as ErrorPayload)
+  } catch {
+    // Message is plain text, not JSON
+  }
+
+  const extended = err as Error & {
+    status?: number
+    retryAfter?: number
+    data?: ErrorPayload
+  }
+
+  if (extended.status === 429) isRateLimited = true
+  if (extended.status === 403 && !code) code = 'subscription_required'
+  if (typeof extended.retryAfter === 'number' && extended.retryAfter > 0) {
+    retryAfterSeconds = extended.retryAfter
+    isRateLimited = true
+  }
+  if (extended.data) applyPayload(extended.data)
+
+  if (/rate limit|too many requests|\b429\b/i.test(message)) {
+    isRateLimited = true
+  }
+
+  return { message, code, isRateLimited, retryAfterSeconds, resetDate, isPaused }
+}
+
+const ConversationLoadingSkeleton = () => (
+  <div className="space-y-6 px-4 py-2 max-w-3xl mx-auto" role="status" aria-live="polite" aria-label="Loading conversation">
+    {[0, 1, 2].map((index) => (
+      <div key={index} className={cn('flex gap-3', index % 2 === 1 && 'flex-row-reverse')}>
+        <Skeleton className="h-8 w-8 shrink-0 rounded-full bg-zinc-800" />
+        <Skeleton className={cn('h-16 rounded-2xl bg-zinc-800', index % 2 === 0 ? 'w-2/3' : 'w-1/2')} />
+      </div>
+    ))}
+  </div>
+)
+
+const ChatErrorBanner = ({
+  error,
+  retryCountdown,
+  onRetry,
+}: {
+  error: Error
+  retryCountdown: number | null
+  onRetry: () => void
+}) => {
+  const parsed = parseChatError(error)
+  if (!parsed) return null
+
+  const retryDisabled = parsed.isRateLimited && retryCountdown !== null && retryCountdown > 0
+  const needsUpgrade =
+    parsed.code === 'subscription_required' ||
+    parsed.code === 'credit_limit_exceeded' ||
+    parsed.code === 'authentication_required'
+  const resetLabel = parsed.resetDate
+    ? new Date(parsed.resetDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    : null
+
+  return (
+    <div
+      role="alert"
+      className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100"
+    >
+      <div className="flex items-start gap-3">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" aria-hidden="true" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <p>{parsed.message}</p>
+          {parsed.code === 'credit_limit_exceeded' && resetLabel && (
+            <p className="text-xs text-red-200/80">
+              {parsed.isPaused ? 'Usage paused until' : 'Resets on'} {resetLabel}
+            </p>
+          )}
+          {parsed.isRateLimited && retryCountdown !== null && retryCountdown > 0 && (
+            <p className="text-xs text-red-200/80">
+              Try again in {retryCountdown}s
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {needsUpgrade ? (
+              <a
+                href={parsed.code === 'authentication_required' ? '/sign-in' : '/billing/checkout'}
+                className="rounded-full border border-red-400/30 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-100 transition-colors hover:bg-red-500/20"
+              >
+                {parsed.code === 'authentication_required' ? 'Sign in' : 'Upgrade plan'}
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={onRetry}
+                disabled={retryDisabled}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors',
+                  retryDisabled
+                    ? 'cursor-not-allowed border-red-500/20 text-red-300/50'
+                    : 'border-red-400/30 text-red-100 hover:bg-red-500/20'
+                )}
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Tool Invocation Registry
 const TOOL_COMPONENTS: Record<string, any> = {
   // Keyword tools
@@ -75,7 +237,6 @@ const TOOL_COMPONENTS: Record<string, any> = {
   dataforseo_labs_google_keyword_overview: KeywordSuggestionsTable,
   dataforseo_labs_google_keywords_for_site: KeywordSuggestionsTable,
   dataforseo_labs_google_ranked_keywords: KeywordSuggestionsTable,
-  suggest_keywords: KeywordSuggestionsTable,
 
   // Backlink tools
   n8n_backlinks: BacklinksTable,
@@ -92,10 +253,23 @@ const TOOL_COMPONENTS: Record<string, any> = {
   // Scraping tools
   firecrawl_scrape: FirecrawlResults,
   firecrawl_search: FirecrawlResults,
+
+  // GEO / AI visibility tools
+  generate_schema_markup: SchemaMarkupResult,
+  ai_crawlability_audit: CrawlabilityAuditResult,
+  geo_generate_fix: GeoFixPlanResult,
 }
 
 // ... ToolInvocation Component (Keeping it as is for functionality) ...
-const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComponentSubmit: (data: any) => void }) => {
+const ToolInvocation = ({
+  toolCall,
+  onComponentSubmit,
+  onGenerateFix,
+}: {
+  toolCall: any
+  onComponentSubmit: (data: any) => void
+  onGenerateFix?: (prompt: string) => void
+}) => {
   const { toolName, args, state, result } = toolCall
   const isLoading = state !== 'result'
   const isSuccess = state === 'result'
@@ -103,6 +277,10 @@ const ToolInvocation = ({ toolCall, onComponentSubmit }: { toolCall: any, onComp
 
   if (toolName === 'generate_content_package' && isSuccess && result?.success) {
     return <ContentPackagePreview output={result} />
+  }
+
+  if (toolName === 'geo_brand_scan' && isSuccess && result?.success) {
+    return <GeoBrandScanResults toolInvocation={toolCall} onGenerateFix={onGenerateFix} />
   }
 
   // 1. Handle specialized client UI
@@ -261,12 +439,14 @@ const ToolPartInvocation = ({
   state,
   input,
   output,
+  onGenerateFix,
 }: {
   toolName: string
   toolCallId?: string
   state?: string
   input?: any
   output?: any
+  onGenerateFix?: (prompt: string) => void
 }) => {
   const isLoading = state !== 'output-available' && state !== 'result'
   const isSuccess = !isLoading
@@ -274,6 +454,15 @@ const ToolPartInvocation = ({
 
   if (toolName === 'generate_content_package' && isSuccess && output?.success) {
     return <ContentPackagePreview output={output} />
+  }
+
+  if (toolName === 'geo_brand_scan' && isSuccess && output?.success) {
+    return (
+      <GeoBrandScanResults
+        toolInvocation={{ args: input, result: output, state: 'result' }}
+        onGenerateFix={onGenerateFix}
+      />
+    )
   }
 
   // Use the same specialized component logic as ToolInvocation
@@ -486,6 +675,23 @@ const getMessageText = (message: any): string => {
   return ''
 }
 
+const messageHasPartialAssistantContent = (message: { role?: string; parts?: unknown[]; toolInvocations?: unknown[]; content?: unknown }): boolean => {
+  if (message.role !== 'assistant') return false
+
+  const text = getMessageText(message)
+  if (text.trim().length > 0) return true
+
+  const parts = message.parts || []
+  if (parts.some((part: unknown) => {
+    const typed = part as { type?: string }
+    return typed.type?.startsWith('tool-') || typed.type?.startsWith('data-')
+  })) {
+    return true
+  }
+
+  return (message.toolInvocations?.length ?? 0) > 0
+}
+
 const extractPlanSteps = (message: any): PlanStep[] => {
   const plan = message.plan || message.metadata?.plan || message.metadata?.steps || []
   if (!Array.isArray(plan)) return []
@@ -568,8 +774,10 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const [showHandoff, setShowHandoff] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null)
   const [hydratedConversationId, setHydratedConversationId] = useState<string | null>(conversationIdProp ?? null)
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false)
   const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
+  const [retryCountdown, setRetryCountdown] = useState<number | null>(null)
   const [proactiveSuggestions, setProactiveSuggestions] = useState<ProactiveSuggestion[]>([])
 
   // 2. Refs
@@ -641,6 +849,35 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   const isLoading = status === 'streaming' || status === 'submitted'
   const lastMessageRole = messages[messages.length - 1]?.role
   const lastAssistantMessage = useMemo(() => messages.filter(m => m.role === 'assistant').pop(), [messages])
+  const hasPartialAssistantContent = useMemo(
+    () => messages.length > 0 && messageHasPartialAssistantContent(messages[messages.length - 1]),
+    [messages]
+  )
+  const showThinkingIndicator = isLoading && !hasPartialAssistantContent
+
+  useEffect(() => {
+    if (!error) {
+      setRetryCountdown(null)
+      return
+    }
+
+    const parsed = parseChatError(error)
+    if (parsed?.retryAfterSeconds && parsed.retryAfterSeconds > 0) {
+      setRetryCountdown(parsed.retryAfterSeconds)
+    } else {
+      setRetryCountdown(null)
+    }
+  }, [error])
+
+  useEffect(() => {
+    if (retryCountdown === null || retryCountdown <= 0) return
+
+    const timer = setInterval(() => {
+      setRetryCountdown((current) => (current !== null && current > 1 ? current - 1 : 0))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [retryCountdown])
 
   // 5. Effects
   useEffect(() => {
@@ -713,33 +950,17 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     }
   }, [conversationId, status, lastMessageRole, lastAssistantMessage, fetchRoadmap, setFocus, focus])
 
-  // Artifact Synchronization
+  // Artifact synchronization from tool invocations
   useEffect(() => {
-    messages.forEach(msg => {
-      (msg as any).toolInvocations?.forEach((tool: any) => {
-        const isActive = tool.state === 'call' || tool.state === 'executing' || tool.state === 'result';
-        if (!isActive) return;
-
-        if (tool.toolName === 'suggest_keywords') {
-          if (tool.state === 'result') {
-            updateArtifact('keyword-research', { status: 'complete', data: tool.result });
-          } else {
-            updateArtifact('keyword-research', { type: 'keyword', title: 'Keyword Research', status: 'streaming', data: null });
-            if (!activeArtifactId) setActiveArtifactId('keyword-research');
-          }
-        }
-
-        if (tool.toolName === 'n8n_backlinks') {
-          if (tool.state === 'result') {
-            updateArtifact('backlink-analysis', { status: 'complete', data: tool.result });
-          } else {
-            updateArtifact('backlink-analysis', { type: 'backlink', title: 'Backlink Analysis', status: 'streaming', data: null });
-            if (!activeArtifactId) setActiveArtifactId('backlink-analysis');
-          }
-        }
-      });
-    });
-  }, [messages, updateArtifact, activeArtifactId]);
+    syncArtifactsFromMessages({
+      messages: messages as Array<{ toolInvocations?: Array<{ toolName: string; state: string; result?: unknown }> }>,
+      chatMode,
+      activeArtifactId,
+      updateArtifact,
+      setActiveArtifactId,
+      openOnStart: false,
+    })
+  }, [messages, chatMode, activeArtifactId, updateArtifact])
 
   // 6. Interaction Handlers
   const handleSendMessage = useCallback((data: { text: string }) => {
@@ -778,6 +999,22 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
   }, [])
+
+  const handleRetry = useCallback(() => {
+    if (retryCountdown !== null && retryCountdown > 0) return
+
+    const lastMessage = messages[messages.length - 1]
+    if (lastMessage?.role === 'assistant') {
+      regenerate?.()
+      return
+    }
+
+    const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')
+    const lastUserText = lastUserMessage ? getMessageText(lastUserMessage) : ''
+    if (lastUserText.trim()) {
+      handleSendMessage({ text: lastUserText })
+    }
+  }, [messages, regenerate, retryCountdown, handleSendMessage])
 
   // Helper for safe JSON parsing
   const safeParseJSON = async (response: Response) => {
@@ -907,6 +1144,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       if (lastLoadedConversationId.current !== conversationId) {
         lastLoadedConversationId.current = conversationId
         setHydratedConversationId(null)
+        setIsLoadingConversation(true)
         // Clear messages immediately to avoid stale content flash
         setMessages([])
         // Load messages for the switched conversation
@@ -925,6 +1163,10 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             }
           } catch (err) {
             console.error('[Chat] Error loading messages:', err)
+          } finally {
+            if (mountedRef.current && lastLoadedConversationId.current === conversationId) {
+              setIsLoadingConversation(false)
+            }
           }
         }
         loadMessagesForConversation()
@@ -964,6 +1206,17 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     setToasts(prev => [...prev, { id, type, message }])
     setTimeout(() => removeToast(id), 5000)
   }, [removeToast])
+
+  const previousChatModeRef = useRef(chatMode)
+  useEffect(() => {
+    if (previousChatModeRef.current !== chatMode && messages.length > 0) {
+      addToast(
+        'info',
+        'Mode switched — new messages will use the selected mode. Start a new chat for a clean thread.'
+      )
+    }
+    previousChatModeRef.current = chatMode
+  }, [chatMode, messages.length, addToast])
 
   // 9. Rendering Logic Helpers
   const renderMessageContent = useCallback((message: any, textContent: string, isLast: boolean = false) => {
@@ -1020,20 +1273,36 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         {planSteps.length > 0 && <PlanList steps={planSteps} />}
         <MessageMeta timestamp={timestamp} status={status} />
         {parts.map((part: any, idx: number) => {
+          if (part.type?.startsWith('data-')) {
+            return <DataPartRenderer key={part.id ?? `data-${idx}`} part={part} />
+          }
           if (part.type?.startsWith('tool-')) {
             const tName = part.type.replace('tool-', '')
-            if (part.state === 'output-available' || part.state === 'result') {
-              return <ToolPartInvocation key={idx} toolName={tName} toolCallId={part.toolCallId} state={part.state} input={part.input ?? part.args} output={part.output ?? part.result} />
-            }
+            return (
+              <ToolPartInvocation
+                key={part.toolCallId ?? `tool-${idx}`}
+                toolName={tName}
+                toolCallId={part.toolCallId}
+                state={part.state}
+                input={part.input ?? part.args}
+                output={part.output ?? part.result}
+                onGenerateFix={(prompt) => handleSendMessage({ text: prompt })}
+              />
+            )
           }
           return null
         })}
         {toolInvocations.map((t: any) => (
-          <ToolInvocation key={t.toolCallId} toolCall={t} onComponentSubmit={(data) => handleComponentSubmit(t.args?.component, data)} />
+          <ToolInvocation
+            key={t.toolCallId}
+            toolCall={t}
+            onComponentSubmit={(data) => handleComponentSubmit(t.args?.component, data)}
+            onGenerateFix={(prompt) => handleSendMessage({ text: prompt })}
+          />
         ))}
       </>
     )
-  }, [isLoading, handleComponentSubmit])
+  }, [isLoading, handleComponentSubmit, handleSendMessage])
 
 
   // 10. Main Component Returns
@@ -1076,7 +1345,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       { id: 'backlink-profile', text: 'Check the backlink profile for ahrefs.com and identify their top referring domains', icon: 'zap' as const },
     ]
     const geoSuggestions = [
-      { id: 'ai-brand-visibility', text: 'My brand is "Flow Intent" (flowintent.com) — check if I appear across ChatGPT, Claude, Gemini, Perplexity, and Google AI Overview for "best AI SEO tools"', icon: 'sparkles' as const },
+      { id: 'ai-brand-visibility', text: 'My brand is "Flow Intent" (flowintent.com) — check if I appear across ChatGPT, Perplexity, and Google AI Overviews for "best AI SEO tools"', icon: 'sparkles' as const },
       { id: 'geo-competitor', text: 'Track my brand "Flow Intent" for the query "alternatives to Ahrefs" and tell me which competitors appear', icon: 'target' as const },
       { id: 'geo-optimize', text: 'How can I optimize my content to get cited in AI-generated answers?', icon: 'search' as const },
       { id: 'geo-new-brand', text: 'I want to start tracking my brand across AI platforms — where do I begin?', icon: 'zap' as const },
@@ -1090,11 +1359,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     const modeMap = { seo: seoSuggestions, geo: geoSuggestions, content: contentSuggestions }
     const defaultSuggestions = modeMap[chatMode] ?? seoSuggestions
 
-    const modeDescriptions = {
-      seo: 'Keyword research, SERP analysis & technical SEO',
-      geo: 'Track brand visibility across AI platforms & overviews',
-      content: 'Generate blog posts & articles with AI-powered images',
-    }
+    const activeModeUi = getChatModeUi(chatMode)
 
     // GEO mode gets a dedicated workflow onboarding panel
     if (chatMode === 'geo') {
@@ -1109,7 +1374,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             <div className="text-center space-y-2">
               <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">GEO / AEO Mode</h1>
               <p className="text-zinc-400 text-base max-w-xl mx-auto">
-                Track how often your brand appears inside ChatGPT, Claude, Gemini, Perplexity, and Google AI Overview responses — and get actionable steps to increase your AI visibility.
+                Track how often your brand appears inside ChatGPT, Perplexity, and Google AI Overviews — and get actionable steps to increase your AI visibility.
               </p>
             </div>
 
@@ -1120,7 +1385,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 {[
                   { step: '1', label: 'Tell us your brand', detail: 'Share your brand name, website, and industry so we know what to track.' },
                   { step: '2', label: 'Pick your queries', detail: 'Choose what people search for — we suggest the best ones based on your niche.' },
-                  { step: '3', label: 'We query the AI models', detail: 'We send your queries to ChatGPT, Claude, Gemini, Perplexity, and Google AI Overview in real time and capture their responses.' },
+                  { step: '3', label: 'We query the AI models', detail: 'We send your queries to ChatGPT, Perplexity, and Google AI Overviews in real time and capture their responses.' },
                   { step: '4', label: 'Get actionable insights', detail: 'See exactly where you appear, what your competitors say, and which content will get you cited.' },
                 ].map(({ step, label, detail }) => (
                   <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
@@ -1135,19 +1400,17 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             </div>
 
             {/* What we track */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
-              {[
-                { label: 'ChatGPT', sub: 'gpt-4.1-mini' },
-                { label: 'Claude', sub: 'claude-3-5-haiku-latest' },
-                { label: 'Gemini', sub: 'gemini-2.5-flash' },
-                { label: 'Perplexity', sub: 'sonar + citations' },
-                { label: 'Google AI Overview', sub: 'live SERP overview' },
-              ].map(({ label, sub }) => (
-                <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
-                  <p className="text-sm font-semibold text-zinc-200">{label}</p>
-                  <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{sub}</p>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+              {DEFAULT_GEO_ENGINES.map((engine) => {
+                const engineMeta = GEO_TRACKED_ENGINE_LABELS[engine as keyof typeof GEO_TRACKED_ENGINE_LABELS]
+                if (!engineMeta) return null
+                return (
+                  <div key={engine} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+                    <p className="text-sm font-semibold text-zinc-200">{engineMeta.label}</p>
+                    <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{engineMeta.sub}</p>
+                  </div>
+                )
+              })}
             </div>
 
             {/* Chat input */}
@@ -1263,6 +1526,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
     // Content mode gets a dedicated workflow onboarding panel
     if (chatMode === 'content') {
+      const contentUi = getChatModeUi('content')
+      const contentAccent = getChatModeAccentClasses('content')
       return (
         <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
           <div className="w-full max-w-3xl space-y-6 py-4">
@@ -1272,15 +1537,13 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
             {/* Hero */}
             <div className="text-center space-y-2">
-              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">Content Intelligence</h1>
-              <p className="text-zinc-400 text-base max-w-xl mx-auto">
-                Research-first content that ranks on Google and gets cited by AI answer engines — keyword data, competitor analysis, and quality writing in one workflow.
-              </p>
+              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">{contentUi.heroTitle}</h1>
+              <p className="text-zinc-400 text-base max-w-xl mx-auto">{contentUi.tagline}</p>
             </div>
 
             {/* How it works */}
-            <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 p-5 space-y-4">
-              <p className="text-xs font-mono uppercase tracking-widest text-sky-400">How this works</p>
+            <div className={cn('rounded-2xl border p-5 space-y-4', contentAccent.borderPanel, contentAccent.bgPanel)}>
+              <p className={cn('text-xs font-mono uppercase tracking-widest', contentAccent.textLabel)}>How this works</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { step: '1', label: 'Choose your topic', detail: 'Tell us what you want to create and the goal — rank, convert, or earn AI citations.' },
@@ -1289,7 +1552,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   { step: '4', label: 'Optimize and refine', detail: 'Quality scoring and a revision pass ensure the piece is ready to publish.' },
                 ].map(({ step, label, detail }) => (
                   <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
-                    <div className="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+                    <div className={cn('w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 mt-0.5', contentAccent.stepRing)}>{step}</div>
                     <div>
                       <p className="text-sm font-semibold text-zinc-200">{label}</p>
                       <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
@@ -1335,7 +1598,11 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   <button
                     key={s.id}
                     onClick={() => handleSendMessage({ text: s.text })}
-                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-sky-500/40 hover:bg-sky-500/5 hover:text-zinc-100 transition-all duration-200"
+                    className={cn(
+                      'text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:text-zinc-100 transition-all duration-200',
+                      contentAccent.promptHoverBorder,
+                      contentAccent.promptHoverBg
+                    )}
                   >
                     {s.text}
                   </button>
@@ -1352,7 +1619,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
         <div className="w-full max-w-4xl space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-4xl md:text-5xl font-semibold text-zinc-100 tracking-tight">Flow Intent</h1>
-            <p className="text-base md:text-lg text-zinc-500">{modeDescriptions[chatMode]}</p>
+            <p className="text-base md:text-lg text-zinc-500">{activeModeUi.selectorDescription}</p>
           </div>
           {/* Mode Selector */}
           <div className="flex justify-center">
@@ -1382,17 +1649,27 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // Final Chat Interface
   return (
-    <div className={cn("flex w-full overflow-hidden bg-zinc-950", className)}>
-      <div className={cn("flex flex-col h-full transition-all duration-500", activeArtifact ? "w-1/2 border-r border-zinc-800" : "w-full")}>
+    <div className={cn("relative flex w-full overflow-hidden bg-zinc-950", className)}>
+      <div className={cn(
+        "flex flex-col h-full transition-all duration-500",
+        activeArtifact
+          ? "hidden md:flex md:w-1/2 md:border-r md:border-zinc-800"
+          : "w-full"
+      )}>
         <Conversation>
           <ConversationContent className="px-4 py-2 max-w-3xl mx-auto">
+            {isLoadingConversation && messages.length === 0 ? (
+              <ConversationLoadingSkeleton />
+            ) : (
+              <>
             {messages.map((m, idx) => {
               const isLastMsg = idx === messages.length - 1
               const text = getMessageText(m)
               const isContentAssistant = chatMode === 'content' && m.role === 'assistant' && text.length > 200
+              const messageId = m.id || `message-${idx}`
 
               return (
-                <AIMessage key={m.id || idx} from={m.role as any}>
+                <AIMessage key={messageId} from={m.role as any}>
                   <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
                   <MessageContent>
                     {isContentAssistant ? (
@@ -1403,16 +1680,36 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                     ) : (
                       renderMessageContent(m, text, isLastMsg)
                     )}
-                    {m.role === 'assistant' && isLastMsg && !isLoading && !isContentAssistant && (
-                      <div className="mt-1">
-                        <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
+                    {m.role === 'assistant' && text.trim().length > 0 && !isContentAssistant && (
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer"
+                          onClick={() => copyToClipboard(text, messageId)}
+                          aria-label="Copy response"
+                        >
+                          {copiedId === messageId ? (
+                            <>
+                              <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                              Copy
+                            </>
+                          )}
+                        </button>
+                        {isLastMsg && !isLoading && (
+                          <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
+                        )}
                       </div>
                     )}
                   </MessageContent>
                 </AIMessage>
               )
             })}
-            {isLoading && (
+            {showThinkingIndicator && (
               <AIMessage from="assistant">
                 <MessageAvatar isUser={false} name="AI" />
                 <MessageContent>
@@ -1423,6 +1720,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                 </MessageContent>
               </AIMessage>
             )}
+              </>
+            )}
 
           </ConversationContent>
           <ConversationScrollButton />
@@ -1430,6 +1729,13 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
         <div className="p-4">
           <div className="max-w-3xl mx-auto space-y-3">
+            {error && (
+              <ChatErrorBanner
+                error={error}
+                retryCountdown={retryCountdown}
+                onRetry={handleRetry}
+              />
+            )}
             {proactiveSuggestions.length > 0 && (
               <Suggestions
                 suggestions={proactiveSuggestions.map(s => ({
@@ -1468,13 +1774,22 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       </div>
 
       <AnimatePresence>
-        {activeArtifact && (
-          <motion.div initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 100 }} className="w-1/2 h-full border-l border-zinc-800 bg-zinc-950 flex flex-col relative">
-            <button onClick={() => setActiveArtifactId(null)} aria-label="Close artifact panel" className="absolute top-4 right-4 z-50 p-2 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 cursor-pointer">
-              <X className="w-4 h-4" aria-hidden="true" />
-            </button>
-            {activeArtifact.type === 'keyword' && <KeywordArtifact data={activeArtifact.data} status={activeArtifact.status} />}
-            {activeArtifact.type === 'backlink' && <BacklinkArtifact data={activeArtifact.data} status={activeArtifact.status} />}
+        {activeArtifact && activeArtifactId && (
+          <motion.div
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            className={cn(
+              'h-full border-zinc-800 bg-zinc-950',
+              'fixed inset-0 z-40 w-full md:relative md:inset-auto md:z-auto md:w-1/2 md:border-l'
+            )}
+          >
+            <ArtifactPanel
+              artifact={{ ...activeArtifact, id: activeArtifactId }}
+              chatMode={chatMode}
+              conversationId={conversationId ?? undefined}
+              onClose={() => setActiveArtifactId(null)}
+            />
           </motion.div>
         )}
       </AnimatePresence>

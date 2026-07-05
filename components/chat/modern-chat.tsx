@@ -11,9 +11,9 @@ import { KeywordSuggestionsTable } from './tool-ui/keyword-suggestions-table'
 import { BacklinksTable } from './tool-ui/backlinks-table'
 import { SERPTable } from './tool-ui/serp-table'
 import { FirecrawlResults } from './tool-ui/firecrawl-results'
-import { KeywordArtifact } from './artifacts/keyword-artifact'
-import { BacklinkArtifact } from './artifacts/backlink-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
+import { ArtifactPanel } from '@/components/artifacts/artifact-panel'
+import { syncArtifactsFromMessages } from '@/lib/artifacts/sync-from-messages'
 import { useArtifactStore } from '@/lib/artifacts/artifact-store'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation'
@@ -161,73 +161,24 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
     }
   }, [messages, status, fetchRoadmap, focus, setFocus])
 
-  // Artifact Synchronization - Handle side effects outside render
+  // Artifact synchronization from tool invocations
   useEffect(() => {
-    messages.forEach((message: any) => {
-      const toolInvocations = message.toolInvocations
-      if (!toolInvocations || !Array.isArray(toolInvocations)) return
-
-      toolInvocations.forEach((tool: any) => {
-        const isSuccess = tool.state === 'result'
-        const isExecuting = tool.state === 'call' || tool.state === 'executing'
-        const isActive = isSuccess || isExecuting
-
-        if (!isActive) return
-
-        // Handle keyword research tool
-        if (tool.toolName === 'suggest_keywords') {
-          if (isExecuting) {
-            updateArtifact('keyword-research', { 
-              type: 'keyword', 
-              title: 'Keyword Research', 
-              status: 'streaming', 
-              data: null 
-            })
-            setActiveArtifactId('keyword-research')
-          } else if (isSuccess) {
-            updateArtifact('keyword-research', { 
-              status: 'complete', 
-              data: tool.result 
-            })
-            addToast('success', 'Keyword research analysis complete.')
-          }
-        }
-
-        // Handle backlinks tool
-        if (tool.toolName === 'n8n_backlinks') {
-          if (isExecuting) {
-            updateArtifact('backlink-analysis', { 
-              type: 'backlink', 
-              title: 'Backlink Analysis', 
-              status: 'streaming', 
-              data: null 
-            })
-            setActiveArtifactId('backlink-analysis')
-          } else if (isSuccess) {
-            updateArtifact('backlink-analysis', { 
-              status: 'complete', 
-              data: tool.result 
-            })
-            addToast('success', 'Backlink profile analysis complete.')
-          }
-        }
-      })
+    syncArtifactsFromMessages({
+      messages: messages as Array<{ toolInvocations?: Array<{ toolName: string; state: string; result?: unknown }> }>,
+      chatMode: mode,
+      activeArtifactId,
+      updateArtifact,
+      setActiveArtifactId,
+      openOnStart: true,
+      onComplete: ({ title }) => addToast('success', `${title} complete.`),
     })
-  }, [messages, updateArtifact, addToast])
+  }, [messages, mode, activeArtifactId, updateArtifact, addToast])
 
   const renderToolInvocation = (toolInvocation: { toolName: string; state: string; result?: any }, index: number) => {
     const { toolName, state } = toolInvocation
     const isSuccess = state === 'result'
     const isExecuting = state === 'call' || state === 'executing'
     const isActive = isSuccess || isExecuting
-
-    if (toolName === 'suggest_keywords' && isActive) {
-      return (
-        <div key={index} className="w-full my-4">
-          <KeywordSuggestionsTable toolInvocation={toolInvocation} />
-        </div>
-      )
-    }
 
     if (toolName === 'n8n_backlinks' && isActive) {
       return (
@@ -323,21 +274,13 @@ export function ModernChat({ context, placeholder = "Message the AI" }: ModernCh
             initial={{ opacity: 0, x: 100 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 100 }}
-            className="w-1/2 h-full border-l border-zinc-800 bg-zinc-950 flex flex-col relative"
+            className="w-1/2 h-full border-l border-zinc-800"
           >
-            <button
-              onClick={() => setActiveArtifactId(null)}
-              className="absolute top-4 right-4 z-50 p-2 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
-            >
-              <Send className="w-4 h-4 rotate-45" /> {/* Close icon substitute */}
-            </button>
-
-            {activeArtifact.type === 'keyword' && (
-              <KeywordArtifact data={activeArtifact.data} status={activeArtifact.status} />
-            )}
-            {activeArtifact.type === 'backlink' && (
-              <BacklinkArtifact data={activeArtifact.data} status={activeArtifact.status} />
-            )}
+            <ArtifactPanel
+              artifact={{ ...activeArtifact, id: activeArtifactId! }}
+              chatMode={mode}
+              onClose={() => setActiveArtifactId(null)}
+            />
           </motion.div>
         )}
       </AnimatePresence>
