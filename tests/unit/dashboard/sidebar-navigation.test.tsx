@@ -5,12 +5,21 @@ import { Sidebar } from '@/components/dashboard/sidebar'
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}))
+
+vi.mock('@/components/providers/agent-provider', () => ({
+  useAgent: () => ({
+    state: { conversations: [] },
+    actions: {},
+  }),
 }))
 
 describe('dashboard sidebar navigation', () => {
   it('hides Overview and Free AEO Audit links', () => {
     const html = renderToStaticMarkup(
-      <Sidebar collapsed={false} onToggle={() => {}} currentPath="/dashboard" />
+      <Sidebar open={false} onToggle={() => {}} />
     )
 
     expect(html).toContain('Website Audit')
