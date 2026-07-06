@@ -10,7 +10,6 @@ export { seoFundamentalsTutorial } from './data/seo-fundamentals'
 export { aeoGettingCitedTutorial } from './data/aeo-getting-cited'
 export { technicalSEOBasicsTutorial } from './data/technical-seo-basics'
 export { linkBuildingFundamentalsTutorial } from './data/link-building-fundamentals'
-export { localSEOGuideTutorial } from './data/local-seo-guide'
 export { contentOptimization101Tutorial } from './data/content-optimization-101'
 export { aeoAdvancedTutorial } from './data/aeo-advanced'
 
@@ -19,7 +18,6 @@ import { seoFundamentalsTutorial } from './data/seo-fundamentals'
 import { aeoGettingCitedTutorial } from './data/aeo-getting-cited'
 import { technicalSEOBasicsTutorial } from './data/technical-seo-basics'
 import { linkBuildingFundamentalsTutorial } from './data/link-building-fundamentals'
-import { localSEOGuideTutorial } from './data/local-seo-guide'
 import { contentOptimization101Tutorial } from './data/content-optimization-101'
 import { aeoAdvancedTutorial } from './data/aeo-advanced'
 import type { Tutorial } from './types'
@@ -29,7 +27,6 @@ export const TUTORIAL_REGISTRY: Tutorial[] = [
   aeoGettingCitedTutorial,
   technicalSEOBasicsTutorial,
   linkBuildingFundamentalsTutorial,
-  localSEOGuideTutorial,
   contentOptimization101Tutorial,
   aeoAdvancedTutorial,
 ]

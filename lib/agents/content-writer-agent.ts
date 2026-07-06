@@ -88,11 +88,11 @@ export class ContentWriterAgent {
           async () => {
             const { text, usage: _usage } = await generateText({
               model: vercelGateway.languageModel(CONTENT_WRITER_MODEL_ID),
-              system: this.buildSystemPrompt(guidance),
+              instructions: this.buildSystemPrompt(guidance),
               prompt: prompt,
               temperature: 0.7,
               abortSignal: params.abortSignal,
-              experimental_telemetry: createTelemetryConfig(
+              telemetry: createTelemetryConfig(
                 params.revisionRound ? 'content-writer-revision' : 'content-writer',
                 {
                   userId: params.userId,

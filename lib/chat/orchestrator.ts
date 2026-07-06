@@ -13,9 +13,9 @@
 
 import { type UIMessage, type ModelMessage, type Tool } from 'ai'
 import { 
-  updateActiveObservation, 
-  updateActiveTrace 
+  updateActiveObservation,
 } from '@langfuse/tracing'
+import { updateActiveTrace } from '@/lib/observability/langfuse-tracing'
 
 import { 
   convertToModelFormat, 

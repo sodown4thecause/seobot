@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { serverEnv } from '@/lib/config/env'
 import { generateText } from 'ai'
 import { createGateway } from '@ai-sdk/gateway'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createGoogle } from '@ai-sdk/google'
 
 export const maxDuration = 300
 
@@ -15,7 +15,7 @@ const gateway = serverEnv.AI_GATEWAY_API_KEY
   : null
 
 const google = serverEnv.GOOGLE_API_KEY
-  ? createGoogleGenerativeAI({ apiKey: serverEnv.GOOGLE_API_KEY })
+  ? createGoogle({ apiKey: serverEnv.GOOGLE_API_KEY })
   : null
 
 export async function POST(req: NextRequest) {

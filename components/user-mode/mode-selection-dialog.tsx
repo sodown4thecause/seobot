@@ -94,7 +94,6 @@ const MODE_OPTIONS: ModeOption[] = [
     icon: <Building2 className="w-8 h-8" />,
     features: [
       'Multi-client management',
-      'White-label reporting',
       'Team collaboration',
       'API access',
       'Advanced automation'

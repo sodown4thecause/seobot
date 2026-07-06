@@ -1,10 +1,11 @@
-import { streamText } from 'ai';
+import { streamText, createTextStreamResponse, toTextStream } from 'ai';
 import { vercelGateway } from '@/lib/ai/gateway-provider';
 // import { z } from 'zod';
 import { rateLimitMiddleware } from '@/lib/redis/rate-limit';
 import { getUserId } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors/handlers';
 import { createTelemetryConfig } from '@/lib/observability/langfuse';
+import { scheduleLangfuseFlush } from '@/lib/observability/flush-traces';
 
 export const runtime = 'nodejs';
 
@@ -40,8 +41,8 @@ export async function POST(req: Request) {
     const result = streamText({
       model: vercelGateway.languageModel('google/gemini-1.5-flash'),
       prompt: systemPrompt,
-      system: 'You are a professional content writer.',
-      experimental_telemetry: createTelemetryConfig('content-generate-api', {
+      instructions: 'You are a professional content writer.',
+      telemetry: createTelemetryConfig('content-generate-api', {
         userId: userId ?? undefined,
         sessionId, // Langfuse session tracking for content generation
         topic,
@@ -51,7 +52,9 @@ export async function POST(req: Request) {
       }),
     });
 
-    return result.toTextStreamResponse();
+    scheduleLangfuseFlush()
+    const textStream = toTextStream({ stream: result.stream })
+    return createTextStreamResponse({ stream: textStream });
 
   } catch (error) {
     console.error('Content Generation Error:', error);

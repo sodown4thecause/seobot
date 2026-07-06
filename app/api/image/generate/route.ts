@@ -3,7 +3,7 @@ import { requireUserId } from '@/lib/auth'
 import { getUserId, rateLimitMiddleware } from '@/lib/redis/rate-limit'
 import { generateText } from 'ai'
 import { createGateway } from '@ai-sdk/gateway'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createGoogle } from '@ai-sdk/google'
 import { serverEnv } from '@/lib/config/env'
 import { z } from 'zod'
 
@@ -23,7 +23,7 @@ const gateway = serverEnv.AI_GATEWAY_API_KEY
   : null
 
 const google = serverEnv.GOOGLE_API_KEY
-  ? createGoogleGenerativeAI({ apiKey: serverEnv.GOOGLE_API_KEY })
+  ? createGoogle({ apiKey: serverEnv.GOOGLE_API_KEY })
   : null
 
 function toImageUrl(image: { dataUrl?: string; base64?: string; mediaType?: string }): string | null {

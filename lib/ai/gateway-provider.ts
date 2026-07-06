@@ -1,4 +1,4 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createGoogle } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createDeepSeek } from '@ai-sdk/deepseek';
@@ -7,7 +7,7 @@ import { serverEnv } from '@/lib/config/env';
 
 // Initialize providers conditionally
 const google = serverEnv.GOOGLE_API_KEY
-  ? createGoogleGenerativeAI({
+  ? createGoogle({
     apiKey: serverEnv.GOOGLE_API_KEY,
   })
   : null;

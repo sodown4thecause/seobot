@@ -134,7 +134,7 @@ async function analyzeWithGemini(content: string, url: string): Promise<Analysis
     const { text } = await generateText({
       model: vercelGateway.languageModel('google/gemini-2.0-pro-exp-02-05'), // Use standard model ID supported by gateway/provider
       prompt: prompt,
-      system: 'You are an expert SEO analyst. Output ONLY valid JSON.',
+      instructions: 'You are an expert SEO analyst. Output ONLY valid JSON.',
     })
     
     // Parse the JSON response (handle markdown code blocks if present)

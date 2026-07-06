@@ -66,6 +66,9 @@ const serverEnvSchema = z.object({
   LANGFUSE_BASEURL: z.string().url().optional(),
   LANGFUSE_BASE_URL: z.string().url().optional(),
   LANGFUSE_DEBUG: z.string().optional(),
+  LANGFUSE_RECORD_IO: z.string().optional(),
+  LANGFUSE_ALERT_WEBHOOK_URL: z.string().url().optional(),
+  LANGFUSE_WEBHOOK_SECRET: z.string().min(1).optional(),
   // LangWatch API key (can use Langfuse keys if LangWatch is not available)
   LANGWATCH_API_KEY: z.string().min(1).optional(),
   LANGWATCH_BASE_URL: z.string().url().optional(),
@@ -115,6 +118,15 @@ const serverEnvSchema = z.object({
   WEEKLY_RESEARCH_FALLBACK_MODEL: z.string().optional(),
   SCRAPINGBEE_API_KEY: z.string().min(1).optional(),
 
+  // Observability — logging, errors, product analytics
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
+  AXIOM_DATASET: z.string().min(1).optional(),
+  AXIOM_TOKEN: z.string().min(1).optional(),
+  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_ENVIRONMENT: z.string().optional(),
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
+  NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+
   // Site Configuration
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
 
@@ -159,6 +171,9 @@ const serverEnvSchema = z.object({
 const clientEnvSchema = z.object({
   NEXT_PUBLIC_SITE_URL: optionalUrl,
   NEXT_PUBLIC_BETTER_AUTH_URL: optionalUrl,
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
+  NEXT_PUBLIC_POSTHOG_HOST: optionalUrl,
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 })
 
 /**
