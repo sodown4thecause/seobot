@@ -3,6 +3,8 @@
 **Date:** 2026-07-06
 **Method:** Manual browser testing on production (flowintent.com/dashboard) with a test account, role-playing a small e-commerce owner ("brooklyncandlestudio.com", handmade candles) across SEO and GEO / AEO modes.
 
+> **Status update (2026-07-06):** Items 1–8 plus the prompt-level parts of 9 and 11 are implemented on branch `cursor/chatbot-test-cursor-ui-67cb`. Key pieces: `lib/errors/provider-errors.ts` (error classification), `lib/chat/tool-timeout.ts` (hard tool timeouts), dedup/grouped error banners + elapsed-time progress in `components/chat/ai-chat-interface.tsx`, Start-fresh action on the mode-switch toast, and artifact registry/sync fixes so keyword, backlink, and SERP results hydrate the artifacts panel.
+
 ## Test summary
 
 | # | Question (as a website owner) | Mode | Result |
