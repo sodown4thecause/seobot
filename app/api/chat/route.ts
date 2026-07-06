@@ -59,6 +59,8 @@ const handler = async (req: Request) => {
 
   const nextReq = req as unknown as NextRequest
 
+  const nextReq = req as unknown as NextRequest
+
   // 1. Rate limiting
   const rateLimitResponse = await rateLimitMiddleware(nextReq, 'CHAT')
   if (rateLimitResponse) {

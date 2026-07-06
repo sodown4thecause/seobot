@@ -638,6 +638,29 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
         userId,
         conversationId,
       })
+
+      if (userId) {
+        try {
+          await logAIUsage({
+            userId,
+            conversationId,
+            agentType,
+            model: CHAT_MODEL_ID,
+            promptTokens: usage?.inputTokens ?? 0,
+            completionTokens: usage?.outputTokens ?? 0,
+            endpoint: 'chat-stream',
+            metadata: {
+              mode: context?.mode,
+              toolsCount: Object.keys(allTools).length,
+            },
+          })
+        } catch (logError) {
+          console.error('[Stream Builder] Failed to log AI usage:', logError)
+        }
+      }
+    },
+    onAbort: () => {
+      console.log('[Stream Builder] Stream aborted by client disconnect')
     },
   })
 
