@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowRight, MessageSquare, Search, Brain, PenLine, LucideIcon } from 'lucide-react'
+import { ArrowRight, Search, Brain, PenLine, LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, type Variants } from 'framer-motion'
 import { Navbar } from '@/components/navbar'
@@ -46,18 +46,10 @@ export function LandingPageClient() {
 
       <Navbar />
 
-      {/* Authority Bar */}
-      <div className="relative z-10 border-y border-white/10 bg-white/[0.02] backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-4">
-          <p className="text-center text-xs text-zinc-500 uppercase tracking-[0.3em]">
-            Powered by <span className="text-white font-semibold">Supadata</span> · <span className="text-white font-semibold">Reddit API</span> · <span className="text-white font-semibold">Real-Time Analysis</span>
-          </p>
-        </div>
-      </div>
-
-      <section className="relative z-10 pt-36 pb-20 px-6 overflow-hidden md:pt-48 md:pb-32">
+      {/* Hero */}
+      <section className="relative z-10 pt-36 pb-24 px-6 overflow-hidden md:pt-44 md:pb-32">
         <div className="container mx-auto">
-          <div className="max-w-6xl">
+          <div className="max-w-4xl mx-auto text-center">
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -65,66 +57,70 @@ export function LandingPageClient() {
               variants={itemVariants}
               className="space-y-6"
             >
-              <h1 className="text-5xl md:text-[98px] font-black tracking-tight leading-none uppercase italic text-gradient">
-                Your Audience Is on Reddit
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-xs text-zinc-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Free Reddit content gap audit — no signup, 60 seconds
+              </p>
+
+              <h1 className="text-5xl md:text-7xl font-semibold tracking-tighter leading-[1.05] text-gradient">
+                Your audience is on Reddit,
                 <br />
-                <span className="bg-white text-black px-4 not-italic inline-block">Asking Questions</span>
+                asking questions your
                 <br />
-                Your Competitors Ignore.
+                competitors ignore.
               </h1>
-              <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-none uppercase italic text-zinc-400 mt-4">
-                Find the Content Gaps They&apos;re <span className="text-white">Missing</span> — Before They Do.
-              </h2>
 
-              <div className="flex flex-col md:flex-row items-baseline gap-8 pt-8">
-                <div className="max-w-xl">
-                  <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-[0.4em] mb-4">
-                    REDDIT CONTENT GAP AUDIT / FREE LEAD MAGNET
-                  </p>
-                  <p className="text-xl md:text-2xl text-zinc-300 font-light leading-tight uppercase tracking-tight">
-                    Stop guessing what content to create. We scan thousands of Reddit discussions to find the exact questions your audience is asking — and your competitors aren&apos;t answering. Get a prioritized content brief in 60 seconds.
-                  </p>
-                  <div className="mt-6 grid gap-2 text-left text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">
-                    <p>01 - We scan relevant subreddits for real questions</p>
-                    <p>02 - We find content gaps your competitors miss</p>
-                    <p>03 - You get a ranked brief with thread sources + action items</p>
-                  </div>
-                </div>
+              <p className="mx-auto max-w-2xl text-lg md:text-xl text-zinc-400 leading-relaxed">
+                We scan thousands of Reddit discussions to find the exact questions your
+                audience is asking — and your competitors aren&apos;t answering. Get a
+                prioritized content brief in 60 seconds.
+              </p>
 
-                <div className="flex-1 flex justify-end items-end">
-                  <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <Link href="/reddit-gap">
-                      <Button
-                        size="lg"
-                        className="h-14 w-full sm:w-auto px-8 text-base md:h-16 md:px-10 md:text-lg bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-wider group border-4 border-white shadow-[0_24px_60px_rgba(255,255,255,0.08)]"
-                      >
-                        Find My Content Gaps
-                        <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                      </Button>
-                    </Link>
-                    <div className="text-center sm:text-left">
-                      <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-600">Free. No credit card.</p>
-                      <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">Typical runtime: 60 seconds</p>
-                    </div>
-                  </div>
-                </div>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+                <Link href="/reddit-gap">
+                  <Button
+                    size="lg"
+                    className="h-12 px-7 text-[15px] bg-white text-black hover:bg-zinc-200 rounded-lg font-medium group shadow-[0_0_40px_rgba(255,255,255,0.12)]"
+                  >
+                    Find my content gaps
+                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </Button>
+                </Link>
+                <Link href="/sign-up">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-12 px-7 text-[15px] rounded-lg border-white/15 bg-white/[0.02] text-white hover:bg-white/[0.06] hover:text-white font-medium"
+                  >
+                    Open the platform
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2 text-sm text-zinc-500">
+                <span>Scan relevant subreddits for real questions</span>
+                <span className="hidden sm:inline text-zinc-700">·</span>
+                <span>Find gaps competitors miss</span>
+                <span className="hidden sm:inline text-zinc-700">·</span>
+                <span>Ranked brief with sources + action items</span>
               </div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/15 bg-black/90 p-3 backdrop-blur md:hidden">
+      {/* Mobile sticky CTA */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/10 bg-black/90 p-3 backdrop-blur md:hidden">
         <Link href="/reddit-gap" className="block">
-          <Button className="h-12 w-full rounded-none bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-wider">
-            Find My Content Gaps
+          <Button className="h-11 w-full rounded-lg bg-white text-black hover:bg-zinc-200 font-medium">
+            Find my content gaps
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Link>
       </div>
 
       {/* Product Demo */}
-      <section className="relative z-10 py-20 px-6 border-b border-white/5">
+      <section className="relative z-10 py-20 px-6 border-b border-white/[0.06]">
         <div className="container mx-auto">
           <motion.div
             initial="hidden"
@@ -133,9 +129,9 @@ export function LandingPageClient() {
             variants={itemVariants}
             className="max-w-4xl mx-auto space-y-6 text-center"
           >
-            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Product Demo</p>
-            <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight">See It In Action</h2>
-            <div className="relative w-full overflow-hidden border border-white/10 bg-black" style={{ paddingBottom: '56.25%' }}>
+            <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">Product demo</p>
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">See it in action</h2>
+            <div className="relative w-full overflow-hidden rounded-xl border border-white/10 bg-black shadow-2xl" style={{ paddingBottom: '56.25%' }}>
               <iframe
                 src="https://www.youtube.com/embed/Wix-qhO3kkk?rel=0&modestbranding=1"
                 title="FlowIntent Product Demo"
@@ -149,35 +145,39 @@ export function LandingPageClient() {
       </section>
 
       {/* What you get - quick wins */}
-      <section className="relative z-10 py-16 border-b border-white/5">
+      <section className="relative z-10 py-16 border-b border-white/[0.06]">
         <div className="container mx-auto px-6">
           <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20">
             <div className="text-center">
-              <div className="text-5xl md:text-6xl font-black text-white mb-2">60s</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">To Your Content Gap Report</div>
+              <div className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-2">60s</div>
+              <div className="text-sm text-zinc-500">To your content gap report</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl md:text-6xl font-black text-white mb-2">1000s</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Reddit Threads Analyzed</div>
+              <div className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-2">1000s</div>
+              <div className="text-sm text-zinc-500">Reddit threads analyzed</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl md:text-6xl font-black text-white mb-2">50+</div>
-              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500">Subreddits Available</div>
+              <div className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-2">50+</div>
+              <div className="text-sm text-zinc-500">Subreddits available</div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5 backdrop-blur-sm">
+      {/* Reddit audit callout */}
+      <section className="relative z-10 py-20 border-b border-white/[0.06]">
         <div className="container mx-auto px-6 text-center">
-          <div className="mx-auto max-w-3xl space-y-5 rounded-none border border-white/10 bg-black/40 p-10">
-            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">Reddit Content Gap Audit</p>
-            <h3 className="text-3xl font-black uppercase tracking-tight">Find What Reddit Is Asking That Your Competitors Ignore</h3>
-            <p className="text-zinc-400">
+          <div className="mx-auto max-w-3xl space-y-5 rounded-2xl border border-white/10 bg-white/[0.02] p-10 backdrop-blur-sm">
+            <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">Reddit content gap audit</p>
+            <h3 className="text-2xl md:text-3xl font-semibold tracking-tight">Find what Reddit is asking that your competitors ignore</h3>
+            <p className="text-zinc-400 leading-relaxed">
               We scan thousands of Reddit discussions across relevant subreddits, identify high-intent questions your competitors aren&apos;t answering, and deliver a ranked content brief with sources and action items.
             </p>
-            <Link href="/reddit-gap" className="inline-flex items-center gap-2 border border-white px-6 py-3 text-sm font-black uppercase tracking-[0.18em] hover:bg-white hover:text-black transition-colors">
-              Get My Free Content Gap Report
+            <Link
+              href="/reddit-gap"
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
+            >
+              Get my free content gap report
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -185,20 +185,20 @@ export function LandingPageClient() {
       </section>
 
       {/* Platform Modes Intro */}
-      <section className="relative z-10 py-20 px-6 border-b border-white/5">
+      <section className="relative z-10 py-24 px-6 border-b border-white/[0.06]">
         <div className="container mx-auto">
           <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
             variants={itemVariants}
-            className="max-w-3xl mx-auto text-center space-y-4 mb-16"
+            className="max-w-3xl mx-auto text-center space-y-5 mb-16"
           >
-            <p className="text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">The Platform</p>
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">
-              Three Modes. One Platform.
+            <p className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-500">The platform</p>
+            <h2 className="text-3xl md:text-5xl font-semibold tracking-tighter">
+              Three modes. One platform.
               <br />
-              <span className="text-zinc-500">No Other SEO Tool Does This.</span>
+              <span className="text-zinc-500">No other SEO tool does this.</span>
             </h2>
             <p className="text-zinc-400 text-lg leading-relaxed">
               {FLOWINTENT_ELEVATOR_PITCH}
@@ -206,17 +206,17 @@ export function LandingPageClient() {
             <p className="text-zinc-500 text-sm leading-relaxed max-w-2xl mx-auto">
               {FLOWINTENT_PLATFORM_MODES_INTRO}
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
               <Link
                 href="/sign-up"
-                className="inline-flex items-center gap-2 border border-white bg-white px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-black transition-colors hover:bg-zinc-200"
+                className="inline-flex items-center gap-2 rounded-lg bg-white px-7 py-3 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
               >
                 Open the platform
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/reddit-gap"
-                className="inline-flex items-center gap-2 border border-white/20 px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition-colors hover:border-white hover:bg-white/5"
+                className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.02] px-7 py-3 text-sm font-medium text-white transition-colors hover:bg-white/[0.06]"
               >
                 Try free Reddit audit
               </Link>
@@ -239,11 +239,11 @@ export function LandingPageClient() {
       <section id="features" className="relative z-10 py-32 px-6">
         <div className="container mx-auto">
           <div className="max-w-4xl mx-auto">
-            <div className="grid gap-24">
+            <div className="grid gap-20">
               <ValueProp
                 number="01"
                 label="SEO Mode"
-                title="Rank Higher, Faster"
+                title="Rank higher, faster"
                 description="Deep keyword research, live SERP analysis, competitor gap identification and technical SEO audits — all powered by DataForSEO. Ask in plain English, get actionable data back instantly."
                 icon={Search}
                 accent="emerald"
@@ -251,7 +251,7 @@ export function LandingPageClient() {
               <ValueProp
                 number="02"
                 label="GEO / AEO Mode"
-                title="Own the AI Answer Box"
+                title="Own the AI answer box"
                 description="Track mentions and citations in ChatGPT, Perplexity, and Google AI Overviews—the engines we run today—so you know whether AI answers name you or your competitors."
                 icon={Brain}
                 accent="violet"
@@ -259,7 +259,7 @@ export function LandingPageClient() {
               <ValueProp
                 number="03"
                 label="Content Mode"
-                title="Publish in Minutes"
+                title="Publish in minutes"
                 description="Content Mode is AI SDK 6 chat for publishing—drafts, hero image, and thumbnail. Save artifacts to your workspace or export Markdown for your CMS."
                 icon={PenLine}
                 accent="amber"
@@ -269,35 +269,41 @@ export function LandingPageClient() {
         </div>
       </section>
 
-      <section className="relative z-10 py-24 px-6 bg-white/[0.02] border-y border-white/5 backdrop-blur-sm">
+      <section className="relative z-10 py-24 px-6 border-y border-white/[0.06]">
         <div className="container mx-auto">
           <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-100px' }}
             variants={itemVariants}
-            className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6"
+            className="max-w-5xl mx-auto grid md:grid-cols-3 gap-4"
           >
-            <div className="bg-black/40 border border-emerald-500/20 p-8 rounded-none">
-              <div className="w-8 h-1 bg-emerald-400 mb-4" />
-              <p className="text-sm font-mono uppercase tracking-widest text-emerald-500 mb-3">SEO Mode</p>
-              <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">SERP & Keyword Intelligence</h3>
+            <div className="rounded-xl border border-emerald-500/15 bg-white/[0.02] p-8 transition-colors hover:border-emerald-500/30">
+              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
+                <Search className="h-4 w-4 text-emerald-400" />
+              </div>
+              <p className="text-xs font-mono uppercase tracking-[0.15em] text-emerald-500 mb-2">SEO Mode</p>
+              <h3 className="text-lg font-semibold tracking-tight mb-2 text-white">SERP & keyword intelligence</h3>
               <p className="text-zinc-400 leading-relaxed text-sm">
                 Live keyword volumes, difficulty scores, competitor rankings, backlink profiles and SERP feature tracking — queried conversationally.
               </p>
             </div>
-            <div className="bg-black/40 border border-violet-500/20 p-8 rounded-none">
-              <div className="w-8 h-1 bg-violet-400 mb-4" />
-              <p className="text-sm font-mono uppercase tracking-widest text-violet-500 mb-3">GEO / AEO Mode</p>
-              <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">AI Visibility Tracking</h3>
+            <div className="rounded-xl border border-violet-500/15 bg-white/[0.02] p-8 transition-colors hover:border-violet-500/30">
+              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10">
+                <Brain className="h-4 w-4 text-violet-400" />
+              </div>
+              <p className="text-xs font-mono uppercase tracking-[0.15em] text-violet-500 mb-2">GEO / AEO Mode</p>
+              <h3 className="text-lg font-semibold tracking-tight mb-2 text-white">AI visibility tracking</h3>
               <p className="text-zinc-400 leading-relaxed text-sm">
                 Monitor brand mentions and citations in ChatGPT, Perplexity, and Google AI Overviews—with more engines as integrations scale.
               </p>
             </div>
-            <div className="bg-black/40 border border-amber-500/20 p-8 rounded-none">
-              <div className="w-8 h-1 bg-amber-400 mb-4" />
-              <p className="text-sm font-mono uppercase tracking-widest text-amber-500 mb-3">Content Mode</p>
-              <h3 className="text-xl font-bold uppercase tracking-tight mb-3 text-white">Blog Posts with Images</h3>
+            <div className="rounded-xl border border-amber-500/15 bg-white/[0.02] p-8 transition-colors hover:border-amber-500/30">
+              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
+                <PenLine className="h-4 w-4 text-amber-400" />
+              </div>
+              <p className="text-xs font-mono uppercase tracking-[0.15em] text-amber-500 mb-2">Content Mode</p>
+              <h3 className="text-lg font-semibold tracking-tight mb-2 text-white">Blog posts with images</h3>
               <p className="text-zinc-400 leading-relaxed text-sm">
                 Chat in Content Mode, preview artifacts in the side panel, save to workspace—export when you are ready.
               </p>
@@ -308,43 +314,45 @@ export function LandingPageClient() {
 
       <LandingFaqSection />
 
-      <section className="relative z-10 py-48 px-6 bg-gradient-to-b from-transparent to-zinc-900/50">
-        <div className="container mx-auto text-center border-t border-white/10 pt-32">
-          <h2 className="text-5xl md:text-8xl font-bold tracking-tighter mb-12 uppercase italic">
-            Your Competitors Are <span className="text-zinc-500">Already</span> Getting Cited.
+      {/* Final CTA */}
+      <section className="relative z-10 py-40 px-6">
+        <div className="container mx-auto text-center max-w-4xl">
+          <h2 className="text-4xl md:text-6xl font-semibold tracking-tighter mb-6 text-gradient">
+            Your competitors are already getting cited.
           </h2>
+          <p className="text-lg text-zinc-400 mb-10">
+            60-second scan — no signup — see what your audience is asking on Reddit.
+          </p>
           <Link href="/reddit-gap">
             <Button
               size="lg"
-              className="h-20 px-16 text-2xl bg-white text-black hover:bg-zinc-200 rounded-none font-black uppercase tracking-widest shadow-2xl shadow-white/5"
+              className="h-14 px-10 text-lg bg-white text-black hover:bg-zinc-200 rounded-lg font-medium shadow-[0_0_60px_rgba(255,255,255,0.15)]"
             >
-              Find My Content Gaps
+              Find my content gaps
+              <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
-          <p className="mt-6 text-sm font-mono uppercase tracking-wider text-zinc-600">
-            60-second scan — no signup — see what your audience is asking on Reddit
-          </p>
-          <div className="mt-10 text-xs font-mono uppercase tracking-[0.3em] text-zinc-500">
+          <div className="mt-10 text-sm text-zinc-500">
             Prefer to learn first?{' '}
-            <Link href="/blog" className="hover:text-white transition-colors">
+            <Link href="/blog" className="text-zinc-400 underline underline-offset-4 hover:text-white transition-colors">
               Why Reddit content gaps matter
             </Link>{' '}
-            -{' '}
-            <Link href="/blog" className="hover:text-white transition-colors">
+            ·{' '}
+            <Link href="/blog" className="text-zinc-400 underline underline-offset-4 hover:text-white transition-colors">
               Blog
             </Link>
           </div>
         </div>
       </section>
 
-      <footer className="relative z-10 py-16 px-6 border-t border-white/5 bg-black">
-        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white flex items-center justify-center text-black font-black italic text-2xl">FI</div>
-            <span className="font-bold text-2xl tracking-tighter uppercase italic">Flow Intent</span>
+      <footer className="relative z-10 py-14 px-6 border-t border-white/[0.06] bg-black">
+        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-10">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center text-black font-bold text-xs">FI</div>
+            <span className="font-semibold text-[15px] tracking-tight">FlowIntent</span>
           </div>
 
-          <div className="flex flex-wrap gap-10 text-xs font-mono text-zinc-500 uppercase tracking-widest justify-center">
+          <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-zinc-500 justify-center">
             <Link href="/blog" className="hover:text-white transition-colors">
               Blog
             </Link>
@@ -358,7 +366,7 @@ export function LandingPageClient() {
               Case Studies
             </Link>
             <EmailLink className="hover:text-white transition-colors">
-              Send an Email
+              Contact
             </EmailLink>
             <Link href="/privacy" className="hover:text-white transition-colors">
               Privacy
@@ -368,17 +376,17 @@ export function LandingPageClient() {
             </Link>
           </div>
 
-          <div className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase">(c) 2026 FLOW INTENT. ALL RIGHTS RESERVED.</div>
+          <div className="text-xs text-zinc-600">© 2026 FlowIntent. All rights reserved.</div>
         </div>
       </footer>
     </div>
   )
 }
 
-const ACCENT_COLORS: Record<string, { border: string; text: string; icon: string }> = {
-  emerald: { border: 'group-hover:border-emerald-400', text: 'text-emerald-400', icon: 'group-hover:text-emerald-400' },
-  violet: { border: 'group-hover:border-violet-400', text: 'text-violet-400', icon: 'group-hover:text-violet-400' },
-  amber: { border: 'group-hover:border-amber-400', text: 'text-amber-400', icon: 'group-hover:text-amber-400' },
+const ACCENT_COLORS: Record<string, { border: string; text: string; icon: string; bg: string }> = {
+  emerald: { border: 'group-hover:border-emerald-500/40', text: 'text-emerald-400', icon: 'group-hover:text-emerald-400', bg: 'bg-emerald-500/10' },
+  violet: { border: 'group-hover:border-violet-500/40', text: 'text-violet-400', icon: 'group-hover:text-violet-400', bg: 'bg-violet-500/10' },
+  amber: { border: 'group-hover:border-amber-500/40', text: 'text-amber-400', icon: 'group-hover:text-amber-400', bg: 'bg-amber-500/10' },
 }
 
 function ValueProp({
@@ -405,21 +413,21 @@ function ValueProp({
       variants={itemVariants}
       className="group relative"
     >
-      <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-start">
+      <div className="flex flex-col md:flex-row gap-8 md:gap-14 items-start">
         <div className="flex-shrink-0">
           <span className="text-sm font-mono text-zinc-700 block mb-2">{number}</span>
-          <div className={`w-16 h-16 bg-white/[0.03] border border-white/10 flex items-center justify-center text-zinc-400 ${colors.icon} ${colors.border} transition-all duration-500`}>
-            <Icon className="w-8 h-8 font-light" />
+          <div className={`w-14 h-14 rounded-xl ${colors.bg} border border-white/10 flex items-center justify-center text-zinc-400 ${colors.icon} ${colors.border} transition-all duration-300`}>
+            <Icon className="w-6 h-6" />
           </div>
         </div>
         <div className="space-y-3">
           {label && (
-            <p className={`text-xs font-mono uppercase tracking-[0.3em] ${colors.text}`}>{label}</p>
+            <p className={`text-xs font-mono uppercase tracking-[0.2em] ${colors.text}`}>{label}</p>
           )}
-          <h3 className="text-4xl md:text-5xl font-bold uppercase tracking-tight group-hover:italic transition-all duration-500 text-white">
+          <h3 className="text-3xl md:text-4xl font-semibold tracking-tight text-white">
             {title}
           </h3>
-          <p className="text-xl text-zinc-400 leading-relaxed font-light">{description}</p>
+          <p className="text-lg text-zinc-400 leading-relaxed">{description}</p>
         </div>
       </div>
     </motion.div>

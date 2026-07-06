@@ -8,30 +8,30 @@ export default function SignUpPage() {
             <SymbolBackground />
 
             <div className="relative z-10 w-full max-w-md">
-                <div className="mb-10 text-center">
-                    <Link href="/" className="inline-flex items-center gap-3 group">
-                        <div className="w-12 h-12 bg-white flex items-center justify-center text-black font-black italic text-xl group-hover:scale-110 transition-transform duration-300">
+                <div className="mb-8 text-center">
+                    <Link href="/" className="inline-flex items-center gap-2.5 group">
+                        <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-black font-bold text-sm group-hover:scale-105 transition-transform duration-300">
                             FI
                         </div>
-                        <span className="font-bold text-2xl tracking-tighter uppercase italic text-white">Flow Intent</span>
+                        <span className="font-semibold text-lg tracking-tight text-white">FlowIntent</span>
                     </Link>
                 </div>
 
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight mb-2">
-                        Create Account
-                    </h1>
-                    <p className="text-zinc-500 font-mono text-xs uppercase tracking-widest">
-                        Join the future of SEO
-                    </p>
-                </div>
+                <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/80 p-8 shadow-2xl backdrop-blur-xl">
+                    <div className="text-center mb-6">
+                        <h1 className="text-2xl font-semibold tracking-tight mb-1">
+                            Create your account
+                        </h1>
+                        <p className="text-sm text-zinc-500">
+                            Join the future of SEO
+                        </p>
+                    </div>
 
-                <div className="flex items-center justify-center">
                     <SignupForm />
                 </div>
 
-                <div className="mt-10 text-center">
-                    <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
+                <div className="mt-8 text-center">
+                    <p className="text-xs text-zinc-600">
                         Protected by enterprise-grade security
                     </p>
                 </div>
