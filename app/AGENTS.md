@@ -1,5 +1,7 @@
 # APP - NEXT.JS 16 APP ROUTER
 
+> Part of the project docs — see the root [`AGENTS.md`](../AGENTS.md) for the architecture index, diagram, and code guidelines.
+
 Next.js 16 App Router with pages and API routes.
 
 ## STRUCTURE

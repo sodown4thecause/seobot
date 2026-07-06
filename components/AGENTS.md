@@ -1,5 +1,7 @@
 # COMPONENTS - REACT UI COMPONENTS
 
+> Part of the project docs — see the root [`AGENTS.md`](../AGENTS.md) for the architecture index, diagram, and code guidelines.
+
 React components built on shadcn/ui + Radix UI + Tailwind.
 
 ## STRUCTURE

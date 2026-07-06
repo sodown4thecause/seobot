@@ -1,75 +1,147 @@
-# SEOBOT PROJECT KNOWLEDGE BASE
+# FLOWINTENT (SEOBOT) — PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-07-04  
-**Commit:** (see `git rev-parse HEAD`)  
-**Branch:** `feat/platform-modes-workspace-docs-sync`
+**Updated:** 2026-07-06
 
-## OVERVIEW
+AI-powered SEO, GEO / AEO, and content platform (**FlowIntent** brand). Next.js 16 + React 19 + Vercel AI SDK 6 + MCP integrations (DataForSEO, Jina, Firecrawl). Auth via Better Auth, billing via Polar, database on Neon (Drizzle ORM).
 
-AI-powered SEO, GEO / AEO, and content platform (**FlowIntent** brand). Next.js 16 + React 19 + Vercel AI SDK 6 + MCP integrations (DataForSEO, Jina, Firecrawl).
+## DOCS INDEX
+
+Folder-level guides (each links back here):
+
+| Doc | Covers |
+|-----|--------|
+| [`app/AGENTS.md`](app/AGENTS.md) | App Router pages + API routes, auth/streaming patterns, protected vs public routes |
+| [`lib/AGENTS.md`](lib/AGENTS.md) | Core business logic: agents, chat pipeline, artifacts, GEO, MCP wrappers, billing |
+| [`components/AGENTS.md`](components/AGENTS.md) | React UI: shadcn primitives, chat tool-ui, workspace, dashboard shell |
+| [`mcps/AGENTS.md`](mcps/AGENTS.md) | Auto-generated MCP bindings — never edit or import directly |
+
+Key product docs: canonical spec [`docs/specs/platform-modes.md`](docs/specs/platform-modes.md) · GEO tracking design [`docs/specs/2026-06-12-geomode-geo-tracking-design.md`](docs/specs/2026-06-12-geomode-geo-tracking-design.md) · chatbot UX findings [`docs/specs/2026-07-06-chatbot-ux-findings.md`](docs/specs/2026-07-06-chatbot-ux-findings.md)
+
+## ARCHITECTURE
+
+```mermaid
+flowchart TB
+  subgraph publicSurface [Public surface]
+    Landing[Landing page /]
+    RedditGap[Reddit gap audit - free lead magnet]
+    Blog[Blog and case studies]
+  end
+
+  subgraph authLayer [Auth and billing]
+    Proxy[proxy.ts edge cookie gate]
+    BetterAuth[Better Auth - email plus Google]
+    Polar[Polar subscription webhooks]
+  end
+
+  subgraph dashboardApp [Paywalled /dashboard]
+    ChatUI[Chat UI - SEO / GEO / Content modes]
+    WorkspaceUI[Workspace - saved artifacts]
+    Analytics[Audit / rank tracker / AEO pages]
+  end
+
+  subgraph chatPipeline [Chat pipeline - POST /api/chat]
+    Guards[Rate limit + subscription + credit guards]
+    Intent[Intent classifier]
+    AgentRouter[Agent router - mode selects agent]
+    ToolAssembler[Tool assembler]
+    StreamBuilder[Stream builder - streamText]
+  end
+
+  subgraph integrations [Integrations]
+    Gateway[Vercel AI Gateway - all models]
+    MCP[lib/mcp wrappers]
+    DataForSEO[DataForSEO MCP]
+    Jina[Jina MCP]
+    Firecrawl[Firecrawl MCP]
+    Elmo[geomode / Elmo VPS - geo.flowintent.com]
+  end
+
+  subgraph dataLayer [Data]
+    Neon[(Neon Postgres via Drizzle)]
+    Redis[(Upstash Redis - rate limits)]
+  end
+
+  Landing --> Proxy
+  Proxy --> BetterAuth
+  BetterAuth --> Neon
+  Polar --> Neon
+  ChatUI -->|POST| Guards
+  Guards --> Intent
+  Intent --> AgentRouter
+  AgentRouter --> ToolAssembler
+  ToolAssembler --> MCP
+  MCP --> DataForSEO
+  MCP --> Jina
+  MCP --> Firecrawl
+  AgentRouter --> StreamBuilder
+  StreamBuilder --> Gateway
+  StreamBuilder -->|persist| Neon
+  Guards --> Redis
+  ChatUI --> ArtifactSync[Artifact registry + sync]
+  ArtifactSync --> WorkspaceUI
+  WorkspaceUI --> Neon
+  Analytics --> Elmo
+```
+
+Flow in one paragraph: unauthenticated users see the marketing pages and the free `/reddit-gap` audit; `proxy.ts` gates `/dashboard/*` behind a Better Auth session cookie. The dashboard is a mode-aware chat (SEO / GEO / Content). `POST /api/chat` runs guards (rate limit, Polar subscription, credit cap), classifies intent, routes to an agent, assembles MCP-backed tools, and streams the response through the Vercel AI Gateway while persisting conversations to Neon. Tool results matching the artifact registry hydrate the artifacts panel and can be saved to the Workspace.
 
 ## STRUCTURE
 
 ```
 seobot/
-├── app/                    # Next.js 16 App Router (API routes + pages)
-├── components/             # React components (shadcn/ui base)
-│   ├── chat/               # Chat + tool-ui + generative-ui
-│   ├── workspace/          # Workspace browser
-│   └── dashboard/          # Dashboard shell
-├── lib/                    # Core business logic
-│   ├── agents/             # AI agent orchestration
-│   ├── artifacts/          # Artifact registry + chat sync
-│   ├── chat/               # Modes, stream builder, persistence
-│   ├── geo/                # GEO/AEO tools, Elmo client, digest
-│   ├── mcp/                # MCP client wrappers
-│   └── workflows/          # Multi-step workflow engine
-├── mcps/                   # Auto-generated MCP bindings (DO NOT EDIT)
-├── drizzle/                # SQL migrations (Neon)
-├── docs/specs/             # Canonical product + architecture specs
-├── scripts/                # Seed scripts, env validation, deploy
-└── tests/                  # Vitest unit + integration tests
+├── app/          # Next.js 16 App Router (pages + API routes)
+├── components/   # React components (shadcn/ui base)
+├── lib/          # Core business logic (agents, chat, geo, mcp, billing)
+├── mcps/         # Auto-generated MCP bindings (DO NOT EDIT)
+├── drizzle/      # SQL migrations (Neon)
+├── docs/         # Specs, guides, reports, research, archives
+├── hooks/        # Shared React hooks (use-toast, use-mode-adaptations)
+├── types/        # Ambient .d.ts + shared type modules
+├── public/       # Static assets, llms.txt
+├── scripts/      # Seed scripts, env validation, deploy tooling
+├── services/     # geomode-companion VPS service (deployed via scripts/deploy)
+└── tests/        # Vitest unit + integration tests
 ```
 
-## WHERE TO LOOK
+## CODE GUIDELINES
 
-| Task | Location | Notes |
-|------|----------|-------|
-| Add new AI agent | `lib/agents/` | Register in `registry.ts` |
-| Add API route | `app/api/` | Route handlers; auth via Better Auth |
-| Add MCP integration | `mcps/` + `lib/mcp/` | Generate with `npm run mcp:generate:*` |
-| Add artifact type | `lib/artifacts/registry.ts` | Wire tool UI in `components/chat/tool-ui/` |
-| Add chat mode UI | `lib/chat/modes.ts` | Shared labels, accents, deep links |
-| Database schema | `lib/db/schema.ts` + `drizzle/` | Drizzle ORM, Neon serverless |
-| Chat interface | `components/chat/` | Artifacts panel in `ai-chat-interface.tsx` |
-| Workspace UI | `components/workspace/` | Route: `/dashboard/workspace` |
-| GEO / Elmo integration | `lib/geo/elmo-client.ts` | VPS geomode stack |
-| Product copy | `lib/product/elevator-pitch.ts` | Never say SEOBOT user-facing |
+### TypeScript
+- Strict mode; **never** `as any` or `@ts-ignore`. Type the boundary instead.
+- All imports at the top of the module — no inline `import()` in function bodies.
+- Exhaustive `switch` over unions/enums: `default` must assign to `never`.
+- Validate external input (API bodies, webhooks, env) with `zod`; trust internal code.
+- Path alias `@/*` maps to the repo root (`@/lib/agents/registry`).
 
-## CONVENTIONS
+### Next.js / React
+- Server Components by default; add `'use client'` only when state/effects/DOM are needed.
+- Route Handlers live in `app/api/`; pages are thin wrappers delegating to `components/`.
+- Fonts via `next/font` variables (`--font-sans` Inter, `--font-mono` JetBrains Mono).
+- Framer Motion for animation, Recharts for charts; extend `components/ui/` primitives, don't duplicate them.
 
-### Path Aliases
-- `@/*` maps to project root (e.g., `@/lib/agents/registry`)
+### API routes
+- Every protected route validates the session first: `auth.api.getSession({ headers })` (or `requireApiSubscription()` for paywalled features). Never skip auth checks.
+- Paywalled features: `requireApiSubscription()` from `lib/billing/subscription-guard.ts`.
+- Rate limit via `lib/redis/rate-limit.ts`; return structured JSON errors `{ error: code, message }` with correct status codes.
+- Never leak raw provider/internal error text to clients — map through `lib/errors/`.
 
-### AI SDK Usage
-- Vercel AI SDK v6 (`ai@6.x`)
-- MCP via `@ai-sdk/mcp`
-- Models via AI Gateway (OpenAI, Anthropic, Google, Perplexity, DeepSeek)
+### AI / chat
+- All models go through `vercelGateway` (`lib/ai/gateway-provider.ts`) — never instantiate provider SDKs directly or hardcode model IDs outside env/config.
+- New agents register in `lib/agents/registry.ts` and route via `lib/agents/agent-router.ts`.
+- New tools go through `lib/chat/tool-assembler.ts` (which applies timeouts); tool UIs in `components/chat/tool-ui/` must match the tool output schema.
+- Artifact types map tool names → panels in `lib/artifacts/registry.ts`.
 
-### API Route Patterns
-- Route Handlers in `app/api/`
-- Auth via **Better Auth** (`lib/auth-config.ts`, edge gate in `proxy.ts`)
-- Rate limiting via Upstash Redis (`lib/redis/rate-limit.ts`)
-- Billing gate via Polar (`lib/billing/subscription-guard.ts`)
+### Styling
+- Tailwind + shadcn/ui tokens from `app/globals.css` (neutral dark, Cursor-style: hairline borders, `rounded-lg`/`rounded-xl`, sentence case).
+- Mode accents come from `CHAT_MODE_ACCENT_CLASSES` in `lib/chat/modes.ts` — never hardcode emerald/violet/amber per surface.
 
-### Component Patterns
-- shadcn/ui in `components/ui/`
-- Radix UI + Tailwind CSS
-- Mode accents from `CHAT_MODE_ACCENT_CLASSES` in `lib/chat/modes.ts`
+### Database
+- Schema in `lib/db/schema.ts`; migrations generated into `drizzle/` (`npx drizzle-kit generate` + `migrate`). Never edit applied migrations.
+- User-facing queries use the RLS-enforced connection; admin connection only for migrations/webhooks.
 
-### Agent Pattern
-- Central router: `lib/agents/agent-router.ts`
-- Mode selects agent + tools + RAG filter (`agent_documents.mode`)
+### Testing & quality gates
+- Before pushing: `npm run typecheck` and `npm run test:unit` must pass.
+- Unit/integration tests live in `tests/`, named `*.test.ts(x)`; test new lib logic (pure helpers especially).
+- Do not create test infrastructure unrelated to the change.
 
 ## ANTI-PATTERNS
 
@@ -79,15 +151,16 @@ seobot/
 - **NEVER** skip auth checks in API routes
 - **NEVER** user-facing **Content Zone** — say **Workspace**
 - **NEVER** reintroduce onboarding routes or gates
+- **NEVER** say SEOBOT on user-facing surfaces — the public brand is **FlowIntent**
 
 ## COMMANDS
 
 ```bash
-npm run dev              # Start Next.js dev server
-npm run build            # Production build (runs env validation)
-npm run typecheck        # TypeScript check
-npm run test             # Run all tests
-npm run test:unit        # Unit tests only
+npm run dev                  # Start Next.js dev server
+npm run build                # Production build (runs env validation)
+npm run typecheck            # TypeScript check
+npm run test                 # Run all tests
+npm run test:unit            # Unit tests only
 npm run seed:rag-documents
 npm run mcp:generate:jina
 npm run mcp:generate:dataforseo
@@ -109,10 +182,9 @@ git push origin main
 |---------|---------|
 | `ai@6.x` | Vercel AI SDK core |
 | `@ai-sdk/mcp` | MCP protocol integration |
-| `better-auth` | Authentication (Google) |
+| `better-auth` | Authentication (email/password + Google) |
 | `drizzle-orm` | Database ORM (Neon) |
 | `@polar-sh/sdk` | Billing / subscriptions |
-| `@directus/sdk` | Legacy CMS references |
 | `langfuse` | AI observability |
 | `zod` | Schema validation |
 
@@ -121,7 +193,7 @@ git push origin main
 - Public brand is **FlowIntent** only; never SEOBOT on user-facing surfaces.
 - Suggested journey SEO → GEO / AEO → Content is optional—not a forced funnel.
 - Name supported GEO engines explicitly: ChatGPT, Perplexity, Google AI Overviews.
-- Marketing design: red primary on dark background (`globals.css` tokens).
+- Marketing design: Cursor-inspired dark neutral theme (`globals.css` tokens), Inter typography, sentence case.
 - Never user-facing **Content Zone** — say **Workspace**.
 - No onboarding flow: simple auth (Better Auth + Google) with no onboarding gate.
 

@@ -1,5 +1,7 @@
 # MCPS - AUTO-GENERATED MCP BINDINGS
 
+> Part of the project docs — see the root [`AGENTS.md`](../AGENTS.md) for the architecture index, diagram, and code guidelines.
+
 Auto-generated Model Context Protocol bindings. **DO NOT EDIT DIRECTLY.**
 
 ## STRUCTURE

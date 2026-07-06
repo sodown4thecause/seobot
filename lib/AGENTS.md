@@ -1,5 +1,7 @@
 # LIB - CORE BUSINESS LOGIC
 
+> Part of the project docs — see the root [`AGENTS.md`](../AGENTS.md) for the architecture index, diagram, and code guidelines.
+
 Core business logic, AI agents, workflows, and external API integrations.
 
 ## KEY MODULES
