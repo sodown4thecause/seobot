@@ -46,7 +46,15 @@ export const ARTIFACT_REGISTRY: Record<ArtifactType, ArtifactDefinition> = {
     'legacy',
     ['seo'],
     'live',
-    ['suggest_keywords'],
+    [
+      'suggest_keywords',
+      'keywords_data_google_ads_search_volume',
+      'dataforseo_labs_google_keyword_suggestions',
+      'dataforseo_labs_google_keyword_ideas',
+      'dataforseo_labs_google_keyword_overview',
+      'dataforseo_labs_google_keywords_for_site',
+      'dataforseo_labs_google_ranked_keywords',
+    ],
     'keyword-research'
   ),
   backlink: def(
@@ -76,7 +84,7 @@ export const ARTIFACT_REGISTRY: Record<ArtifactType, ArtifactDefinition> = {
     'content',
     ['content'],
     'live',
-    ['create_content_package'],
+    ['create_content_package', 'generate_content_package', 'generate_researched_content'],
     'content-package'
   ),
   'keyword-cluster-map': def(

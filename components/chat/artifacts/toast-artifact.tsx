@@ -5,11 +5,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Info, CheckCircle2, AlertCircle, Loader2, X } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
+export interface ToastAction {
+    label: string;
+    onClick: () => void;
+}
+
 export interface ToastMessage {
     id: string;
     type: 'info' | 'success' | 'warning' | 'error' | 'loading';
     message: string;
     duration?: number;
+    action?: ToastAction;
 }
 
 interface ToastArtifactProps {
@@ -47,6 +53,18 @@ export const ToastArtifact: React.FC<ToastArtifactProps> = ({ toasts, onRemove }
 
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium leading-tight">{toast.message}</p>
+                            {toast.action && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        toast.action?.onClick();
+                                        onRemove?.(toast.id);
+                                    }}
+                                    className="mt-2 rounded-lg border border-current/30 px-3 py-1 text-xs font-semibold transition-colors hover:bg-white/10"
+                                >
+                                    {toast.action.label}
+                                </button>
+                            )}
                         </div>
 
                         {onRemove && (

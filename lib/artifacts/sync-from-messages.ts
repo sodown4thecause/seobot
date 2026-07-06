@@ -8,8 +8,17 @@ interface ToolInvocationLike {
   result?: unknown
 }
 
+interface MessagePartLike {
+  type?: string
+  state?: string
+  toolCallId?: string
+  output?: unknown
+  result?: unknown
+}
+
 interface MessageLike {
   toolInvocations?: ToolInvocationLike[]
+  parts?: MessagePartLike[]
 }
 
 export interface SyncArtifactsOptions {
@@ -23,6 +32,58 @@ export interface SyncArtifactsOptions {
   onComplete?: (artifact: Pick<ArtifactState, 'type' | 'title'>) => void
 }
 
+interface NormalizedToolCall {
+  toolName: string
+  phase: 'executing' | 'success'
+  result?: unknown
+}
+
+/** Structured tool errors should not hydrate an artifact panel as "complete". */
+function isErrorResult(result: unknown): boolean {
+  return (
+    !!result &&
+    typeof result === 'object' &&
+    (result as { status?: unknown }).status === 'error'
+  )
+}
+
+/**
+ * Normalize tool calls from both message shapes:
+ * - AI SDK 6 `parts` with `type: 'tool-<name>'` and states like
+ *   `input-streaming` / `input-available` / `output-available`
+ * - legacy `toolInvocations` with states `call` / `executing` / `result`
+ */
+function collectToolCalls(message: MessageLike): NormalizedToolCall[] {
+  const calls: NormalizedToolCall[] = []
+  const seenToolCallIds = new Set<string>()
+
+  for (const part of message.parts ?? []) {
+    if (!part?.type?.startsWith('tool-')) continue
+    const toolName = part.type.slice('tool-'.length)
+    if (part.toolCallId) seenToolCallIds.add(part.toolCallId)
+
+    const state = part.state ?? ''
+    if (state === 'output-available' || state === 'result') {
+      calls.push({ toolName, phase: 'success', result: part.output ?? part.result })
+    } else if (state === 'input-streaming' || state === 'input-available' || state === 'call' || state === 'executing') {
+      calls.push({ toolName, phase: 'executing' })
+    }
+  }
+
+  for (const tool of message.toolInvocations ?? []) {
+    const withId = tool as ToolInvocationLike & { toolCallId?: string }
+    if (withId.toolCallId && seenToolCallIds.has(withId.toolCallId)) continue
+
+    if (tool.state === 'result') {
+      calls.push({ toolName: tool.toolName, phase: 'success', result: tool.result })
+    } else if (tool.state === 'call' || tool.state === 'executing') {
+      calls.push({ toolName: tool.toolName, phase: 'executing' })
+    }
+  }
+
+  return calls
+}
+
 export function syncArtifactsFromMessages({
   messages,
   chatMode,
@@ -33,20 +94,13 @@ export function syncArtifactsFromMessages({
   onComplete,
 }: SyncArtifactsOptions): void {
   for (const message of messages) {
-    const tools = message.toolInvocations
-    if (!tools?.length) continue
-
-    for (const tool of tools) {
-      const definition = TOOL_TO_ARTIFACT.get(tool.toolName)
+    for (const call of collectToolCalls(message)) {
+      const definition = TOOL_TO_ARTIFACT.get(call.toolName)
       if (!definition) continue
-
-      const isSuccess = tool.state === 'result'
-      const isExecuting = tool.state === 'call' || tool.state === 'executing'
-      if (!isSuccess && !isExecuting) continue
 
       const panelId = definition.panelId
 
-      if (isExecuting) {
+      if (call.phase === 'executing') {
         updateArtifact(panelId, {
           type: definition.type,
           title: definition.label,
@@ -54,21 +108,32 @@ export function syncArtifactsFromMessages({
           data: null,
           metadata: {
             chatMode,
-            toolName: tool.toolName,
+            toolName: call.toolName,
           },
         })
         if (openOnStart || !activeArtifactId) {
           setActiveArtifactId(panelId)
         }
-      } else if (isSuccess) {
+      } else if (isErrorResult(call.result)) {
+        updateArtifact(panelId, {
+          type: definition.type,
+          title: definition.label,
+          status: 'error',
+          data: call.result,
+          metadata: {
+            chatMode,
+            toolName: call.toolName,
+          },
+        })
+      } else {
         updateArtifact(panelId, {
           type: definition.type,
           title: definition.label,
           status: 'complete',
-          data: tool.result,
+          data: call.result,
           metadata: {
             chatMode,
-            toolName: tool.toolName,
+            toolName: call.toolName,
           },
         })
         onComplete?.({ type: definition.type, title: definition.label })

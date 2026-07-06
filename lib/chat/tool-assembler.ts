@@ -29,6 +29,7 @@ import {
 } from '@/lib/agents/tools'
 import { onboardingTools } from '@/lib/onboarding/tools'
 import { serverEnv } from '@/lib/config/env'
+import { withToolTimeouts } from './tool-timeout'
 import type { AgentType } from './intent-classifier'
 
 export interface ToolAssemblyOptions {
@@ -451,7 +452,9 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
     tools: Object.keys(validatedTools),
   })
 
-  return validatedTools
+  // Every tool gets a hard timeout + structured error normalization so a hung
+  // MCP call can never leave the chat stuck in a RUNNING state.
+  return withToolTimeouts(validatedTools)
 }
 
 // _review
