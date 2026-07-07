@@ -1,0 +1,7 @@
+nodeLinker: isolated
+shamefullyHoist: false
+autoInstallPeers: true
+strictPeerDependencies: false
+overrides:
+  jws: 4.0.1
+  "@modelcontextprotocol/sdk": ^1.24.3
