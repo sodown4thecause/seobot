@@ -46,7 +46,7 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from '@/components/ai-elements/conversation'
-import { Message as AIMessage, MessageAvatar, MessageContent } from '@/components/ai-elements/message'
+import { MessageBubble } from '@/components/chat/message-bubble'
 import { AgentHandoffCard } from './agent-handoff-card'
 import { Response } from '@/components/ai-elements/response'
 import { Loader } from '@/components/ai-elements/loader'
@@ -1772,57 +1772,58 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               const isContentAssistant = chatMode === 'content' && m.role === 'assistant' && text.length > 200
               const messageId = m.id || `message-${idx}`
 
-              return (
-                <AIMessage key={messageId} from={m.role as any}>
-                  <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
-                  <MessageContent>
-                    {isContentAssistant ? (
-                      <BlogArtifact
-                        content={text}
-                        isStreaming={isLastMsg && isLoading}
-                      />
+              const actions = m.role === 'assistant' && text.trim().length > 0 && !isContentAssistant ? (
+                <>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer"
+                    onClick={() => copyToClipboard(text, messageId)}
+                    aria-label="Copy response"
+                  >
+                    {copiedId === messageId ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                        Copied
+                      </>
                     ) : (
-                      renderMessageContent(m, text, isLastMsg)
+                      <>
+                        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                        Copy
+                      </>
                     )}
-                    {m.role === 'assistant' && text.trim().length > 0 && !isContentAssistant && (
-                      <div className="mt-2 flex flex-wrap items-center gap-3">
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer"
-                          onClick={() => copyToClipboard(text, messageId)}
-                          aria-label="Copy response"
-                        >
-                          {copiedId === messageId ? (
-                            <>
-                              <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                              Copy
-                            </>
-                          )}
-                        </button>
-                        {isLastMsg && !isLoading && (
-                          <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
-                        )}
-                      </div>
-                    )}
-                  </MessageContent>
-                </AIMessage>
+                  </button>
+                  {isLastMsg && !isLoading && (
+                    <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
+                  )}
+                </>
+              ) : null
+
+              return (
+                <MessageBubble
+                  key={messageId}
+                  role={m.role === 'user' ? 'user' : 'assistant'}
+                  actions={actions}
+                  layout={isContentAssistant ? 'artifact' : 'default'}
+                  isStreaming={isLastMsg && isLoading}
+                >
+                  {isContentAssistant ? (
+                    <BlogArtifact
+                      content={text}
+                      isStreaming={isLastMsg && isLoading}
+                    />
+                  ) : (
+                    renderMessageContent(m, text, isLastMsg)
+                  )}
+                </MessageBubble>
               )
             })}
             {showThinkingIndicator && (
-              <AIMessage from="assistant">
-                <MessageAvatar isUser={false} name="AI" />
-                <MessageContent>
-                  <div className="flex items-center gap-2 text-zinc-400" role="status" aria-live="polite" aria-label="AI is thinking">
-                    <Loader2 size={16} className="text-emerald-400 animate-spin" aria-hidden="true" />
-                    <span>Thinking...</span>
-                  </div>
-                </MessageContent>
-              </AIMessage>
+              <MessageBubble role="assistant" isStreaming>
+                <div className="flex items-center gap-2 text-zinc-400" role="status" aria-live="polite" aria-label="AI is thinking">
+                  <Loader2 size={16} className="text-emerald-400 animate-spin" aria-hidden="true" />
+                  <span>Thinking...</span>
+                </div>
+              </MessageBubble>
             )}
               </>
             )}
