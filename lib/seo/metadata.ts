@@ -10,6 +10,7 @@ type BuildPageMetadataOptions = {
   type?: OpenGraphType
   imagePath?: string
   keywords?: string[]
+  noIndex?: boolean
 }
 
 export function buildPageMetadata({
@@ -19,6 +20,7 @@ export function buildPageMetadata({
   type = 'website',
   imagePath = DEFAULT_OG_IMAGE_PATH,
   keywords,
+  noIndex = false,
 }: BuildPageMetadataOptions): Metadata {
   const canonical = absoluteUrl(path)
   const imageUrl = absoluteUrl(imagePath)
@@ -28,6 +30,26 @@ export function buildPageMetadata({
     description,
     ...(keywords ? { keywords } : {}),
     alternates: { canonical },
+    robots: noIndex
+      ? {
+          index: false,
+          follow: true,
+          googleBot: {
+            index: false,
+            follow: true,
+          },
+        }
+      : {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            'max-video-preview': -1,
+            'max-image-preview': 'large',
+            'max-snippet': -1,
+          },
+        },
     openGraph: {
       title,
       description,
@@ -44,4 +66,3 @@ export function buildPageMetadata({
     },
   }
 }
-
