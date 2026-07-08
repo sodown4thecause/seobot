@@ -258,6 +258,125 @@ export async function runExaSocialSearch(input: {
   }
 }
 
+export interface SocialReport {
+  query: string
+  totalItems: number
+  sources: {
+    twitter: { count: number; items: SocialItem[]; error?: string }
+    reddit: { count: number; items: SocialItem[]; error?: string }
+    exa: { count: number; items: SocialItem[]; error?: string }
+  }
+  topThemes: string[]
+  summary: string
+}
+
+const THEME_STOPWORDS = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'else', 'for', 'of', 'to', 'in',
+  'on', 'at', 'by', 'with', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been',
+  'being', 'this', 'that', 'these', 'those', 'it', 'its', 'they', 'them', 'their',
+  'we', 'you', 'your', 'our', 'i', 'me', 'my', 'he', 'she', 'his', 'her', 'not', 'no',
+  'do', 'does', 'did', 'has', 'have', 'had', 'will', 'would', 'can', 'could', 'should',
+  'so', 'than', 'too', 'very', 'just', 'about', 'into', 'over', 'after', 'before',
+  'up', 'down', 'out', 'off', 'all', 'any', 'some', 'more', 'most', 'such', 'what',
+  'which', 'who', 'whom', 'how', 'why', 'when', 'where', 'https', 'http', 'www', 'com',
+  'rt', 'via', 'amp',
+])
+
+function extractTopThemes(items: SocialItem[]): string[] {
+  const counts = new Map<string, number>()
+  for (const item of items) {
+    const text = `${item.title ?? ''} ${item.text ?? ''}`
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter((word) => word.length > 3 && !THEME_STOPWORDS.has(word))
+    for (const word of text) {
+      counts.set(word, (counts.get(word) ?? 0) + 1)
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([word]) => word)
+}
+
+export async function synthesizeSocialReport(input: {
+  query: string
+  userId?: string
+}): Promise<{ report: SocialReport; source: 'synthesis' }> {
+  const query = input.query
+
+  const [twitterResult, redditResult, exaResult] = await Promise.allSettled([
+    runAisaTwitterSearch({ query, userId: input.userId }),
+    runRedditSocialSearch({ query }),
+    runExaSocialSearch({ query, numResults: 5, userId: input.userId }),
+  ])
+
+  const twitter = twitterResult.status === 'fulfilled' && twitterResult.value.success
+    ? {
+        count: twitterResult.value.count,
+        items: twitterResult.value.items,
+      }
+    : {
+        count: 0,
+        items: [] as SocialItem[],
+        error: twitterResult.status === 'rejected'
+          ? twitterResult.reason instanceof Error
+            ? twitterResult.reason.message
+            : 'X/Twitter search failed'
+          : twitterResult.status === 'fulfilled'
+            ? twitterResult.value.errorMessage
+            : undefined,
+      }
+
+  let reddit: { count: number; items: SocialItem[]; error?: string }
+  if (redditResult.status === 'fulfilled') {
+    reddit = {
+      count: redditResult.value.count,
+      items: redditResult.value.items,
+    }
+  } else {
+    reddit = {
+      count: 0,
+      items: [],
+      error: redditResult.reason instanceof Error
+        ? redditResult.reason.message
+        : 'Reddit search failed',
+    }
+  }
+
+  const exa = exaResult.status === 'fulfilled' && exaResult.value.success
+    ? {
+        count: exaResult.value.count,
+        items: exaResult.value.items,
+      }
+    : {
+        count: 0,
+        items: [] as SocialItem[],
+        error: exaResult.status === 'rejected'
+          ? exaResult.reason instanceof Error
+            ? exaResult.reason.message
+            : 'Exa social search failed'
+          : undefined,
+      }
+
+  const allItems = [...twitter.items, ...reddit.items, ...exa.items]
+  const activeSources = [twitter, reddit, exa].filter((s) => s.count > 0).length
+  const topThemes = extractTopThemes(allItems)
+  const totalItems = allItems.length
+  const summary = `Found ${totalItems} social mentions across ${activeSources} sources. Top themes: ${topThemes.join(', ')}.`
+
+  const report: SocialReport = {
+    query,
+    totalItems,
+    sources: { twitter, reddit, exa },
+    topThemes,
+    summary,
+  }
+
+  return { report, source: 'synthesis' }
+}
+
 export function getSocialTools(userId?: string): Record<string, Tool> {
   return {
     aisa_x_profile: tool({
@@ -322,6 +441,16 @@ export function getSocialTools(userId?: string): Record<string, Tool> {
       }),
       execute: async ({ query, numResults, startDate }) =>
         runExaSocialSearch({ query, numResults, startDate, userId }),
+    }),
+    synthesize_social_report: tool({
+      description:
+        'Synthesize a multi-source social report combining X/Twitter, Reddit, and Exa social-web results into one unified view with top themes and a summary.',
+      inputSchema: z.object({
+        query: z.string().describe('Social search query applied across all sources'),
+        brand: z.string().optional().describe('Optional brand name to focus the report'),
+        competitors: z.array(z.string()).optional().describe('Optional competitor names to include in the report'),
+      }),
+      execute: async ({ query }) => synthesizeSocialReport({ query, userId }),
     }),
   }
 }

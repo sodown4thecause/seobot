@@ -7,6 +7,14 @@ import { ExternalLink, MessageCircle, Radio, Search } from 'lucide-react'
 
 type SocialPlatform = 'x' | 'reddit' | 'web' | 'unknown'
 
+type SynthesisSourceKey = 'twitter' | 'reddit' | 'exa'
+
+function platformFromSourceKey(key: SynthesisSourceKey): SocialPlatform {
+  if (key === 'twitter') return 'x'
+  if (key === 'reddit') return 'reddit'
+  return 'web'
+}
+
 interface SocialItem {
   id?: string
   platform: SocialPlatform
@@ -78,6 +86,41 @@ function extractItems(result: unknown): unknown[] {
 }
 
 function normalizeSocialItems(result: unknown, toolName?: string): SocialItem[] {
+  if (toolName === 'synthesize_social_report') {
+    const report = asRecord(asRecord(result)?.report)
+    if (!report) return []
+    const sources = asRecord(report.sources)
+    if (!sources) return []
+    const keys: SynthesisSourceKey[] = ['twitter', 'reddit', 'exa']
+    const items: SocialItem[] = []
+    for (const key of keys) {
+      const entry = asRecord(sources[key])
+      if (!entry) continue
+      const entryItems = Array.isArray(entry.items) ? entry.items : []
+      const fallback = platformFromSourceKey(key)
+      for (const value of entryItems) {
+        const record = asRecord(value)
+        if (!record) continue
+        const title = readString(record, ['title', 'headline'])
+        const text = readString(record, ['text', 'content', 'selftext', 'body', 'snippet', 'fullText', 'full_text']) ?? title
+        if (!text) continue
+        items.push({
+          id: readString(record, ['id', 'postId', 'tweetId', 'tweet_id']),
+          platform: detectPlatform(record, fallback),
+          title,
+          text,
+          author: readString(record, ['author', 'username', 'userName', 'screen_name']),
+          url: readString(record, ['url', 'permalink', 'tweetUrl', 'tweet_url']),
+          source: readString(record, ['source', 'subreddit', 'community']),
+          score: readNumber(record, ['score', 'upvotes']),
+          engagement: readNumber(record, ['engagement', 'numComments', 'comments', 'likeCount', 'retweetCount']),
+          createdAt: readString(record, ['createdAt', 'created_at', 'date']),
+        })
+      }
+    }
+    return items
+  }
+
   const fallbackPlatform: SocialPlatform = toolName === 'reddit_social_search'
     ? 'reddit'
     : toolName === 'aisa_x_search'
@@ -109,6 +152,27 @@ function normalizeSocialItems(result: unknown, toolName?: string): SocialItem[] 
   })
 }
 
+function readSynthesisReport(result: unknown): {
+  totalItems?: number
+  summary?: string
+  topThemes?: string[]
+} | null {
+  const record = asRecord(result)
+  const report = record ? asRecord(record.report) : null
+  if (!report) return null
+  const totalItems = readNumber(report, ['totalItems'])
+  const summary = readString(report, ['summary'])
+  const themesRaw = report.topThemes
+  const topThemes = Array.isArray(themesRaw)
+    ? themesRaw.filter((t): t is string => typeof t === 'string')
+    : undefined
+  return {
+    totalItems: typeof totalItems === 'number' ? totalItems : undefined,
+    summary,
+    topThemes,
+  }
+}
+
 function platformLabel(platform: SocialPlatform) {
   if (platform === 'x') return 'X'
   if (platform === 'reddit') return 'Reddit'
@@ -129,10 +193,16 @@ export function SocialListeningResult({ toolInvocation }: SocialListeningResultP
   const isLoading = toolInvocation.state !== 'result' && toolInvocation.state !== 'output-available'
   const success = record?.success !== false
   const items = normalizeSocialItems(result, toolInvocation.toolName)
+  const isSynthesis = toolInvocation.toolName === 'synthesize_social_report'
+  const synthesisReport = isSynthesis ? readSynthesisReport(result) : null
   const query = typeof record?.query === 'string'
     ? record.query
     : toolInvocation.args?.query
-  const count = typeof record?.count === 'number' ? record.count : items.length
+  const count = typeof record?.count === 'number'
+    ? record.count
+    : typeof synthesisReport?.totalItems === 'number'
+      ? synthesisReport.totalItems
+      : items.length
 
   if (isLoading) {
     return (
@@ -172,6 +242,27 @@ export function SocialListeningResult({ toolInvocation }: SocialListeningResultP
         </div>
       </CardHeader>
       <CardContent className="space-y-3 p-4">
+        {synthesisReport ? (
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 space-y-2">
+            {synthesisReport.summary ? (
+              <p className="text-sm font-medium text-rose-100">{synthesisReport.summary}</p>
+            ) : null}
+            {synthesisReport.topThemes && synthesisReport.topThemes.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs text-zinc-400">Top themes:</span>
+                {synthesisReport.topThemes.map((theme) => (
+                  <Badge
+                    key={theme}
+                    variant="outline"
+                    className="border-rose-500/30 text-rose-200 text-[10px]"
+                  >
+                    {theme}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {items.length === 0 ? (
           <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400">
             <Search className="h-4 w-4 text-zinc-500" />
