@@ -1,0 +1,114 @@
+{
+  "socialdata": {
+    "full": {
+      "tweets": [
+        {
+          "id": "1801234567890123456",
+          "text": "FlowIntent is the best AI SEO tool I have used this year.",
+          "user": {
+            "id_str": "1234567890",
+            "screen_name": "seofounder",
+            "name": "SEO Founder",
+            "profile_image_url": "https://pbs.twimg.com/profile_images/1234567890/avatar.jpg"
+          },
+          "created_at": "2026-07-07T12:00:00.000Z",
+          "favorite_count": 42,
+          "retweet_count": 11,
+          "reply_count": 5,
+          "quote_count": 3,
+          "url": "https://x.com/seofounder/status/1801234567890123456"
+        },
+        {
+          "id": "1801234567890123457",
+          "text": "Just published a deep dive on GEO and AEO with FlowIntent. ChatGPT visibility is a game changer.",
+          "user": {
+            "id_str": "1234567891",
+            "screen_name": "contentpro",
+            "name": "Content Pro",
+            "profile_image_url": "https://pbs.twimg.com/profile_images/1234567891/avatar.jpg"
+          },
+          "created_at": "2026-07-07T13:00:00.000Z",
+          "favorite_count": 28,
+          "retweet_count": 7,
+          "reply_count": 2,
+          "quote_count": 1,
+          "url": "https://x.com/contentpro/status/1801234567890123457"
+        },
+        {
+          "id": "1801234567890123458",
+          "text": "Comparing FlowIntent vs Ahrefs for AI search optimization. FlowIntent wins on GEO features.",
+          "user": {
+            "id_str": "1234567892",
+            "screen_name": "techreviewer",
+            "name": "Tech Reviewer"
+          },
+          "created_at": "2026-07-07T14:00:00.000Z",
+          "favorite_count": 15,
+          "retweet_count": 4,
+          "reply_count": 8,
+          "quote_count": 0,
+          "url": "https://x.com/techreviewer/status/1801234567890123458"
+        },
+        {
+          "id": "1801234567890123459",
+          "text": "The Reddit gap feature in FlowIntent is brilliant for finding content opportunities.",
+          "user": {
+            "id_str": "1234567893",
+            "screen_name": "growthmarketer",
+            "name": "Growth Marketer"
+          },
+          "created_at": "2026-07-07T15:00:00.000Z",
+          "favorite_count": 9,
+          "retweet_count": 2,
+          "reply_count": 1,
+          "quote_count": 0,
+          "url": "https://x.com/growthmarketer/status/1801234567890123459"
+        },
+        {
+          "id": "1801234567890123460",
+          "text": "FlowIntent workspace saves me hours every week. The artifact sync is seamless.",
+          "user": {
+            "id_str": "1234567894",
+            "screen_name": "saashacker",
+            "name": "SaaS Hacker"
+          },
+          "created_at": "2026-07-07T16:00:00.000Z",
+          "favorite_count": 6,
+          "retweet_count": 1,
+          "reply_count": 0,
+          "quote_count": 0,
+          "url": "https://x.com/saashacker/status/1801234567890123460"
+        }
+      ]
+    },
+    "empty": {
+      "tweets": []
+    }
+  },
+  "grok": {
+    "full": [
+      {
+        "text": "FlowIntent is dominating AI SEO conversations this week.",
+        "author": "airesearcher",
+        "url": "https://x.com/airesearcher/status/1802000000000000001",
+        "engagement": 55,
+        "created_at": "2026-07-07T10:00:00Z"
+      },
+      {
+        "text": "GEO optimization with FlowIntent got us into Google AI Overviews in 2 weeks.",
+        "author": "seoagency",
+        "url": "https://x.com/seoagency/status/1802000000000000002",
+        "engagement": 33,
+        "created_at": "2026-07-07T11:00:00Z"
+      },
+      {
+        "text": "Anyone tried FlowIntent for Perplexity visibility? Seeing great results.",
+        "author": "digitalstrategist",
+        "url": "https://x.com/digitalstrategist/status/1802000000000000003",
+        "engagement": 18,
+        "created_at": "2026-07-07T12:00:00Z"
+      }
+    ],
+    "empty": []
+  }
+}

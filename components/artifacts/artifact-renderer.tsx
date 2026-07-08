@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { KeywordArtifact } from '@/components/chat/artifacts/keyword-artifact'
 import { BacklinkArtifact } from '@/components/chat/artifacts/backlink-artifact'
 import { BlogArtifact } from '@/components/chat/artifacts/blog-artifact'
@@ -129,9 +130,63 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
       )
     default:
       return (
-        <div className={cn('p-6 text-sm text-zinc-500', className)}>
-          No renderer for artifact type: {type}
+        <div className={cn('h-full overflow-auto p-6', className)}>
+          <DefaultArtifactData type={type} data={data} />
         </div>
       )
+  }
+}
+
+function DefaultArtifactData({ type, data }: { type: ArtifactType; data: unknown }) {
+  const definition = getArtifactDefinition(type)
+  const entries = useMemo(() => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return null
+    }
+    return Object.entries(data as Record<string, unknown>).filter(
+      ([key]) => !key.startsWith('_')
+    )
+  }, [data])
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <Badge variant="outline" className="text-zinc-400 border-zinc-700">
+          {definition.label}
+        </Badge>
+      </div>
+      {entries && entries.length > 0 ? (
+        <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {entries.map(([key, value]) => (
+            <div
+              key={key}
+              className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2"
+            >
+              <dt className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+                {key}
+              </dt>
+              <dd className="mt-1 text-xs text-zinc-200 break-words">
+                {formatValue(value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <pre className="text-xs text-zinc-400 whitespace-pre-wrap">
+          {data ? JSON.stringify(data, null, 2) : 'No data available.'}
+        </pre>
+      )}
+    </div>
+  )
+}
+
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined) return '—'
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
   }
 }

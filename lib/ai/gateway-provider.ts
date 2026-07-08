@@ -112,6 +112,15 @@ export const vercelGateway = {
       throw new Error('AI_GATEWAY_API_KEY is required for Moonshot AI models');
     }
 
+    // xAI / Grok models (via Vercel AI Gateway)
+    if (modelId.startsWith('xai/')) {
+      if (gateway) {
+        console.log('[Gateway] Using gateway for xAI/Grok model:', modelId);
+        return gateway(modelId);
+      }
+      throw new Error('AI_GATEWAY_API_KEY is required for xAI/Grok models');
+    }
+
     // Try gateway for other models
     if (gateway) {
       console.log('[Gateway] Using gateway for:', modelId);

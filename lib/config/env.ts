@@ -56,6 +56,7 @@ const serverEnvSchema = z.object({
     (val) => (val ? Number(val) : undefined),
     z.number().int().min(1000).max(300000).optional()
   ),
+  SOCIALDATA_API_KEY: z.string().min(1).optional(),
 
   // N8N Webhooks
   N8N_BACKLINKS_WEBHOOK_URL: z.string().url().optional(),

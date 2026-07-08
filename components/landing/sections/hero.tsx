@@ -46,24 +46,35 @@ export function Hero() {
             {FLOWINTENT_ELEVATOR_PITCH}
           </p>
 
-          <div className="flex flex-col items-center justify-center gap-4 pt-4 sm:flex-row">
+          <div className="flex flex-col items-center justify-center gap-4 pt-4 sm:flex-row sm:gap-5">
             <Link href="/sign-up">
               <ShimmerButton className="h-12 px-8 text-sm font-semibold uppercase tracking-wider">
                 Open the platform
                 <ArrowRight className="ml-2 inline h-4 w-4" />
               </ShimmerButton>
             </Link>
-            <Link
-              href="/reddit-gap"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-8 py-3 text-sm font-semibold uppercase tracking-wider text-white transition-colors hover:border-white hover:bg-white/5"
+            <div
+              aria-hidden
+              className="hidden sm:flex items-center gap-3 text-zinc-600"
             >
-              Try free Reddit audit
-            </Link>
+              <span className="h-px w-8 bg-white/10" />
+              <span className="text-[10px] font-mono uppercase tracking-[0.3em]">
+                or
+              </span>
+              <span className="h-px w-8 bg-white/10" />
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <Link
+                href="/reddit-gap"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-8 py-3 text-sm font-semibold uppercase tracking-wider text-white transition-colors hover:border-white hover:bg-white/5"
+              >
+                Try free Reddit audit
+              </Link>
+              <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-500">
+                No credit card — 60-second content gap report
+              </p>
+            </div>
           </div>
-
-          <p className="pt-2 text-xs font-mono uppercase tracking-[0.2em] text-zinc-600">
-            Free Reddit audit — no credit card — 60 seconds
-          </p>
         </motion.div>
       </div>
     </section>

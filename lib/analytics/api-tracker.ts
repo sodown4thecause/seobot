@@ -19,6 +19,8 @@ export type APIService =
   | 'rate-limit'
   | 'gemini'
   | 'exa'
+  | 'socialdata'
+  | 'grok'
 
 interface APICallMetadata {
   service: APIService
@@ -75,6 +77,13 @@ const SERVICE_COSTS: Record<APIService, Record<string, number>> = {
   },
   exa: {
     'search': 0.001,
+  },
+  socialdata: {
+    'twitter': 0.0035,
+    'default': 0.0035,
+  },
+  grok: {
+    'default': 0.002,
   },
 }
 

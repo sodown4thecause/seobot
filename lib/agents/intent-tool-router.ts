@@ -12,6 +12,7 @@ import { Output, generateText } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { isAbortError } from '@/lib/errors/types'
+import { AGENT_IDS } from './constants'
 import { z } from 'zod'
 
 export const FAST_CLASSIFIER_MODEL_ID = (
@@ -224,11 +225,11 @@ const IntentClassificationSchema = z.object({
     ])).describe('Additional intents that may be relevant (0-2)'),
 
     recommendedAgent: z.enum([
-        'seo-aeo',
-        'content',
-        'general',
-        'image',
-    ]).describe('Which agent should handle this: seo-aeo for analysis/research/data, content for writing full articles, image for image generation, general for simple questions'),
+        AGENT_IDS.SEO_AEO,
+        AGENT_IDS.CONTENT,
+        AGENT_IDS.GENERAL,
+        AGENT_IDS.IMAGE,
+    ] as const).describe('Which agent should handle this: seo-aeo for analysis/research/data, content for writing full articles, image for image generation, general for simple questions'),
 
     confidence: z.number().min(0).max(1).describe('Confidence in the classification (0-1)'),
 
@@ -302,14 +303,14 @@ function sanitizeClassificationResponse(raw: z.infer<typeof RawIntentClassificat
         .slice(0, 2) as IntentCategory[]
 
     // Map recommended agent (fallback to keyword-based heuristics)
-    let recommendedAgent: 'seo-aeo' | 'content' | 'general' | 'image' = 'general'
+    let recommendedAgent: 'seo-aeo' | 'content' | 'general' | 'image' = AGENT_IDS.GENERAL
     const rawAgent = (raw.recommendedAgent || '').toLowerCase().trim()
     if (rawAgent.includes('seo') || rawAgent.includes('aeo')) {
-        recommendedAgent = 'seo-aeo'
+        recommendedAgent = AGENT_IDS.SEO_AEO
     } else if (rawAgent.includes('content')) {
-        recommendedAgent = 'content'
+        recommendedAgent = AGENT_IDS.CONTENT
     } else if (rawAgent.includes('image')) {
-        recommendedAgent = 'image'
+        recommendedAgent = AGENT_IDS.IMAGE
     } else {
         const queryLower = raw.reasoning?.toLowerCase() || ''
         if (queryLower.includes('image') || queryLower.includes('infographic') || queryLower.includes('hero')) {

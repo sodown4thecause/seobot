@@ -4,11 +4,14 @@ import type { Tool } from 'ai'
 import { tool } from 'ai'
 import { z } from 'zod'
 import { searchPosts } from '@/lib/mcp/reddit/search'
-import { AisaApiError, getTwitterUserInfo, searchTwitter } from '@/lib/services/aisa'
+import { AisaApiError, getTwitterUserInfo } from '@/lib/services/aisa'
 import { searchExaSocialSources } from '@/lib/social/exa-search'
 import { trackAPICall } from '@/lib/analytics/api-tracker'
+import { searchTweetsSocialData, getTwitterProfileSocialData } from '@/lib/social/socialdata-client'
+import { searchTweetsViaGrok, getTwitterProfileViaGrok } from '@/lib/social/grok-social'
+import { serverEnv } from '@/lib/config/env'
 
-type SocialItem = {
+export type SocialItem = {
   id?: string
   platform: 'x' | 'reddit' | 'web'
   title?: string
@@ -81,7 +84,9 @@ function normalizeTwitterItems(raw: unknown): SocialItem[] {
 
       const url = firstString(record, ['url', 'tweetUrl', 'tweet_url'])
       const id = firstString(record, ['id', 'tweetId', 'tweet_id', 'rest_id'])
+      const userRecord = toRecord(record.user)
       const author = firstString(record, ['userName', 'username', 'screen_name', 'author', 'name'])
+        ?? (userRecord ? firstString(userRecord, ['screen_name', 'userName', 'username', 'name']) : undefined)
       const likes = firstNumber(record, ['likes', 'favorite_count', 'likeCount'])
       const replies = firstNumber(record, ['replies', 'reply_count', 'replyCount'])
       const reposts = firstNumber(record, ['retweets', 'retweet_count', 'retweetCount', 'reposts'])
@@ -104,69 +109,119 @@ function normalizeTwitterItems(raw: unknown): SocialItem[] {
   return items
 }
 
-export async function runAisaTwitterSearch(input: {
+export async function runTwitterSearch(input: {
   query: string
   type?: 'Top' | 'Latest' | 'People' | 'Photos' | 'Videos'
   limit?: number
   userId?: string
 }) {
-  try {
-    const raw = await searchTwitter(input)
-    const items = normalizeTwitterItems(raw).slice(0, input.limit ?? 20)
-    if (input.userId) {
-      await trackAPICall(input.userId, {
-        service: 'aisa',
-        endpoint: '/apis/v1/twitter/search',
-        method: input.type ?? 'Latest',
-        statusCode: 200,
-        metadata: {
-          provider: 'twitter',
-          query: input.query,
-          returnedItems: items.length,
-        },
-      })
-    }
+  const maxResults = input.limit ?? 20
 
-    return {
-      success: true,
-      provider: 'aisa:twitter',
-      query: input.query,
-      searchType: input.type ?? 'Latest',
-      count: items.length,
-      items,
-      raw,
-    }
-  } catch (error) {
-    const statusCode = error instanceof AisaApiError ? error.status : 500
-    const errorMessage = error instanceof Error ? error.message : 'AIsa X/Twitter search failed'
-    if (input.userId) {
-      await trackAPICall(input.userId, {
-        service: 'aisa',
-        endpoint: '/apis/v1/twitter/search',
-        method: input.type ?? 'Latest',
-        statusCode,
-        metadata: {
-          provider: 'twitter',
+  if (serverEnv.SOCIALDATA_API_KEY) {
+    try {
+      const tweets = await searchTweetsSocialData({ query: input.query, numResults: maxResults })
+      const items = normalizeTwitterItems(tweets).slice(0, maxResults)
+      if (input.userId) {
+        await trackAPICall(input.userId, {
+          service: 'socialdata',
+          endpoint: '/twitter/search',
+          method: 'GET',
+          statusCode: 200,
+          costUSD: 0.0035,
+          metadata: {
+            provider: 'socialdata',
+            query: input.query,
+            returnedItems: items.length,
+          },
+        })
+      }
+      if (items.length > 0) {
+        return {
+          success: true as const,
+          provider: 'socialdata:twitter',
           query: input.query,
-          success: false,
-          errorMessage,
-        },
-      })
-    }
-
-    return {
-      success: false,
-      provider: 'aisa:twitter',
-      query: input.query,
-      searchType: input.type ?? 'Latest',
-      count: 0,
-      items: [],
-      errorMessage: statusCode === 404
-        ? 'AIsa profile lookup is available, but the X/Twitter search relay path is not currently exposed by the API.'
-        : errorMessage,
+          searchType: input.type ?? 'Latest',
+          count: items.length,
+          items,
+          raw: tweets,
+        }
+      }
+    } catch (error) {
+      if (input.userId) {
+        await trackAPICall(input.userId, {
+          service: 'socialdata',
+          endpoint: '/twitter/search',
+          method: 'GET',
+          statusCode: 500,
+          costUSD: 0.0035,
+          metadata: {
+            provider: 'socialdata',
+            query: input.query,
+            success: false,
+            errorMessage: error instanceof Error ? error.message : 'SocialData search failed',
+          },
+        })
+      }
     }
   }
+
+  if (serverEnv.AI_GATEWAY_API_KEY) {
+    try {
+      const items = (await searchTweetsViaGrok({ query: input.query })).slice(0, maxResults)
+      if (input.userId) {
+        await trackAPICall(input.userId, {
+          service: 'grok',
+          endpoint: '/search',
+          method: 'POST',
+          statusCode: 200,
+          metadata: {
+            provider: 'grok',
+            query: input.query,
+            returnedItems: items.length,
+          },
+        })
+      }
+      if (items.length > 0) {
+        return {
+          success: true as const,
+          provider: 'grok:twitter',
+          query: input.query,
+          searchType: input.type ?? 'Latest',
+          count: items.length,
+          items,
+        }
+      }
+    } catch (error) {
+      if (input.userId) {
+        await trackAPICall(input.userId, {
+          service: 'grok',
+          endpoint: '/search',
+          method: 'POST',
+          statusCode: 500,
+          metadata: {
+            provider: 'grok',
+            query: input.query,
+            success: false,
+            errorMessage: error instanceof Error ? error.message : 'Grok search failed',
+          },
+        })
+      }
+    }
+  }
+
+  return {
+    success: false as const,
+    provider: 'twitter',
+    query: input.query,
+    searchType: input.type ?? 'Latest',
+    count: 0,
+    items: [] as SocialItem[],
+    errorMessage:
+      'X/Twitter search is currently unavailable. SocialData and Grok fallbacks did not return results.',
+  }
 }
+
+export { runTwitterSearch as runAisaTwitterSearch }
 
 export async function runRedditSocialSearch(input: {
   query: string
@@ -307,7 +362,7 @@ export async function synthesizeSocialReport(input: {
   const query = input.query
 
   const [twitterResult, redditResult, exaResult] = await Promise.allSettled([
-    runAisaTwitterSearch({ query, userId: input.userId }),
+    runTwitterSearch({ query, userId: input.userId }),
     runRedditSocialSearch({ query }),
     runExaSocialSearch({ query, numResults: 5, userId: input.userId }),
   ])
@@ -381,42 +436,116 @@ export function getSocialTools(userId?: string): Record<string, Tool> {
   return {
     aisa_x_profile: tool({
       description:
-        'Read an X/Twitter public profile via AIsa. Use for competitor, creator, brand, or audience account research.',
+        'Read an X/Twitter public profile. Use for competitor, creator, brand, or audience account research.',
       inputSchema: z.object({
         username: z.string().describe('X/Twitter username, with or without @'),
       }),
       execute: async ({ username }) => {
         const userName = username.replace(/^@/, '')
-        const profile = await getTwitterUserInfo({ userName })
-        if (userId) {
-          await trackAPICall(userId, {
-            service: 'aisa',
-            endpoint: '/apis/v1/twitter/user/info',
-            method: 'GET',
-            statusCode: 200,
-            metadata: {
-              provider: 'twitter',
+
+        if (serverEnv.SOCIALDATA_API_KEY) {
+          const profile = await getTwitterProfileSocialData({ username: userName })
+          if (profile) {
+            if (userId) {
+              await trackAPICall(userId, {
+                service: 'socialdata',
+                endpoint: '/twitter/user',
+                method: 'GET',
+                statusCode: 200,
+                costUSD: 0.0035,
+                metadata: {
+                  provider: 'socialdata',
+                  username: userName,
+                },
+              })
+            }
+            return {
+              success: true,
+              provider: 'socialdata:twitter',
               username: userName,
-            },
-          })
+              profile,
+            }
+          }
         }
+
+        try {
+          const profile = await getTwitterUserInfo({ userName })
+          if (userId) {
+            await trackAPICall(userId, {
+              service: 'aisa',
+              endpoint: '/apis/v1/twitter/user/info',
+              method: 'GET',
+              statusCode: 200,
+              metadata: {
+                provider: 'twitter',
+                username: userName,
+              },
+            })
+          }
+          return {
+            success: true,
+            provider: 'aisa:twitter',
+            username: userName,
+            profile,
+          }
+        } catch (error) {
+          if (userId) {
+            const statusCode = error instanceof AisaApiError ? error.status : 500
+            await trackAPICall(userId, {
+              service: 'aisa',
+              endpoint: '/apis/v1/twitter/user/info',
+              method: 'GET',
+              statusCode,
+              metadata: {
+                provider: 'twitter',
+                username: userName,
+                success: false,
+              },
+            })
+          }
+        }
+
+        if (serverEnv.AI_GATEWAY_API_KEY) {
+          const grokProfile = await getTwitterProfileViaGrok({ username: userName })
+          if (grokProfile) {
+            if (userId) {
+              await trackAPICall(userId, {
+                service: 'grok',
+                endpoint: '/profile',
+                method: 'POST',
+                statusCode: 200,
+                metadata: {
+                  provider: 'grok',
+                  username: userName,
+                },
+              })
+            }
+            return {
+              success: true,
+              provider: 'grok:twitter',
+              username: userName,
+              profile: grokProfile,
+            }
+          }
+        }
+
         return {
-          success: true,
-          provider: 'aisa:twitter',
+          success: false,
+          provider: 'twitter',
           username: userName,
-          profile,
+          errorMessage: 'X/Twitter profile lookup is currently unavailable.',
         }
       },
     }),
     aisa_x_search: tool({
       description:
-        'Search public X/Twitter posts via AIsa. Use for brand mentions, competitor monitoring, launch reactions, creator research, and social trend discovery.',
+        'Search public X/Twitter posts. Use for brand mentions, competitor monitoring, launch reactions, creator research, and social trend discovery.',
       inputSchema: z.object({
         query: z.string().describe('X/Twitter search query'),
         type: z.enum(['Top', 'Latest', 'People', 'Photos', 'Videos']).optional().describe('X search mode'),
         limit: z.number().int().min(1).max(50).optional().describe('Maximum results to normalize'),
       }),
-      execute: async ({ query, type, limit }) => runAisaTwitterSearch({ query, type, limit, userId }),
+      execute: async ({ query, type, limit }) => runTwitterSearch({ query, type, limit, userId }),
     }),
     reddit_social_search: tool({
       description:

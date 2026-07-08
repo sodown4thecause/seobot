@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { ingestSearchConsoleSnapshot } from '@/lib/search-console/rag'
 import { querySearchConsoleAnalytics } from '@/lib/search-console/client'
+import { upsertSearchConsoleConnection, recordSearchConsoleSnapshot } from '@/lib/search-console/store'
 
 export const maxDuration = 120
 
@@ -52,11 +53,21 @@ export async function POST(request: Request) {
       })),
     })
 
+    await upsertSearchConsoleConnection(userId, parsedBody.data.siteUrl)
+    const snapshot = await recordSearchConsoleSnapshot(userId, parsedBody.data.siteUrl, {
+      rowCount: rows.length,
+      chunkCount: ingest.chunkCount,
+      documentIds: ingest.documentIds,
+      startDate: parsedBody.data.startDate,
+      endDate: parsedBody.data.endDate,
+    })
+
     return NextResponse.json({
       ok: true,
       rowCount: rows.length,
       chunkCount: ingest.chunkCount,
       documentIds: ingest.documentIds,
+      snapshotId: snapshot.id,
     })
   } catch (error) {
     return NextResponse.json(
