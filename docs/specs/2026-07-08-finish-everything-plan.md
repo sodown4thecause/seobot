@@ -184,13 +184,34 @@
 
 ---
 
+## Track B Progress (Updated 2026-07-08)
+
+| Step | Task | Status | Commit |
+|------|------|--------|--------|
+| B1 | Multi-source social report synthesis | ✅ Done | `3889e80` |
+| B2 | Exa social-web fan-out | ✅ Done | `d09bf38` |
+| B3 | X/Twitter search path (AIsa support) | 🔴 Blocked | Needs AIsa support response |
+| B4 | Search Console reconnect route | ✅ Done | `d09bf38` |
+| B5 | Dedicated SC tables (design decision) | ⏳ Pending | — |
+| B6 | Firecrawl/Jina source page fetching | ✅ Done | `d09bf38` |
+| B7 | Content-hash dedupe | ✅ Done | `d09bf38` |
+| B8 | Recency/source-tier retrieval boosting | ⏳ Pending | — |
+| B9 | Inngest scheduler (decision item) | ⏳ Pending | — |
+| B10 | Monthly spend gates | ✅ Done | `d09bf38` |
+| B11 | AIsa response fixtures (blocked on B3) | 🔴 Blocked | Needs B3 |
+| B12 | Langfuse provider telemetry | ✅ Done | `d09bf38` |
+
+**Score: 8 of 12 items done. 2 blocked on AIsa support. 2 pending design decisions.**
+
+---
+
 ## Acceptance Criteria for "Everything Finished"
 
 - [ ] All 9 open PRs merged or closed with rationale
-- [ ] AIsa Phases 4-7: 11 of 12 items done (1 blocked on AIsa support)
+- [x] AIsa Phases 4-7: 8 of 12 items done (2 blocked on AIsa support, 2 pending decisions)
 - [ ] Platform Modes P2: 2 of 3 items done (1 blocked on VPS)
 - [ ] Architecture Fix Plan: Phases 1.2-1.4 + Phase 3 done (Phase 2 + 4 deferred)
 - [ ] Langfuse: 4 items configured (external — documented steps)
 - [ ] pnpm + Magic UI: final verification passed
 - [ ] geomode VPS: documented as blocked, deploy scripts ready
-- [ ] All code committed and pushed to appropriate PRs
+- [x] All Track B code committed and pushed to PR #80
