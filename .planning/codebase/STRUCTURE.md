@@ -12,7 +12,7 @@ seobot/
 │   ├── admin/                    # Admin dashboard
 │   ├── (marketing)/              # Public pages (blog, guides, etc.)
 │   ├── (auth)/                   # Sign-in, sign-up, user-profile
-│   ├── layout.tsx                # Root layout with Clerk, AI provider
+│   ├── layout.tsx                # Root layout with Better Auth, AI provider
 │   └── globals.css               # Tailwind base styles
 ├── components/                   # React components
 │   ├── ui/                       # shadcn/ui primitives (30+ components)

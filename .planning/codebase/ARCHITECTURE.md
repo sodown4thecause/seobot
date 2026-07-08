@@ -87,7 +87,7 @@
 - **Used by:** All business logic layers
 
 **Key Tables:**
-- `users` - Clerk user sync
+- `users` - Better Auth user sync (`betterAuthId` primary; `clerkId` legacy column retained for migration)
 - `conversations/messages` - Chat persistence
 - `writing_frameworks/agent_documents` - RAG with 1536-dim embeddings
 - `business_profiles/competitors/keywords/content` - Core business data
@@ -153,12 +153,13 @@
 
 ### Main Application Entry
 - **Location:** `app/layout.tsx`
-- **Responsibilities:** Clerk auth, AI state provider, font loading
+- **Responsibilities:** Better Auth, AI state provider, font loading
 
 ### API Entry Points
 - **Chat:** `app/api/chat/route.ts` - Primary chat interface
 - **Workflows:** `app/api/workflows/execute/route.ts` - Campaign execution
-- **Webhooks:** `app/api/webhooks/*` - Clerk, Polar
+- **Auth:** `app/api/auth/[...all]/route.ts` - Better Auth handler
+- **Webhooks:** `app/api/webhooks/*` - Polar
 
 ### Background Processing
 - **Cron:** `app/api/cron/aggregate-learnings/route.ts` - Learning aggregation
@@ -181,7 +182,7 @@
 ## Cross-Cutting Concerns
 
 ### Authentication
-- **Approach:** Clerk with middleware.ts for route protection
+- **Approach:** Better Auth with `proxy.ts` for route protection
 - **Pattern:** `getCurrentUser()` in API routes
 - **Admin Check:** `isAdmin()` function for admin routes
 

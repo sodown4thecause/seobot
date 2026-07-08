@@ -517,11 +517,11 @@ export async function POST(request: Request) {
 }
 
 // GOOD: Always verify auth
-import { auth } from '@clerk/nextjs/server'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function POST(request: Request) {
-  const { userId } = await auth()
-  if (!userId) {
+  const user = await getCurrentUser()
+  if (!user) {
     return new Response('Unauthorized', { status: 401 })
   }
   // ... proceed

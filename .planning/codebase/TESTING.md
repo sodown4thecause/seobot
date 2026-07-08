@@ -281,7 +281,7 @@ WorkflowEngine.prototype.executeStep = vi.fn().mockImplementation(
 **Required mocks:**
 - Database connections (`@/lib/db`)
 - External API clients (Supabase, Redis, DataForSEO)
-- Authentication services (Clerk)
+- Authentication services (Better Auth)
 - Environment variables
 - Server-only modules
 

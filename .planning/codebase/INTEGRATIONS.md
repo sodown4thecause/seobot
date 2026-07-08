@@ -110,14 +110,15 @@
 ## Authentication & Identity
 
 **Auth Provider:**
-- **Clerk** - Authentication and user management
-  - SDK: `@clerk/nextjs` (6.36.10)
-  - Location: `app/api/webhooks/clerk/route.ts`
-  - Sync: Clerk webhooks sync to `users` table
-  - Features: Social auth, MFA, session management
+- **Better Auth** - Authentication and user management
+  - Package: `better-auth` (1.6.11)
+  - Config: `lib/auth-config.ts` (Drizzle adapter + admin/nextCookies plugins)
+  - Handler: `app/api/auth/[...all]/route.ts` (`toNextJsHandler`)
+  - Server helpers: `lib/auth/index.ts` (`getCurrentUser`)
+  - Middleware: `proxy.ts` (`getSessionCookie`)
+  - Features: Email/password (bcrypt), Google social auth, admin plugin, session management
 
 **Webhook Handling:**
-- **Clerk Webhooks** - User events
 - **Polar Webhooks** - Subscription events
   - Location: `app/api/webhooks/polar/route.ts`
   - SDK: `svix` (1.84.1) for webhook verification
@@ -190,9 +191,9 @@ UPSTASH_REDIS_REST_URL   - Redis (implied)
 UPSTASH_REDIS_REST_TOKEN - Redis (implied)
 
 # Auth
-CLERK_SECRET_KEY         - Clerk backend
-CLERK_PUBLISHABLE_KEY    - Clerk frontend
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY - Public key
+BETTER_AUTH_URL          - Better Auth base URL (optional; auto-detected)
+GOOGLE_CLIENT_ID         - Google OAuth (optional)
+GOOGLE_CLIENT_SECRET     - Google OAuth (optional)
 
 # Optional
 AI_GATEWAY_API_KEY       - Vercel AI Gateway
@@ -246,13 +247,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 **API Route Pattern:**
 - Location: `app/api/*`
-- Auth: Clerk middleware
+- Auth: Better Auth (`getCurrentUser` in `lib/auth/index.ts`)
 - Rate limiting: Upstash Redis
 - Error handling: Zod validation + custom errors
 
 **Webhook Pattern:**
 - Location: `app/api/webhooks/{provider}/`
-- Verification: Svix for Polar, custom for Clerk
+- Verification: Svix for Polar
 - Processing: Async, non-blocking
 
 **External API Client Pattern:**

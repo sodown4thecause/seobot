@@ -124,7 +124,7 @@ Begin Phase 2 Core Dashboards using completed Phase 1 infrastructure and overvie
 - 70+ DataForSEO MCP tools available
 - 12 existing workflows including competitor analysis, AEO audit
 - `/api/cron` endpoint exists for background jobs
-- Clerk authentication integration
+- Better Auth authentication integration
 - Drizzle ORM + Neon PostgreSQL
 
 **New Infrastructure Required (Phase 1):**

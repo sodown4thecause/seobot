@@ -64,9 +64,10 @@
 - Drizzle Kit 0.31.8 (dev) - Database migrations
 
 **Authentication:**
-- @clerk/nextjs 6.36.10 - Authentication and user management
-- @clerk/backend 2.29.5 - Backend auth utilities
-- @clerk/testing 1.13.35 (dev) - Testing utilities
+- better-auth 1.6.11 - Authentication and user management
+  - Config: `lib/auth-config.ts` (Drizzle adapter + admin/nextCookies plugins)
+  - Handler: `app/api/auth/[...all]/route.ts`
+  - Server helpers: `lib/auth/index.ts` (`getCurrentUser`)
 
 **CMS:**
 - Sanity 5.4.0 - Headless CMS
