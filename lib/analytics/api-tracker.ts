@@ -18,6 +18,7 @@ export type APIService =
   | 'aisa'
   | 'rate-limit'
   | 'gemini'
+  | 'exa'
 
 interface APICallMetadata {
   service: APIService
@@ -71,6 +72,9 @@ const SERVICE_COSTS: Record<APIService, Record<string, number>> = {
   },
   'rate-limit': {
     'default': 0, // no cost for rate limit tracking
+  },
+  exa: {
+    'search': 0.001,
   },
 }
 

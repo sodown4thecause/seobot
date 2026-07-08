@@ -9,7 +9,7 @@ function getCallbackURL() {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`
 }
 
-export function SearchConsoleConnectButton() {
+export function SearchConsoleConnectButton({ reconnect = false }: { reconnect?: boolean }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -22,6 +22,7 @@ export function SearchConsoleConnectButton() {
       callbackURL: getCallbackURL(),
       errorCallbackURL: '/dashboard',
       scopes: [...GOOGLE_SEARCH_CONSOLE_SCOPES],
+      ...(reconnect ? { prompt: 'consent' } : {}),
     })
 
     if (socialError) {
@@ -38,7 +39,7 @@ export function SearchConsoleConnectButton() {
         disabled={loading}
         className="inline-flex h-10 items-center justify-center border border-zinc-700 bg-zinc-950 px-3 text-sm font-semibold text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900 disabled:opacity-50"
       >
-        {loading ? 'Connecting...' : 'Connect Search Console'}
+        {loading ? 'Connecting...' : reconnect ? 'Reconnect Google' : 'Connect Search Console'}
       </button>
       {error && <p className="text-sm text-red-400">{error}</p>}
     </div>

@@ -2,6 +2,7 @@ import 'server-only'
 
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
+import { isLangfuseEnabled } from '@/lib/observability/langfuse'
 
 export class AisaApiError extends Error {
   constructor(
@@ -19,6 +20,7 @@ export interface AisaFetchOptions {
   body?: unknown
   signal?: AbortSignal
   fetchImpl?: typeof fetch
+  telemetryMetadata?: Record<string, unknown>
 }
 
 const unknownSchema = z.unknown()
@@ -72,18 +74,44 @@ async function parseError(response: Response): Promise<{ errorCode: string; mess
   return { errorCode: 'RequestFailed', message: text }
 }
 
+function formatTelemetryMeta(meta?: Record<string, unknown>): string {
+  if (!meta) return ''
+  const parts = Object.entries(meta).map(([key, value]) => `${key}=${String(value)}`)
+  return parts.length ? ` ${parts.join(' ')}` : ''
+}
+
 export async function aisaFetch<T>(
   path: string,
   schema: { parse: (value: unknown) => T },
   options: AisaFetchOptions = {},
 ): Promise<T> {
   const fetchImpl = options.fetchImpl ?? fetch
+  const startedAt = Date.now()
+  const telemetryMeta = formatTelemetryMeta(options.telemetryMetadata)
+
   const response = await fetchImpl(`${getAisaBaseUrl()}${path}`, {
     method: options.method ?? (options.body === undefined ? 'GET' : 'POST'),
     headers: buildHeaders(),
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal ?? AbortSignal.timeout(getTimeoutMs()),
+  }).catch((error: unknown) => {
+    if (isLangfuseEnabled()) {
+      try {
+        console.debug(`[AIsa] ${path} 0 ${Date.now() - startedAt}ms${telemetryMeta}`)
+      } catch {
+        // telemetry logging must never break the request
+      }
+    }
+    throw error
   })
+
+  if (isLangfuseEnabled()) {
+    try {
+      console.debug(`[AIsa] ${path} ${response.status} ${Date.now() - startedAt}ms${telemetryMeta}`)
+    } catch {
+      // telemetry logging must never break the request
+    }
+  }
 
   if (!response.ok) {
     const error = await parseError(response)

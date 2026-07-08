@@ -82,7 +82,9 @@ function normalizeSocialItems(result: unknown, toolName?: string): SocialItem[] 
     ? 'reddit'
     : toolName === 'aisa_x_search'
       ? 'x'
-      : 'unknown'
+      : toolName === 'exa_social_search'
+        ? 'web'
+        : 'unknown'
 
   return extractItems(result).flatMap((value): SocialItem[] => {
     const record = asRecord(value)

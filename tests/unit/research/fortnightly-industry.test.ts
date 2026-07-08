@@ -16,6 +16,10 @@ vi.mock('@/lib/rag/ingest', () => ({
   ingestRagDocument: vi.fn(async () => ({ documentIds: ['doc-1'], chunkCount: 1 })),
 }))
 
+vi.mock('@/lib/usage/spend-gate', () => ({
+  checkSpendGate: vi.fn(async () => ({ allowed: true })),
+}))
+
 import {
   runFortnightlyIndustryResearch,
   runFortnightlyIndustryResearchForMode,
@@ -27,6 +31,12 @@ import { ingestRagDocument } from '@/lib/rag/ingest'
 describe('fortnightly industry research', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => '',
+      headers: new Map(),
+    })))
     ;(searchWithPerplexity as Mock).mockResolvedValue({
       success: true,
       answer: 'Recent AI Overviews study found source overlap shifts.',
@@ -80,7 +90,7 @@ describe('fortnightly industry research', () => {
   })
 
   it('runs selected modes only', async () => {
-    const results = await runFortnightlyIndustryResearch(['seo', 'social'])
+    const results = await runFortnightlyIndustryResearch(['seo', 'social'], 'test-user-id')
 
     expect(results.map(result => result.mode).sort()).toEqual(['seo', 'social'])
     expect(results.every(result => result.status === 'complete')).toBe(true)

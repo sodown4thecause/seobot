@@ -5,11 +5,12 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { searchPosts } from '@/lib/mcp/reddit/search'
 import { AisaApiError, getTwitterUserInfo, searchTwitter } from '@/lib/services/aisa'
+import { searchExaSocialSources } from '@/lib/social/exa-search'
 import { trackAPICall } from '@/lib/analytics/api-tracker'
 
 type SocialItem = {
   id?: string
-  platform: 'x' | 'reddit'
+  platform: 'x' | 'reddit' | 'web'
   title?: string
   text: string
   author?: string
@@ -206,6 +207,57 @@ export async function runRedditSocialSearch(input: {
   }
 }
 
+export async function runExaSocialSearch(input: {
+  query: string
+  numResults?: number
+  startDate?: string
+  userId?: string
+}) {
+  const sources = await searchExaSocialSources({
+    query: input.query,
+    numResults: input.numResults,
+    startDate: input.startDate,
+  })
+
+  const items: SocialItem[] = sources.map((source) => ({
+    id: source.url,
+    platform: 'web',
+    title: source.title,
+    text: source.highlights?.length
+      ? source.highlights.join(' ')
+      : source.text ?? source.title,
+    author: source.domain,
+    url: source.url,
+    source: source.domain,
+    score: source.score,
+    createdAt: source.publishedDate,
+    raw: source,
+  }))
+
+  if (input.userId) {
+    await trackAPICall(input.userId, {
+      service: 'exa',
+      endpoint: '/search',
+      method: 'POST',
+      statusCode: 200,
+      metadata: {
+        provider: 'exa',
+        query: input.query,
+        returnedItems: items.length,
+      },
+    })
+  }
+
+  return {
+    success: true,
+    provider: 'exa',
+    query: input.query,
+    count: items.length,
+    items,
+    source: 'exa',
+  }
+}
+
 export function getSocialTools(userId?: string): Record<string, Tool> {
   return {
     aisa_x_profile: tool({
@@ -259,6 +311,17 @@ export function getSocialTools(userId?: string): Record<string, Tool> {
       }),
       execute: async ({ query, subreddit, sort, time, limit }) =>
         runRedditSocialSearch({ query, subreddit, sort, time, limit }),
+    }),
+    exa_social_search: tool({
+      description:
+        'Search the social web via Exa for brand mentions, competitor coverage, creator content, and social signals from across the open web.',
+      inputSchema: z.object({
+        query: z.string().describe('Exa social-web search query'),
+        numResults: z.number().int().min(1).max(20).optional().describe('Maximum results to return'),
+        startDate: z.string().optional().describe('Optional start date filter (YYYY-MM-DD)'),
+      }),
+      execute: async ({ query, numResults, startDate }) =>
+        runExaSocialSearch({ query, numResults, startDate, userId }),
     }),
   }
 }

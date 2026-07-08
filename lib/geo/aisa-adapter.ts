@@ -7,6 +7,7 @@ import {
   normalizeGoogleAiOverviewResult,
   type AisaAiOptimizationEngine,
 } from '@/lib/services/aisa'
+import { checkSpendGate } from '@/lib/usage/spend-gate'
 import { extractDomains, extractUrls } from './utils'
 import type { GeoEngine, GeoEngineAdapterInput, GeoEngineResult } from './types'
 
@@ -62,6 +63,19 @@ function failed(engine: GeoEngine, input: GeoEngineAdapterInput, reason: string,
     rawJson,
     capturedAt: new Date().toISOString(),
     status: 'error',
+    error: reason,
+  }
+}
+
+function costExceeded(engine: GeoEngine, input: GeoEngineAdapterInput, reason?: string): GeoEngineResult {
+  return {
+    engine,
+    prompt: input.prompt,
+    responseText: '',
+    citedUrls: [],
+    citedDomains: [],
+    capturedAt: new Date().toISOString(),
+    status: 'cost_exceeded',
     error: reason,
   }
 }
@@ -177,9 +191,25 @@ async function runAisaGoogleAiOverview(input: GeoEngineAdapterInput): Promise<Ge
 export async function runAisaGeoPrompt(
   engine: GeoEngine,
   input: GeoEngineAdapterInput,
+  userId?: string,
 ): Promise<GeoEngineResult> {
   if (!isAisaConfigured()) {
     return notConfigured(engine, input, 'AIsa API key is not configured')
+  }
+
+  if (userId) {
+    const estimatedCost = 1 * 0.005
+    const gate = await checkSpendGate(userId, estimatedCost)
+    if (!gate.allowed) {
+      console.warn('[AIsa GEO] Spend gate blocked probe:', {
+        userId,
+        engine,
+        reason: gate.reason,
+        currentSpend: gate.currentSpend,
+        limit: gate.limit,
+      })
+      return costExceeded(engine, input, gate.reason)
+    }
   }
 
   try {

@@ -1,4 +1,8 @@
+import { createHash } from 'node:crypto'
+import { and, eq, sql } from 'drizzle-orm'
 import { generateEmbedding } from '@/lib/ai/embeddings'
+import { db } from '@/lib/db'
+import { agentDocuments } from '@/lib/db/schema'
 import { insertAgentDocumentWithEmbedding } from '@/lib/db/vector-search'
 import type { ChatMode } from '@/lib/chat/modes'
 
@@ -23,6 +27,7 @@ export interface IngestRagDocumentInput {
 export interface IngestRagDocumentResult {
   documentIds: string[]
   chunkCount: number
+  skipped?: boolean
 }
 
 export interface IngestChunkingOptions {
@@ -35,6 +40,35 @@ export interface IngestChunkingOptions {
 const CHUNK_SIZE = 2600
 const CHUNK_OVERLAP = 300
 const MIN_CHUNK_SIZE = 50
+
+export function computeContentHash(url: string, title: string, content: string): string {
+  const fingerprint = `${url}|${title}|${content.slice(0, 500)}`
+  return createHash('sha256').update(fingerprint).digest('hex')
+}
+
+export async function isDuplicateContent(
+  userId: string | undefined,
+  contentHash: string,
+  mode: ChatMode
+): Promise<boolean> {
+  try {
+    const conditions = [
+      eq(agentDocuments.mode, mode),
+      sql`${agentDocuments.metadata}->>'contentHash' = ${contentHash}`,
+    ]
+    if (userId) {
+      conditions.push(sql`${agentDocuments.metadata}->>'userId' = ${userId}`)
+    }
+    const rows = await db
+      .select({ id: agentDocuments.id })
+      .from(agentDocuments)
+      .where(and(...conditions))
+      .limit(1)
+    return rows.length > 0
+  } catch {
+    return false
+  }
+}
 
 function splitOversizedText(
   text: string,
@@ -139,6 +173,11 @@ export async function ingestRagDocument(input: IngestRagDocumentInput): Promise<
     return { documentIds: [], chunkCount: 0 }
   }
 
+  const contentHash = computeContentHash(input.url ?? '', input.title, sourceText)
+  if (await isDuplicateContent(input.userId, contentHash, input.mode)) {
+    return { documentIds: [], chunkCount: 0, skipped: true }
+  }
+
   const chunks = chunkText(sourceText, input.chunking)
   const documentIds: string[] = []
 
@@ -150,6 +189,7 @@ export async function ingestRagDocument(input: IngestRagDocumentInput): Promise<
     const metadata = {
       ...(input.metadata || {}),
       ...(input.userId ? { userId: input.userId } : {}),
+      contentHash,
       chunkIndex: index,
       totalChunks: chunks.length,
       rawJson: input.rawJson,

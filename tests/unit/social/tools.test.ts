@@ -124,10 +124,11 @@ describe('social tools', () => {
     expect(result.errorMessage).toMatch(/search relay path is not currently exposed/i)
   })
 
-  it('exports X and Reddit tools for Social mode', () => {
+  it('exports X, Reddit, and Exa tools for Social mode', () => {
     expect(Object.keys(getSocialTools()).sort()).toEqual([
       'aisa_x_profile',
       'aisa_x_search',
+      'exa_social_search',
       'reddit_social_search',
     ])
   })

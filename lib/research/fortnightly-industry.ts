@@ -1,9 +1,11 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { researchJobs, type Json } from '@/lib/db/schema'
+import { serverEnv } from '@/lib/config/env'
 import type { ChatMode } from '@/lib/chat/modes'
 import { ingestRagDocument } from '@/lib/rag/ingest'
 import { searchWithPerplexity, type PerplexityCitation } from '@/lib/external-apis/perplexity'
+import { checkSpendGate } from '@/lib/usage/spend-gate'
 import { generateResearchSummary } from './generate-summary'
 
 type IndustryResearchMode = ChatMode
@@ -22,6 +24,14 @@ interface SourcePacket {
   error?: string
 }
 
+export interface SourcePage {
+  url: string
+  title: string
+  content: string
+  score: number
+  fetchedAt: string
+}
+
 export interface FortnightlyIndustryResearchResult {
   mode: IndustryResearchMode
   status: 'complete' | 'failed'
@@ -29,6 +39,7 @@ export interface FortnightlyIndustryResearchResult {
   chunkCount: number
   summary?: string
   sourceCount?: number
+  sourcePageCount?: number
   error?: string
 }
 
@@ -112,6 +123,88 @@ function dedupeCitations(packets: SourcePacket[]): PerplexityCitation[] {
     }
   }
   return [...byUrl.values()]
+}
+
+const STOP_WORDS = new Set([
+  'the', 'and', 'for', 'from', 'with', 'that', 'this', 'their', 'are', 'was',
+  'but', 'not', 'you', 'your', 'what', 'how', 'why', 'when', 'who', 'has',
+  'have', 'had', 'all', 'any', 'most', 'more', 'than', 'into', 'out', 'use',
+  'using', 'recent', 'last', 'month', 'find', 'research', 'prioritize',
+])
+
+function extractKeywords(questions: ResearchQuestion[]): string[] {
+  const tokens = new Set<string>()
+  for (const question of questions) {
+    const text = `${question.topic} ${question.query}`
+    for (const raw of text.toLowerCase().split(/[^a-z0-9]+/)) {
+      const token = raw.trim()
+      if (token.length < 4) continue
+      if (STOP_WORDS.has(token)) continue
+      tokens.add(token)
+    }
+  }
+  return [...tokens]
+}
+
+function scoreRelevance(page: { title: string; content: string }, keywords: string[]): number {
+  if (keywords.length === 0) return 0
+  const haystack = `${page.title} ${page.content}`.toLowerCase()
+  let hits = 0
+  for (const keyword of keywords) {
+    if (haystack.includes(keyword)) hits += 1
+  }
+  return Math.min(hits / keywords.length, 1)
+}
+
+async function fetchViaJinaReader(url: string): Promise<SourcePage | null> {
+  if (!serverEnv.JINA_API_KEY) return null
+  const readerUrl = `https://r.jina.ai/${url}`
+  const response = await fetch(readerUrl, {
+    headers: {
+      Authorization: `Bearer ${serverEnv.JINA_API_KEY}`,
+      Accept: 'text/markdown',
+    },
+    signal: AbortSignal.timeout(15000),
+  })
+  if (!response.ok) {
+    throw new Error(`Jina reader ${response.status} for ${url}`)
+  }
+  const text = await response.text()
+  if (!text.trim()) return null
+  const titleMatch = text.match(/^#\s+(.+)$/m)
+  const title = titleMatch?.[1]?.trim() || url
+  return {
+    url,
+    title,
+    content: text.slice(0, 2000),
+    score: 0,
+    fetchedAt: new Date().toISOString(),
+  }
+}
+
+async function fetchCitedSourcePages(
+  citations: PerplexityCitation[],
+  questions: ResearchQuestion[]
+): Promise<SourcePage[]> {
+  if (!serverEnv.JINA_API_KEY) {
+    return []
+  }
+
+  const keywords = extractKeywords(questions)
+  const pages = await mapWithConcurrency(citations, 3, async (citation): Promise<SourcePage | null> => {
+    if (!citation.url) return null
+    try {
+      const page = await fetchViaJinaReader(citation.url)
+      if (!page) return null
+      page.score = scoreRelevance(page, keywords)
+      if (citation.title) page.title = citation.title
+      return page
+    } catch {
+      return null
+    }
+  })
+
+  return pages.filter((page): page is SourcePage => page !== null)
 }
 
 function toJsonPacket(packet: SourcePacket): Json {
@@ -225,12 +318,41 @@ export async function runFortnightlyIndustryResearchForMode(
       },
     })
 
+    const sourcePages = await fetchCitedSourcePages(citations, MODE_RESEARCH_QUESTIONS[mode])
+    let sourcePageChunkCount = 0
+    for (const page of sourcePages) {
+      if (page.score <= 0.3) continue
+      const pageIngest = await ingestRagDocument({
+        mode,
+        sourceType: 'fortnightly_source_page',
+        title: page.title,
+        url: page.url,
+        rawMarkdown: page.content,
+        metadata: {
+          researchJobId: job.id,
+          cadence: 'fortnightly',
+          sourceProvider: 'jina',
+          sourcePageScore: page.score,
+          fetchedAt: page.fetchedAt,
+        },
+        chunking: {
+          strategy: 'markdown-section',
+          maxChars: 2600,
+          overlapChars: 300,
+          minChars: 120,
+        },
+      })
+      if (!pageIngest.skipped) sourcePageChunkCount += pageIngest.chunkCount
+    }
+
     const rawJson = {
       packets: packetJson,
       citationUrls,
       sourceCount: citations.length,
       chunkCount: ingest.chunkCount,
       generatedBy: synthesis.model,
+      sourcePageCount: sourcePages.length,
+      sourcePageChunkCount,
     }
 
     await db
@@ -250,6 +372,7 @@ export async function runFortnightlyIndustryResearchForMode(
       chunkCount: ingest.chunkCount,
       summary: synthesis.summary,
       sourceCount: citations.length,
+      sourcePageCount: sourcePages.length,
     }
   } catch (error) {
     const message =
@@ -264,7 +387,27 @@ export async function runFortnightlyIndustryResearchForMode(
 }
 
 export async function runFortnightlyIndustryResearch(
-  modes: IndustryResearchMode[] = ['seo', 'geo', 'content', 'social']
+  modes: IndustryResearchMode[] = ['seo', 'geo', 'content', 'social'],
+  userId?: string,
 ): Promise<FortnightlyIndustryResearchResult[]> {
+  if (userId) {
+    const estimatedCost = modes.length * 4 * 0.003
+    const gate = await checkSpendGate(userId, estimatedCost)
+    if (!gate.allowed) {
+      console.warn('[Fortnightly Research] Spend gate blocked fan-out:', {
+        userId,
+        reason: gate.reason,
+        currentSpend: gate.currentSpend,
+        limit: gate.limit,
+        estimatedCost,
+      })
+      return modes.map(mode => ({
+        mode,
+        status: 'failed' as const,
+        chunkCount: 0,
+        error: gate.reason ?? 'Monthly spend limit would be exceeded (cost gate)',
+      }))
+    }
+  }
   return mapWithConcurrency(modes, 2, mode => runFortnightlyIndustryResearchForMode(mode))
 }

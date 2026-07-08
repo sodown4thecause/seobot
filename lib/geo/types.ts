@@ -8,7 +8,7 @@ export interface GeoEngineResult {
   citedDomains: string[]
   rawJson?: unknown
   capturedAt: string
-  status: 'completed' | 'skipped' | 'not_configured' | 'error'
+  status: 'completed' | 'skipped' | 'not_configured' | 'error' | 'cost_exceeded'
   error?: string
 }
 
