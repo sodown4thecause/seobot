@@ -1,10 +1,10 @@
-export const CHAT_MODES = ['seo', 'geo', 'content'] as const
+export const CHAT_MODES = ['seo', 'geo', 'content', 'social'] as const
 
 export type ChatMode = (typeof CHAT_MODES)[number]
 
 export const DEFAULT_CHAT_MODE: ChatMode = 'seo'
 
-export type ChatModeAccent = 'emerald' | 'violet' | 'amber'
+export type ChatModeAccent = 'emerald' | 'violet' | 'amber' | 'rose'
 
 /** Tailwind class groups per accent — full strings for JIT */
 export const CHAT_MODE_ACCENT_CLASSES: Record<
@@ -50,6 +50,16 @@ export const CHAT_MODE_ACCENT_CLASSES: Record<
     selectorActiveIcon: 'text-amber-400',
     selectorDot: 'bg-amber-400',
   },
+  rose: {
+    borderPanel: 'border-rose-500/20',
+    bgPanel: 'bg-rose-500/5',
+    textLabel: 'text-rose-400',
+    stepRing: 'bg-rose-500/20 text-rose-400',
+    promptHoverBorder: 'hover:border-rose-500/40',
+    promptHoverBg: 'hover:bg-rose-500/5',
+    selectorActiveIcon: 'text-rose-400',
+    selectorDot: 'bg-rose-400',
+  },
 }
 
 export type ChatModeUiConfig = {
@@ -94,6 +104,16 @@ export const CHAT_MODE_UI: Record<ChatMode, ChatModeUiConfig> = {
     selectorDescription: 'Publish via chat — save artifacts to workspace',
     accent: 'amber',
   },
+  social: {
+    id: 'social',
+    label: 'Social Mode',
+    selectorLabel: 'Social',
+    heroTitle: 'Social Mode',
+    tagline:
+      'Research X/Twitter, Reddit, and social-web conversations for brand mentions, competitor reactions, audience pain points, and trend signals.',
+    selectorDescription: 'X/Twitter, Reddit & social-web intelligence',
+    accent: 'rose',
+  },
 }
 
 /** Short labels for LLM/RAG prompts — not the marketing-facing mode names. */
@@ -101,6 +121,7 @@ export const CHAT_MODE_LABELS: Record<ChatMode, string> = {
   seo: 'SEO',
   geo: 'GEO / AEO',
   content: 'Content',
+  social: 'Social',
 }
 
 export const CHAT_MODE_LIST = CHAT_MODES.map((id) => CHAT_MODE_UI[id])

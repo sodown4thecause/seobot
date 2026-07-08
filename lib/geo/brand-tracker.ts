@@ -2,19 +2,29 @@
  * GEO Brand Tracker
  *
  * Queries ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews via
- * DataForSEO to detect brand mentions in real AI-generated answers.
+ * AIsa/DataForSEO probes to detect brand mentions in real AI-generated answers.
  */
 
 import { tool } from 'ai'
 import { z } from 'zod'
-import { serverEnv } from '@/lib/config/env'
+import { db } from '@/lib/db'
+import { geoRuns, type Json } from '@/lib/db/schema'
+import { trackAPICall } from '@/lib/analytics/api-tracker'
 import { createAICrawlabilityAuditTool } from '@/lib/geo/crawlability-audit'
+import { getGeoControlProbeTools } from '@/lib/geo/control-probes'
 import { getGEODigestTools } from '@/lib/geo/digest-tool'
 import { isElmoConfigured } from '@/lib/geo/elmo-client'
 import { getElmoTools } from '@/lib/geo/elmo-tools'
 import { createGeoGenerateFixTool } from '@/lib/geo/fix-generator'
 import { deriveRecommendedFixes } from '@/lib/geo/recommended-fixes'
 import { createSchemaMarkupTool } from '@/lib/geo/schema-markup-tool'
+import {
+  aiOptimizationLlmResponseProbe,
+  googleAiOverviewSerp,
+  normalizeAiProbeResult,
+  normalizeDataForSeoResponse,
+  normalizeGoogleAiOverviewResult,
+} from '@/lib/services/aisa'
 
 interface LLMResponseResult {
   response: string
@@ -23,15 +33,28 @@ interface LLMResponseResult {
 }
 
 type LLMPlatform = 'chat_gpt' | 'claude' | 'gemini' | 'perplexity'
+type GeoScanSentiment = 'positive' | 'neutral' | 'negative' | 'not_mentioned'
 
-function getDataForSEOCredentials() {
-  if (!serverEnv.DATAFORSEO_USERNAME || !serverEnv.DATAFORSEO_PASSWORD) {
-    throw new Error('DataForSEO credentials are not configured')
-  }
+interface GeoBrandScanPlatformResult {
+  platform: string
+  model: string
+  responseText: string
+  responsePreview: string
+  brandMentioned: boolean
+  mentionContext: string | null
+  competitorsMentioned: string[]
+  citations: Array<{ title: string; url: string }>
+  sentiment: GeoScanSentiment
+  estimatedCost?: number
+  error?: string
+}
 
-  return Buffer.from(
-    `${serverEnv.DATAFORSEO_USERNAME}:${serverEnv.DATAFORSEO_PASSWORD}`
-  ).toString('base64')
+const PLATFORM_ENGINE_MAP: Record<string, string> = {
+  ChatGPT: 'chatgpt',
+  Claude: 'claude',
+  Gemini: 'gemini',
+  Perplexity: 'perplexity',
+  'Google AI Overview': 'google_ai_overview',
 }
 
 function normalizeAnnotations(
@@ -57,147 +80,50 @@ async function callLLMResponse(params: {
   platform: LLMPlatform
   modelName: string
 }): Promise<LLMResponseResult> {
-  const task: Record<string, unknown> = {
-    user_prompt: params.query.slice(0, 500),
-    model_name: params.modelName,
-    max_output_tokens: 1200,
+  const raw = await aiOptimizationLlmResponseProbe({
+    engine: params.platform,
+    userPrompt: params.query.slice(0, 500),
+    modelName: params.modelName,
+    maxOutputTokens: 1200,
     temperature: 0.2,
-    system_message:
+    systemMessage:
       'Answer as a buyer researching vendors. Mention relevant brands and cite sources when available.',
-    tag: `geo-${params.platform}-${Date.now()}`,
-  }
-
-  if (params.platform !== 'perplexity') {
-    task.web_search = true
-  }
-
-  if (params.platform === 'chat_gpt' || params.platform === 'claude') {
-    task.force_web_search = true
-  }
-
-  const resp = await fetch(
-    `https://api.dataforseo.com/v3/ai_optimization/${params.platform}/llm_responses/live`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${getDataForSEOCredentials()}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify([task]),
-    }
+    webSearch: params.platform !== 'perplexity',
+    forceWebSearch: params.platform === 'chat_gpt' || params.platform === 'claude',
+  })
+  const normalized = normalizeDataForSeoResponse(
+    `/apis/v1/dataforseo/ai_optimization/${params.platform}/llm_responses/live`,
+    raw,
   )
-
-  if (!resp.ok) {
-    throw new Error(`DataForSEO HTTP ${resp.status}`)
-  }
-
-  const data = await resp.json()
-
-  if (data?.status_code && data.status_code !== 20000) {
-    throw new Error(`DataForSEO error ${data.status_code}: ${data.status_message}`)
-  }
-
-  const dataForSeoTask = data?.tasks?.[0]
-  if (dataForSeoTask?.status_code && dataForSeoTask.status_code !== 20000) {
+  if (!normalized.ok) {
     throw new Error(
-      `DataForSEO task error ${dataForSeoTask.status_code}: ${dataForSeoTask.status_message}`
+      `AIsa/DataForSEO task error ${normalized.firstError?.statusCode ?? 'unknown'}: ${normalized.firstError?.statusMessage ?? 'Failed'}`
     )
   }
 
-  const result = dataForSeoTask?.result?.[0] ?? {}
-  const sections = Array.isArray(result?.message?.sections)
-    ? result.message.sections
-    : []
-
-  const response = sections
-    .filter((section: { type?: string; text?: string }) => section.type === 'text' && section.text)
-    .map((section: { text: string }) => section.text)
-    .join('\n\n')
-
-  const annotations = sections.flatMap(
-    (section: { annotations?: Array<{ title?: string; url?: string }> | null }) =>
-      Array.isArray(section.annotations) ? section.annotations : []
-  )
-
-  const legacyItems = Array.isArray(result?.items) ? result.items : []
-  const firstLegacyItem = legacyItems[0] ?? {}
+  const probe = normalizeAiProbeResult(raw)
 
   return {
-    response: response || firstLegacyItem.response || firstLegacyItem.text || '',
-    annotations: normalizeAnnotations(
-      annotations.length ? annotations : firstLegacyItem.annotations ?? []
-    ),
-    cost: dataForSeoTask?.cost,
+    response: probe?.responseText ?? '',
+    annotations: normalizeAnnotations((probe?.citedUrls ?? []).map(url => ({ url }))),
+    cost: normalized.usage.costUsd,
   }
 }
 
 async function callGoogleAIOverview(query: string): Promise<LLMResponseResult> {
-  const resp = await fetch(
-    'https://api.dataforseo.com/v3/serp/google/organic/live/advanced',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${getDataForSEOCredentials()}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify([
-        {
-          keyword: query,
-          location_code: 2840,
-          language_code: 'en',
-          device: 'desktop',
-          depth: 10,
-          load_async_ai_overview: true,
-          tag: `geo-google-aio-${Date.now()}`,
-        },
-      ]),
-    }
-  )
-
-  if (!resp.ok) {
-    throw new Error(`DataForSEO HTTP ${resp.status}`)
-  }
-
-  const data = await resp.json()
-
-  if (data?.status_code && data.status_code !== 20000) {
-    throw new Error(`DataForSEO error ${data.status_code}: ${data.status_message}`)
-  }
-
-  const dataForSeoTask = data?.tasks?.[0]
-  if (dataForSeoTask?.status_code && dataForSeoTask.status_code !== 20000) {
+  const raw = await googleAiOverviewSerp({ keyword: query })
+  const normalized = normalizeDataForSeoResponse('/apis/v1/dataforseo/serp/google/organic/live/advanced', raw)
+  if (!normalized.ok) {
     throw new Error(
-      `DataForSEO task error ${dataForSeoTask.status_code}: ${dataForSeoTask.status_message}`
+      `AIsa/DataForSEO task error ${normalized.firstError?.statusCode ?? 'unknown'}: ${normalized.firstError?.statusMessage ?? 'Failed'}`
     )
   }
-
-  const items = dataForSeoTask?.result?.[0]?.items ?? []
-  const aiOverview = items.find((item: { type?: string }) => item.type === 'ai_overview')
-
-  if (!aiOverview) {
-    return { response: '', annotations: [], cost: dataForSeoTask?.cost }
-  }
-
-  const overviewItems = Array.isArray(aiOverview.items) ? aiOverview.items : []
-  const response = overviewItems
-    .map((item: { title?: string; text?: string }) =>
-      [item.title, item.text].filter(Boolean).join('\n')
-    )
-    .filter(Boolean)
-    .join('\n\n')
-
-  const references = [
-    ...(Array.isArray(aiOverview.references) ? aiOverview.references : []),
-    ...overviewItems.flatMap(
-      (item: { references?: Array<{ title?: string; url?: string; domain?: string }> }) =>
-        Array.isArray(item.references) ? item.references : []
-    ),
-  ]
+  const aiOverview = normalizeGoogleAiOverviewResult(raw)
 
   return {
-    response,
-    annotations: normalizeAnnotations(references),
-    cost: dataForSeoTask?.cost,
+    response: aiOverview?.markdown ?? '',
+    annotations: normalizeAnnotations((aiOverview?.citedUrls ?? []).map(url => ({ url }))),
+    cost: normalized.usage.costUsd,
   }
 }
 
@@ -237,15 +163,82 @@ function findCompetitors(response: string, competitors: string[]): string[] {
   return competitors.filter(c => lower.includes(c.toLowerCase()))
 }
 
+function visibilityScoreForPlatform(result: GeoBrandScanPlatformResult): number {
+  if (!result.brandMentioned) return 0
+  if (result.citations.length > 0) return 70
+  return 40
+}
+
+function citationDomains(citations: Array<{ url: string }>): string[] {
+  return Array.from(new Set(citations.flatMap(citation => {
+    try {
+      return [new URL(citation.url).hostname.replace(/^www\./, '')]
+    } catch {
+      return []
+    }
+  })))
+}
+
+async function persistGeoBrandScan(params: {
+  userId?: string
+  brand: string
+  query: string
+  competitors: string[]
+  platforms: GeoBrandScanPlatformResult[]
+}) {
+  if (!params.userId) return
+
+  await db.insert(geoRuns).values(params.platforms.map((platform) => {
+    const citedUrls = platform.citations.map(citation => citation.url)
+    const competitorMentions = Object.fromEntries(
+      params.competitors.map(competitor => [
+        competitor,
+        platform.competitorsMentioned.includes(competitor) ? 1 : 0,
+      ]),
+    )
+    const rawJson = {
+      source: 'geo_brand_scan',
+      platform: platform.platform,
+      model: platform.model,
+      mentionContext: platform.mentionContext,
+      estimatedCost: platform.estimatedCost,
+      error: platform.error,
+      responsePreview: platform.responsePreview,
+    }
+
+    return {
+      userId: params.userId,
+      engine: PLATFORM_ENGINE_MAP[platform.platform] ?? platform.platform.toLowerCase().replace(/\s+/g, '_'),
+      prompt: params.query,
+      brand: params.brand,
+      competitors: params.competitors,
+      responseText: platform.responseText,
+      citedUrls,
+      citedDomains: citationDomains(platform.citations),
+      mentionedBrands: [
+        ...(platform.brandMentioned ? [params.brand] : []),
+        ...platform.competitorsMentioned,
+      ],
+      competitorMentions: competitorMentions as Json,
+      sentiment: platform.sentiment === 'not_mentioned' ? 'absent' : platform.sentiment,
+      brandPosition: platform.brandMentioned ? 1 : null,
+      visibilityScore: visibilityScoreForPlatform(platform),
+      status: platform.error ? 'error' : 'completed',
+      rawJson: rawJson as Json,
+      capturedAt: new Date(),
+    }
+  }))
+}
+
 const PLATFORMS = [
-  { platform: 'chat_gpt', modelName: 'gpt-4.1-mini', label: 'ChatGPT' },
-  { platform: 'claude', modelName: 'claude-3-5-haiku-latest', label: 'Claude' },
+  { platform: 'chat_gpt', modelName: 'gpt-4o-mini', label: 'ChatGPT' },
+  { platform: 'claude', modelName: 'claude-haiku-4-5-20251001', label: 'Claude' },
   { platform: 'gemini', modelName: 'gemini-2.5-flash', label: 'Gemini' },
   { platform: 'perplexity', modelName: 'sonar', label: 'Perplexity' },
   { platform: 'google_ai_overview', modelName: 'google-organic-serp', label: 'Google AI Overview' },
 ] as const
 
-export function createGEOBrandScanTool() {
+export function createGEOBrandScanTool(userId?: string) {
   return tool({
     description:
       'Check whether a brand is mentioned when users ask ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews about a topic. ' +
@@ -282,6 +275,7 @@ export function createGEOBrandScanTool() {
           return {
             platform: p.label,
             model: p.modelName,
+            responseText: response,
             responsePreview: response.slice(0, 600),
             brandMentioned,
             mentionContext,
@@ -293,12 +287,13 @@ export function createGEOBrandScanTool() {
         })
       )
 
-      const platformResults = settled.map((r, i) =>
+      const platformResults: GeoBrandScanPlatformResult[] = settled.map((r, i) =>
         r.status === 'fulfilled'
           ? r.value
           : {
               platform: PLATFORMS[i].label,
               model: PLATFORMS[i].modelName,
+              responseText: '',
               responsePreview: '',
               brandMentioned: false,
               mentionContext: null,
@@ -329,6 +324,39 @@ export function createGEOBrandScanTool() {
         },
       })
 
+      try {
+        await persistGeoBrandScan({
+          userId,
+          brand,
+          query,
+          competitors,
+          platforms: platformResults,
+        })
+      } catch (error) {
+        console.warn('[GEO Brand Tracker] Failed to persist scan:', error)
+      }
+
+      if (userId) {
+        await Promise.allSettled(platformResults.map(platform =>
+          trackAPICall(userId, {
+            service: 'aisa',
+            endpoint: `geo_brand_scan:${platform.platform}`,
+            method: 'live',
+            statusCode: platform.error ? 502 : 200,
+            costUSD: platform.estimatedCost,
+            metadata: {
+              provider: 'dataforseo',
+              brand,
+              query,
+              model: platform.model,
+              brandMentioned: platform.brandMentioned,
+              citationsCount: platform.citations.length,
+              error: platform.error,
+            },
+          })
+        ))
+      }
+
       return {
         success: true,
         brand,
@@ -348,10 +376,11 @@ export function createGEOBrandScanTool() {
 
 export function getGEOTools(userId?: string) {
   return {
-    geo_brand_scan: createGEOBrandScanTool(),
+    geo_brand_scan: createGEOBrandScanTool(userId),
     geo_generate_fix: createGeoGenerateFixTool(userId),
     generate_schema_markup: createSchemaMarkupTool(),
     ai_crawlability_audit: createAICrawlabilityAuditTool(),
+    ...getGeoControlProbeTools(),
     ...getGEODigestTools(),
     ...(isElmoConfigured() ? getElmoTools(userId) : {}),
   }

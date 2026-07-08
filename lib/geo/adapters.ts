@@ -1,11 +1,11 @@
-import { runOneGlansePrompt } from './oneglanse-client'
+import { runAisaGeoPrompt } from './aisa-adapter'
 import type { GeoEngine, GeoEngineAdapter, GeoEngineAdapterInput, GeoEngineResult } from './types'
 
 class GeoEngineAdapterImpl implements GeoEngineAdapter {
   constructor(private readonly engine: GeoEngine) {}
 
   async runPrompt(input: GeoEngineAdapterInput): Promise<GeoEngineResult> {
-    return runOneGlansePrompt(this.engine, input)
+    return runAisaGeoPrompt(this.engine, input)
   }
 }
 

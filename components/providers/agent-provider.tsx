@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
 import { authClient } from '@/lib/auth-client'
 import { agentRegistry } from '@/lib/agents/registry'
+import type { ChatMode } from '@/lib/chat/modes'
 
 // Types
 export interface Agent {
@@ -44,7 +45,7 @@ export interface Conversation {
   agent: Agent
   createdAt: string
   updatedAt: string
-  chatMode?: 'seo' | 'geo' | 'content'
+  chatMode?: ChatMode
   metadata?: Record<string, unknown> | null
   messageCount?: number
   lastMessage?: {
@@ -293,7 +294,7 @@ const AgentContext = createContext<{
     createConversation: (
       agentId: string,
       title?: string,
-      chatMode?: 'seo' | 'geo' | 'content'
+      chatMode?: ChatMode
     ) => Promise<Conversation | null>
     loadConversations: () => Promise<void>
     updateConversation: (id: string, updates: Partial<Conversation>) => Promise<void>
@@ -425,7 +426,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     createConversation: async (
       agentId: string,
       title?: string,
-      chatMode?: 'seo' | 'geo' | 'content'
+      chatMode?: ChatMode
     ): Promise<Conversation | null> => {
       try {
         if (!isLoaded) {

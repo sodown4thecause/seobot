@@ -12,10 +12,12 @@ export interface IngestRagDocumentInput {
   topic?: string
   brand?: string
   competitor?: string
+  userId?: string
   rawText?: string
   rawMarkdown?: string
   rawJson?: unknown
   metadata?: Record<string, unknown>
+  chunking?: IngestChunkingOptions
 }
 
 export interface IngestRagDocumentResult {
@@ -23,38 +25,112 @@ export interface IngestRagDocumentResult {
   chunkCount: number
 }
 
+export interface IngestChunkingOptions {
+  strategy?: 'paragraph' | 'markdown-section'
+  maxChars?: number
+  overlapChars?: number
+  minChars?: number
+}
+
 const CHUNK_SIZE = 2600
 const CHUNK_OVERLAP = 300
+const MIN_CHUNK_SIZE = 50
 
-function chunkText(input: string): string[] {
-  const text = input.replace(/\r\n/g, '\n').trim()
-  if (!text) return []
-
-  const paragraphs = text.split(/\n{2,}/).map(part => part.trim()).filter(Boolean)
+function splitOversizedText(
+  text: string,
+  maxChars: number,
+  overlapChars: number,
+  minChars: number
+): string[] {
   const chunks: string[] = []
+  const paragraphs = text.split(/\n{2,}/).map(part => part.trim()).filter(Boolean)
   let current = ''
 
   for (const paragraph of paragraphs) {
-    if (current.length + paragraph.length + 2 <= CHUNK_SIZE) {
+    if (current.length + paragraph.length + 2 <= maxChars) {
       current = current ? `${current}\n\n${paragraph}` : paragraph
       continue
     }
 
     if (current) chunks.push(current)
 
-    if (paragraph.length <= CHUNK_SIZE) {
+    if (paragraph.length <= maxChars) {
       current = paragraph
       continue
     }
 
-    for (let start = 0; start < paragraph.length; start += CHUNK_SIZE - CHUNK_OVERLAP) {
-      chunks.push(paragraph.slice(start, start + CHUNK_SIZE).trim())
+    const step = Math.max(maxChars - overlapChars, Math.floor(maxChars * 0.7))
+    for (let start = 0; start < paragraph.length; start += step) {
+      chunks.push(paragraph.slice(start, start + maxChars).trim())
     }
     current = ''
   }
 
   if (current) chunks.push(current)
-  return chunks.filter(chunk => chunk.length > 50)
+  return chunks.filter(chunk => chunk.length >= minChars)
+}
+
+function chunkMarkdownSections(
+  input: string,
+  maxChars: number,
+  overlapChars: number,
+  minChars: number
+): string[] {
+  const lines = input.replace(/\r\n/g, '\n').trim().split('\n')
+  const sections: string[] = []
+  let current: string[] = []
+
+  for (const line of lines) {
+    const startsSection = /^#{1,4}\s+\S/.test(line)
+    if (startsSection && current.length > 0) {
+      sections.push(current.join('\n').trim())
+      current = [line]
+      continue
+    }
+    current.push(line)
+  }
+
+  if (current.length > 0) sections.push(current.join('\n').trim())
+
+  const chunks: string[] = []
+  let pending = ''
+
+  for (const section of sections.filter(Boolean)) {
+    if (section.length > maxChars) {
+      if (pending) {
+        chunks.push(pending)
+        pending = ''
+      }
+      chunks.push(...splitOversizedText(section, maxChars, overlapChars, minChars))
+      continue
+    }
+
+    if (pending.length + section.length + 2 <= maxChars) {
+      pending = pending ? `${pending}\n\n${section}` : section
+      continue
+    }
+
+    if (pending) chunks.push(pending)
+    pending = section
+  }
+
+  if (pending) chunks.push(pending)
+  return chunks.filter(chunk => chunk.length >= minChars)
+}
+
+function chunkText(input: string, options: IngestChunkingOptions = {}): string[] {
+  const text = input.replace(/\r\n/g, '\n').trim()
+  if (!text) return []
+
+  const maxChars = options.maxChars ?? CHUNK_SIZE
+  const overlapChars = Math.min(options.overlapChars ?? CHUNK_OVERLAP, Math.floor(maxChars / 2))
+  const minChars = options.minChars ?? MIN_CHUNK_SIZE
+
+  if (options.strategy === 'markdown-section') {
+    return chunkMarkdownSections(text, maxChars, overlapChars, minChars)
+  }
+
+  return splitOversizedText(text, maxChars, overlapChars, minChars)
 }
 
 export async function ingestRagDocument(input: IngestRagDocumentInput): Promise<IngestRagDocumentResult> {
@@ -63,7 +139,7 @@ export async function ingestRagDocument(input: IngestRagDocumentInput): Promise<
     return { documentIds: [], chunkCount: 0 }
   }
 
-  const chunks = chunkText(sourceText)
+  const chunks = chunkText(sourceText, input.chunking)
   const documentIds: string[] = []
 
   for (let index = 0; index < chunks.length; index++) {
@@ -71,8 +147,19 @@ export async function ingestRagDocument(input: IngestRagDocumentInput): Promise<
     if (!chunk) continue
 
     const embedding = await generateEmbedding(chunk)
+    const metadata = {
+      ...(input.metadata || {}),
+      ...(input.userId ? { userId: input.userId } : {}),
+      chunkIndex: index,
+      totalChunks: chunks.length,
+      rawJson: input.rawJson,
+    }
     const row = await insertAgentDocumentWithEmbedding({
-      agentType: input.mode === 'content' ? 'content' : 'seo_aeo',
+      agentType: input.mode === 'content'
+        ? 'content'
+        : input.mode === 'social'
+          ? 'social'
+          : 'seo_aeo',
       mode: input.mode,
       title: chunks.length > 1 ? `${input.title} (${index + 1}/${chunks.length})` : input.title,
       content: chunk,
@@ -84,12 +171,7 @@ export async function ingestRagDocument(input: IngestRagDocumentInput): Promise<
       brand: input.brand,
       competitor: input.competitor,
       capturedAt: new Date(),
-      metadata: {
-        ...(input.metadata || {}),
-        chunkIndex: index,
-        totalChunks: chunks.length,
-        rawJson: input.rawJson,
-      },
+      metadata,
       embedding,
     }) as { id?: string }
 

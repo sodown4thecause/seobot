@@ -158,7 +158,8 @@ describe('AgentRouter', () => {
         expect(result.agent).toBe(AGENT_IDS.SEO_AEO)
         expect(result.tools).toContain('keywords_data_google_ads_search_volume')
         expect(result.tools).toContain('serp_organic_live_advanced')
-        expect(result.tools).toContain('n8n_backlinks')
+        expect(result.tools).toContain('aisa_backlinks_summary')
+        expect(result.tools).toContain('aisa_referring_domains')
       })
     })
 
@@ -268,7 +269,7 @@ describe('AgentRouter', () => {
 
   describe('getAgentSystemPrompt', () => {
     it('should return a non-empty system prompt for each agent type', () => {
-      const agentTypes = [AGENT_IDS.ONBOARDING, AGENT_IDS.SEO_AEO, AGENT_IDS.CONTENT, AGENT_IDS.GENERAL]
+      const agentTypes = [AGENT_IDS.ONBOARDING, AGENT_IDS.SEO_AEO, AGENT_IDS.CONTENT, AGENT_IDS.GENERAL, AGENT_IDS.SOCIAL]
       
       for (const agentType of agentTypes) {
         const prompt = AgentRouter.getAgentSystemPrompt(agentType, {})
@@ -323,6 +324,32 @@ describe('AgentRouter', () => {
     it('GEO prompt includes Share of Voice calculation guidance', () => {
       const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.GEO)
       expect(prompt).toContain('Share of Voice')
+    })
+
+    it('GEO mode includes AIsa scans and control probes', () => {
+      const result = AgentRouter.getModeRouting('geo')
+
+      expect(result.tools).toContain('geo_brand_scan')
+      expect(result.tools).toContain('geo_perplexity_direct_probe')
+      expect(result.tools).toContain('geo_gateway_control_probe')
+    })
+
+    it('Social mode includes X, Reddit, and social-web tools', () => {
+      const result = AgentRouter.getModeRouting('social')
+
+      expect(result.agent).toBe(AGENT_IDS.SOCIAL)
+      expect(result.tools).toContain('aisa_x_search')
+      expect(result.tools).toContain('aisa_x_profile')
+      expect(result.tools).toContain('reddit_social_search')
+      expect(result.tools).toContain('search_web')
+      expect(result.tools).toContain('firecrawl_search')
+    })
+
+    it('Social prompt includes read-only social intelligence boundaries', () => {
+      const prompt = AgentRouter.getAgentSystemPrompt(AGENT_IDS.SOCIAL)
+      expect(prompt).toContain('social intelligence strategist')
+      expect(prompt).toContain('aisa_x_search')
+      expect(prompt).toContain('Never ask for passwords')
     })
 
     it('GEO prompt includes the 5-step workflow', () => {

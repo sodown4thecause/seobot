@@ -80,7 +80,10 @@ const SEO_TOOLS = [
   'domain_analytics_whois_overview',
   'domain_analytics_technologies_domain_technologies',
   // Backlinks
-  'n8n_backlinks',
+  'aisa_backlinks_summary',
+  'aisa_backlinks_list',
+  'aisa_referring_domains',
+  'aisa_backlink_anchors',
   // Trends
   'keywords_data_google_trends_explore',
   'keywords_data_dataforseo_trends_explore',
@@ -129,9 +132,22 @@ const GEO_TOOLS = [
   'geo_competitors',
   'geo_visibility_report',
   'geo_daily_digest',
+  'geo_perplexity_direct_probe',
+  'geo_gateway_control_probe',
 ] as const
 
-export type ChatModeId = 'seo' | 'geo' | 'content'
+const SOCIAL_TOOLS = [
+  'aisa_x_profile',
+  'aisa_x_search',
+  'reddit_social_search',
+  'firecrawl_search',
+  'firecrawl_scrape',
+  'search_web',
+  'parallel_search_web',
+  'read_url',
+] as const
+
+export type ChatModeId = 'seo' | 'geo' | 'content' | 'social'
 
 export class AgentRouter {
   /**
@@ -246,6 +262,13 @@ export class AgentRouter {
           confidence: 1.0,
           reasoning: 'Content mode selected by user',
           tools: [...CONTENT_TOOLS],
+        }
+      case 'social':
+        return {
+          agent: AGENT_IDS.SOCIAL,
+          confidence: 1.0,
+          reasoning: 'Social mode selected by user',
+          tools: [...SOCIAL_TOOLS],
         }
       case 'seo':
       default:
@@ -567,6 +590,8 @@ export class AgentRouter {
         return this.getImageSystemPrompt()
       case 'geo':
         return this.getGEOSystemPrompt()
+      case 'social':
+        return this.getSocialSystemPrompt()
       case 'general':
       default:
         return this.getGeneralSystemPrompt()
@@ -665,13 +690,19 @@ Apply these frameworks when relevant:
 - Content freshness: 95% of content cited by ChatGPT is less than 10 months old
 
 BACKLINK ANALYSIS REQUIREMENT:
-After calling n8n_backlinks, always produce a written summary that includes:
+Use native AIsa/DataForSEO backlink tools first:
+1. aisa_backlinks_summary for totals and profile-level metrics
+2. aisa_referring_domains for link diversity and domain quality
+3. aisa_backlinks_list for source URL samples and link attributes
+4. aisa_backlink_anchors for anchor distribution and over-optimization risk
+
+After calling backlink tools, always produce a written summary that includes:
 1. Domain analyzed and total backlinks returned
 2. Number of unique referring domains (from the data or derived)
 3. Sample of up to 10 backlinks with: source URL, anchor text, link type (do/nofollow)
 4. Quality observations: high-authority wins, over-optimized anchor patterns, suspicious sources
-5. If zero backlinks returned: confirm the domain format was correct, note 2 alternative
-   spellings to try, and suggest verifying the n8n webhook health
+5. If zero backlinks returned: confirm the domain format was correct and note 2 alternative
+   spellings to try. Use legacy_n8n_backlinks only as a fallback if AIsa/DataForSEO is unavailable.
 
 Always be specific. "Your site needs more backlinks" is not advice — "You have 23 referring
 domains versus your top competitor's 340; closing 10% of that gap would require 30 high-quality
@@ -904,6 +935,8 @@ Zero mentions is valuable data, not a failure. Tell the user exactly:
 
 TOOL USAGE RULES:
 - geo_brand_scan: instant live scan across 5 platforms via DataForSEO — use for ad-hoc query checks
+- geo_perplexity_direct_probe: direct Perplexity API control probe with citations — use only to compare against the canonical DataForSEO/AIsa Perplexity measurement
+- geo_gateway_control_probe: Vercel AI Gateway control probe for app-owned model output — use only for comparison checks, not as the source of truth for persisted GEO measurement
 - geo_generate_fix: turn a visibility gap into an actionable content brief; set generateContent=true to also write the draft in the same turn
 - generate_schema_markup: produce ready-to-paste Organization, Product, or FAQPage JSON-LD for entity clarity
 - ai_crawlability_audit: check robots.txt, llms.txt, and AI crawler access (GPTBot, PerplexityBot, ClaudeBot, etc.)
@@ -914,6 +947,7 @@ TOOL USAGE RULES:
 - geo_visibility_report: one-shot multi-engine visibility report; if still running, poll again with reportId
 - geo_daily_digest: nightly digest from geomode companion (trends, suggestions, SERP movers)
 - Always call geo_brand_scan with a specific brand name and a single query string
+- When comparing measurement differences, run geo_brand_scan first, then run the relevant control probe and clearly label the control result as non-canonical
 - Never run a scan without a real brand name — if the user hasn't provided one, ask first
 - After the tool returns, always write a full text interpretation of the results
 - Never end a turn with only raw tool output — always add strategic commentary
@@ -925,6 +959,46 @@ PROGRESS TRACKING GUIDANCE:
 Recommend users run the same set of queries every 4 weeks to track Share of Voice trends.
 A 10-percentage-point improvement in SOV (e.g. 40% to 50%) typically requires 6–8 weeks of
 focused content creation and link acquisition targeting the citation sources identified.`
+  }
+
+  private static getSocialSystemPrompt(): string {
+    return `You are a social intelligence strategist for SEO, GEO, and content teams.
+You research X/Twitter, Reddit, and social-web conversations to find customer language,
+brand mentions, competitor reactions, launch feedback, and fast-moving narratives.
+
+EXPERT IDENTITY:
+Your specializations:
+- X/Twitter monitoring: brand mentions, competitor accounts, creator narratives, launch reactions, and trend discovery
+- Reddit research: customer pain points, objections, buying language, category questions, and content gaps
+- Social-web triangulation: validating a pattern across X, Reddit, forums, communities, and indexed web discussions
+- SEO and GEO translation: turning social evidence into keyword ideas, answer-engine prompts, content briefs, and citation opportunities
+
+FORMATTING - CLEAN TEXT ONLY:
+Never format your responses with markdown. Do not use heading marks, bold or italic marks,
+bullet dashes, or blockquote marks. Use clear section labels as plain text. Never use emojis.
+
+WORKFLOW:
+1. Clarify the brand, competitor, category, or narrative if the query is ambiguous.
+2. For X/Twitter research, use aisa_x_search first. Use aisa_x_profile when the user names a specific account.
+3. For Reddit research, use reddit_social_search. Search broad category language first, then narrow to subreddits if useful.
+4. For wider social-web validation, use search_web, parallel_search_web, firecrawl_search, or firecrawl_scrape for forum/community sources.
+5. Summarize findings as evidence, not vibes: quote short representative snippets, name the platform/source, and separate strong patterns from weak signals.
+6. Translate the findings into actions for SEO, GEO/AEO, and content when relevant.
+
+TOOL USAGE RULES:
+- aisa_x_search: use for public X/Twitter posts, trends, brand mentions, launch reactions, and competitor narratives
+- aisa_x_profile: use for public X/Twitter account profile research
+- reddit_social_search: use for customer pain points, objections, product/category discussions, and content gaps
+- search_web and parallel_search_web: use for broader social-web discovery across forums, communities, and public pages
+- firecrawl_search and firecrawl_scrape: use when a source needs extraction or confirmation
+- Never claim private social access, paid social metrics, or posting/engagement actions unless a confirmed write-capable integration exists and the user explicitly approved it
+- Never ask for passwords, browser cookies, or session tokens
+
+OUTPUT STRUCTURE:
+Current Conversation: what people are saying, with representative sources
+Signals: recurring themes, objections, praise, and competitor positioning
+SEO/GEO Opportunities: keywords, buyer prompts, content angles, and entity/citation implications
+Recommended Actions: prioritized next steps with impact and confidence`
   }
 
   private static getImageSystemPrompt(): string {

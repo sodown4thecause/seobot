@@ -19,6 +19,15 @@ import { getEnhancedContentQualityTools } from '@/lib/ai/content-quality-enhance
 import { getAEOTools } from '@/lib/ai/aeo-tools'
 import { getAEOPlatformTools } from '@/lib/ai/aeo-platform-tools'
 import { getGEOTools, getGeoExecutionTools } from '@/lib/geo/brand-tracker'
+import {
+  backlinkAnchors,
+  backlinksList,
+  backlinksSummary,
+  normalizeBacklinkCollection,
+  normalizeBacklinkSummary,
+  normalizeDataForSeoResponse,
+  referringDomains,
+} from '@/lib/services/aisa'
 import { searchWithPerplexity } from '@/lib/external-apis/perplexity'
 import {
   researchAgentTool,
@@ -29,6 +38,8 @@ import {
 } from '@/lib/agents/tools'
 import { onboardingTools } from '@/lib/onboarding/tools'
 import { serverEnv } from '@/lib/config/env'
+import { getSocialTools } from '@/lib/social/tools'
+import { trackAPICall } from '@/lib/analytics/api-tracker'
 import type { AgentType } from './intent-classifier'
 
 export interface ToolAssemblyOptions {
@@ -56,8 +67,8 @@ export async function loadMCPTools(agent: AgentType): Promise<Record<string, Too
     }
   }
 
-  // Load Firecrawl tools for SEO/AEO and Content agents
-  if (agent === 'seo-aeo' || agent === 'content') {
+  // Load Firecrawl tools for SEO/AEO, Content, and Social agents
+  if (agent === 'seo-aeo' || agent === 'content' || agent === 'social') {
     try {
       const firecrawlMCPTools = await getFirecrawlTools()
       const fixedFirecrawlTools = fixAllMCPTools(firecrawlMCPTools)
@@ -67,8 +78,8 @@ export async function loadMCPTools(agent: AgentType): Promise<Record<string, Too
     }
   }
 
-  // Load Jina tools for Content agent
-  if (agent === 'content') {
+  // Load Jina tools for Content and Social agents
+  if (agent === 'content' || agent === 'social') {
     try {
       const jinaMCPTools = await getJinaTools()
       const fixedJinaTools = fixAllMCPTools(jinaMCPTools)
@@ -179,6 +190,141 @@ export function createBacklinksTool() {
       }
     }
   })
+}
+
+function normalizeBacklinkTarget(input: string): string | null {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+
+  const hasScheme = /^https?:\/\//i.test(trimmed)
+  const maybeUrl = hasScheme ? trimmed : `https://${trimmed}`
+
+  try {
+    const hostname = new URL(maybeUrl).hostname.replace(/^www\./i, '')
+    return hostname || null
+  } catch {
+    const cleaned = trimmed.replace(/^www\./i, '')
+    if (!cleaned || cleaned.includes(' ') || !cleaned.includes('.')) return null
+    return cleaned
+  }
+}
+
+function createAisaBacklinkTool(
+  description: string,
+  executeRequest: (args: { target: string; limit?: number }) => Promise<unknown>,
+) {
+  return tool({
+    description,
+    inputSchema: z.object({
+      target: z.string().describe("Domain or URL to analyze, such as 'example.com' or 'https://example.com/page'"),
+      limit: z.number().int().min(1).max(100).optional().describe('Maximum rows to return for list-style endpoints'),
+    }),
+    execute: async ({ target, limit }) => {
+      const normalizedTarget = normalizeBacklinkTarget(target)
+      if (!normalizedTarget) {
+        return {
+          success: false,
+          status: 'error',
+          errorMessage: 'Invalid target. Provide a domain like example.com or a full URL.',
+          target,
+        }
+      }
+
+      try {
+        return await executeRequest({ target: normalizedTarget, limit })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'AIsa/DataForSEO backlink request failed'
+        console.error('[Tool Assembler] AIsa backlink tool failed:', error)
+        return {
+          success: false,
+          status: 'error',
+          target: normalizedTarget,
+          errorMessage: message,
+        }
+      }
+    },
+  })
+}
+
+export function createAisaBacklinkTools(userId?: string): Record<string, Tool> {
+  const buildAisaBacklinkResponse = async (
+    endpoint: string,
+    target: string,
+    raw: Awaited<ReturnType<typeof backlinksSummary>>,
+    data: Record<string, unknown>,
+  ) => {
+    const normalized = normalizeDataForSeoResponse(endpoint, raw)
+    if (userId) {
+      await trackAPICall(userId, {
+        service: 'aisa',
+        endpoint,
+        method: 'live',
+        statusCode: normalized.ok ? 200 : 502,
+        costUSD: normalized.usage.costUsd,
+        metadata: {
+          provider: 'dataforseo',
+          target,
+          tasksCount: normalized.usage.tasksCount,
+          firstError: normalized.firstError,
+        },
+      })
+    }
+    return {
+      success: normalized.ok,
+      status: normalized.ok ? 'success' : 'error',
+      target,
+      errorMessage: normalized.firstError?.statusMessage,
+      ...normalized,
+      ...data,
+    }
+  }
+
+  return {
+    aisa_backlinks_summary: createAisaBacklinkTool(
+      'Get a native DataForSEO backlink summary for a domain via AIsa. Use first for backlink profile audits, link building analysis, referring domain counts, spam risk, and backlink totals.',
+      async ({ target }) => {
+        const endpoint = '/apis/v1/dataforseo/backlinks/summary/live'
+        const raw = await backlinksSummary({ target })
+        return await buildAisaBacklinkResponse(endpoint, target, raw, {
+          target,
+          summary: normalizeBacklinkSummary(raw),
+        })
+      },
+    ),
+    aisa_backlinks_list: createAisaBacklinkTool(
+      'List sample backlinks for a domain via native DataForSEO backlinks/backlinks through AIsa. Use for source URLs, anchors, dofollow/nofollow mix, and link quality evidence.',
+      async ({ target, limit }) => {
+        const endpoint = '/apis/v1/dataforseo/backlinks/backlinks/live'
+        const raw = await backlinksList({ target, limit })
+        return await buildAisaBacklinkResponse(endpoint, target, raw, {
+          target,
+          backlinks: normalizeBacklinkCollection(raw),
+        })
+      },
+    ),
+    aisa_referring_domains: createAisaBacklinkTool(
+      'List referring domains for a backlink profile via native DataForSEO referring_domains through AIsa. Use to assess link diversity and referring domain quality.',
+      async ({ target, limit }) => {
+        const endpoint = '/apis/v1/dataforseo/backlinks/referring_domains/live'
+        const raw = await referringDomains({ target, limit })
+        return await buildAisaBacklinkResponse(endpoint, target, raw, {
+          target,
+          referringDomains: normalizeBacklinkCollection(raw),
+        })
+      },
+    ),
+    aisa_backlink_anchors: createAisaBacklinkTool(
+      'Analyze backlink anchor text distribution via native DataForSEO anchors through AIsa. Use to detect over-optimized anchors, branded/naked URL mix, and link risk.',
+      async ({ target, limit }) => {
+        const endpoint = '/apis/v1/dataforseo/backlinks/anchors/live'
+        const raw = await backlinkAnchors({ target, limit })
+        return await buildAisaBacklinkResponse(endpoint, target, raw, {
+          target,
+          anchors: normalizeBacklinkCollection(raw),
+        })
+      },
+    ),
+  }
 }
 
 /**
@@ -425,9 +571,11 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
           generate_hero_image: generateHeroImageTool,
         }
       : {}),
+    ...(agent === 'social' ? getSocialTools(userId) : {}),
 
     // N8N Backlinks - Available for SEO/AEO agent OR when backlinks intent is detected
-    ...((agent === 'seo-aeo' || intentTools?.includes('n8n_backlinks')) ? { n8n_backlinks: createBacklinksTool() } : {}),
+    ...(agent === 'seo-aeo' ? createAisaBacklinkTools(userId) : {}),
+    ...((agent === 'seo-aeo' || intentTools?.includes('n8n_backlinks')) ? { legacy_n8n_backlinks: createBacklinksTool() } : {}),
 
     // AEO Tools - Only for SEO/AEO agent (citation analysis, EEAT detection, platform optimization)
     ...(agent === 'seo-aeo' ? { ...getAEOTools(), ...getAEOPlatformTools(), ...getGeoExecutionTools(userId) } : {}),

@@ -7,18 +7,98 @@ import { Link2, ExternalLink, ShieldCheck, Globe } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 interface BacklinkArtifactProps {
-    data: {
-        domain: string;
-        backlinksCount: number;
-        referringDomainsCount: number;
-        backlinks: Array<{
-            sourceUrl: string;
-            targetUrl: string;
-            anchorText: string;
-            referringDomain: string;
-        }>;
-    };
+    data: unknown;
     status: 'loading' | 'streaming' | 'complete' | 'error';
+}
+
+interface NormalizedBacklink {
+    sourceUrl: string;
+    targetUrl: string;
+    anchorText: string;
+    referringDomain: string;
+}
+
+interface NormalizedBacklinkArtifactData {
+    domain: string;
+    backlinksCount: number;
+    referringDomainsCount: number;
+    backlinks: NormalizedBacklink[];
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null
+}
+
+function readString(record: Record<string, unknown>, keys: string[]): string | undefined {
+    for (const key of keys) {
+        const value = record[key]
+        if (typeof value === 'string' && value.trim()) return value
+    }
+    return undefined
+}
+
+function readNumber(record: Record<string, unknown>, keys: string[]): number | undefined {
+    for (const key of keys) {
+        const value = record[key]
+        if (typeof value === 'number' && Number.isFinite(value)) return value
+    }
+    return undefined
+}
+
+function readItems(value: unknown): unknown[] {
+    if (Array.isArray(value)) return value
+    const record = asRecord(value)
+    if (!record) return []
+    return Array.isArray(record.items) ? record.items : []
+}
+
+function normalizeBacklink(value: unknown): NormalizedBacklink | null {
+    const record = asRecord(value)
+    if (!record) return null
+    const sourceUrl = readString(record, ['sourceUrl', 'url', 'url_from']) ?? ''
+    const referringDomain = readString(record, ['referringDomain', 'sourceDomain', 'domain', 'domain_from']) ?? ''
+    if (!sourceUrl && !referringDomain) return null
+
+    return {
+        sourceUrl,
+        targetUrl: readString(record, ['targetUrl', 'target_url', 'url_to']) ?? '',
+        anchorText: readString(record, ['anchorText', 'anchor']) ?? '',
+        referringDomain,
+    }
+}
+
+function normalizeBacklinkArtifactData(data: unknown): NormalizedBacklinkArtifactData {
+    const record = asRecord(data)
+    const summary = asRecord(record?.summary)
+    const backlinkCollection = asRecord(record?.backlinks)
+    const referringDomainCollection = asRecord(record?.referringDomains)
+
+    const rawBacklinks = Array.isArray(record?.backlinks)
+        ? record?.backlinks
+        : readItems(backlinkCollection)
+    const backlinks = rawBacklinks
+        .map(normalizeBacklink)
+        .filter((link): link is NormalizedBacklink => Boolean(link))
+
+    return {
+        domain:
+            readString(record ?? {}, ['domain', 'target']) ??
+            readString(summary ?? {}, ['target']) ??
+            readString(backlinkCollection ?? {}, ['target']) ??
+            'Analyzing...',
+        backlinksCount:
+            readNumber(record ?? {}, ['backlinksCount', 'total_backlinks']) ??
+            readNumber(backlinkCollection ?? {}, ['totalCount', 'itemsCount']) ??
+            readNumber(summary ?? {}, ['backlinks']) ??
+            backlinks.length,
+        referringDomainsCount:
+            readNumber(record ?? {}, ['referringDomainsCount']) ??
+            readNumber(summary ?? {}, ['referringDomains']) ??
+            readItems(referringDomainCollection).length,
+        backlinks,
+    }
 }
 
 export const BacklinkArtifact: React.FC<BacklinkArtifactProps> = ({ data, status }) => {
@@ -35,6 +115,8 @@ export const BacklinkArtifact: React.FC<BacklinkArtifactProps> = ({ data, status
         );
     }
 
+    const normalized = normalizeBacklinkArtifactData(data)
+
     return (
         <div className="flex flex-col h-full bg-zinc-950/50 text-zinc-100 overflow-hidden">
             {/* Header */}
@@ -45,7 +127,7 @@ export const BacklinkArtifact: React.FC<BacklinkArtifactProps> = ({ data, status
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold tracking-tight">Backlink Analysis</h2>
-                        <p className="text-sm text-zinc-400 font-mono uppercase tracking-widest">{data?.domain || 'Analyzing...'}</p>
+                        <p className="text-sm text-zinc-400 font-mono uppercase tracking-widest">{normalized.domain}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -71,7 +153,7 @@ export const BacklinkArtifact: React.FC<BacklinkArtifactProps> = ({ data, status
                         </div>
                         <div>
                             <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Total Backlinks</p>
-                            <p className="text-xl font-bold font-mono text-zinc-100">{data?.backlinksCount?.toLocaleString() || 0}</p>
+                            <p className="text-xl font-bold font-mono text-zinc-100">{normalized.backlinksCount.toLocaleString()}</p>
                         </div>
                     </div>
                     <div className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
@@ -80,7 +162,7 @@ export const BacklinkArtifact: React.FC<BacklinkArtifactProps> = ({ data, status
                         </div>
                         <div>
                             <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Referring Domains</p>
-                            <p className="text-xl font-bold font-mono text-zinc-100">{data?.referringDomainsCount?.toLocaleString() || 0}</p>
+                            <p className="text-xl font-bold font-mono text-zinc-100">{normalized.referringDomainsCount.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
@@ -90,7 +172,7 @@ export const BacklinkArtifact: React.FC<BacklinkArtifactProps> = ({ data, status
                     <h3 className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 px-1">Top Linking Pages</h3>
                     <div className="space-y-2">
                         <AnimatePresence>
-                            {data?.backlinks?.map((link, idx) => (
+                            {normalized.backlinks.map((link, idx) => (
                                 <motion.div
                                     key={`${link.sourceUrl}-${idx}`}
                                     initial={{ opacity: 0, y: 10 }}
@@ -127,6 +209,11 @@ export const BacklinkArtifact: React.FC<BacklinkArtifactProps> = ({ data, status
                                 <span className="animate-bounce delay-100">.</span>
                                 <span className="animate-bounce delay-200">.</span>
                                 fetching more links
+                            </div>
+                        )}
+                        {status === 'complete' && normalized.backlinks.length === 0 && (
+                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400">
+                                No sample linking pages were returned for this endpoint.
                             </div>
                         )}
                     </div>

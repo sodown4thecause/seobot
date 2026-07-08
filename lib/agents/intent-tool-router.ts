@@ -93,9 +93,13 @@ export const INTENT_TOOL_MAP: Record<IntentCategory, string[]> = {
         'domain_analytics_technologies_domain_technologies',
     ],
 
-    // Backlinks (n8n webhook only - DataForSEO backlinks inactive)
+    // Backlinks (native AIsa/DataForSEO first, legacy n8n fallback only)
     backlinks: [
-        'n8n_backlinks',
+        'aisa_backlinks_summary',
+        'aisa_backlinks_list',
+        'aisa_referring_domains',
+        'aisa_backlink_anchors',
+        'legacy_n8n_backlinks',
     ],
 
     // Content Optimization (4 tools + Frase)
@@ -543,8 +547,12 @@ Use these tools in priority order:
 
             backlinks: `
 FOCUS: Backlink Analysis
-Use n8n_backlinks webhook for all backlink queries.
-DO NOT use other backlinks_* tools - they are inactive.`,
+Use native AIsa/DataForSEO backlink tools first:
+1. aisa_backlinks_summary - backlink totals and profile-level metrics
+2. aisa_referring_domains - referring domain diversity and quality
+3. aisa_backlinks_list - sample source URLs, anchors, dofollow/nofollow, spam signals
+4. aisa_backlink_anchors - anchor text distribution
+Use legacy_n8n_backlinks only if AIsa/DataForSEO is unavailable.`,
 
             content_optimization: `
 FOCUS: Content Analysis

@@ -11,6 +11,10 @@
     {
       "path": "/api/rag/ingest",
       "schedule": "0 21 * * 2"
+    },
+    {
+      "path": "/api/cron/fortnightly-industry-research",
+      "schedule": "0 21 1,15 * *"
     }
   ]
 }

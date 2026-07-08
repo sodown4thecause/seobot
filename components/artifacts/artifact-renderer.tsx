@@ -6,6 +6,8 @@ import { BlogArtifact } from '@/components/chat/artifacts/blog-artifact'
 import { SchemaMarkupArtifact } from '@/components/chat/tool-ui/schema-markup-result'
 import { CrawlabilityAuditArtifact } from '@/components/chat/tool-ui/crawlability-audit-result'
 import { GeoFixPlanArtifact } from '@/components/chat/tool-ui/geo-fix-plan-result'
+import { GeoBrandScanResults } from '@/components/chat/tool-ui/geo-brand-scan-results'
+import { SocialListeningResult } from '@/components/chat/tool-ui/social-listening-result'
 import { getArtifactDefinition } from '@/lib/artifacts/registry'
 import type { ArtifactStatus, ArtifactType } from '@/lib/artifacts/types'
 import { Badge } from '@/components/ui/badge'
@@ -83,6 +85,14 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
         </div>
       )
     }
+    case 'social-listening':
+      return (
+        <div className={cn('h-full overflow-auto', className)}>
+          <SocialListeningResult
+            toolInvocation={{ result: data, state: status === 'complete' ? 'result' : status }}
+          />
+        </div>
+      )
     case 'serp':
       return (
         <div className={cn('h-full overflow-auto p-6', className)}>
@@ -107,6 +117,14 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
       return (
         <div className={cn('h-full overflow-auto', className)}>
           <GeoFixPlanArtifact data={data} />
+        </div>
+      )
+    case 'citation-tracker':
+      return (
+        <div className={cn('h-full overflow-auto', className)}>
+          <GeoBrandScanResults
+            toolInvocation={{ result: data as Parameters<typeof GeoBrandScanResults>[0]['toolInvocation']['result'], state: status === 'complete' ? 'result' : status }}
+          />
         </div>
       )
     default:

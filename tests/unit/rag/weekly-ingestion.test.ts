@@ -92,8 +92,8 @@ describe('Weekly Ingestion Orchestration', () => {
     expect(arg.sourceType).toBe('weekly_research')
   })
 
-  it('defaults to all three modes when none are specified', async () => {
+  it('defaults to all chat modes when none are specified', async () => {
     const results = await runWeeklyIngestion()
-    expect(results.map(r => r.mode).sort()).toEqual(['content', 'geo', 'seo'])
+    expect(results.map(r => r.mode).sort()).toEqual(['content', 'geo', 'seo', 'social'])
   })
 })

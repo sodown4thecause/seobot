@@ -40,12 +40,22 @@ function summarizeKeywordData(data: unknown): string | undefined {
 
 function summarizeBacklinkData(data: unknown): string | undefined {
   if (!data || typeof data !== 'object') return undefined
-  const record = data as { referringDomainsCount?: number; backlinksCount?: number }
+  const record = data as {
+    referringDomainsCount?: number
+    backlinksCount?: number
+    summary?: { referringDomains?: number; backlinks?: number }
+  }
   if (typeof record.referringDomainsCount === 'number') {
     return `${record.referringDomainsCount.toLocaleString()} referring domains`
   }
+  if (typeof record.summary?.referringDomains === 'number') {
+    return `${record.summary.referringDomains.toLocaleString()} referring domains`
+  }
   if (typeof record.backlinksCount === 'number') {
     return `${record.backlinksCount.toLocaleString()} backlinks`
+  }
+  if (typeof record.summary?.backlinks === 'number') {
+    return `${record.summary.backlinks.toLocaleString()} backlinks`
   }
   return undefined
 }
@@ -55,6 +65,35 @@ function summarizeBlogData(data: unknown): string | undefined {
   const record = data as { wordCount?: number; title?: string }
   if (typeof record.wordCount === 'number') {
     return `${record.wordCount.toLocaleString()} words`
+  }
+  return undefined
+}
+
+function summarizeSocialData(data: unknown): string | undefined {
+  if (!data || typeof data !== 'object') return undefined
+  const record = data as { count?: number; items?: unknown[] }
+  if (typeof record.count === 'number') return `${record.count.toLocaleString()} social results`
+  if (Array.isArray(record.items)) return `${record.items.length.toLocaleString()} social results`
+  return undefined
+}
+
+function summarizeCitationData(data: unknown): string | undefined {
+  if (!data || typeof data !== 'object') return undefined
+  const record = data as {
+    summary?: {
+      shareOfVoice?: number
+      mentionedOn?: number
+      totalPlatforms?: number
+    }
+  }
+  if (typeof record.summary?.shareOfVoice === 'number') {
+    return `${record.summary.shareOfVoice}% share of voice`
+  }
+  if (
+    typeof record.summary?.mentionedOn === 'number' &&
+    typeof record.summary.totalPlatforms === 'number'
+  ) {
+    return `${record.summary.mentionedOn}/${record.summary.totalPlatforms} engines`
   }
   return undefined
 }
@@ -70,6 +109,10 @@ export function summarizeArtifactData(
       return summarizeBacklinkData(data)
     case 'blog':
       return summarizeBlogData(data)
+    case 'social-listening':
+      return summarizeSocialData(data)
+    case 'citation-tracker':
+      return summarizeCitationData(data)
     default:
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         const keys = Object.keys(data as object).length

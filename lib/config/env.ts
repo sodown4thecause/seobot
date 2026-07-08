@@ -50,6 +50,12 @@ const serverEnvSchema = z.object({
   FIRECRAWL_API_KEY: z.string().min(1).optional(),
   EXA_API_KEY: z.string().min(1).optional(),
   REF_API_KEY: z.string().min(1).optional(),
+  AISA_API_KEY: z.string().min(1).optional(),
+  AISA_BASE_URL: optionalUrl,
+  AISA_TIMEOUT_MS: z.preprocess(
+    (val) => (val ? Number(val) : undefined),
+    z.number().int().min(1000).max(300000).optional()
+  ),
 
   // N8N Webhooks
   N8N_BACKLINKS_WEBHOOK_URL: z.string().url().optional(),

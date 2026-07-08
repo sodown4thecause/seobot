@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, Brain, PenLine } from 'lucide-react'
+import { Brain, MessageCircle, PenLine, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CHAT_MODE_LIST, getChatModeAccentClasses, type ChatMode } from '@/lib/chat/modes'
 import { useChatModeOptional } from './chat-mode-context'
@@ -9,6 +9,7 @@ const MODE_ICONS: Record<ChatMode, React.ElementType> = {
   seo: Search,
   geo: Brain,
   content: PenLine,
+  social: MessageCircle,
 }
 
 interface ChatModeSelectorProps {
