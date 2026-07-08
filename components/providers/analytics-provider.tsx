@@ -2,32 +2,20 @@
 
 import posthog from 'posthog-js'
 import { PostHogProvider as PHProvider } from 'posthog-js/react'
-import { useEffect } from 'react'
 
 const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
 const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com'
 
-let initialized = false
-
-function initPostHog() {
-  if (typeof window === 'undefined' || !posthogKey || initialized) {
-    return
-  }
-
+if (typeof window !== 'undefined' && posthogKey) {
   posthog.init(posthogKey, {
     api_host: posthogHost,
     person_profiles: 'identified_only',
-    capture_pageview: true,
+    capture_pageview: false,
     capture_pageleave: true,
   })
-  initialized = true
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    initPostHog()
-  }, [])
-
   if (!posthogKey) {
     return <>{children}</>
   }
@@ -39,7 +27,6 @@ export function identifyPostHogUser(userId: string, traits?: Record<string, stri
   if (!posthogKey || typeof window === 'undefined') {
     return
   }
-  initPostHog()
   posthog.identify(userId, traits)
 }
 
@@ -57,7 +44,6 @@ export function captureProductEvent(
   if (!posthogKey || typeof window === 'undefined') {
     return
   }
-  initPostHog()
   const cleanProps = properties
     ? Object.fromEntries(
         Object.entries(properties).filter(([, value]) => value !== undefined && value !== null)
