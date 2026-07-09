@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion, type Variants } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { ShimmerButton } from '@/components/magicui/shimmer-button'
@@ -15,6 +16,7 @@ const itemVariants: Variants = {
 }
 
 export function Hero() {
+  const router = useRouter()
   return (
     <section className="relative z-10 overflow-hidden pt-36 pb-20 px-6 md:pt-48 md:pb-32">
       <GridPattern
@@ -47,12 +49,14 @@ export function Hero() {
           </p>
 
           <div className="flex flex-col items-center justify-center gap-4 pt-4 sm:flex-row sm:gap-5">
-            <Link href="/sign-up">
-              <ShimmerButton className="h-12 px-8 text-sm font-semibold uppercase tracking-wider">
-                Open the platform
-                <ArrowRight className="ml-2 inline h-4 w-4" />
-              </ShimmerButton>
-            </Link>
+            <ShimmerButton
+              type="button"
+              onClick={() => router.push('/sign-up')}
+              className="h-12 px-8 text-sm font-semibold uppercase tracking-wider"
+            >
+              Open the platform
+              <ArrowRight className="ml-2 inline h-4 w-4" />
+            </ShimmerButton>
             <div
               aria-hidden
               className="hidden sm:flex items-center gap-3 text-zinc-600"

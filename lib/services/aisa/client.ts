@@ -93,7 +93,11 @@ export async function aisaFetch<T>(
     method: options.method ?? (options.body === undefined ? 'GET' : 'POST'),
     headers: buildHeaders(),
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    signal: options.signal ?? AbortSignal.timeout(getTimeoutMs()),
+    signal: AbortSignal.any(
+      [options.signal, AbortSignal.timeout(getTimeoutMs())].filter(
+        (signal): signal is AbortSignal => signal !== undefined,
+      ),
+    ),
   }).catch((error: unknown) => {
     if (isLangfuseEnabled()) {
       try {

@@ -358,8 +358,12 @@ function extractTopThemes(items: SocialItem[]): string[] {
 export async function synthesizeSocialReport(input: {
   query: string
   userId?: string
+  brand?: string
+  competitors?: string[]
 }): Promise<{ report: SocialReport; source: 'synthesis' }> {
   const query = input.query
+  const brand = input.brand
+  const competitors = input.competitors
 
   const [twitterResult, redditResult, exaResult] = await Promise.allSettled([
     runTwitterSearch({ query, userId: input.userId }),
@@ -419,7 +423,14 @@ export async function synthesizeSocialReport(input: {
   const activeSources = [twitter, reddit, exa].filter((s) => s.count > 0).length
   const topThemes = extractTopThemes(allItems)
   const totalItems = allItems.length
-  const summary = `Found ${totalItems} social mentions across ${activeSources} sources. Top themes: ${topThemes.join(', ')}.`
+  const brandContext = brand
+    ? competitors?.length
+      ? ` for brand "${brand}" (vs ${competitors.join(', ')})`
+      : ` for brand "${brand}"`
+    : competitors?.length
+      ? ` (competitors: ${competitors.join(', ')})`
+      : ''
+  const summary = `Found ${totalItems} social mentions across ${activeSources} sources${brandContext}. Top themes: ${topThemes.join(', ')}.`
 
   const report: SocialReport = {
     query,
@@ -579,7 +590,7 @@ export function getSocialTools(userId?: string): Record<string, Tool> {
         brand: z.string().optional().describe('Optional brand name to focus the report'),
         competitors: z.array(z.string()).optional().describe('Optional competitor names to include in the report'),
       }),
-      execute: async ({ query }) => synthesizeSocialReport({ query, userId }),
+      execute: async ({ query, brand, competitors }) => synthesizeSocialReport({ query, userId, brand, competitors }),
     }),
   }
 }

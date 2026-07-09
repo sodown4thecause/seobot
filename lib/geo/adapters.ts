@@ -4,8 +4,8 @@ import type { GeoEngine, GeoEngineAdapter, GeoEngineAdapterInput, GeoEngineResul
 class GeoEngineAdapterImpl implements GeoEngineAdapter {
   constructor(private readonly engine: GeoEngine) {}
 
-  async runPrompt(input: GeoEngineAdapterInput): Promise<GeoEngineResult> {
-    return runAisaGeoPrompt(this.engine, input)
+  async runPrompt(input: GeoEngineAdapterInput, userId?: string): Promise<GeoEngineResult> {
+    return runAisaGeoPrompt(this.engine, input, userId)
   }
 }
 

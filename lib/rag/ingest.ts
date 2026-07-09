@@ -42,7 +42,7 @@ const CHUNK_OVERLAP = 300
 const MIN_CHUNK_SIZE = 50
 
 export function computeContentHash(url: string, title: string, content: string): string {
-  const fingerprint = `${url}|${title}|${content.slice(0, 500)}`
+  const fingerprint = `${url}|${title}|${content}`
   return createHash('sha256').update(fingerprint).digest('hex')
 }
 

@@ -20,7 +20,7 @@ export interface GeoEngineAdapterInput {
 }
 
 export interface GeoEngineAdapter {
-  runPrompt(input: GeoEngineAdapterInput): Promise<GeoEngineResult>
+  runPrompt(input: GeoEngineAdapterInput, userId?: string): Promise<GeoEngineResult>
 }
 
 export interface GeoVisibilityAnalysis {

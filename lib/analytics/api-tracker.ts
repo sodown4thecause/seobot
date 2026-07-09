@@ -107,9 +107,11 @@ export function calculateCost(
     return (tokensOrUnits / 1000) * costs['gpt-4o-mini-input']
   }
 
-  // For other services, use first available cost
-  const firstCost = Object.values(costs)[0]
-  return (tokensOrUnits / 1000) * firstCost
+  const matchedKey = Object.keys(costs).find(key => key !== 'default' && endpoint.includes(key))
+  const cost = matchedKey
+    ? costs[matchedKey]
+    : (costs['default'] ?? Object.values(costs)[0])
+  return (tokensOrUnits / 1000) * cost
 }
 
 /**

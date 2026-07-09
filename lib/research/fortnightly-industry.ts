@@ -292,32 +292,6 @@ export async function runFortnightlyIndustryResearchForMode(
     const packetJson = packets.map(toJsonPacket)
     const citationUrls = citations.map(citation => citation.url)
 
-    const ingest = await ingestRagDocument({
-      mode,
-      sourceType: 'fortnightly_industry_research',
-      title: `${mode.toUpperCase()} fortnightly industry research ${new Date().toISOString().slice(0, 10)}`,
-      rawMarkdown: synthesis.summary,
-      rawJson: {
-        packets: packetJson,
-        citationUrls,
-      },
-      metadata: {
-        researchJobId: job.id,
-        generatedBy: synthesis.model,
-        cadence: 'fortnightly',
-        sourceProvider: 'perplexity',
-        queryCount: packets.length,
-        successfulQueryCount: successfulPackets.length,
-        sourceCount: citations.length,
-      },
-      chunking: {
-        strategy: 'markdown-section',
-        maxChars: 3600,
-        overlapChars: 450,
-        minChars: 120,
-      },
-    })
-
     const sourcePages = await fetchCitedSourcePages(citations, MODE_RESEARCH_QUESTIONS[mode])
     let sourcePageChunkCount = 0
     for (const page of sourcePages) {
@@ -344,6 +318,32 @@ export async function runFortnightlyIndustryResearchForMode(
       })
       if (!pageIngest.skipped) sourcePageChunkCount += pageIngest.chunkCount
     }
+
+    const ingest = await ingestRagDocument({
+      mode,
+      sourceType: 'fortnightly_industry_research',
+      title: `${mode.toUpperCase()} fortnightly industry research ${new Date().toISOString().slice(0, 10)}`,
+      rawMarkdown: synthesis.summary,
+      rawJson: {
+        packets: packetJson,
+        citationUrls,
+      },
+      metadata: {
+        researchJobId: job.id,
+        generatedBy: synthesis.model,
+        cadence: 'fortnightly',
+        sourceProvider: 'perplexity',
+        queryCount: packets.length,
+        successfulQueryCount: successfulPackets.length,
+        sourceCount: citations.length,
+      },
+      chunking: {
+        strategy: 'markdown-section',
+        maxChars: 3600,
+        overlapChars: 450,
+        minChars: 120,
+      },
+    })
 
     const rawJson = {
       packets: packetJson,

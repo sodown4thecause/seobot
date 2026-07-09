@@ -49,7 +49,7 @@ export function MessageBubble({
         name={name}
         aria-label={name}
         className={cn(
-          'mt-1 rounded-full border p-1',
+          'mt-1 rounded-full border',
           isUser
             ? 'border-zinc-700 bg-zinc-800/80 text-zinc-200'
             : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'

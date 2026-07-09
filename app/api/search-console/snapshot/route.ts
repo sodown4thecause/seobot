@@ -75,7 +75,7 @@ export async function POST(request: Request) {
         ok: false,
         error: error instanceof Error ? error.message : 'Unable to import Search Console snapshot',
       },
-      { status: 400 }
+      { status: 500 }
     )
   }
 }

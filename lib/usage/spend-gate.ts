@@ -26,6 +26,7 @@ export async function checkSpendGate(
         monthlyCreditLimitUsd: userUsageLimits.monthlyCreditLimitUsd,
         isUnlimited: userUsageLimits.isUnlimited,
         isPaused: userUsageLimits.isPaused,
+        pauseUntil: userUsageLimits.pauseUntil,
       })
       .from(userUsageLimits)
       .where(eq(userUsageLimits.userId, userId))
@@ -35,7 +36,9 @@ export async function checkSpendGate(
       return { allowed: true }
     }
 
-    if (limits.isPaused) {
+    const now = new Date()
+    const pauseExpired = limits.pauseUntil !== null && new Date(limits.pauseUntil) <= now
+    if (limits.isPaused && !pauseExpired) {
       return { allowed: false, reason: 'Account paused' }
     }
 
@@ -44,7 +47,6 @@ export async function checkSpendGate(
     }
 
     const monthlyLimit = Number(limits.monthlyCreditLimitUsd)
-    const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 

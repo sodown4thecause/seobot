@@ -57,8 +57,8 @@ export async function searchExaSocialSources(params: {
         text: {
           maxCharacters: 1000,
         },
+        highlights: true,
       },
-      highlights: true,
     }
     if (params.startDate) {
       body.start = params.startDate
@@ -75,7 +75,9 @@ export async function searchExaSocialSources(params: {
     })
     clearTimeout(timeoutId)
 
-    if (!response.ok) return []
+    if (!response.ok) {
+      throw new Error(`Exa search request failed: ${response.status} ${response.statusText}`)
+    }
 
     const data = (await response.json()) as ExaSearchResponse
     const sources = (data.results ?? [])
@@ -94,8 +96,8 @@ export async function searchExaSocialSources(params: {
       }))
 
     return sources
-  } catch {
+  } catch (error) {
     clearTimeout(timeoutId)
-    return []
+    throw error
   }
 }

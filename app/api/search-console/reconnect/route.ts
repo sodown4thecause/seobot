@@ -16,20 +16,19 @@ export async function POST() {
   }
 
   try {
-    const [account] = await db
+    const accounts = await db
       .select({ scope: authSchema.account.scope })
       .from(authSchema.account)
       .where(and(
         eq(authSchema.account.userId, userId),
         eq(authSchema.account.providerId, 'google'),
       ))
-      .limit(1)
 
-    if (!account) {
+    if (accounts.length === 0) {
       return NextResponse.json({ ok: true, needsReconnect: false, hasGoogleAccount: false })
     }
 
-    const needsReconnect = !hasGoogleSearchConsoleScope(account.scope)
+    const needsReconnect = !accounts.some(account => hasGoogleSearchConsoleScope(account.scope))
     return NextResponse.json({ ok: true, needsReconnect, hasGoogleAccount: true })
   } catch (error) {
     return NextResponse.json(

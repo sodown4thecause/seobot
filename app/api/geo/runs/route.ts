@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         brand,
         competitors,
         topic: body.topic,
-      })
+      }, userId)
 
       const analysis = await analyzeGeoVisibility({
         brand,

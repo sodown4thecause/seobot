@@ -180,6 +180,11 @@ function platformLabel(platform: SocialPlatform) {
   return 'Social'
 }
 
+function isSafeUrl(value: string | undefined): boolean {
+  if (!value) return false
+  return value.startsWith('http://') || value.startsWith('https://')
+}
+
 function platformClasses(platform: SocialPlatform) {
   if (platform === 'x') return 'border-sky-500/30 text-sky-300'
   if (platform === 'reddit') return 'border-orange-500/30 text-orange-300'
@@ -190,7 +195,10 @@ function platformClasses(platform: SocialPlatform) {
 export function SocialListeningResult({ toolInvocation }: SocialListeningResultProps) {
   const result = toolInvocation.result
   const record = asRecord(result)
-  const isLoading = toolInvocation.state !== 'result' && toolInvocation.state !== 'output-available'
+  const isLoading =
+    toolInvocation.state !== 'result' &&
+    toolInvocation.state !== 'output-available' &&
+    toolInvocation.state !== 'error'
   const success = record?.success !== false
   const items = normalizeSocialItems(result, toolInvocation.toolName)
   const isSynthesis = toolInvocation.toolName === 'synthesize_social_report'
@@ -296,7 +304,7 @@ export function SocialListeningResult({ toolInvocation }: SocialListeningResultP
               <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-zinc-300">{item.text}</p>
               {item.url ? (
                 <a
-                  href={item.url}
+                  href={isSafeUrl(item.url) ? item.url : '#'}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-3 inline-flex items-center gap-1.5 text-xs text-rose-300 hover:text-rose-200"
