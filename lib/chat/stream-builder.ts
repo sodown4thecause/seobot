@@ -10,7 +10,9 @@ import {
   streamText,
   tool,
   type ModelMessage,
-  stepCountIs,
+  isStepCount,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
   createIdGenerator,
   type UIMessage,
 } from 'ai'
@@ -22,6 +24,7 @@ import { generateAndSaveContentImageAsset } from '@/lib/ai/content-image-assets'
 import { db, libraryItems, type Json } from '@/lib/db'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
 import { logAIUsage } from '@/lib/analytics/usage-logger'
+import { appLogger } from '@/lib/observability/app-logger'
 import type { AgentType } from './intent-classifier'
 import type { Tool } from 'ai'
 import type { GatewayModelId } from '@ai-sdk/gateway'
@@ -561,7 +564,7 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
   const result = streamText({
     model: vercelGateway.languageModel(CHAT_MODEL_ID),
     messages: modelMessages,
-    system: systemPrompt,
+    instructions: systemPrompt,
     tools: allTools,
     toolChoice: 'auto',
     abortSignal,
@@ -574,9 +577,9 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
     // AI SDK 6: Use stopWhen instead of maxSteps
     // Per-agent step limits prevent excessive sequential tool calls (each DataForSEO call = 5-30s)
     stopWhen: [
-      stepCountIs(maxSteps),
+      isStepCount(maxSteps),
     ],
-    experimental_telemetry: createTelemetryConfig('chat-stream', {
+    telemetry: createTelemetryConfig('chat-stream', {
       userId,
       sessionId: conversationId,
       agentType,
@@ -591,10 +594,16 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
       mcpJinaEnabled: agentType === 'content',
       mcpWinstonEnabled: agentType === 'content',
     }),
-    onFinish: async ({ response, usage }) => {
-      console.log('[Stream Builder] streamText onFinish:', {
-        messagesCount: response.messages.length,
-        usage,
+    onEnd: async ({ response, usage }) => {
+      appLogger.info('Chat stream finished', {
+        endpoint: 'chat-stream',
+        userId,
+        conversationId,
+        agentType,
+        metadata: {
+          messagesCount: response.messages.length,
+          usage,
+        },
       })
 
       if (userId) {
@@ -613,21 +622,27 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
             },
           })
         } catch (logError) {
-          console.error('[Stream Builder] Failed to log AI usage:', logError)
+          appLogger.error('Failed to log AI usage from chat stream', {
+            endpoint: 'chat-stream',
+            userId,
+            conversationId,
+            agentType,
+            metadata: { error: logError instanceof Error ? logError.message : String(logError) },
+          })
         }
       }
     },
     onAbort: () => {
-      console.log('[Stream Builder] Stream aborted by client disconnect')
+      appLogger.info('Chat stream aborted by client disconnect', {
+        endpoint: 'chat-stream',
+        userId,
+        conversationId,
+      })
     },
   })
 
-  // Return streaming response
-  return result.toUIMessageStreamResponse({
-    headers: {
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
+  const uiStream = toUIMessageStream({
+    stream: result.stream,
     originalMessages,
     generateMessageId: serverMessageIdGenerator,
     onFinish: async ({ messages: uiMessages }) => {
@@ -639,6 +654,14 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
       if (onFinish && uiMessages?.length) {
         await onFinish({ messages: uiMessages })
       }
+    },
+  })
+
+  return createUIMessageStreamResponse({
+    stream: uiStream,
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
     },
   })
 }

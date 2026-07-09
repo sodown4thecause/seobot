@@ -11,12 +11,13 @@ import {
 } from '@/lib/chat/modes'
 
 describe('chat modes config', () => {
-  it('defines all three modes with consistent accents', () => {
-    expect(CHAT_MODES).toEqual(['seo', 'geo', 'content'])
-    expect(CHAT_MODE_LIST).toHaveLength(3)
+  it('defines all modes with consistent accents', () => {
+    expect(CHAT_MODES).toEqual(['seo', 'geo', 'content', 'social'])
+    expect(CHAT_MODE_LIST).toHaveLength(4)
     expect(CHAT_MODE_UI.seo.accent).toBe('emerald')
     expect(CHAT_MODE_UI.geo.accent).toBe('violet')
     expect(CHAT_MODE_UI.content.accent).toBe('amber')
+    expect(CHAT_MODE_UI.social.accent).toBe('rose')
   })
 
   it('uses Content Mode as the public content label', () => {
@@ -26,6 +27,7 @@ describe('chat modes config', () => {
 
   it('normalizes unknown mode to seo', () => {
     expect(normalizeChatMode('geo')).toBe('geo')
+    expect(normalizeChatMode('social')).toBe('social')
     expect(normalizeChatMode('invalid')).toBe('seo')
     expect(normalizeChatMode(undefined)).toBe('seo')
   })
@@ -48,6 +50,7 @@ describe('chat modes config', () => {
     expect(CHAT_MODE_LABELS.seo).toBe('SEO')
     expect(CHAT_MODE_LABELS.geo).toBe('GEO / AEO')
     expect(CHAT_MODE_LABELS.content).toBe('Content')
+    expect(CHAT_MODE_LABELS.social).toBe('Social')
     expect(CHAT_MODE_UI.seo.label).toBe('SEO Mode')
   })
 

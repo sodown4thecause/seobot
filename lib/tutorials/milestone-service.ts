@@ -92,22 +92,6 @@ export class MilestoneService {
       category: 'mastery',
     },
     {
-      id: 'local-seo-expert',
-      title: 'Local SEO Expert',
-      description: 'Complete the local SEO tutorial',
-      icon: '📍',
-      requirement: {
-        type: 'tutorials_completed',
-        tutorialIds: ['local-seo-guide'],
-      },
-      reward: {
-        badge: 'Local SEO Expert',
-        badgeIcon: '📍',
-        points: 30,
-      },
-      category: 'achievement',
-    },
-    {
       id: 'link-builder',
       title: 'Link Builder',
       description: 'Complete the link building tutorial',

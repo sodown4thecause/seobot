@@ -58,6 +58,11 @@ interface BacklinkData {
     targetUrl?: string
     anchorText?: string
     referringDomain?: string
+    sourceDomain?: string
+    linkType?: string
+    backlinks?: number
+    referring_domains?: number
+    totalCount?: number
 }
 
 interface BacklinksTableProps {
@@ -108,12 +113,74 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
     }
 
     // Handle different potential result structures from n8n
+    const backlinkCollection = result.backlinks && typeof result.backlinks === 'object' && !Array.isArray(result.backlinks)
+        ? result.backlinks
+        : null
+    const referringDomainCollection = result.referringDomains && typeof result.referringDomains === 'object' && !Array.isArray(result.referringDomains)
+        ? result.referringDomains
+        : null
+    const anchorCollection = result.anchors && typeof result.anchors === 'object' && !Array.isArray(result.anchors)
+        ? result.anchors
+        : null
+
     const backlinks: BacklinkData[] = Array.isArray(result.backlinks)
         ? result.backlinks
-        : (Array.isArray(result.results) ? result.results : [])
+        : Array.isArray(backlinkCollection?.items)
+            ? backlinkCollection.items
+            : Array.isArray(referringDomainCollection?.items)
+                ? referringDomainCollection.items
+                : Array.isArray(anchorCollection?.items)
+                    ? anchorCollection.items
+                    : (Array.isArray(result.results) ? result.results : [])
 
-    const domain = result.domain || 'Target Domain'
-    const totalCount = result.total_backlinks || result.backlinksCount || backlinks.length
+    const summary = result.summary && typeof result.summary === 'object' ? result.summary : null
+    const domain = result.domain || result.target || backlinkCollection?.target || referringDomainCollection?.target || summary?.target || 'Target Domain'
+    const totalCount =
+        result.total_backlinks ||
+        result.backlinksCount ||
+        backlinkCollection?.totalCount ||
+        referringDomainCollection?.totalCount ||
+        summary?.backlinks ||
+        backlinks.length
+    const referringDomainCount =
+        result.referringDomainsCount ||
+        summary?.referringDomains ||
+        (Array.isArray(referringDomainCollection?.items) ? referringDomainCollection.items.length : undefined)
+
+    if (backlinks.length === 0 && summary) {
+        return (
+            <Card className="w-full bg-[#0a0a0a] border-zinc-800/50 text-white overflow-hidden my-6 shadow-2xl shadow-indigo-500/10">
+                <CardHeader className="bg-zinc-900/30 border-b border-zinc-800/50 pb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+                            <Link2 className="w-5 h-5 text-indigo-400" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-lg font-semibold text-zinc-100">Backlink Summary</CardTitle>
+                            <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1.5">
+                                <Globe className="w-3 h-3" /> {sanitizeDisplayText(String(domain))}
+                            </p>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-3 p-4 md:grid-cols-4">
+                    {[
+                        ['Backlinks', summary.backlinks],
+                        ['Referring domains', summary.referringDomains],
+                        ['Broken backlinks', summary.brokenBacklinks],
+                        ['Spam score', summary.spamScore],
+                    ].map(([label, value]) => (
+                        <div key={label} className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+                            <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
+                            <p className="mt-1 text-lg font-semibold text-zinc-100">
+                                {typeof value === 'number' ? value.toLocaleString() : '--'}
+                            </p>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+        )
+    }
 
     if (backlinks.length === 0) {
         return (
@@ -138,7 +205,7 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
     // Helper to get target URL
     const getTargetUrl = (link: BacklinkData) => link.targetUrl || link.target_url || null
     // Helper to get referring domain
-    const getReferringDomain = (link: BacklinkData) => link.referringDomain || link.domain || null
+    const getReferringDomain = (link: BacklinkData) => link.referringDomain || link.sourceDomain || link.domain || null
 
     return (
         <Card className="w-full bg-[#0a0a0a] border-zinc-800/50 text-white overflow-hidden my-6 shadow-2xl shadow-indigo-500/10">
@@ -161,6 +228,11 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
                         <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-300 border-indigo-500/20 px-2.5 py-0.5">
                             {totalCount} Backlinks
                         </Badge>
+                        {referringDomainCount && (
+                            <Badge variant="outline" className="border-zinc-700 text-zinc-300 px-2.5 py-0.5">
+                                {referringDomainCount} Domains
+                            </Badge>
+                        )}
                     </div>
                 </div>
             </CardHeader>
@@ -218,12 +290,12 @@ export function BacklinksTable({ toolInvocation }: BacklinksTableProps) {
                                         <TableCell className="text-center">
                                             <Badge
                                                 variant="outline"
-                                                className={link.type === 'dofollow'
+                                                className={(link.type || link.linkType) === 'dofollow'
                                                     ? "bg-emerald-500/5 text-emerald-400/90 border-emerald-500/20 text-[10px]"
                                                     : "bg-zinc-800 text-zinc-400 border-zinc-700 text-[10px]"
                                                 }
                                             >
-                                                {sanitizeDisplayText(link.type) || 'link'}
+                                                {sanitizeDisplayText(link.type || link.linkType) || 'link'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right pr-6">

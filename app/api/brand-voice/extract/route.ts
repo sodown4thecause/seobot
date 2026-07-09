@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     const { text } = await generateText({
       model: vercelGateway.languageModel('google/gemini-2.0-pro-exp-02-05'),
       prompt: prompt,
-      system: 'You are an expert brand strategist. Output ONLY valid JSON.',
+      instructions: 'You are an expert brand strategist. Output ONLY valid JSON.',
     })
     
     const cleanText = text.replace(/```json\n|\n```/g, '').replace(/```/g, '')

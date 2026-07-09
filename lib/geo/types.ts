@@ -8,7 +8,7 @@ export interface GeoEngineResult {
   citedDomains: string[]
   rawJson?: unknown
   capturedAt: string
-  status: 'completed' | 'skipped' | 'not_configured' | 'error'
+  status: 'completed' | 'skipped' | 'not_configured' | 'error' | 'cost_exceeded'
   error?: string
 }
 
@@ -20,7 +20,7 @@ export interface GeoEngineAdapterInput {
 }
 
 export interface GeoEngineAdapter {
-  runPrompt(input: GeoEngineAdapterInput): Promise<GeoEngineResult>
+  runPrompt(input: GeoEngineAdapterInput, userId?: string): Promise<GeoEngineResult>
 }
 
 export interface GeoVisibilityAnalysis {

@@ -20,6 +20,7 @@ import { SERPTable } from './tool-ui/serp-table'
 import { FirecrawlResults } from './tool-ui/firecrawl-results'
 import { CompetitorAnalysisTable } from './tool-ui/competitor-analysis-table'
 import { GeoBrandScanResults } from './tool-ui/geo-brand-scan-results'
+import { SocialListeningResult } from './tool-ui/social-listening-result'
 import { SchemaMarkupResult } from './tool-ui/schema-markup-result'
 import { CrawlabilityAuditResult } from './tool-ui/crawlability-audit-result'
 import { GeoFixPlanResult } from './tool-ui/geo-fix-plan-result'
@@ -32,6 +33,8 @@ import { BlogArtifact } from './artifacts/blog-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
 import { useChatModeOptional } from './chat-mode-context'
 import { getChatModeAccentClasses, getChatModeUi } from '@/lib/chat/modes'
+import { captureProductEvent } from '@/components/providers/analytics-provider'
+import { PRODUCT_EVENTS } from '@/lib/analytics/product-events'
 import { DEFAULT_GEO_ENGINES } from '@/lib/geo/utils'
 import { DataPartRenderer } from './generative-ui/registry'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -43,7 +46,7 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from '@/components/ai-elements/conversation'
-import { Message as AIMessage, MessageAvatar, MessageContent } from '@/components/ai-elements/message'
+import { MessageBubble } from '@/components/chat/message-bubble'
 import { AgentHandoffCard } from './agent-handoff-card'
 import { Response } from '@/components/ai-elements/response'
 import { Loader } from '@/components/ai-elements/loader'
@@ -240,6 +243,11 @@ const TOOL_COMPONENTS: Record<string, any> = {
 
   // Backlink tools
   n8n_backlinks: BacklinksTable,
+  legacy_n8n_backlinks: BacklinksTable,
+  aisa_backlinks_summary: BacklinksTable,
+  aisa_backlinks_list: BacklinksTable,
+  aisa_referring_domains: BacklinksTable,
+  aisa_backlink_anchors: BacklinksTable,
 
   // Competitor tools
   dataforseo_labs_google_competitors_domain: CompetitorAnalysisTable,
@@ -258,6 +266,10 @@ const TOOL_COMPONENTS: Record<string, any> = {
   generate_schema_markup: SchemaMarkupResult,
   ai_crawlability_audit: CrawlabilityAuditResult,
   geo_generate_fix: GeoFixPlanResult,
+
+  // Social tools
+  aisa_x_search: SocialListeningResult,
+  reddit_social_search: SocialListeningResult,
 }
 
 // ... ToolInvocation Component (Keeping it as is for functionality) ...
@@ -985,8 +997,12 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     }
 
     sendMessage({ text: data.text })
+    captureProductEvent(PRODUCT_EVENTS.CHAT_MESSAGE_SENT, {
+      mode: chatMode,
+      conversationId: conversationId ?? undefined,
+    })
     setInput('') // Clear input after sending (AI SDK 6 best practice)
-  }, [conversationId, isBootstrapping, sendMessage, messages.length, setFocus])
+  }, [conversationId, isBootstrapping, sendMessage, messages.length, setFocus, chatMode])
 
   const handleComponentSubmit = useCallback((componentType: string, data: any) => {
     if (onComponentSubmit) onComponentSubmit(componentType, data)
@@ -1356,7 +1372,13 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       { id: 'faq-page', text: 'Write an FAQ page targeting "People Also Ask" questions for the keyword "content marketing strategy"', icon: 'sparkles' as const },
       { id: 'blog-post', text: 'Generate a blog post about Core Web Vitals optimization — include current Google benchmarks', icon: 'zap' as const },
     ]
-    const modeMap = { seo: seoSuggestions, geo: geoSuggestions, content: contentSuggestions }
+    const socialSuggestions = [
+      { id: 'x-mentions', text: 'Search X for recent mentions of Flow Intent and summarize the main narratives, praise, complaints, and opportunities', icon: 'sparkles' as const },
+      { id: 'reddit-pain-points', text: 'Search Reddit for pain points around AI SEO tools and group them into content opportunities', icon: 'target' as const },
+      { id: 'competitor-social', text: 'Compare social reactions to Ahrefs and Semrush launches and find positioning gaps we can use', icon: 'search' as const },
+      { id: 'social-trends', text: 'Find emerging social-web trends for GEO and AI search across X, Reddit, and forums', icon: 'zap' as const },
+    ]
+    const modeMap = { seo: seoSuggestions, geo: geoSuggestions, content: contentSuggestions, social: socialSuggestions }
     const defaultSuggestions = modeMap[chatMode] ?? seoSuggestions
 
     const activeModeUi = getChatModeUi(chatMode)
@@ -1614,6 +1636,88 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       )
     }
 
+    if (chatMode === 'social') {
+      const socialUi = getChatModeUi('social')
+      const socialAccent = getChatModeAccentClasses('social')
+      return (
+        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
+          <div className="w-full max-w-3xl space-y-6 py-4">
+            <div className="flex justify-center">
+              <ChatModeSelector />
+            </div>
+
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">{socialUi.heroTitle}</h1>
+              <p className="text-zinc-400 text-base max-w-xl mx-auto">{socialUi.tagline}</p>
+            </div>
+
+            <div className={cn('rounded-2xl border p-5 space-y-4', socialAccent.borderPanel, socialAccent.bgPanel)}>
+              <p className={cn('text-xs font-mono uppercase tracking-widest', socialAccent.textLabel)}>Signal map</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { step: '1', label: 'Public mentions', detail: 'Track brand, product, and founder terms across X/Twitter and Reddit.' },
+                  { step: '2', label: 'Audience language', detail: 'Group objections, pain points, questions, and buying triggers into usable themes.' },
+                  { step: '3', label: 'Competitor reaction', detail: 'Compare how people talk about competing launches, features, and pricing changes.' },
+                  { step: '4', label: 'Content angles', detail: 'Turn repeat language into SEO, GEO, and social content opportunities.' },
+                ].map(({ step, label, detail }) => (
+                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                    <div className={cn('w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 mt-0.5', socialAccent.stepRing)}>{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+              {[
+                { label: 'X/Twitter', sub: 'mentions and trends' },
+                { label: 'Reddit', sub: 'pain points and gaps' },
+                { label: 'Social Web', sub: 'forums and sources' },
+              ].map(({ label, sub }) => (
+                <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+                  <p className="text-sm font-semibold text-zinc-200">{label}</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{sub}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="w-full">
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSubmit={() => handleSendMessage({ text: input })}
+                disabled={isLoading}
+                placeholder="Search a brand, competitor, category, or audience pain point..."
+                className="bg-transparent"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {socialSuggestions.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSendMessage({ text: s.text })}
+                    className={cn(
+                      'text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:text-zinc-100 transition-all duration-200',
+                      socialAccent.promptHoverBorder,
+                      socialAccent.promptHoverBg
+                    )}
+                  >
+                    {s.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-zinc-950 font-chat", className)}>
         <div className="w-full max-w-4xl space-y-6">
@@ -1668,57 +1772,58 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               const isContentAssistant = chatMode === 'content' && m.role === 'assistant' && text.length > 200
               const messageId = m.id || `message-${idx}`
 
-              return (
-                <AIMessage key={messageId} from={m.role as any}>
-                  <MessageAvatar isUser={m.role === 'user'} name={m.role === 'user' ? "You" : "AI"} />
-                  <MessageContent>
-                    {isContentAssistant ? (
-                      <BlogArtifact
-                        content={text}
-                        isStreaming={isLastMsg && isLoading}
-                      />
+              const actions = m.role === 'assistant' && text.trim().length > 0 && !isContentAssistant ? (
+                <>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer"
+                    onClick={() => copyToClipboard(text, messageId)}
+                    aria-label="Copy response"
+                  >
+                    {copiedId === messageId ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                        Copied
+                      </>
                     ) : (
-                      renderMessageContent(m, text, isLastMsg)
+                      <>
+                        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                        Copy
+                      </>
                     )}
-                    {m.role === 'assistant' && text.trim().length > 0 && !isContentAssistant && (
-                      <div className="mt-2 flex flex-wrap items-center gap-3">
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer"
-                          onClick={() => copyToClipboard(text, messageId)}
-                          aria-label="Copy response"
-                        >
-                          {copiedId === messageId ? (
-                            <>
-                              <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                              Copy
-                            </>
-                          )}
-                        </button>
-                        {isLastMsg && !isLoading && (
-                          <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
-                        )}
-                      </div>
-                    )}
-                  </MessageContent>
-                </AIMessage>
+                  </button>
+                  {isLastMsg && !isLoading && (
+                    <button type="button" className="text-xs text-zinc-500 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded transition-colors cursor-pointer" onClick={() => regenerate?.()} aria-label="Regenerate response">Regenerate</button>
+                  )}
+                </>
+              ) : null
+
+              return (
+                <MessageBubble
+                  key={messageId}
+                  role={m.role === 'user' ? 'user' : 'assistant'}
+                  actions={actions}
+                  layout={isContentAssistant ? 'artifact' : 'default'}
+                  isStreaming={isLastMsg && isLoading}
+                >
+                  {isContentAssistant ? (
+                    <BlogArtifact
+                      content={text}
+                      isStreaming={isLastMsg && isLoading}
+                    />
+                  ) : (
+                    renderMessageContent(m, text, isLastMsg)
+                  )}
+                </MessageBubble>
               )
             })}
             {showThinkingIndicator && (
-              <AIMessage from="assistant">
-                <MessageAvatar isUser={false} name="AI" />
-                <MessageContent>
-                  <div className="flex items-center gap-2 text-zinc-400" role="status" aria-live="polite" aria-label="AI is thinking">
-                    <Loader2 size={16} className="text-emerald-400 animate-spin" aria-hidden="true" />
-                    <span>Thinking...</span>
-                  </div>
-                </MessageContent>
-              </AIMessage>
+              <MessageBubble role="assistant" isStreaming>
+                <div className="flex items-center gap-2 text-zinc-400" role="status" aria-live="polite" aria-label="AI is thinking">
+                  <Loader2 size={16} className="text-emerald-400 animate-spin" aria-hidden="true" />
+                  <span>Thinking...</span>
+                </div>
+              </MessageBubble>
             )}
               </>
             )}

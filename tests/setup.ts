@@ -26,6 +26,7 @@ process.env.PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY || 'pplx-test-ke
 process.env.JINA_API_KEY = process.env.JINA_API_KEY || 'jina-test-key'
 process.env.GOOGLE_GENERATIVE_AI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || 'test-gemini-key'
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'sk-test-key'
+process.env.AISA_API_KEY = process.env.AISA_API_KEY || 'sk-aisa-test-key'
 process.env.DATABASE_URL =
   process.env.DATABASE_URL || 'postgres://test:test@localhost:5432/testdb'
 
@@ -41,6 +42,11 @@ vi.mock('@/lib/auth', () => ({
       })),
     },
   },
+  getCurrentUser: vi.fn(async () => ({
+    id: 'test-user-id',
+    email: 'test@test.com',
+    name: 'Test User',
+  })),
 }))
 
 // Mock env config to bypass validation in tests
@@ -55,6 +61,9 @@ const { mockServerEnv } = vi.hoisted(() => ({
     OPENAI_API_KEY: 'sk-test-key',
     ELMO_API_URL: 'https://geo.flowintent.com',
     ELMO_API_KEY: 'test-api-key',
+    AISA_API_KEY: 'sk-aisa-test-key',
+    AISA_BASE_URL: 'https://api.aisa.one',
+    AISA_TIMEOUT_MS: 90000,
   },
 }))
 

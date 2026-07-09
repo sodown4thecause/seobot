@@ -24,7 +24,6 @@ export interface UserMode {
   featureAccess: {
     advancedAnalytics: boolean
     bulkOperations: boolean
-    whiteLabeling: boolean
     apiAccess: boolean
     customWorkflows: boolean
   }
@@ -77,7 +76,6 @@ export const USER_MODE_CONFIGS: Record<UserModeLevel, Omit<UserMode, 'level'>> =
     featureAccess: {
       advancedAnalytics: false,
       bulkOperations: false,
-      whiteLabeling: false,
       apiAccess: false,
       customWorkflows: false
     }
@@ -103,7 +101,6 @@ export const USER_MODE_CONFIGS: Record<UserModeLevel, Omit<UserMode, 'level'>> =
     featureAccess: {
       advancedAnalytics: true,
       bulkOperations: true,
-      whiteLabeling: false,
       apiAccess: false,
       customWorkflows: true
     }
@@ -120,7 +117,6 @@ export const USER_MODE_CONFIGS: Record<UserModeLevel, Omit<UserMode, 'level'>> =
     capabilities: [
       'enterprise-analytics',
       'multi-client-management',
-      'white-label-reporting',
       'api-integration',
       'custom-workflows',
       'team-collaboration',
@@ -130,7 +126,6 @@ export const USER_MODE_CONFIGS: Record<UserModeLevel, Omit<UserMode, 'level'>> =
     featureAccess: {
       advancedAnalytics: true,
       bulkOperations: true,
-      whiteLabeling: true,
       apiAccess: true,
       customWorkflows: true
     }

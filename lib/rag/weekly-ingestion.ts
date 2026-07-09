@@ -124,6 +124,15 @@ export async function runWeeklyIngestion(
         continue
       }
 
+      if (mode === 'social') {
+        results.push({
+          mode,
+          status: 'complete',
+          chunkCount: 0,
+        })
+        continue
+      }
+
       // mode is narrowed to 'seo' | 'geo' here.
       const research = await runWeeklyResearch(mode)
       results.push({

@@ -129,6 +129,36 @@ export const MODE_SKILLS: Record<ChatMode, ModeSkill[]> = {
         'Repurpose my latest post into channel-native variants for LinkedIn, X, and a newsletter blurb.',
     },
   ],
+  social: [
+    {
+      id: 'x-mention-scan',
+      label: 'X mention scan',
+      description: 'What people are saying on X right now',
+      prompt:
+        'Search X for recent mentions of my brand and summarize the main narratives, complaints, praise, and useful quotes.',
+    },
+    {
+      id: 'reddit-pain-points',
+      label: 'Reddit pain points',
+      description: 'Customer language and unmet needs from Reddit',
+      prompt:
+        'Search Reddit for customer pain points in my category and group the findings by problem, urgency, and content opportunity.',
+    },
+    {
+      id: 'competitor-social',
+      label: 'Competitor reactions',
+      description: 'Launch and competitor conversation tracking',
+      prompt:
+        'Monitor social reactions to my top competitors and identify the positioning gaps we can use in content and GEO campaigns.',
+    },
+    {
+      id: 'social-trend-map',
+      label: 'Trend map',
+      description: 'Emerging narratives across social-web sources',
+      prompt:
+        'Find emerging social-web trends for my market across X, Reddit, and web discussions, then rank them by SEO and GEO opportunity.',
+    },
+  ],
 }
 
 export function getModeSkills(mode: ChatMode): ModeSkill[] {

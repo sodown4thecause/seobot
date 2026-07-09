@@ -2,11 +2,10 @@
  * API Analytics Tracker
  * 
  * Tracks API calls to external services.
- * NOTE: This requires api_usage_logs table in the database schema.
- * Currently logs to console only until the table is added to lib/db/schema.ts
- * 
- * TODO: Add api_usage_logs table to lib/db/schema.ts and implement with Drizzle ORM
  */
+
+import { db } from '@/lib/db'
+import { apiUsageEvents, type Json } from '@/lib/db/schema'
 
 export type APIService =
   | 'dataforseo'
@@ -16,8 +15,12 @@ export type APIService =
   | 'rytr'
   | 'winston'
   | 'jina'
+  | 'aisa'
   | 'rate-limit'
   | 'gemini'
+  | 'exa'
+  | 'socialdata'
+  | 'grok'
 
 interface APICallMetadata {
   service: APIService
@@ -27,7 +30,7 @@ interface APICallMetadata {
   tokensUsed?: number
   costUSD?: number
   durationMs?: number
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 // Cost per 1K tokens/requests for each service
@@ -53,6 +56,11 @@ const SERVICE_COSTS: Record<APIService, Record<string, number>> = {
   jina: {
     'reader': 0.0001, // per request
   },
+  aisa: {
+    'dataforseo': 0.005, // fallback per request when provider cost is unavailable
+    'twitter': 0.001,
+    'default': 0.001,
+  },
   rytr: {
     'generate': 0.002, // per 1K chars
   },
@@ -66,6 +74,16 @@ const SERVICE_COSTS: Record<APIService, Record<string, number>> = {
   },
   'rate-limit': {
     'default': 0, // no cost for rate limit tracking
+  },
+  exa: {
+    'search': 0.001,
+  },
+  socialdata: {
+    'twitter': 0.0035,
+    'default': 0.0035,
+  },
+  grok: {
+    'default': 0.002,
   },
 }
 
@@ -89,14 +107,15 @@ export function calculateCost(
     return (tokensOrUnits / 1000) * costs['gpt-4o-mini-input']
   }
 
-  // For other services, use first available cost
-  const firstCost = Object.values(costs)[0]
-  return (tokensOrUnits / 1000) * firstCost
+  const matchedKey = Object.keys(costs).find(key => key !== 'default' && endpoint.includes(key))
+  const cost = matchedKey
+    ? costs[matchedKey]
+    : (costs['default'] ?? Object.values(costs)[0])
+  return (tokensOrUnits / 1000) * cost
 }
 
 /**
- * Track an API call
- * Currently logs to console - will save to database when api_usage_logs table exists
+ * Track an API call. Tracking failures are intentionally non-blocking.
  */
 export async function trackAPICall(
   userId: string,
@@ -110,7 +129,21 @@ export async function trackAPICall(
       metadata.tokensUsed ?? 1000
     )
 
-    // Log to console (database logging disabled until table is added)
+    await db.insert(apiUsageEvents).values({
+      userId,
+      provider: metadata.service,
+      endpoint: metadata.endpoint,
+      method: metadata.method,
+      costUsd: cost,
+      metadata: {
+        statusCode: metadata.statusCode,
+        tokensUsed: metadata.tokensUsed ?? 0,
+        durationMs: metadata.durationMs,
+        ...(metadata.metadata ?? {}),
+      } as Json,
+      createdAt: new Date(),
+    })
+
     console.log(`[API Tracker] ${metadata.service}:${metadata.endpoint}`, {
       userId,
       method: metadata.method,
@@ -119,19 +152,6 @@ export async function trackAPICall(
       costUSD: cost,
       durationMs: metadata.durationMs,
     })
-
-    // TODO: When api_usage_logs table is added to schema, insert here:
-    // await db.insert(apiUsageLogs).values({
-    //   userId,
-    //   service: metadata.service,
-    //   endpoint: metadata.endpoint,
-    //   method: metadata.method,
-    //   statusCode: metadata.statusCode,
-    //   tokensUsed: metadata.tokensUsed ?? 0,
-    //   costUsd: cost,
-    //   durationMs: metadata.durationMs,
-    //   metadata: metadata.metadata ?? {},
-    // })
 
   } catch (error) {
     console.error('[API Tracker] Failed to log API call:', error)
@@ -157,8 +177,10 @@ export async function trackAPICallWithTiming<T>(
   try {
     result = await apiCall()
     return result
-  } catch (error: any) {
-    statusCode = error.status ?? 500
+  } catch (error) {
+    statusCode = typeof error === 'object' && error !== null && 'status' in error && typeof error.status === 'number'
+      ? error.status
+      : 500
     throw error
   } finally {
     const durationMs = Date.now() - startTime

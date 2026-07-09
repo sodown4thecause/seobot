@@ -15,6 +15,7 @@ import {
   type EntityProfile,
   type AIPerception,
 } from './schemas'
+import { createTelemetryConfig } from '@/lib/observability/langfuse'
 
 // Model ID for judge analysis (Gemini 2.5 Flash via Gateway)
 const JUDGE_MODEL_ID = 'google/gemini-2.5-flash' as GatewayModelId
@@ -219,15 +220,11 @@ export async function runJudgeAgent(params: {
       prompt,
       schema: AEOAuditReportSchema,
       temperature: 0.4,
-      experimental_telemetry: {
-        isEnabled: true,
-        functionId: 'aeo-judge-agent',
-        metadata: {
-          brandName: params.brandName,
-          llmMentionsCount: params.perception.llmMentionsCount,
-          knowledgeGraphExists: params.perception.knowledgeGraphExists,
-        },
-      },
+      telemetry: createTelemetryConfig('aeo-judge-agent', {
+        brandName: params.brandName,
+        llmMentionsCount: params.perception.llmMentionsCount,
+        knowledgeGraphExists: params.perception.knowledgeGraphExists,
+      }),
     })
 
     // Log detailed scoring breakdown

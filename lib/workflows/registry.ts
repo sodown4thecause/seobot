@@ -13,7 +13,6 @@ import { competitorAnalysisWorkflow } from './definitions/competitor-analysis'
 import { rankOnChatGPTWorkflow } from './definitions/rank-on-chatgpt'
 import { technicalSEOAuditWorkflow } from './definitions/technical-seo-audit'
 import { linkBuildingCampaignWorkflow } from './definitions/link-building-campaign'
-import { localSEOCampaignWorkflow } from './definitions/local-seo-campaign'
 import { aeoCitationOptimizationWorkflow } from './definitions/aeo-citation-optimization'
 import { aeoComprehensiveAuditWorkflow } from './definitions/aeo-comprehensive-audit'
 import { aeoMultiPlatformOptimizationWorkflow } from './definitions/aeo-multi-platform-optimization'
@@ -33,7 +32,6 @@ const WORKFLOW_REGISTRY = new Map<string, Workflow>([
   ['rank-on-chatgpt', rankOnChatGPTWorkflow],
   ['technical-seo-audit', technicalSEOAuditWorkflow],
   ['link-building-campaign', linkBuildingCampaignWorkflow],
-  ['local-seo-campaign', localSEOCampaignWorkflow],
   ['aeo-citation-optimization', aeoCitationOptimizationWorkflow],
   ['aeo-comprehensive-audit', aeoComprehensiveAuditWorkflow],
   ['aeo-multi-platform-optimization', aeoMultiPlatformOptimizationWorkflow],

@@ -135,3 +135,4 @@ scripts/publish-all-articles.ts
 scripts/publish-json-to-sanity.ts
 scripts/test-chat-questions.ts
 .firecrawl/
+.env.local

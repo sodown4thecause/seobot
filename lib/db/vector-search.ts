@@ -15,6 +15,7 @@ import {
 } from './schema'
 import { sql, desc, eq } from 'drizzle-orm'
 import type { ChatMode } from '@/lib/chat/modes'
+import { rerankByHybridScore } from './hybrid-rerank'
 
 // ============================================================================
 // TYPES
@@ -49,6 +50,8 @@ export interface AgentDocumentSearchResult {
     topic: string | null
     metadata: unknown
     similarity: number
+    createdAt: Date | null
+    hybridScore: number
 }
 
 export interface ContentLearningSearchResult {
@@ -96,6 +99,7 @@ interface AgentDocumentRawRow {
     engine: string | null
     topic: string | null
     metadata: unknown
+    created_at: Date | string | null
     similarity: string | number
 }
 
@@ -221,6 +225,7 @@ export async function searchAgentDocuments(
                 engine,
                 topic,
                 metadata,
+                created_at,
                 1 - (embedding <=> ${embeddingStr}::vector) as similarity
             FROM agent_documents
             WHERE agent_type = ${agentType}
@@ -230,19 +235,23 @@ export async function searchAgentDocuments(
             LIMIT ${limit}
         `)
 
-        return (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
-            id: row.id,
-            agentType: row.agent_type,
-            mode: row.mode,
-            title: row.title,
-            content: row.content,
-            sourceType: row.source_type,
-            url: row.url,
-            engine: row.engine,
-            topic: row.topic,
-            metadata: row.metadata,
-            similarity: parseFloat(String(row.similarity)),
-        }))
+        return rerankByHybridScore(
+            (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
+                id: row.id,
+                agentType: row.agent_type,
+                mode: row.mode,
+                title: row.title,
+                content: row.content,
+                sourceType: row.source_type,
+                url: row.url,
+                engine: row.engine,
+                topic: row.topic,
+                metadata: row.metadata,
+                similarity: parseFloat(String(row.similarity)),
+                createdAt: row.created_at ? new Date(row.created_at) : null,
+            })),
+            item => item.createdAt
+        )
     } catch (error) {
         console.error('[Vector Search] Agent documents search failed:', error)
         return []
@@ -283,6 +292,7 @@ export async function retrieveRelevantChunks(
                 engine,
                 topic,
                 metadata,
+                created_at,
                 1 - (embedding <=> ${embeddingStr}::vector) as similarity
             FROM agent_documents
             WHERE mode = ${mode}
@@ -294,19 +304,23 @@ export async function retrieveRelevantChunks(
             LIMIT ${limit}
         `)
 
-        return (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
-            id: row.id,
-            agentType: row.agent_type,
-            mode: row.mode,
-            title: row.title,
-            content: row.content,
-            sourceType: row.source_type,
-            url: row.url,
-            engine: row.engine,
-            topic: row.topic,
-            metadata: row.metadata,
-            similarity: parseFloat(String(row.similarity)),
-        }))
+        return rerankByHybridScore(
+            (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
+                id: row.id,
+                agentType: row.agent_type,
+                mode: row.mode,
+                title: row.title,
+                content: row.content,
+                sourceType: row.source_type,
+                url: row.url,
+                engine: row.engine,
+                topic: row.topic,
+                metadata: row.metadata,
+                similarity: parseFloat(String(row.similarity)),
+                createdAt: row.created_at ? new Date(row.created_at) : null,
+            })),
+            item => item.createdAt
+        )
     } catch (error) {
         console.error('[Vector Search] Mode-aware RAG search failed:', error)
         return []
@@ -363,6 +377,7 @@ export async function searchUserAgentDocuments(
                 engine,
                 topic,
                 metadata,
+                created_at,
                 1 - (embedding <=> ${embeddingStr}::vector) as similarity
             FROM agent_documents
             WHERE metadata->>'userId' = ${userId}
@@ -374,19 +389,23 @@ export async function searchUserAgentDocuments(
             LIMIT ${limit}
         `)
 
-        return (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
-            id: row.id,
-            agentType: row.agent_type,
-            mode: row.mode,
-            title: row.title,
-            content: row.content,
-            sourceType: row.source_type,
-            url: row.url,
-            engine: row.engine,
-            topic: row.topic,
-            metadata: row.metadata,
-            similarity: parseFloat(String(row.similarity)),
-        }))
+        return rerankByHybridScore(
+            (results.rows as unknown as AgentDocumentRawRow[]).map(row => ({
+                id: row.id,
+                agentType: row.agent_type,
+                mode: row.mode,
+                title: row.title,
+                content: row.content,
+                sourceType: row.source_type,
+                url: row.url,
+                engine: row.engine,
+                topic: row.topic,
+                metadata: row.metadata,
+                similarity: parseFloat(String(row.similarity)),
+                createdAt: row.created_at ? new Date(row.created_at) : null,
+            })),
+            item => item.createdAt
+        )
     } catch (error) {
         console.error('[Vector Search] User document search failed:', error)
         return []

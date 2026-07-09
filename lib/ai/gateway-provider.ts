@@ -1,4 +1,4 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createGoogle } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createDeepSeek } from '@ai-sdk/deepseek';
@@ -7,7 +7,7 @@ import { serverEnv } from '@/lib/config/env';
 
 // Initialize providers conditionally
 const google = serverEnv.GOOGLE_API_KEY
-  ? createGoogleGenerativeAI({
+  ? createGoogle({
     apiKey: serverEnv.GOOGLE_API_KEY,
   })
   : null;
@@ -110,6 +110,15 @@ export const vercelGateway = {
         return gateway(modelId);
       }
       throw new Error('AI_GATEWAY_API_KEY is required for Moonshot AI models');
+    }
+
+    // xAI / Grok models (via Vercel AI Gateway)
+    if (modelId.startsWith('xai/')) {
+      if (gateway) {
+        console.log('[Gateway] Using gateway for xAI/Grok model:', modelId);
+        return gateway(modelId);
+      }
+      throw new Error('AI_GATEWAY_API_KEY is required for xAI/Grok models');
     }
 
     // Try gateway for other models

@@ -116,7 +116,6 @@ export function useModeAdaptations() {
         'technical-seo': ['practitioner', 'agency'],
         
         // Agency-only features
-        'white-labeling': ['agency'],
         'multi-client': ['agency'],
         'api-access': ['agency'],
         'team-management': ['agency'],

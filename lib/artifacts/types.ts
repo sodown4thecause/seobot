@@ -10,6 +10,7 @@ export const ARTIFACT_TYPES = [
   'backlink',
   'serp',
   'blog',
+  'social-listening',
   // SEO — keyword intelligence
   'keyword-cluster-map',
   'serp-gap-visualizer',
@@ -52,6 +53,7 @@ export type ArtifactCategory =
   | 'geo-content'
   | 'geo-competitive'
   | 'content'
+  | 'social'
 
 export type ArtifactImplementationStatus = 'live' | 'planned'
 

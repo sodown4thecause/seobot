@@ -5,6 +5,7 @@
 
 import { dataforseo_labs_google_historical_keyword_dataToolWithClient } from '@/lib/mcp/dataforseo/dataforseo_labs_google_historical_keyword_data'
 import { getMcpClient } from '@/lib/mcp/dataforseo/client'
+import { manualToolExecution } from '@/lib/ai/manual-tool-execution'
 
 export interface TrendAnalysis {
   trend: 'rising' | 'stable' | 'declining' | 'seasonal'
@@ -113,11 +114,9 @@ export class KeywordTrendAnalyzer {
         keywords: [keyword],
         location_name: location,
         language_code: language,
-      }, {
+      }, manualToolExecution('keyword-trend-analyzer', {
         abortSignal: new AbortController().signal,
-        toolCallId: 'keyword-trend-analyzer',
-        messages: []
-      })
+      }))
 
       // Parse the result (it comes as JSON string)
       const data = typeof result === 'string' ? JSON.parse(result) : result

@@ -47,11 +47,17 @@ vi.mock('@/lib/agents/agent-router', () => ({
 
 vi.mock('ai', () => ({
   streamText: vi.fn().mockResolvedValue({
-    toTextStreamResponse: vi.fn().mockReturnValue(new Response('test stream')),
+    stream: (async function* () {
+      yield { type: 'text-delta', text: 'test' }
+    })(),
   }),
   convertToCoreMessages: vi.fn(),
   tool: vi.fn(),
-  stepCountIs: vi.fn(),
+  isStepCount: vi.fn(),
+  toTextStream: vi.fn().mockReturnValue((async function* () {
+    yield 'test stream'
+  })()),
+  createTextStreamResponse: vi.fn().mockReturnValue(new Response('test stream')),
 }))
 
 vi.mock('@/lib/ai/gateway-provider', () => ({

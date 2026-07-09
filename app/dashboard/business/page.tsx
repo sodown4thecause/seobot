@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { SearchConsolePropertyImporter } from '@/components/search-console/property-importer'
 
 interface Analysis {
   url: string
@@ -109,6 +110,8 @@ export default function BusinessAnalysisPage() {
           </form>
         </CardContent>
       </Card>
+
+      <SearchConsolePropertyImporter />
 
       {/* Error State */}
       {error && (

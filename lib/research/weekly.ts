@@ -202,7 +202,7 @@ async function runWeeklyGeoResearch() {
         brand,
         competitors,
         topic: promptRow.topic || undefined,
-      })
+      }, profile.userId)
       const analysis = await analyzeGeoVisibility({
         brand,
         competitors,

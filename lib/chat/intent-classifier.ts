@@ -12,7 +12,7 @@ import { buildOnboardingSystemPrompt } from '@/lib/onboarding/prompts'
 import type { OnboardingData, OnboardingStep } from '@/lib/onboarding/state'
 import { isChatMode } from '@/lib/chat/modes'
 
-export type AgentType = 'seo-aeo' | 'content' | 'general' | 'onboarding' | 'image' | 'geo'
+export type AgentType = 'seo-aeo' | 'content' | 'general' | 'onboarding' | 'image' | 'geo' | 'social'
 
 export interface ClassificationResult {
   agent: AgentType

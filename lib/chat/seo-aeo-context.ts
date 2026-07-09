@@ -11,7 +11,7 @@ import { generateEmbedding } from '@/lib/ai/embeddings'
 import { db } from '@/lib/db'
 import { businessProfiles } from '@/lib/db/schema'
 import { isAbortError } from '@/lib/errors/types'
-import { retrieveRelevantChunks } from '@/lib/db/vector-search'
+import { retrieveRelevantChunks, searchUserAgentDocuments } from '@/lib/db/vector-search'
 import { DEFAULT_CHAT_MODE, CHAT_MODE_LABELS, type ChatMode } from '@/lib/chat/modes'
 
 interface SeoAeoContext {
@@ -90,24 +90,45 @@ export async function buildSeoAeoContext(
     throwIfAborted(signal)
 
     let ragDocs: Awaited<ReturnType<typeof retrieveRelevantChunks>> = []
+    let userRagDocs: Awaited<ReturnType<typeof searchUserAgentDocuments>> = []
     if (queryEmbedding) {
-      ragDocs = await raceWithAbort(
-        retrieveRelevantChunks(queryEmbedding, {
-          mode,
-          threshold: 0.3,
-          limit: mode === 'geo' ? 6 : mode === 'content' ? 5 : 3,
+      const [globalDocs, privateDocs] = await Promise.all([
+        raceWithAbort(
+          retrieveRelevantChunks(queryEmbedding, {
+            mode,
+            threshold: 0.3,
+            limit: mode === 'geo' ? 6 : mode === 'content' ? 5 : mode === 'social' ? 5 : 3,
+          }),
+          signal,
+        ).catch((error) => {
+          if (isAbortError(error)) throw error
+          console.warn('[SEO-AEO Context] RAG retrieval failed:', error.message)
+          return []
         }),
-        signal,
-      ).catch((error) => {
-        if (isAbortError(error)) throw error
-        console.warn('[SEO-AEO Context] RAG retrieval failed:', error.message)
-        return []
-      })
+        userId
+          ? raceWithAbort(
+              searchUserAgentDocuments(queryEmbedding, {
+                userId,
+                mode,
+                sourceType: 'search_console',
+                threshold: 0.25,
+                limit: 4,
+              }),
+              signal,
+            ).catch((error) => {
+              if (isAbortError(error)) throw error
+              console.warn('[SEO-AEO Context] User RAG retrieval failed:', error.message)
+              return []
+            })
+          : Promise.resolve([]),
+      ])
+      ragDocs = globalDocs
+      userRagDocs = privateDocs
     }
 
     throwIfAborted(signal)
 
-    console.log(`[SEO-AEO Context] ${mode} RAG docs retrieved: ${ragDocs.length}`)
+    console.log(`[SEO-AEO Context] ${mode} RAG docs retrieved: ${ragDocs.length}; user docs: ${userRagDocs.length}`)
 
     const sections: string[] = []
 
@@ -138,7 +159,15 @@ export async function buildSeoAeoContext(
         .map((doc, index) => `### Source ${index + 1}: ${doc.title}\n${doc.content}`)
         .join('\n\n')
 
-      sections.push(`## ${CHAT_MODE_LABELS[mode]} Retrieved Context\nUse only this ${CHAT_MODE_LABELS[mode]} context by default. Do not blend SEO, GEO/AEO, or content RAG unless the user explicitly asks for cross-mode analysis.\n\n${docSections}`)
+      sections.push(`## ${CHAT_MODE_LABELS[mode]} Retrieved Context\nUse only this ${CHAT_MODE_LABELS[mode]} context by default. Do not blend SEO, GEO/AEO, Content, or Social RAG unless the user explicitly asks for cross-mode analysis.\n\n${docSections}`)
+    }
+
+    if (userRagDocs.length > 0) {
+      const docSections = userRagDocs
+        .map((doc, index) => `### User Source ${index + 1}: ${doc.title}\n${doc.content}`)
+        .join('\n\n')
+
+      sections.push(`## User Search Console Context\nThis is private first-party Search Console context for the authenticated user. Use it ahead of generic advice, but never expose OAuth tokens or imply access to properties not shown here.\n\n${docSections}`)
     }
 
     if (sections.length === 0) {
@@ -147,7 +176,7 @@ export async function buildSeoAeoContext(
 
     return {
       systemPromptAddendum: `\n\n---\n${sections.join('\n\n')}`,
-      ragDocsFound: ragDocs.length,
+      ragDocsFound: ragDocs.length + userRagDocs.length,
     }
   } catch (error) {
     if (signal?.aborted) {

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { BookmarkPlus, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { captureProductEvent } from '@/components/providers/analytics-provider'
+import { PRODUCT_EVENTS } from '@/lib/analytics/product-events'
 
 export interface SaveToLibraryButtonProps {
   content?: string
@@ -69,6 +71,10 @@ export function SaveToLibraryButton({
       }
 
       setIsSaved(true)
+      captureProductEvent(PRODUCT_EVENTS.ARTIFACT_SAVED, {
+        artifactType: itemType,
+        conversationId: conversationId ?? undefined,
+      })
       toast({
         title: 'Saved to Library',
         description: `"${title}" has been added to your library.`,

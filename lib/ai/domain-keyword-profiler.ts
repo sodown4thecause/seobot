@@ -5,6 +5,7 @@
 
 import { dataforseo_labs_google_ranked_keywordsToolWithClient } from '@/lib/mcp/dataforseo/dataforseo_labs_google_ranked_keywords'
 import { getMcpClient } from '@/lib/mcp/dataforseo/client'
+import { manualToolExecution } from '@/lib/ai/manual-tool-execution'
 
 export interface KeywordProfile {
   keyword: string
@@ -174,11 +175,9 @@ export class DomainKeywordProfiler {
         limit,
         order_by: ['metrics.organic.count,desc'],
         include_clickstream_data: false,
-      }, {
+      }, manualToolExecution('domain-keyword-profiler', {
         abortSignal: new AbortController().signal,
-        toolCallId: 'domain-keyword-profiler',
-        messages: []
-      })
+      }))
 
       // Parse the result
       const data = typeof result === 'string' ? JSON.parse(result) : result

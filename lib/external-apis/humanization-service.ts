@@ -66,7 +66,7 @@ Rewrite this to sound authentically human while keeping all the valuable informa
     model: vercelGateway.languageModel('anthropic/claude-sonnet-4'),
     prompt,
     temperature: 0.9,
-    experimental_telemetry: createTelemetryConfig('humanization-service', {
+    telemetry: createTelemetryConfig('humanization-service', {
       hasGuidance: !!guidance,
       contentLength: content.length,
       provider: 'claude',

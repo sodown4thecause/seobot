@@ -718,6 +718,41 @@ export const apiUsageEvents = pgTable('api_usage_events', {
     }
 })
 
+export const searchConsoleConnections = pgTable('search_console_connections', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    siteUrl: text('site_url').notNull(),
+    siteName: text('site_name'),
+    connectedAt: timestamp('connected_at').defaultNow().notNull(),
+    lastSyncAt: timestamp('last_sync_at'),
+    status: text('status').default('active').notNull(),
+    metadata: jsonb('metadata').$type<Json>().default({}),
+}, (table) => {
+    return {
+        userIdx: index('idx_sc_connections_user').on(table.userId),
+        userSiteIdx: uniqueIndex('idx_sc_connections_user_site').on(table.userId, table.siteUrl),
+    }
+})
+
+export const searchConsoleSnapshots = pgTable('search_console_snapshots', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    connectionId: uuid('connection_id').references(() => searchConsoleConnections.id),
+    userId: text('user_id').notNull(),
+    siteUrl: text('site_url').notNull(),
+    startDate: date('start_date'),
+    endDate: date('end_date'),
+    rowCount: integer('row_count').default(0),
+    chunkCount: integer('chunk_count').default(0),
+    documentIds: jsonb('document_ids').$type<Json>().default([]),
+    metadata: jsonb('metadata').$type<Json>().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+    return {
+        userIdx: index('idx_sc_snapshots_user').on(table.userId, table.createdAt),
+        connectionIdx: index('idx_sc_snapshots_connection').on(table.connectionId),
+    }
+})
+
 // Dashboard Data Types
 export type DashboardData = typeof dashboardData.$inferSelect
 export type NewDashboardData = typeof dashboardData.$inferInsert
@@ -732,6 +767,12 @@ export type NewJobHistory = typeof jobHistory.$inferInsert
 // API Usage Tracking Types
 export type ApiUsageEvent = typeof apiUsageEvents.$inferSelect
 export type NewApiUsageEvent = typeof apiUsageEvents.$inferInsert
+
+// Search Console Types
+export type SearchConsoleConnection = typeof searchConsoleConnections.$inferSelect
+export type NewSearchConsoleConnection = typeof searchConsoleConnections.$inferInsert
+export type SearchConsoleSnapshot = typeof searchConsoleSnapshots.$inferSelect
+export type NewSearchConsoleSnapshot = typeof searchConsoleSnapshots.$inferInsert
 
 // User Competitor Mapping Types
 export type UserCompetitor = typeof userCompetitors.$inferSelect

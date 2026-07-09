@@ -56,7 +56,7 @@ export const ARTIFACT_REGISTRY: Record<ArtifactType, ArtifactDefinition> = {
     'legacy',
     ['seo'],
     'live',
-    ['n8n_backlinks'],
+    ['aisa_backlinks_summary', 'aisa_backlinks_list', 'aisa_referring_domains', 'aisa_backlink_anchors', 'legacy_n8n_backlinks', 'n8n_backlinks'],
     'backlink-analysis'
   ),
   serp: def(
@@ -78,6 +78,16 @@ export const ARTIFACT_REGISTRY: Record<ArtifactType, ArtifactDefinition> = {
     'live',
     ['create_content_package'],
     'content-package'
+  ),
+  'social-listening': def(
+    'social-listening',
+    'Social Listening',
+    'Public social mentions, pain points, and trend signals from X/Twitter and Reddit.',
+    'social',
+    ['social'],
+    'live',
+    ['aisa_x_search', 'reddit_social_search'],
+    'social-listening'
   ),
   'keyword-cluster-map': def(
     'keyword-cluster-map',
@@ -185,7 +195,9 @@ export const ARTIFACT_REGISTRY: Record<ArtifactType, ArtifactDefinition> = {
     'Brand mentions across ChatGPT, Perplexity, and Google AI Overviews.',
     'geo-visibility',
     ['geo'],
-    'planned'
+    'live',
+    ['geo_brand_scan'],
+    'citation-tracker'
   ),
   'brand-mention-heatmap': def(
     'brand-mention-heatmap',

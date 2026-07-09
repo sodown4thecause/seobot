@@ -14,6 +14,7 @@ export const AGENT_IDS = {
   GENERAL: 'general',
   IMAGE: 'image',
   GEO: 'geo',
+  SOCIAL: 'social',
 } as const
 
 export type AgentId = (typeof AGENT_IDS)[keyof typeof AGENT_IDS]

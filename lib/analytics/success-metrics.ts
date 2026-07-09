@@ -1,7 +1,7 @@
 /**
  * Success Metrics Analytics Service
  * 
- * Tracks KPIs defined in nextphase.md:
+ * Tracks KPIs defined in docs/nextphase.md:
  * - Workflow completion rates
  * - Error recovery success rates
  * - User engagement metrics
