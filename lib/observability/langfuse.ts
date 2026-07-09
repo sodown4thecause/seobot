@@ -56,10 +56,13 @@ export function createTelemetryConfig(
   functionId: string,
   metadata?: TelemetryMetadata
 ): {
-  isEnabled: boolean
   functionId: string
+  recordInputs: boolean
+  recordOutputs: boolean
   metadata?: Record<string, OTelAttributeValue>
 } {
+  const recordIo = serverEnv.LANGFUSE_RECORD_IO !== 'false'
+
   // Filter out undefined and null values to ensure type compatibility with OpenTelemetry
   const cleanMetadata = metadata
     ? Object.fromEntries(
@@ -68,8 +71,9 @@ export function createTelemetryConfig(
     : undefined
 
   return {
-    isEnabled: isLangfuseEnabled(),
     functionId,
+    recordInputs: recordIo,
+    recordOutputs: recordIo,
     ...(cleanMetadata && Object.keys(cleanMetadata).length > 0 && { metadata: cleanMetadata }),
   }
 }

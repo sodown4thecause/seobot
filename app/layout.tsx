@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans } from "next/font/google";
 import "./globals.css";
 import { AIStateProvider } from '@/lib/context/ai-state-context';
+import { PostHogProvider } from '@/components/providers/analytics-provider';
 import { SITE_URL } from '@/lib/seo/site';
 
 const notoSans = Noto_Sans({
@@ -182,9 +183,11 @@ export default function RootLayout({
             style={{ display: 'none', visibility: 'hidden' }}
           />
         </noscript>
-        <AIStateProvider>
-          {children}
-        </AIStateProvider>
+        <PostHogProvider>
+          <AIStateProvider>
+            {children}
+          </AIStateProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

@@ -5,6 +5,7 @@
 
 import { ai_optimization_keyword_data_search_volumeToolWithClient } from '@/lib/mcp/dataforseo/ai_optimization_keyword_data_search_volume'
 import { getMcpClient } from '@/lib/mcp/dataforseo/client'
+import { manualToolExecution } from '@/lib/ai/manual-tool-execution'
 
 export interface AISearchVolume {
   keyword: string
@@ -142,11 +143,9 @@ export class AISearchOptimizer {
         keywords,
         location_name: location,
         language_code: language,
-      }, {
+      }, manualToolExecution('ai-search-optimizer', {
         abortSignal: abortSignal ?? new AbortController().signal,
-        toolCallId: 'ai-search-optimizer',
-        messages: []
-      })
+      }))
 
       // Parse the result
       const data = typeof result === 'string' ? JSON.parse(result) : result

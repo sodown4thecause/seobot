@@ -41,6 +41,11 @@ vi.mock('@/lib/auth', () => ({
       })),
     },
   },
+  getCurrentUser: vi.fn(async () => ({
+    id: 'test-user-id',
+    email: 'test@test.com',
+    name: 'Test User',
+  })),
 }))
 
 // Mock env config to bypass validation in tests

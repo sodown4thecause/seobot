@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp'
+import { createMCPClient } from '@ai-sdk/mcp'
 import type { Tool } from 'ai'
 import { serverEnv } from '@/lib/config/env'
 

@@ -158,7 +158,7 @@ export class SandboxCodeMode {
 
     return {
       name,
-      description: toolDef.description,
+      description: typeof toolDef.description === 'string' ? toolDef.description : undefined,
       parameters: params,
     }
   }

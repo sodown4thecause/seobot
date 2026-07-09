@@ -20,8 +20,8 @@ import { trace } from '@opentelemetry/api'
 import {
   observe,
   updateActiveObservation,
-  updateActiveTrace,
 } from '@langfuse/tracing'
+import { updateActiveTrace } from '@/lib/observability/langfuse-tracing'
 
 import { getCurrentUser } from '@/lib/auth'
 import { requireApiSubscription } from '@/lib/billing/subscription-guard'
@@ -46,11 +46,16 @@ import {
 import { detectWorkflowTrigger } from '@/lib/chat/orchestrator'
 import { buildSeoAeoContext } from '@/lib/chat/seo-aeo-context'
 import { normalizeChatMode } from '@/lib/chat/modes'
+import { scheduleLangfuseFlush } from '@/lib/observability/flush-traces'
+import { appLogger } from '@/lib/observability/app-logger'
+import { buildProductionTraceTags } from '@/lib/observability/langfuse-ops'
+import { captureServerProductEvent } from '@/lib/analytics/posthog-server'
+import { PRODUCT_EVENTS } from '@/lib/analytics/product-events'
 
 export const maxDuration = 300 // 5 minutes
 
 const handler = async (req: Request) => {
-  console.log('[Chat API] POST handler called')
+  appLogger.info('Chat API POST handler called', { endpoint: '/api/chat' })
 
   const nextReq = req as unknown as NextRequest
 
@@ -117,6 +122,19 @@ const handler = async (req: Request) => {
 
     const creditCheck = await checkCreditLimit(authUserId, nextReq)
     if (!creditCheck.allowed) {
+      void captureServerProductEvent(authUserId, PRODUCT_EVENTS.SUBSCRIPTION_BLOCKED, {
+        remainingUsd: creditCheck.remainingUsd,
+        limitUsd: creditCheck.limitUsd,
+        isPaused: creditCheck.isPaused ?? false,
+      })
+      appLogger.warn('Chat blocked by credit limit', {
+        endpoint: '/api/chat',
+        userId: authUserId,
+        metadata: {
+          remainingUsd: creditCheck.remainingUsd,
+          limitUsd: creditCheck.limitUsd,
+        },
+      })
       return new Response(
         JSON.stringify({
           error: 'credit_limit_exceeded',
@@ -201,6 +219,7 @@ const handler = async (req: Request) => {
       sessionId: activeConversationId || undefined,
       userId: user?.id || authUserId,
       input: lastUserMessageContent,
+      tags: buildProductionTraceTags(mode),
       metadata: {
         agentType: classification.agent,
         mode,
@@ -352,10 +371,7 @@ const handler = async (req: Request) => {
     const streamResponse = await buildStreamResponse(streamOptions)
 
     // 16. Critical for serverless: flush traces before function terminates
-    const langfuseSpanProcessor = (global as unknown as { langfuseSpanProcessor?: { forceFlush: () => Promise<void> } }).langfuseSpanProcessor
-    if (langfuseSpanProcessor) {
-      after(async () => await langfuseSpanProcessor.forceFlush())
-    }
+    scheduleLangfuseFlush()
 
     return streamResponse
   } catch (error) {

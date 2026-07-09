@@ -9,6 +9,7 @@
 import { db } from '@/lib/db'
 import { aiUsageEvents, type Json } from '@/lib/db/schema'
 import { estimateCost, extractProviderFromModel, type AIProvider } from './cost-estimator'
+import { appLogger } from '@/lib/observability/app-logger'
 
 export interface UsageLogParams {
   userId: string | null | undefined
@@ -117,9 +118,13 @@ private startFlushWorker(): void {
 
     try {
       await db.insert(aiUsageEvents).values(eventsToFlush)
-      console.log(`[UsageQueue] Flushed ${eventsToFlush.length} usage events to database`)
+      appLogger.debug('Flushed usage events to database', {
+        metadata: { count: eventsToFlush.length },
+      })
     } catch (error) {
-      console.error('[UsageQueue] Failed to flush events:', error)
+      appLogger.error('Failed to flush usage events', {
+        metadata: { error: error instanceof Error ? error.message : String(error), queueSize: eventsToFlush.length },
+      })
       // Re-queue failed events (at the front to preserve order)
       this.queue.unshift(...eventsToFlush)
     } finally {
@@ -193,9 +198,21 @@ export async function logAIUsage(params: UsageLogParams): Promise<void> {
       metadata: metadata as Json,
     })
 
-    console.log(`[Usage Logger] Queued ${provider} usage: ${params.model} (${costUsd.toFixed(4)} USD) - Queue size: ${usageQueue.getQueueSize()}`)
+    appLogger.debug('Queued AI usage event', {
+      userId: params.userId ?? undefined,
+      agentType: params.agentType,
+      metadata: {
+        provider,
+        model: params.model,
+        costUsd,
+        queueSize: usageQueue.getQueueSize(),
+      },
+    })
   } catch (error) {
-    console.error('[Usage Logger] Error queueing AI usage:', error)
+    appLogger.error('Error queueing AI usage event', {
+      userId: params.userId ?? undefined,
+      metadata: { error: error instanceof Error ? error.message : String(error) },
+    })
     // Don't throw - logging failures shouldn't break the app
   }
 }

@@ -1,9 +1,3 @@
-/**
- * DataForSEO Function Calling Tools for AI SDK 6
- *
- * 13 essential SEO tools with Redis caching for performance
- */
-
 import {
   keywordResearch,
   competitorAnalysis,
@@ -21,6 +15,7 @@ import {
 } from '@/lib/api/dataforseo-service'
 import { cachedDataForSEOCall } from './dataforseo-cache'
 import { compositeSEOTools } from '@/lib/tools/composite-seo-tools'
+import { manualToolExecution } from '@/lib/ai/manual-tool-execution'
 
 // Function call handlers
 export async function handleDataForSEOFunctionCall(
@@ -356,7 +351,9 @@ export async function handleDataForSEOFunctionCall(
       // COMPOSITE TOOLS
       case 'keyword_intelligence': {
         if (!compositeSEOTools.keyword_intelligence?.execute) return 'Tool not available'
-        const toolOptions = { abortSignal: new AbortController().signal, toolCallId: 'keyword-intelligence', messages: [] }
+        const toolOptions = manualToolExecution('keyword-intelligence', {
+          abortSignal: new AbortController().signal,
+        })
         const result = await compositeSEOTools.keyword_intelligence.execute({
           keyword: args.keyword,
           location: args.location || 'United States',
@@ -369,7 +366,9 @@ export async function handleDataForSEOFunctionCall(
 
       case 'competitor_content_gap': {
         if (!compositeSEOTools.competitor_content_gap?.execute) return 'Tool not available'
-        const toolOptions = { abortSignal: new AbortController().signal, toolCallId: 'competitor-content-gap', messages: [] }
+        const toolOptions = manualToolExecution('competitor-content-gap', {
+          abortSignal: new AbortController().signal,
+        })
         const result = await compositeSEOTools.competitor_content_gap.execute({
           yourDomain: args.yourDomain,
           competitorDomains: args.competitorDomains,
@@ -381,7 +380,9 @@ export async function handleDataForSEOFunctionCall(
 
       case 'bulk_traffic_estimator': {
         if (!compositeSEOTools.bulk_traffic_estimator?.execute) return 'Tool not available'
-        const toolOptions = { abortSignal: new AbortController().signal, toolCallId: 'bulk-traffic-estimator', messages: [] }
+        const toolOptions = manualToolExecution('bulk-traffic-estimator', {
+          abortSignal: new AbortController().signal,
+        })
         const result = await compositeSEOTools.bulk_traffic_estimator.execute({
           targets: args.targets,
           location: args.location || 'United States',

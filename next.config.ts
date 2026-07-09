@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig: NextConfig = {
+  trailingSlash: false,
   reactStrictMode: true,
   images: {
     remotePatterns: [
@@ -68,4 +70,6 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  silent: true,
+})

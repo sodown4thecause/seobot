@@ -42,10 +42,10 @@ describe('Intent Classifier', () => {
         expect(IntentToolRouter.classifyAndGetTools).not.toHaveBeenCalled()
       })
 
-      it('should return onboarding agent when onboarding context is present', async () => {
+      it('should return onboarding agent when onboarding page context is present', async () => {
         const result = await classifyUserIntent({
           query: 'what should I do next',
-          context: { onboarding: { currentStep: 2 } },
+          context: { page: 'onboarding', onboarding: { currentStep: 2 } },
         })
 
         expect(result.agent).toBe('onboarding')
@@ -53,13 +53,14 @@ describe('Intent Classifier', () => {
         expect(IntentToolRouter.classifyAndGetTools).not.toHaveBeenCalled()
       })
 
-      it('should return onboarding for setup-related queries', async () => {
+      it('should return onboarding for setup-related queries via fallback', async () => {
         const result = await classifyUserIntent({
           query: 'how do I setup my account',
         })
 
+        // Without page context, onboarding queries fall back to keyword routing
         expect(result.agent).toBe('onboarding')
-        expect(result.confidence).toBe(1.0)
+        expect(result.confidence).toBe(0.7)
       })
     })
 
@@ -83,7 +84,10 @@ describe('Intent Classifier', () => {
           query: 'analyze keywords for my website',
         })
 
-        expect(IntentToolRouter.classifyAndGetTools).toHaveBeenCalledWith('analyze keywords for my website')
+        expect(IntentToolRouter.classifyAndGetTools).toHaveBeenCalledWith(
+          'analyze keywords for my website',
+          expect.any(AbortSignal)
+        )
         expect(result.agent).toBe('seo-aeo')
         expect(result.confidence).toBe(0.92)
         expect(result.reasoning).toBe('User wants to research keywords')

@@ -1,5 +1,5 @@
 import { generateText } from 'ai'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createGoogle } from '@ai-sdk/google'
 import { serverEnv } from '@/lib/config/env'
 
 export interface RunGeminiAdapterParams {
@@ -31,7 +31,7 @@ export async function runGeminiAdapter(params: RunGeminiAdapterParams): Promise<
 
   const model = serverEnv.GEMINI_MODEL || GEMINI_MODEL_DEFAULT
 
-  const google = createGoogleGenerativeAI({ apiKey })
+  const google = createGoogle({ apiKey })
 
   let lastError: Error | null = null
 
@@ -39,7 +39,7 @@ export async function runGeminiAdapter(params: RunGeminiAdapterParams): Promise<
     try {
       const result = await generateText({
         model: google(model),
-        system: systemPrompt,
+        instructions: systemPrompt,
         prompt: userPrompt,
         temperature: 0.3,
         abortSignal: AbortSignal.timeout(timeoutMs),

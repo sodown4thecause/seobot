@@ -11,8 +11,10 @@ import { z } from 'zod'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { mcpFirecrawlTools } from '@/lib/mcp/firecrawl/index'
+import { manualToolExecution } from '@/lib/ai/manual-tool-execution'
 import type { BrandDetectionPayload } from '@/lib/audit/types'
 import { EntityProfileSchema, type EntityProfile } from './schemas'
+import { createTelemetryConfig } from '@/lib/observability/langfuse'
 
 // Model ID for extraction (Gemini 2.5 Flash via Gateway)
 const EXTRACTION_MODEL_ID = 'google/gemini-2.5-flash' as GatewayModelId
@@ -55,7 +57,7 @@ async function scrapeWebsite(url: string): Promise<{ content: string; blocked: b
         waitFor: 2000,
         removeBase64Images: true,
       },
-      { toolCallId: `scrape-${Date.now()}`, messages: [] }
+      manualToolExecution(`scrape-${Date.now()}`)
     )
 
     const content = typeof result === 'string' ? result : JSON.stringify(result)
@@ -117,15 +119,11 @@ Focus on:
     prompt,
     schema: EntityProfileSchema,
     temperature: 0.3,
-    experimental_telemetry: {
-      isEnabled: true,
-      functionId: 'aeo-extraction-agent',
-      metadata: {
-        brandName,
-        url,
-        contentLength: content.length,
-      },
-    },
+    telemetry: createTelemetryConfig('aeo-extraction-agent', {
+      brandName,
+      url,
+      contentLength: content.length,
+    }),
   })
 
   return object
@@ -156,14 +154,10 @@ Use concise, practical values. If a field is uncertain, infer the most likely va
     prompt,
     schema: HomepageExtractionSchema,
     temperature: 0.2,
-    experimental_telemetry: {
-      isEnabled: true,
-      functionId: 'ai-visibility-homepage-extraction',
-      metadata: {
-        domain,
-        contentLength: content.length,
-      },
-    },
+    telemetry: createTelemetryConfig('ai-visibility-homepage-extraction', {
+      domain,
+      contentLength: content.length,
+    }),
   })
 
   return {

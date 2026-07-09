@@ -12,6 +12,8 @@ import { ChatModeProvider } from '@/components/chat/chat-mode-context'
 import { UserModeProvider } from '@/components/providers/user-mode-provider'
 import { JargonProvider } from '@/components/providers/jargon-provider'
 import { ActionProvider } from '@/components/providers/action-provider'
+import { PostHogIdentify } from '@/components/providers/posthog-identify'
+import { UsageSummaryCard } from '@/components/dashboard/usage-summary-card'
 import { createDashboardQueryClient } from '@/lib/cache/query-client'
 
 const PAGE_NAMES: Record<string, string> = {
@@ -61,6 +63,7 @@ export function DashboardClientLayout({ children }: DashboardClientLayoutProps) 
               <AgentProvider>
                 <Suspense fallback={null}>
                   <DashboardChatModeSync />
+                  <PostHogIdentify />
                 </Suspense>
                 <div className="relative flex h-screen overflow-hidden bg-zinc-950 text-foreground">
                   <Suspense fallback={null}>
@@ -71,7 +74,10 @@ export function DashboardClientLayout({ children }: DashboardClientLayoutProps) 
                   </Suspense>
                   <main className={cn('relative z-10 flex h-full flex-1 flex-col')}>
                     <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
-                      <DashboardBreadcrumbs currentPage={currentPage} />
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <DashboardBreadcrumbs currentPage={currentPage} />
+                        <UsageSummaryCard className="max-w-sm lg:min-w-[240px]" />
+                      </div>
                     </header>
                     <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
                   </main>

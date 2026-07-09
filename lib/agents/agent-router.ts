@@ -156,6 +156,18 @@ export class AgentRouter {
       }
     }
 
+    // Check for onboarding-related keywords in the message itself
+    const onboardingMatches = this.matchKeywords(messageLower, this.getOnboardingKeywords())
+    if (onboardingMatches.length > 0) {
+      return {
+        agent: AGENT_IDS.ONBOARDING,
+        confidence: this.calculateConfidence(onboardingMatches.length, 0.85, 0.95),
+        reasoning: `Onboarding query: ${onboardingMatches.slice(0, 3).join(', ')}`,
+        tools: [...ONBOARDING_TOOLS],
+        matchedKeywords: onboardingMatches,
+      }
+    }
+
     // 2. CONTENT AGENT - Handle content creation, optimization, humanization
     // PRIORITY: Check content creation BEFORE SEO analytics to avoid false routing
     const contentMatches = this.matchKeywords(messageLower, this.getContentKeywords())
@@ -314,9 +326,9 @@ export class AgentRouter {
    */
   private static getOnboardingKeywords(): string[] {
     return [
-      'setup', 'configure', 'getting started', 'onboard', 'initialize',
-      'connect account', 'api key', 'integration', 'first time',
-      'how to start', 'begin', 'tutorial', 'walkthrough'
+      'onboard', 'onboarding', 'connect account', 'api key',
+      'set up profile', 'setup profile', 'configure account',
+      'integration setup', 'first time setup'
     ]
   }
 

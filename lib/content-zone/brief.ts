@@ -5,6 +5,7 @@ import { generateText } from 'ai'
 import { vercelGateway } from '@/lib/ai/gateway-provider'
 import { EnhancedResearchAgent } from '@/lib/agents/enhanced-research-agent'
 import { getDeepwikiTools } from '@/lib/mcp/deepwiki-client'
+import { manualToolExecution } from '@/lib/ai/manual-tool-execution'
 
 export const contentZoneBriefRequestSchema = z.object({
   topic: z.string().min(1),
@@ -97,7 +98,7 @@ export async function createContentZoneBrief(
           repoName: request.deepwikiRepo,
           question: request.deepwikiQuestion,
         },
-        { toolCallId: 'content-zone-deepwiki', messages: [] },
+        manualToolExecution('content-zone-deepwiki'),
       )
 
       if (raw && typeof raw === 'object' && 'content' in raw && Array.isArray((raw as { content: unknown }).content)) {
@@ -170,7 +171,7 @@ Hard rules:
 
   const { text } = await generateText({
     model: vercelGateway.languageModel('google/gemini-2.0-pro-exp-02-05'),
-    system: 'You are a senior SEO + AEO strategist. Output ONLY valid JSON.',
+    instructions: 'You are a senior SEO + AEO strategist. Output ONLY valid JSON.',
     prompt,
   })
 

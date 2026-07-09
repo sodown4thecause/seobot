@@ -51,7 +51,7 @@ Focus on information that would be valuable for creating SEO/AEO optimized conte
               model: perplexity('sonar-pro'),
               prompt,
               temperature: 0.3, // Lower temperature for factual research
-              experimental_telemetry: createTelemetryConfig('research-agent', {
+              telemetry: createTelemetryConfig('research-agent', {
                 userId: params.userId,
                 sessionId: params.sessionId,
                 langfuseTraceId: params.langfuseTraceId,

@@ -49,6 +49,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   if (!post) notFound()
 
+  if (!post.body) {
+    notFound()
+  }
+
   const articleSchema = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -114,16 +118,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </div>
         )}
 
-        {post.body ? (
-          <div
-            className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-a:text-blue-400 hover:prose-a:text-blue-300"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.body, { ADD_TAGS: ['img'], ADD_ATTR: ['loading', 'fetchpriority'] }) }}
-          />
-        ) : (
-          <div className="bg-gray-800/50 rounded-lg p-8 text-center">
-            <p className="text-gray-300">Content coming soon.</p>
-          </div>
-        )}
+        <div
+          className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-a:text-blue-400 hover:prose-a:text-blue-300"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.body, { ADD_TAGS: ['img'], ADD_ATTR: ['loading', 'fetchpriority'] }) }}
+        />
       </article>
     </div>
   )

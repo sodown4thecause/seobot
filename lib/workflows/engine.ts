@@ -12,6 +12,7 @@ import {
 import { analytics } from './analytics'
 import { workflowPersistence } from './persistence'
 import { nanoid } from 'nanoid'
+import { manualToolExecution } from '@/lib/ai/manual-tool-execution'
 
 export class WorkflowEngine {
   private execution: WorkflowExecution
@@ -616,10 +617,7 @@ export class WorkflowEngine {
 
     // Execute the tool
     if (tool.execute) {
-      return await tool.execute((params || {}) as any, {
-        toolCallId: 'workflow-exec',
-        messages: []
-      })
+      return await tool.execute((params || {}) as any, manualToolExecution('workflow-exec'))
     }
 
     throw new Error(`Content quality tool ${toolName} is not executable`)
