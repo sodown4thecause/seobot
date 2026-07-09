@@ -84,7 +84,7 @@ export const ARTIFACT_REGISTRY: Record<ArtifactType, ArtifactDefinition> = {
     'content',
     ['content'],
     'live',
-    ['create_content_package', 'generate_content_package', 'generate_researched_content'],
+    ['create_content_package', 'generate_content_package'],
     'content-package'
   ),
   'keyword-cluster-map': def(

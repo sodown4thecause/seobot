@@ -56,7 +56,10 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
   switch (type) {
     case 'keyword': {
       const keywordData = normalizeKeywordArtifactData(data)
-      if (!keywordData && status === 'complete') {
+      const hasParsedShape =
+        (data && typeof data === 'object' && Array.isArray((data as Record<string, unknown>).keywords)) ||
+        typeof data === 'string'
+      if (!keywordData && !hasParsedShape && status === 'complete') {
         return (
           <div className={cn('p-6 text-sm text-zinc-500', className)}>
             No structured keyword data was returned for this run.

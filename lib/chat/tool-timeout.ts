@@ -24,6 +24,8 @@ const TOOL_TIMEOUT_OVERRIDES_MS: Record<string, number> = {
   // Full-page crawls are slower than data lookups.
   on_page_instant_pages: 90_000,
   firecrawl_crawl: 120_000,
+  // GEO visibility reports run multi-engine scans.
+  geo_visibility_report: 300_000,
 }
 
 export interface ToolErrorResult {

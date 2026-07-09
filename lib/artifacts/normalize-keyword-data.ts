@@ -77,7 +77,25 @@ export function normalizeKeywordArtifactData(data: unknown): KeywordArtifactData
     try {
       payload = JSON.parse(payload)
     } catch {
-      return null
+      const merged: Record<string, unknown> = {}
+      let mergedAny = false
+      for (const line of payload.split('\n')) {
+        const trimmed = line.trim()
+        if (!trimmed) continue
+        try {
+          const parsed = JSON.parse(trimmed) as Record<string, unknown>
+          if (parsed && typeof parsed === 'object') {
+            for (const [key, value] of Object.entries(parsed)) {
+              merged[key] = value
+            }
+            mergedAny = true
+          }
+        } catch {
+          // Skip lines that fail to parse individually.
+        }
+      }
+      if (!mergedAny) return null
+      payload = merged
     }
   }
   if (!payload || typeof payload !== 'object') return null

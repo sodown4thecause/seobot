@@ -61,6 +61,7 @@ function collectToolCalls(message: MessageLike): NormalizedToolCall[] {
     if (!part?.type?.startsWith('tool-')) continue
     const toolName = part.type.slice('tool-'.length)
     if (part.toolCallId) seenToolCallIds.add(part.toolCallId)
+    seenToolCallIds.add(`name:${toolName}`)
 
     const state = part.state ?? ''
     if (state === 'output-available' || state === 'result') {
@@ -73,6 +74,7 @@ function collectToolCalls(message: MessageLike): NormalizedToolCall[] {
   for (const tool of message.toolInvocations ?? []) {
     const withId = tool as ToolInvocationLike & { toolCallId?: string }
     if (withId.toolCallId && seenToolCallIds.has(withId.toolCallId)) continue
+    if (seenToolCallIds.has(`name:${tool.toolName}`)) continue
 
     if (tool.state === 'result') {
       calls.push({ toolName: tool.toolName, phase: 'success', result: tool.result })

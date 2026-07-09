@@ -107,7 +107,13 @@ const NON_RETRYABLE_ERROR_CODES = new Set([
  * sanitized server-side, but never display it if it slips through.
  */
 const sanitizeRawProviderMessage = (message: string): { message: string; code: string } | null => {
-  if (/credit balance|positive credit|payment required|vercel\.com|api key|billing/i.test(message)) {
+  if (/api key/i.test(message)) {
+    return {
+      message: 'Authentication error with the AI provider.',
+      code: 'provider_auth_error',
+    }
+  }
+  if (/credit balance|positive credit|payment required|vercel\.com|billing/i.test(message)) {
     return {
       message:
         "We're experiencing high demand and this request couldn't be completed right now. Our team has been notified — please try again in a little while.",
@@ -175,12 +181,10 @@ const parseChatError = (err: Error | null | undefined): ParsedChatError | null =
     isRateLimited = true
   }
 
-  if (!code) {
-    const sanitized = sanitizeRawProviderMessage(message)
-    if (sanitized) {
-      message = sanitized.message
-      code = sanitized.code
-    }
+  const sanitized = sanitizeRawProviderMessage(message)
+  if (sanitized) {
+    message = sanitized.message
+    if (!code) code = sanitized.code
   }
 
   if (code && NON_RETRYABLE_ERROR_CODES.has(code)) {
@@ -1287,7 +1291,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       const res = await fetch('/api/conversations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentId: 'general', title: 'New Conversation', chatMode: mode }),
+        body: JSON.stringify({ agentId: agentPreference, title: 'New Conversation', chatMode: mode }),
       })
       if (!res.ok) throw new Error(`Failed to create conversation (${res.status})`)
       const data = await res.json()
@@ -1298,7 +1302,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     } catch (err) {
       console.error('[Chat] Failed to start a fresh chat:', err)
     }
-  }, [router])
+  }, [router, agentPreference])
 
   const previousChatModeRef = useRef(chatMode)
   useEffect(() => {
