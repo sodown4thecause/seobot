@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Navbar } from '@/components/navbar'
@@ -16,8 +15,36 @@ export const revalidate = 300
 
 export default async function BlogPage() {
   const posts = await getBlogPosts()
+
   if (posts.length === 0) {
-    notFound()
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+        <Navbar />
+        <div className="container mx-auto px-4 py-16 pt-32 max-w-6xl">
+          <div className="mb-12">
+            <Link href="/" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">
+              &larr; Back to Home
+            </Link>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Blog</h1>
+            <p className="text-xl text-gray-400">
+              SEO and AEO insights and strategies
+            </p>
+          </div>
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <h2 className="text-2xl font-semibold text-white mb-3">Blog coming soon</h2>
+            <p className="text-gray-400 max-w-md">
+              We&apos;re working on in-depth guides and strategies for AEO, AI SEO, and cite-worthy content. Check back shortly.
+            </p>
+            <Link
+              href="/"
+              className="mt-8 inline-flex items-center gap-2 rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-wider text-white transition-colors hover:border-white hover:bg-white/5"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const featured = posts.filter((p) => p.featured)

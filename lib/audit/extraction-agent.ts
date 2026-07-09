@@ -119,7 +119,7 @@ Focus on:
     prompt,
     schema: EntityProfileSchema,
     temperature: 0.3,
-    telemetry: createTelemetryConfig('aeo-extraction-agent', {
+    experimental_telemetry: createTelemetryConfig('aeo-extraction-agent', {
       brandName,
       url,
       contentLength: content.length,
@@ -154,7 +154,7 @@ Use concise, practical values. If a field is uncertain, infer the most likely va
     prompt,
     schema: HomepageExtractionSchema,
     temperature: 0.2,
-    telemetry: createTelemetryConfig('ai-visibility-homepage-extraction', {
+    experimental_telemetry: createTelemetryConfig('ai-visibility-homepage-extraction', {
       domain,
       contentLength: content.length,
     }),

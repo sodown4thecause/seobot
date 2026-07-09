@@ -326,9 +326,9 @@ export class AgentRouter {
    */
   private static getOnboardingKeywords(): string[] {
     return [
-      'setup', 'configure', 'getting started', 'onboard', 'initialize',
-      'connect account', 'api key', 'integration', 'first time',
-      'how to start', 'begin', 'tutorial', 'walkthrough'
+      'onboard', 'onboarding', 'connect account', 'api key',
+      'set up profile', 'setup profile', 'configure account',
+      'integration setup', 'first time setup',
     ]
   }
 

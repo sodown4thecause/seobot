@@ -25,10 +25,7 @@ export async function register() {
 
       const config = getLangfuseConfig()
 
-      const langfuseSpanProcessor = new LangfuseSpanProcessor({
-        shouldExportSpan: (span) =>
-          span.otelSpan.instrumentationScope.name !== 'next.js',
-      })
+      const langfuseSpanProcessor = new LangfuseSpanProcessor()
 
       const tracerProvider = new NodeTracerProvider({
         spanProcessors: [langfuseSpanProcessor],

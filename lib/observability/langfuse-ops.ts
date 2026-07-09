@@ -43,7 +43,10 @@ export function buildLangfusePromptMetadata(prompt: { toJSON: () => unknown }) {
 
 /** Tags applied to production chat traces for filtering in Langfuse */
 export function buildProductionTraceTags(mode?: string): string[] {
-  const tags = ['flowintent', 'production']
+  const tags = ['flowintent']
+  if (process.env.NODE_ENV === 'production') {
+    tags.push('production')
+  }
   if (mode) {
     tags.push(`mode:${mode}`)
   }

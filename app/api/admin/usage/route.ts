@@ -12,6 +12,7 @@ import { db } from '@/lib/db'
 function parseDateRange(from: string | null, to: string | null) {
   const fromDate = from ? new Date(from) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   const toDate = to ? new Date(to) : new Date()
+  if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) throw new Error('Invalid date range')
   return { fromDate, toDate }
 }
 
@@ -26,8 +27,10 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams
     const targetUserId = searchParams.get('user_id')
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50', 10)))
+    const rawPage = parseInt(searchParams.get('page') || '1', 10)
+    const page = Number.isNaN(rawPage) ? 1 : Math.max(1, rawPage)
+    const rawLimit = parseInt(searchParams.get('limit') || '50', 10)
+    const limit = Number.isNaN(rawLimit) ? 50 : Math.min(100, Math.max(1, rawLimit))
     const offset = (page - 1) * limit
     const { fromDate, toDate } = parseDateRange(
       searchParams.get('from'),

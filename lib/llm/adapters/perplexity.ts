@@ -43,7 +43,7 @@ export async function runPerplexityAdapter(params: RunPerplexityAdapterParams): 
     try {
       const result = await generateText({
         model: perplexity(model),
-        instructions: systemPrompt,
+        system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.2,
         abortSignal: AbortSignal.timeout(timeoutMs),

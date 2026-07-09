@@ -44,7 +44,7 @@ export async function runGrokAdapter(params: RunGrokAdapterParams): Promise<Grok
     try {
       const result = await generateText({
         model: xai(model),
-        instructions: systemPrompt,
+        system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.3,
         abortSignal: AbortSignal.timeout(timeoutMs),

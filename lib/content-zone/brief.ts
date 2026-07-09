@@ -171,7 +171,7 @@ Hard rules:
 
   const { text } = await generateText({
     model: vercelGateway.languageModel('google/gemini-2.0-pro-exp-02-05'),
-    instructions: 'You are a senior SEO + AEO strategist. Output ONLY valid JSON.',
+    system: 'You are a senior SEO + AEO strategist. Output ONLY valid JSON.',
     prompt,
   })
 

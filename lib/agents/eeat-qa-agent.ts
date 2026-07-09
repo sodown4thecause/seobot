@@ -113,7 +113,7 @@ export class EEATQAAgent {
       const { object: qaReport, usage: _usage } = await generateObject({
         model: vercelGateway.languageModel('google/gemini-2.5-pro-preview-06-05' as GatewayModelId),
         schema: QA_REPORT_SCHEMA,
-        instructions: systemPrompt,
+        system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.3, // Lower temperature for more consistent scoring
         abortSignal: params.abortSignal,

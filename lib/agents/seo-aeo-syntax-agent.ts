@@ -68,11 +68,11 @@ export class SEOAEOSyntaxAgent {
         model: vercelGateway.languageModel('google/gemini-2.5-flash' as GatewayModelId),
         schema: SEO_AEO_SYNTAX_SCHEMA,
 
-        instructions: systemPrompt,
+        system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.4,
         ...(params.abortSignal ? { abortSignal: params.abortSignal } : {}),
-        telemetry: createTelemetryConfig('seo-aeo-syntax', {
+        experimental_telemetry: createTelemetryConfig('seo-aeo-syntax', {
           userId: params.userId,
           sessionId: params.sessionId,
           langfuseTraceId: params.langfuseTraceId,

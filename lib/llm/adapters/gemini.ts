@@ -39,7 +39,7 @@ export async function runGeminiAdapter(params: RunGeminiAdapterParams): Promise<
     try {
       const result = await generateText({
         model: google(model),
-        instructions: systemPrompt,
+        system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.3,
         abortSignal: AbortSignal.timeout(timeoutMs),

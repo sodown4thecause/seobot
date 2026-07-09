@@ -16,7 +16,8 @@ export function BorderGlow({
   glowSize = "20px",
   className,
   children,
-  ...props
+  style: propsStyle,
+  ...restProps
 }: BorderGlowProps) {
   return (
     <div
@@ -25,9 +26,10 @@ export function BorderGlow({
         {
           "--glow-color": glowColor,
           "--glow-size": glowSize,
+          ...propsStyle,
         } as CSSProperties
       }
-      {...props}
+      {...restProps}
     >
       <div
         aria-hidden="true"

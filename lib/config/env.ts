@@ -120,12 +120,12 @@ const serverEnvSchema = z.object({
 
   // Observability — logging, errors, product analytics
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
-  AXIOM_DATASET: z.string().min(1).optional(),
-  AXIOM_TOKEN: z.string().min(1).optional(),
-  SENTRY_DSN: z.string().url().optional(),
+  AXIOM_DATASET: optionalNonEmptyString,
+  AXIOM_TOKEN: optionalNonEmptyString,
+  SENTRY_DSN: optionalUrl,
   SENTRY_ENVIRONMENT: z.string().optional(),
-  NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
-  NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+  NEXT_PUBLIC_POSTHOG_KEY: optionalNonEmptyString,
+  NEXT_PUBLIC_POSTHOG_HOST: optionalUrl,
 
   // Site Configuration
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),

@@ -220,7 +220,7 @@ export async function runJudgeAgent(params: {
       prompt,
       schema: AEOAuditReportSchema,
       temperature: 0.4,
-      telemetry: createTelemetryConfig('aeo-judge-agent', {
+      experimental_telemetry: createTelemetryConfig('aeo-judge-agent', {
         brandName: params.brandName,
         llmMentionsCount: params.perception.llmMentionsCount,
         knowledgeGraphExists: params.perception.knowledgeGraphExists,

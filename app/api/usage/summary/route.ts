@@ -13,13 +13,16 @@ import { BETA_LIMITS } from '@/lib/config/beta-limits'
 export const runtime = 'nodejs'
 
 export async function GET() {
-  try {
-    const userId = await requireUserId()
+  const userId = await requireUserId().catch(() => null)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
+  try {
     const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-    const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    const startOfNextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+    const resetDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
 
     const [limits] = await db
       .select()
@@ -42,7 +45,7 @@ export async function GET() {
             FROM ai_usage_events e2
             WHERE e2.user_id = ${userId}
               AND e2.created_at >= ${startOfMonth.toISOString()}::timestamp
-              AND e2.created_at <= ${endOfMonth.toISOString()}::timestamp
+              AND e2.created_at < ${startOfNextMonth.toISOString()}::timestamp
               AND e2.agent_type IS NOT NULL
             GROUP BY agent_type
             ORDER BY COUNT(*) DESC
@@ -53,7 +56,7 @@ export async function GET() {
       FROM ai_usage_events
       WHERE user_id = ${userId}
         AND created_at >= ${startOfMonth.toISOString()}::timestamp
-        AND created_at <= ${endOfMonth.toISOString()}::timestamp
+        AND created_at < ${startOfNextMonth.toISOString()}::timestamp
     `)
 
     const row = usageResult.rows[0] as {
