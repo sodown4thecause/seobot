@@ -30,17 +30,21 @@ export interface GeoDigestResponse {
 
 export async function resolveLatestGeoDigest(): Promise<GeoDigestResponse | null> {
   if (isGeoApiConfigured()) {
-    const remote = await fetchLatestDigestFromApi()
-    if (remote) {
-      const suggestions = await fetchSuggestionsFromApi(remote.digestDate)
-      return {
-        source: 'geo-api',
-        digestDate: remote.digestDate,
-        brand: remote.brand,
-        digest: remote.digest,
-        suggestions: suggestions ?? remote.suggestions,
-        degradedSections: remote.degradedSections,
+    try {
+      const remote = await fetchLatestDigestFromApi()
+      if (remote) {
+        const suggestions = await fetchSuggestionsFromApi(remote.digestDate)
+        return {
+          source: 'geo-api',
+          digestDate: remote.digestDate,
+          brand: remote.brand,
+          digest: remote.digest,
+          suggestions: suggestions ?? remote.suggestions,
+          degradedSections: remote.degradedSections,
+        }
       }
+    } catch (error) {
+      console.error('[digest-service] GEO API fetch failed, falling back to Neon:', error)
     }
   }
 
@@ -60,17 +64,21 @@ export async function resolveLatestGeoDigest(): Promise<GeoDigestResponse | null
 
 export async function resolveGeoDigestByDate(date: string): Promise<GeoDigestResponse | null> {
   if (isGeoApiConfigured()) {
-    const digest = await fetchDigestFromApiByDate(date)
-    if (digest) {
-      const suggestions = await fetchSuggestionsFromApi(date)
-      return {
-        source: 'geo-api',
-        digestDate: date,
-        brand: digest.brand,
-        digest,
-        suggestions,
-        degradedSections: digest.degradedSections,
+    try {
+      const digest = await fetchDigestFromApiByDate(date)
+      if (digest) {
+        const suggestions = await fetchSuggestionsFromApi(date)
+        return {
+          source: 'geo-api',
+          digestDate: date,
+          brand: digest.brand,
+          digest,
+          suggestions,
+          degradedSections: digest.degradedSections,
+        }
       }
+    } catch (error) {
+      console.error('[digest-service] GEO API fetch failed, falling back to Neon:', error)
     }
   }
 
@@ -90,15 +98,19 @@ export async function resolveGeoDigestByDate(date: string): Promise<GeoDigestRes
 
 export async function resolveGeoDigestTrends(days: number): Promise<GeoDigestResponse[]> {
   if (isGeoApiConfigured()) {
-    const digests = await fetchGeoTrendsFromApi(days)
-    return digests.map(digest => ({
-      source: 'geo-api' as const,
-      digestDate: digest.date,
-      brand: digest.brand,
-      digest,
-      suggestions: null,
-      degradedSections: digest.degradedSections,
-    }))
+    try {
+      const digests = await fetchGeoTrendsFromApi(days)
+      return digests.map(digest => ({
+        source: 'geo-api' as const,
+        digestDate: digest.date,
+        brand: digest.brand,
+        digest,
+        suggestions: null,
+        degradedSections: digest.degradedSections,
+      }))
+    } catch (error) {
+      console.error('[digest-service] GEO API fetch failed, falling back to Neon:', error)
+    }
   }
 
   const stored = await listGeoDigestTrends(days)
@@ -115,8 +127,12 @@ export async function resolveGeoDigestTrends(days: number): Promise<GeoDigestRes
 
 export async function resolveGeoHealth(): Promise<GeoHealthResponse> {
   if (isGeoApiConfigured()) {
-    const remote = await fetchGeoHealthFromApi()
-    if (remote) return remote
+    try {
+      const remote = await fetchGeoHealthFromApi()
+      if (remote) return remote
+    } catch (error) {
+      console.error('[digest-service] GEO API health fetch failed, falling back to Neon:', error)
+    }
   }
 
   const latest = await getLatestGeoDigest()

@@ -71,7 +71,7 @@ function isUuid(value: string): boolean {
 /**
  * Map client/stream message IDs (e.g. msg-*) to stable UUIDs for the messages table.
  */
-export function resolveMessageId(clientId: string | undefined): string {
+export function resolveMessageId(clientId: string | undefined, conversationId: string): string {
   if (!clientId) {
     return crypto.randomUUID()
   }
@@ -80,7 +80,7 @@ export function resolveMessageId(clientId: string | undefined): string {
     return clientId
   }
 
-  return uuidv5(clientId, MESSAGE_ID_NAMESPACE)
+  return uuidv5(`${conversationId}:${clientId}`, MESSAGE_ID_NAMESPACE)
 }
 
 function getClientMessageId(metadata: MessageMetadata | null | undefined, dbId: string): string {
@@ -116,9 +116,9 @@ function buildMessageMetadata(
   return Object.keys(metadata).length > 0 ? (metadata as Json) : null
 }
 
-function normalizePersistedMessage(message: PersistedMessage) {
+function normalizePersistedMessage(message: PersistedMessage, conversationId: string) {
   const parts = Array.isArray(message.parts) ? message.parts : []
-  const resolvedId = resolveMessageId(message.id)
+  const resolvedId = resolveMessageId(message.id, conversationId)
 
   return {
     messageId: resolvedId,
@@ -220,7 +220,7 @@ export async function autosaveUserMessage(params: {
     throw new Error('Conversation not found for authenticated user')
   }
 
-  const normalized = normalizePersistedMessage(message)
+  const normalized = normalizePersistedMessage(message, chatId)
   const suggestedTitle = deriveConversationTitle(normalized.content)
 
   await db
@@ -277,7 +277,7 @@ export async function persistAssistantMessages(params: {
   const assistants = messagesToPersist.filter((message) => message.role === 'assistant')
   if (assistants.length === 0) return
 
-  const normalizedAssistants = assistants.map(normalizePersistedMessage)
+  const normalizedAssistants = assistants.map((message) => normalizePersistedMessage(message, chatId))
   const lastMessageAt = new Date(
     Math.max(...normalizedAssistants.map((msg) => msg.createdAt.getTime()))
   )
@@ -348,7 +348,7 @@ export async function saveChatUIMessage(
     content = extractTextFromParts(message.parts)
   }
 
-  const resolvedId = resolveMessageId(message.id)
+  const resolvedId = resolveMessageId(message.id, chatId)
   const metadata = buildMessageMetadata(message, resolvedId)
   const createdAt = message.createdAt ?? new Date()
 

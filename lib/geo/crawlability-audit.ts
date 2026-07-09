@@ -63,7 +63,22 @@ function normalizeDomain(domain: string): string {
 export function parseRobotsTxt(content: string): RobotsRule[] {
   const lines = content.split(/\r?\n/)
   const rules: RobotsRule[] = []
-  let current: RobotsRule | null = null
+  let groupAgents: string[] = []
+  let groupDirectives: { allow: string[]; disallow: string[] } | null = null
+
+  const flushGroup = () => {
+    if (groupDirectives) {
+      for (const agent of groupAgents) {
+        rules.push({
+          userAgent: agent,
+          allow: [...groupDirectives.allow],
+          disallow: [...groupDirectives.disallow],
+        })
+      }
+    }
+    groupAgents = []
+    groupDirectives = null
+  }
 
   for (const rawLine of lines) {
     const line = rawLine.split('#')[0].trim()
@@ -76,15 +91,20 @@ export function parseRobotsTxt(content: string): RobotsRule[] {
     const value = line.slice(colonIndex + 1).trim()
 
     if (key === 'user-agent') {
-      if (current) rules.push(current)
-      current = { userAgent: value, allow: [], disallow: [] }
-    } else if (current) {
-      if (key === 'allow') current.allow.push(value)
-      if (key === 'disallow') current.disallow.push(value)
+      if (groupDirectives) {
+        flushGroup()
+      }
+      groupAgents.push(value)
+    } else if (key === 'allow' || key === 'disallow') {
+      if (!groupDirectives) {
+        groupDirectives = { allow: [], disallow: [] }
+      }
+      if (key === 'allow') groupDirectives.allow.push(value)
+      if (key === 'disallow') groupDirectives.disallow.push(value)
     }
   }
 
-  if (current) rules.push(current)
+  flushGroup()
   return rules
 }
 
@@ -110,12 +130,9 @@ function pathMatchesPattern(path: string, pattern: string): boolean {
 
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const normalizedPattern = pattern.startsWith('/') ? pattern : `/${pattern}`
+  const cleanPattern = normalizedPattern.replace(/\*+$/, '')
 
-  if (normalizedPattern.endsWith('*')) {
-    return normalizedPath.startsWith(normalizedPattern.slice(0, -1))
-  }
-
-  return normalizedPath === normalizedPattern || normalizedPath.startsWith(`${normalizedPattern}/`)
+  return normalizedPath.startsWith(cleanPattern)
 }
 
 export function evaluateCrawlerAccess(
@@ -146,17 +163,30 @@ export function evaluateCrawlerAccess(
   let rootBlocked = false
 
   for (const path of checkPaths) {
-    let allowed = true
+    let bestMatch: { type: 'allow' | 'disallow'; length: number } | null = null
 
     for (const rule of relevant) {
-      const disallowHit = rule.disallow.some((d) => pathMatchesPattern(path, d))
-      const allowHit = rule.allow.some((a) => pathMatchesPattern(path, a))
-
-      if (disallowHit && !allowHit) {
-        allowed = false
-        blockedPaths.push(path)
-        if (path === '/') rootBlocked = true
+      for (const pattern of rule.allow) {
+        if (pathMatchesPattern(path, pattern)) {
+          const len = pattern.length
+          if (!bestMatch || len > bestMatch.length) {
+            bestMatch = { type: 'allow', length: len }
+          }
+        }
       }
+      for (const pattern of rule.disallow) {
+        if (pathMatchesPattern(path, pattern)) {
+          const len = pattern.length
+          if (!bestMatch || len > bestMatch.length) {
+            bestMatch = { type: 'disallow', length: len }
+          }
+        }
+      }
+    }
+
+    if (bestMatch?.type === 'disallow') {
+      blockedPaths.push(path)
+      if (path === '/') rootBlocked = true
     }
   }
 
@@ -198,21 +228,22 @@ export function evaluateCrawlerAccess(
 }
 
 async function fetchText(url: string): Promise<{ status: number; text: string } | null> {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 12000)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 12000)
 
+  try {
     const resp = await fetch(url, {
       signal: controller.signal,
       headers: { 'User-Agent': 'FlowIntent-CrawlabilityAudit/1.0' },
       redirect: 'follow',
     })
 
-    clearTimeout(timeout)
     const text = await resp.text()
     return { status: resp.status, text }
   } catch {
     return null
+  } finally {
+    clearTimeout(timeout)
   }
 }
 

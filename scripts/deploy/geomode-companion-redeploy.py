@@ -89,8 +89,8 @@ def main() -> None:
                 if item.is_file() and "node_modules" not in item.parts:
                     tar.add(item, arcname=str(Path("geomode-companion") / item.relative_to(base)))
 
-        run([PSCP, "-batch", "-hostkey", HOSTKEY, "-pw", PASSWORD, str(tar_file), f"root@{HOST}:/root/geomode-companion.tgz"])
-        run([PSCP, "-batch", "-hostkey", HOSTKEY, "-pw", PASSWORD, str(env_file), f"root@{HOST}:/root/companion.env"])
+        run(scp_base() + [str(tar_file), f"root@{HOST}:/root/geomode-companion.tgz"])
+        run(scp_base() + [str(env_file), f"root@{HOST}:/root/companion.env"])
 
     remote = (
         "rm -rf /opt/elmo/services/geomode-companion && "
@@ -105,7 +105,7 @@ def main() -> None:
         "curl -sS http://127.0.0.1:8787/health && echo && "
         "docker compose -f /opt/elmo/elmo.yaml --project-directory /opt/elmo logs --tail=20 geomode-companion"
     )
-    run([PLINK, "-batch", "-hostkey", HOSTKEY, "-pw", PASSWORD, f"root@{HOST}", remote])
+    run(ssh_base() + [f"root@{HOST}", remote])
 
 
 if __name__ == "__main__":

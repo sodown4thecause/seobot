@@ -52,6 +52,19 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
     )
   }
 
+  if (
+    (status === 'loading' || status === 'streaming') &&
+    (type === 'schema-markup-generator' ||
+      type === 'robots-sitemap-audit' ||
+      type === 'geo-content-gap-report')
+  ) {
+    return (
+      <div className={cn('h-full flex items-center justify-center p-6', className)}>
+        <p className="text-sm text-zinc-500 animate-pulse">Loading…</p>
+      </div>
+    )
+  }
+
   switch (type) {
     case 'keyword':
       return (

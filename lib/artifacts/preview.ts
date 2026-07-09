@@ -1,4 +1,4 @@
-import { getArtifactDefinition } from '@/lib/artifacts/registry'
+import { getArtifactDefinition, isArtifactType } from '@/lib/artifacts/registry'
 import type { ArtifactType, SavedArtifactLibraryItem } from '@/lib/artifacts/types'
 
 export interface ArtifactPreviewSummary {
@@ -23,8 +23,8 @@ export function getArtifactTypeFromLibraryItem(
 ): ArtifactType | null {
   const meta = readMetadata(item)
   const artifactType = meta.artifactType
-  if (typeof artifactType === 'string') {
-    return artifactType as ArtifactType
+  if (typeof artifactType === 'string' && isArtifactType(artifactType)) {
+    return artifactType
   }
   return null
 }
@@ -84,8 +84,8 @@ export function buildArtifactPreviewSummary(
 ): ArtifactPreviewSummary {
   const meta = readMetadata(item)
   const artifactType =
-    (typeof meta.artifactType === 'string'
-      ? (meta.artifactType as ArtifactType)
+    (typeof meta.artifactType === 'string' && isArtifactType(meta.artifactType)
+      ? meta.artifactType
       : null) ?? 'keyword'
   const definition = getArtifactDefinition(artifactType)
 

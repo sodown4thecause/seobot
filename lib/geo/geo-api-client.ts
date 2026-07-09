@@ -46,6 +46,7 @@ async function fetchGeoApi<T>(path: string, schema: { parse: (value: unknown) =>
     next: { revalidate: 300 },
   })
 
+  if (response.status === 404) return null
   if (!response.ok) {
     throw new Error(`GEO read API ${path} failed (${response.status})`)
   }

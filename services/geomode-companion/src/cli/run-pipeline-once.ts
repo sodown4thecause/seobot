@@ -27,9 +27,9 @@ async function main() {
   await migrate(pool)
 
   console.log('Running DataForSEO collector...')
-  await runDataForSeoCollector(pool, config)
+  const collected = await runDataForSeoCollector(pool, config)
 
-  const digestDate = utcDateString()
+  const digestDate = collected.snapshotDate
   const windowHours = 24
   const geomode = await readGeomodeDailySummary(pool, config, windowHours)
   const serpRows = await listSerpSnapshotsForDate(pool, digestDate)

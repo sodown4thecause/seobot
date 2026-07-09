@@ -11,7 +11,7 @@ export interface SaveToLibraryButtonProps {
   data?: any
   imageUrl?: string
   title: string
-  itemType: 'response' | 'image' | 'data' | 'component' | 'artifact'
+  itemType: 'response' | 'image' | 'data' | 'component'
   conversationId?: string
   messageId?: string
   metadata?: Record<string, any>

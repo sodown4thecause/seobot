@@ -16,6 +16,9 @@ async function main() {
   await pool.query('CREATE EXTENSION IF NOT EXISTS vector')
   await pool.query(migration)
 
+  const migration2 = readFileSync('drizzle/0008_elmo_brand_id.sql', 'utf8')
+  await pool.query(migration2)
+
   const result = await pool.query(`
     SELECT table_name
     FROM information_schema.tables

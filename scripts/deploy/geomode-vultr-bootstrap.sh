@@ -141,7 +141,12 @@ sleep 10
 elmo --dir "${ELMO_DIR}" compose ps
 docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 
-# Docker may publish ${PUBLIC_APP_PORT} on 0.0.0.0 until Cloudflare Tunnel is configured.
+# Docker publishes container ports on 0.0.0.0 by default, which bypasses UFW
+# because Docker manipulates the DOCKER chain directly in iptables/nftables.
+# This VPS is tunnel-only (Cloudflare Tunnel) — no app port should be reachable
+# from the public internet. UFW deny rules alone are insufficient; block external
+# access at the DOCKER-USER chain so only loopback (and the tunnel) can reach the
+# published port. See docs/specs/2026-06-12-geomode-geo-tracking-design.md
 if command -v ufw >/dev/null 2>&1; then
   if ufw status 2>/dev/null | grep -qi 'Status: active'; then
     ufw deny "${PUBLIC_APP_PORT}/tcp" comment 'geomode tunnel-only' >/dev/null 2>&1 || true
@@ -149,6 +154,13 @@ if command -v ufw >/dev/null 2>&1; then
   else
     log "NOTE: Enable UFW or configure Cloudflare Tunnel before exposing this VPS publicly"
   fi
+fi
+
+if command -v iptables >/dev/null 2>&1; then
+  if ! iptables -C DOCKER-USER -p tcp --dport "${PUBLIC_APP_PORT}" ! -i lo -j DROP >/dev/null 2>&1; then
+    iptables -I DOCKER-USER -p tcp --dport "${PUBLIC_APP_PORT}" ! -i lo -j DROP
+  fi
+  log "iptables DOCKER-USER: dropped external TCP ${PUBLIC_APP_PORT} (tunnel-only, loopback allowed)"
 fi
 
 # Access is via Cloudflare Tunnel only — do NOT open the app port in UFW.

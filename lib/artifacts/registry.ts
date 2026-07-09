@@ -289,7 +289,7 @@ export function getArtifactDefinition(type: ArtifactType): ArtifactDefinition {
 }
 
 export function isArtifactType(value: string): value is ArtifactType {
-  return value in ARTIFACT_REGISTRY
+  return Object.hasOwn(ARTIFACT_REGISTRY, value)
 }
 
 export function listArtifactsByMode(mode: ChatMode): ArtifactDefinition[] {

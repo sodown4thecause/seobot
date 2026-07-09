@@ -7,6 +7,7 @@ else
   echo "TUNNEL_TOKEN=${TOKEN}" >> /opt/elmo/.env
 fi
 python3 <<'PY'
+import sys
 from pathlib import Path
 p = Path('/opt/elmo/elmo.yaml')
 text = p.read_text()
@@ -22,13 +23,14 @@ new = """  cloudflared:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
     env_file:
       - .env"""
-if 'TUNNEL_TOKEN:' not in text and old in text:
+if 'TUNNEL_TOKEN:' in text:
+    print('elmo.yaml already has TUNNEL_TOKEN')
+elif old in text:
     p.write_text(text.replace(old, new))
     print('patched elmo.yaml')
-elif 'TUNNEL_TOKEN:' in text:
-    print('elmo.yaml already has TUNNEL_TOKEN')
 else:
-    print('cloudflared block not found')
+    print('ERROR: expected cloudflared block not found in elmo.yaml', file=sys.stderr)
+    sys.exit(1)
 PY
 cd /opt/elmo
 docker compose -f elmo.yaml up -d cloudflared

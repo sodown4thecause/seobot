@@ -9,8 +9,18 @@ function basicAuth(login: string, password: string) {
   return `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`
 }
 
+function normalizeHostname(host: string): string {
+  return host.toLowerCase().replace(/^www\./, '').replace(/\/$/, '')
+}
+
+function isDomainMatch(itemDomain: string, trackedDomain: string): boolean {
+  const a = normalizeHostname(itemDomain)
+  const b = normalizeHostname(trackedDomain)
+  return a === b || a.endsWith(`.${b}`)
+}
+
 function extractRank(items: Array<{ type?: string, rank_group?: number, domain?: string }>, domain: string): number | null {
-  const organic = items.find(item => item.type === 'organic' && item.domain?.includes(domain.replace(/^www\./, '')))
+  const organic = items.find(item => item.type === 'organic' && item.domain != null && isDomainMatch(item.domain, domain))
   return organic?.rank_group ?? null
 }
 

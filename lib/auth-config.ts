@@ -204,7 +204,7 @@ export const auth = betterAuth({
       enabled: true,
       trustedProviders: ['google'],
       // Allow linking OAuth to migrated email/password accounts that predate verification.
-      requireLocalEmailVerified: false,
+      requireLocalEmailVerified: true,
     },
   },
 

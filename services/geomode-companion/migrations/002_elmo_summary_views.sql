@@ -1,7 +1,7 @@
 -- Optional SQL views for geomode/Elmo Postgres.
 -- Customize table/column names to match your Elmo fork schema once confirmed.
 
-CREATE OR REPLACE VIEW public.elmo_run_summary AS
+CREATE VIEW IF NOT EXISTS public.elmo_run_summary AS
 SELECT
   COALESCE(engine, 'unknown') AS engine,
   COALESCE(brand, '') AS brand,
@@ -19,7 +19,7 @@ FROM (
 ) AS placeholder
 ;
 
-CREATE OR REPLACE VIEW public.elmo_citation_summary AS
+CREATE VIEW IF NOT EXISTS public.elmo_citation_summary AS
 SELECT
   ''::text AS url,
   ''::text AS domain,

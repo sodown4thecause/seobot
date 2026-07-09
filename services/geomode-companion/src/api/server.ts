@@ -62,8 +62,11 @@ export function startReadApi(pool: pg.Pool, config: CompanionConfig) {
         return sendJson(response, 200, digest)
       }
 
-      if (request.method === 'GET' && path.endsWith('/suggestions')) {
-        const date = path.replace('/digest/', '').replace('/suggestions', '')
+      if (request.method === 'GET' && path.startsWith('/digest/') && path.endsWith('/suggestions')) {
+        const date = path.replace(/^\/digest\//, '').replace(/\/suggestions$/, '')
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          return sendJson(response, 400, { error: 'date must be YYYY-MM-DD' })
+        }
         const row = await getLocalDigest(pool, date)
         if (!row?.suggestions) return sendJson(response, 404, { error: 'Suggestions not found' })
         return sendJson(response, 200, geoSuggestionsSchema.parse(row.suggestions))

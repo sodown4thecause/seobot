@@ -1278,6 +1278,22 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           }
           if (part.type?.startsWith('tool-')) {
             const tName = part.type.replace('tool-', '')
+            const toolState = part.state
+            if (toolState !== 'output-available' && toolState !== 'result') {
+              return (
+                <div
+                  key={part.toolCallId ?? `tool-${idx}`}
+                  className="rounded-2xl my-4 border border-indigo-500/20 bg-indigo-500/5 p-4 animate-pulse"
+                >
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                    <span className="text-sm text-zinc-400">
+                      Running {formatToolName(tName)}…
+                    </span>
+                  </div>
+                </div>
+              )
+            }
             return (
               <ToolPartInvocation
                 key={part.toolCallId ?? `tool-${idx}`}

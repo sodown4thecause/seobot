@@ -214,7 +214,7 @@ def main() -> int:
         password,
         "docker compose -f /opt/elmo/elmo.yaml --project-directory /opt/elmo ps && "
         "curl -sS -o /dev/null -w 'elmo:%{http_code}\\n' http://127.0.0.1:1515 && "
-        "sleep 15 && curl -sS http://127.0.0.1:8787/health || true",
+        "sleep 15 && curl -sS http://127.0.0.1:8787/health",
         timeout=120,
     )
 
@@ -240,6 +240,9 @@ console.log('migration done');
         shell=True,
     )
     print(neon_apply.stdout or neon_apply.stderr)
+    if neon_apply.returncode != 0:
+        print(f"Neon migration failed: {neon_apply.stderr}")
+        return neon_apply.returncode
 
     run_step(
         "Run RAG pipeline once (collector + digest + Neon sync)",

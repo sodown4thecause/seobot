@@ -4,19 +4,19 @@
 This document details the product requirements for the new **GEO (Generative Engine Optimization)** and **SEO Content Engine** modes. Built on Next.js, Vercel AI SDK, and Tailwind CSS 4, this feature elevates standard AI chat interactions into a rich, visual workbench. The core user experience centers on high-fidelity, real-time client-side streaming of structured **Artifacts** (interactive dashboards, keyword tables, and complete blog content layouts) that automatically adapt to the user's brand identity and design themes.
 
 ## 2. System Architecture & Data Pipeline
-To ensure high deliverability, avoid CAPTCHAs, and control operational expenditures, the system splits background scraping tasks from client-side execution using a hybrid architecture of ScrapingBee and self-managed Vultr VPS instances.
+To ensure high deliverability, avoid CAPTCHAs, and control operational expenditures, the system splits background scraping tasks from client-side execution using a hybrid architecture of MCP-integrated extraction (DataForSEO, Jina, Firecrawl) and self-managed Vultr VPS instances running the geomode/Elmo fork.
 
 ### 2.1 GEO Scraping Infrastructure Specification
 
 | Component | Infrastructure Role | Implementation / Setup Details |
 | :--- | :--- | :--- |
-| **ScrapingBee API** | Primary Extraction Gateway | Utilized explicitly for extracting raw engine data from Google AI Overviews, ChatGPT, Claude, Perplexity, and Gemini. Configured with `premium_proxy=true` and JavaScript rendering enabled to bypass dynamic bot-detection walls. |
+| **Geomode/Elmo + MCP Extraction** | Primary Extraction Gateway | geomode/Elmo fork on a Vultr VPS captures raw engine data from Google AI Overviews, ChatGPT, Claude, Perplexity, and Gemini. DataForSEO SERP API, Jina reader, and Firecrawl (via `@ai-sdk/mcp`) handle structured extraction and rendering without a third-party scraping SaaS dependency. |
 | **Vultr VPS Nodes** | Proxy Rotation & Cron Worker Cluster | Lightweight Ubuntu instances acting as custom egress proxies or queue workers. These workers orchestrate scheduled interval tracking (daily/weekly tracking cron jobs) to feed baseline market intelligence into the database without bottlenecking the main application server. |
 | **Next.js Backend (Route Handlers)** | API Orchestrator | Secures API tokens, structures queries based on user intent classifier prompts, normalizes varying JSON payloads from the scraping nodes, and maps them directly into structured tool calls via the Vercel AI SDK. |
 
 **Scraping Frequency & Trigger Logic:**
 - **On-Demand (Event-Driven):** Triggered instantly when a user inputs a specific tracking prompt or initializes a live competitive audit inside the chat stream.
-- **Scheduled Tracking (Cron):** Batched daily or weekly across target keywords to map visual trend data without exceeding ScrapingBee concurrency ceilings.
+- **Scheduled Tracking (Cron):** Batched daily or weekly across target keywords to map visual trend data without exceeding DataForSEO/Jina rate limits.
 
 ## 3. Core Artifact Matrix (10 Visual Components)
 To provide a standardized yet comprehensive diagnostic experience, the interface renders exactly 10 key Artifacts inside the client-side streaming workspace. These components use pure client-side state management and Tailwind CSS 4 utility classes for theme adaptation.

@@ -54,7 +54,12 @@ function buildDomainsFromAnalysis(analysis: Awaited<ReturnType<typeof analyzeElm
 export async function inspectElmoBrandForUser(userId: string): Promise<ElmoBrand | null> {
   const profile = await getBusinessProfile(userId)
   if (!profile?.elmoBrandId) return null
-  return getElmoBrand(profile.elmoBrandId)
+  try {
+    return await getElmoBrand(profile.elmoBrandId)
+  } catch (error) {
+    if (error instanceof ElmoApiError && error.status === 404) return null
+    throw error
+  }
 }
 
 export async function ensureElmoBrandForUser(userId: string): Promise<EnsureElmoBrandResult> {
@@ -64,11 +69,19 @@ export async function ensureElmoBrandForUser(userId: string): Promise<EnsureElmo
   }
 
   if (profile.elmoBrandId) {
-    const brand = await getElmoBrand(profile.elmoBrandId)
-    return {
-      brand,
-      created: false,
-      brandId: profile.elmoBrandId,
+    try {
+      const brand = await getElmoBrand(profile.elmoBrandId)
+      return {
+        brand,
+        created: false,
+        brandId: profile.elmoBrandId,
+      }
+    } catch (error) {
+      if (error instanceof ElmoApiError && error.status === 404) {
+        await clearElmoBrandIdForUser(userId)
+      } else {
+        throw error
+      }
     }
   }
 

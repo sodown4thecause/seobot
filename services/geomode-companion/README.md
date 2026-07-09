@@ -14,7 +14,7 @@ Nightly GEO/AEO digest pipeline for the geomode VPS stack. See `docs/specs/2026-
 
 ```bash
 cd services/geomode-companion
-cp .env.example .env
+cp ../../.env.example .env
 npm install
 npm run dev
 ```

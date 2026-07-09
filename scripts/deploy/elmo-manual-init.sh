@@ -12,6 +12,7 @@ docker compose version >/dev/null || { echo "ERROR: docker compose missing"; exi
 # DataForSEO creds from the secrets file
 set -a; . /root/bootstrap-secrets.env; set +a
 [ -n "${DATAFORSEO_LOGIN:-}" ] || { echo "ERROR: DATAFORSEO_LOGIN empty"; exit 1; }
+[ -n "${DATAFORSEO_PASSWORD:-}" ] || { echo "ERROR: DATAFORSEO_PASSWORD empty"; exit 1; }
 
 DEPLOYMENT_ID=$(cat /proc/sys/kernel/random/uuid)
 BETTER_AUTH_SECRET=$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')
@@ -39,7 +40,7 @@ DATAFORSEO_PASSWORD=${DATAFORSEO_PASSWORD}
 SCRAPE_TARGETS=google-ai-mode:dataforseo:online
 
 # REQUIRED for onboarding analysis + sentiment scoring — fill one in:
-OPENROUTER_API_KEY=
+OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
 EOF
 chmod 600 "$ELMO_DIR/.env"
 

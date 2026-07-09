@@ -121,7 +121,7 @@ export function buildSchemaJsonLd(input: SchemaMarkupInput): Record<string, unkn
 }
 
 export function wrapJsonLdScript(jsonLd: Record<string, unknown>): string {
-  return `<script type="application/ld+json">\n${JSON.stringify(jsonLd, null, 2)}\n</script>`
+  return `<script type="application/ld+json">\n${JSON.stringify(jsonLd, null, 2).replace(/</g, '\\u003c')}\n</script>`
 }
 
 export function generateSchemaMarkup(input: SchemaMarkupInput): SchemaMarkupOutput {

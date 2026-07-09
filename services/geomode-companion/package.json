@@ -7,8 +7,6 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.json",
-    "collector:dry-run": "tsx src/cli/collector-dry-run.ts",
-    "digest:build": "tsx src/cli/build-digest.ts",
     "pipeline:once": "tsx src/cli/run-pipeline-once.ts",
     "test": "vitest run",
     "test:watch": "vitest"

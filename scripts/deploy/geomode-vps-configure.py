@@ -41,7 +41,7 @@ def ssh(cmd: str, timeout: int = 300) -> subprocess.CompletedProcess[str]:
             "-o",
             "ConnectTimeout=15",
             "-o",
-            "StrictHostKeyChecking=accept-new",
+            "StrictHostKeyChecking=yes",
             f"root@{HOST}",
             cmd,
         ],
@@ -66,7 +66,7 @@ def scp(local: Path, remote: str) -> None:
             "-o",
             "BatchMode=yes",
             "-o",
-            "StrictHostKeyChecking=accept-new",
+            "StrictHostKeyChecking=yes",
             str(local),
             f"root@{HOST}:{remote}",
         ],
@@ -188,8 +188,8 @@ def main() -> int:
     result = ssh(
         "python3 /root/remote_merge.py && "
         "docker compose -f /opt/elmo/elmo.yaml --project-directory /opt/elmo up -d --build geomode-companion web worker && "
-        "grep -q '^CLOUDFLARE_TUNNEL_TOKEN=.' /opt/elmo/.env && "
-        "docker compose -f /opt/elmo/elmo.yaml --project-directory /opt/elmo up -d cloudflared || true && "
+        "(grep -q '^CLOUDFLARE_TUNNEL_TOKEN=.' /opt/elmo/.env && "
+        "docker compose -f /opt/elmo/elmo.yaml --project-directory /opt/elmo up -d cloudflared || true) && "
         "sleep 10 && "
         "docker compose -f /opt/elmo/elmo.yaml --project-directory /opt/elmo ps && "
         "curl -sS -o /dev/null -w 'elmo:%{http_code}\\n' http://127.0.0.1:1515 && "
@@ -198,7 +198,9 @@ def main() -> int:
     if result.returncode != 0:
         return result.returncode
 
-    ssh("docker compose -f /opt/elmo/elmo.yaml --project-directory /opt/elmo exec -T geomode-companion node dist/cli/run-pipeline-once.js")
+    pipeline = ssh("docker compose -f /opt/elmo/elmo.yaml --project-directory /opt/elmo exec -T geomode-companion node dist/cli/run-pipeline-once.js")
+    if pipeline.returncode != 0:
+        return pipeline.returncode
 
     print("\n--- Set on Vercel (production + preview) ---")
     print(f"ELMO_API_URL={GEO_APP_URL}")
@@ -209,6 +211,8 @@ def main() -> int:
 
     # Persist ELMO_API_KEY locally for future runs (don't commit)
     local_env = REPO_ROOT / ".env.local"
+    if not local_env.exists():
+        local_env = REPO_ROOT / ".env"
     text = local_env.read_text(encoding="utf-8")
     updates = {
         "ELMO_API_KEY": admin_api_key,

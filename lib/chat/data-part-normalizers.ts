@@ -528,7 +528,7 @@ export function normalizeToolResultToDataParts(params: {
       parts.push({
         type: dataPartType('ContentGapMatrix'),
         id,
-        data: { analysis: buildMinimalGapAnalysis(topicHint), status: 'success', toolCallId },
+        data: { analysis: buildMinimalGapAnalysis(topicHint), status: 'loading', toolCallId },
       })
     }
     return parts

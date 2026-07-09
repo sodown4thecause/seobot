@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export const runtime = 'nodejs'
 
 const MAX_BULK_CONVERSATION_IDS = 50
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 type ParsedBulkBody =
   | { ok: true; conversationIds: string[]; updates: Record<string, unknown> }
@@ -46,6 +47,13 @@ async function parseBulkConversationBody(
     return {
       ok: false,
       response: NextResponse.json({ error: 'conversationIds is required' }, { status: 400 }),
+    }
+  }
+
+  if (conversationIds.some((id) => !UUID_REGEX.test(id))) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'conversationIds must be valid UUIDs' }, { status: 400 }),
     }
   }
 

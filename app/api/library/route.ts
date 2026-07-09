@@ -12,8 +12,15 @@ import { isChatMode } from '@/lib/chat/modes'
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
+  let userId: string
   try {
-    const userId = await requireUserId()
+    userId = await requireUserId()
+  } catch (error) {
+    console.error('Library API auth error:', error)
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
+  try {
     const { searchParams } = req.nextUrl
 
     const itemType = searchParams.get('itemType') ?? undefined
