@@ -6,6 +6,7 @@
 import { dataforseo_labs_google_relevant_pagesToolWithClient } from '@/lib/mcp/dataforseo/dataforseo_labs_google_relevant_pages'
 import { dataforseo_labs_google_page_intersectionToolWithClient } from '@/lib/mcp/dataforseo/dataforseo_labs_google_page_intersection'
 import { getMcpClient } from '@/lib/mcp/dataforseo/client'
+import { manualToolExecution } from '@/lib/ai/manual-tool-execution'
 
 export interface ContentGap {
   keyword: string
@@ -129,11 +130,9 @@ export class ContentGapAnalyzer {
         ignore_synonyms: false,
         exclude_top_domains: false,
         include_clickstream_data: false,
-      }, {
+      }, manualToolExecution('content-gap-analyzer-relevant', {
         abortSignal: new AbortController().signal,
-        toolCallId: 'content-gap-analyzer-relevant',
-        messages: []
-      })
+      }))
 
       const data = typeof result === 'string' ? JSON.parse(result) : result
 
@@ -181,11 +180,9 @@ export class ContentGapAnalyzer {
         limit: 100,
         ignore_synonyms: false,
         include_clickstream_data: false,
-      }, {
+      }, manualToolExecution('content-gap-analyzer-intersection', {
         abortSignal: new AbortController().signal,
-        toolCallId: 'content-gap-analyzer-intersection',
-        messages: []
-      })
+      }))
 
       const data = typeof result === 'string' ? JSON.parse(result) : result
 

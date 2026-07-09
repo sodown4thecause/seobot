@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { DEFAULT_CHAT_MODE, isChatMode, type ChatMode } from '@/lib/chat/modes'
+import { captureProductEvent } from '@/components/providers/analytics-provider'
+import { PRODUCT_EVENTS } from '@/lib/analytics/product-events'
 
 export type { ChatMode } from '@/lib/chat/modes'
 
@@ -31,6 +33,12 @@ export function ChatModeProvider({ children }: ChatModeProviderProps) {
   }, [])
 
   const setChatMode = (mode: ChatMode) => {
+    if (chatMode !== mode) {
+      captureProductEvent(PRODUCT_EVENTS.MODE_SELECTED, {
+        fromMode: chatMode,
+        toMode: mode,
+      })
+    }
     setChatModeState(mode)
     try {
       localStorage.setItem(STORAGE_KEY, mode)

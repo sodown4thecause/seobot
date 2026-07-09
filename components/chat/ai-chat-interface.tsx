@@ -32,6 +32,8 @@ import { BlogArtifact } from './artifacts/blog-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
 import { useChatModeOptional } from './chat-mode-context'
 import { getChatModeAccentClasses, getChatModeUi } from '@/lib/chat/modes'
+import { captureProductEvent } from '@/components/providers/analytics-provider'
+import { PRODUCT_EVENTS } from '@/lib/analytics/product-events'
 import { DEFAULT_GEO_ENGINES } from '@/lib/geo/utils'
 import { DataPartRenderer } from './generative-ui/registry'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -985,8 +987,12 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     }
 
     sendMessage({ text: data.text })
+    captureProductEvent(PRODUCT_EVENTS.CHAT_MESSAGE_SENT, {
+      mode: chatMode,
+      conversationId: conversationId ?? undefined,
+    })
     setInput('') // Clear input after sending (AI SDK 6 best practice)
-  }, [conversationId, isBootstrapping, sendMessage, messages.length, setFocus])
+  }, [conversationId, isBootstrapping, sendMessage, messages.length, setFocus, chatMode])
 
   const handleComponentSubmit = useCallback((componentType: string, data: any) => {
     if (onComponentSubmit) onComponentSubmit(componentType, data)

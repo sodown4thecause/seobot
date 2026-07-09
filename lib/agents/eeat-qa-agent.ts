@@ -117,7 +117,7 @@ export class EEATQAAgent {
         prompt: userPrompt,
         temperature: 0.3, // Lower temperature for more consistent scoring
         abortSignal: params.abortSignal,
-        experimental_telemetry: createTelemetryConfig('eeat-qa', {
+        telemetry: createTelemetryConfig('eeat-qa', {
           userId: params.userId,
           sessionId: params.sessionId,
           langfuseTraceId: params.langfuseTraceId,

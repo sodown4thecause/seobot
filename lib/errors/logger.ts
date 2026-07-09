@@ -6,7 +6,7 @@
  */
 
 import { getErrorMetadata } from './types'
-
+import { appLogger } from '@/lib/observability/app-logger'
 
 export interface ErrorLogEntry {
   timestamp: string
@@ -70,18 +70,51 @@ export async function logError(
       metadata: context?.metadata,
     }
 
-    // Console logging (can be extended to Axiom)
+    // Structured logging (stdout → Vercel → Axiom drain)
     if (logEntry.level === 'error') {
-      console.error('[ErrorLogger]', JSON.stringify(logEntry, null, 2))
+      appLogger.error(logEntry.error.message, {
+        endpoint: logEntry.context.endpoint,
+        userId: logEntry.context.userId,
+        agentType: logEntry.context.agent,
+        metadata: {
+          ...logEntry.metadata,
+          error: logEntry.error,
+          context: logEntry.context,
+        },
+      })
     } else {
-      console.warn('[ErrorLogger]', JSON.stringify(logEntry, null, 2))
+      appLogger.warn(logEntry.error.message, {
+        endpoint: logEntry.context.endpoint,
+        userId: logEntry.context.userId,
+        agentType: logEntry.context.agent,
+        metadata: {
+          ...logEntry.metadata,
+          error: logEntry.error,
+          context: logEntry.context,
+        },
+      })
     }
 
-    // TODO: Send to Axiom or other logging service
-    // Example:
-    // if (process.env.AXIOM_DATASET) {
-    //   await sendToAxiom(logEntry)
-    // }
+    // Sentry for server-side errors (5xx and agent failures)
+    if (logEntry.level === 'error' && (logEntry.error.statusCode ?? 500) >= 500) {
+      void import('@sentry/nextjs')
+        .then((Sentry) => {
+          Sentry.captureException(error instanceof Error ? error : new Error(logEntry.error.message), {
+            tags: {
+              agent: logEntry.context.agent,
+              provider: logEntry.context.provider,
+              endpoint: logEntry.context.endpoint,
+            },
+            extra: {
+              code: logEntry.error.code,
+              statusCode: logEntry.error.statusCode,
+              userId: logEntry.context.userId,
+              metadata: logEntry.metadata,
+            },
+          })
+        })
+        .catch(() => {})
+    }
   } catch (logError) {
     // Don't throw if logging fails
     console.error('[ErrorLogger] Failed to log error:', logError)

@@ -5,16 +5,27 @@ const baseUrl = SITE_URL
 
 export default function robots(): MetadataRoute.Robots {
   const disallowPaths = [
+    '/api',
     '/api/',
+    '/admin',
     '/admin/',
+    '/dashboard',
     '/dashboard/',
+    '/onboarding',
     '/onboarding/',
+    '/login',
     '/login/',
+    '/signup',
     '/signup/',
+    '/sign-in',
     '/sign-in/',
+    '/sign-up',
     '/sign-up/',
+    '/user-profile',
     '/user-profile/',
+    '/auth',
     '/auth/',
+    '/test-tailwind',
     '/test-tailwind/',
   ]
 

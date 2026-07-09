@@ -4,7 +4,7 @@
  */
 
 import { generateText, generateObject } from 'ai'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createGoogle } from '@ai-sdk/google'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/config/env'
 import { createTelemetryConfig } from '@/lib/observability/langfuse'
@@ -26,7 +26,7 @@ import type {
 } from '@/types/images'
 
 
-const google = createGoogleGenerativeAI({
+const google = createGoogle({
   apiKey: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY || serverEnv.GOOGLE_API_KEY,
 })
 
@@ -163,7 +163,7 @@ Return as JSON.`
         prompt: analysisPrompt,
         schema: analysisSchema,
 
-        experimental_telemetry: createTelemetryConfig('content-image-analysis', {
+        telemetry: createTelemetryConfig('content-image-analysis', {
           contentLength: content.length,
         }),
       })
@@ -709,7 +709,7 @@ Return only the alt text, no quotes or explanations.`
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           model: google('gemini-2.5-pro') as any,
           prompt,
-          experimental_telemetry: createTelemetryConfig('image-alt-text-generation', {
+          telemetry: createTelemetryConfig('image-alt-text-generation', {
             imageType: image.imageType,
           }),
         })

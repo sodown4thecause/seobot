@@ -35,7 +35,7 @@ Provide:
 
 Focus on information that would be valuable for creating SEO/AEO optimized content.`,
         temperature: 0.3,
-        experimental_telemetry: createTelemetryConfig('research-tool', {
+        telemetry: createTelemetryConfig('research-tool', {
           query,
           depth,
           provider: 'perplexity',

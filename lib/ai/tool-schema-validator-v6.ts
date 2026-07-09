@@ -9,6 +9,7 @@
 
 import { z } from 'zod'
 import type { Tool } from 'ai'
+import { previewToolDescription } from '@/lib/ai/manual-tool-execution'
 
 export interface ToolValidationResult {
   isValid: boolean
@@ -77,11 +78,11 @@ export function validateToolSchema(
     const isValid = errors.length === 0
 
     if (logErrors && errors.length > 0) {
-      console.error(`[Tool Validation] Tool "${tool.description?.slice(0, 50)}..." failed validation:`, errors)
+      console.error(`[Tool Validation] Tool "${previewToolDescription(tool.description)}..." failed validation:`, errors)
     }
 
     if (logErrors && warnings.length > 0) {
-      console.warn(`[Tool Validation] Tool "${tool.description?.slice(0, 50)}..." has warnings:`, warnings)
+      console.warn(`[Tool Validation] Tool "${previewToolDescription(tool.description)}..." has warnings:`, warnings)
     }
 
     return {

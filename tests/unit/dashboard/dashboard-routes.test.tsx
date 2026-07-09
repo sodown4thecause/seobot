@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import WebsiteAuditPage from '@/app/dashboard/website-audit/page'
 import RankTrackerPage from '@/app/dashboard/rank-tracker/page'
 import ContentPerformancePage from '@/app/dashboard/content-performance/page'
-import AeoInsightsPage from '@/app/dashboard/aeo-insights/page'
+import AeoInsightsPage from '@/app/dashboard/aeo/page'
 
 vi.mock('recharts', () => {
   const passthrough = ({ children }: { children?: unknown }) => createElement('div', undefined, children as never)
@@ -25,6 +25,20 @@ vi.mock('recharts', () => {
     Area: passthrough,
   }
 })
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}))
+
+vi.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: () => ({ data: { user: { id: 'test-user', email: 'test@test.com' } } }),
+  },
+}))
+
+vi.mock('@/components/providers/agent-provider', () => ({
+  useAgent: () => ({ state: { conversations: [] }, actions: { createConversation: vi.fn(), setActiveConversation: vi.fn() } }),
+}))
 
 function renderPage(Component: () => React.ReactElement) {
   const queryClient = new QueryClient()
@@ -61,8 +75,8 @@ describe('dashboard route pages', () => {
   it('renders aeo insights workspace content', () => {
     const html = renderPage(AeoInsightsPage)
 
-    expect(html).toContain('AEO Insights')
-    expect(html).toContain('Citation Share of Voice')
-    expect(html).toContain('History')
+    expect(html).toContain('AEO Command Center')
+    expect(html).toContain('Citation Tracking Coming Soon')
+    expect(html).toContain('AEO Workflows')
   })
 })

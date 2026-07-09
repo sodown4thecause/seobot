@@ -69,7 +69,6 @@ const MOCK_DATA = {
     ],
     quickActions: [
       { label: 'Client Dashboard', icon: Users, description: 'Manage all clients' },
-      { label: 'White-label Reports', icon: FileText, description: 'Generate branded reports' },
       { label: 'Team Management', icon: Users, description: 'Manage team access' },
       { label: 'API Integration', icon: Zap, description: 'Connect external tools' },
       { label: 'Bulk Operations', icon: BarChart3, description: 'Process multiple campaigns' }
