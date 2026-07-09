@@ -33,15 +33,13 @@ export function ChatModeProvider({ children }: ChatModeProviderProps) {
   }, [])
 
   const setChatMode = (mode: ChatMode) => {
-    setChatModeState((previous) => {
-      if (previous !== mode) {
-        captureProductEvent(PRODUCT_EVENTS.MODE_SELECTED, {
-          fromMode: previous,
-          toMode: mode,
-        })
-      }
-      return mode
-    })
+    if (chatMode !== mode) {
+      captureProductEvent(PRODUCT_EVENTS.MODE_SELECTED, {
+        fromMode: chatMode,
+        toMode: mode,
+      })
+    }
+    setChatModeState(mode)
     try {
       localStorage.setItem(STORAGE_KEY, mode)
     } catch {}

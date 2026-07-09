@@ -47,7 +47,12 @@ function emit(entry: AppLogEntry): void {
   }
 
   if (process.env.NODE_ENV === 'production') {
-    const line = JSON.stringify(entry)
+    let line: string
+    try {
+      line = JSON.stringify(entry)
+    } catch {
+      line = JSON.stringify({ ...entry, metadata: '[unserializable]' })
+    }
     if (entry.level === 'error') {
       console.error(line)
     } else if (entry.level === 'warn') {

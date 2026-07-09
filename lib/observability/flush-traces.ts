@@ -1,11 +1,8 @@
 import 'server-only'
 
 import { after } from 'next/server'
+import { appLogger } from '@/lib/observability/app-logger'
 
-/**
- * Schedule a Langfuse span flush after the response is sent.
- * Critical for serverless — ensures traces export before the function exits.
- */
 export function scheduleLangfuseFlush(): void {
   const processor = global.langfuseSpanProcessor
   if (!processor) {
@@ -16,7 +13,9 @@ export function scheduleLangfuseFlush(): void {
     try {
       await processor.forceFlush()
     } catch (error) {
-      console.error('[Langfuse] forceFlush failed:', error)
+      appLogger.error('Langfuse forceFlush failed', {
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      })
     }
   })
 }

@@ -8,9 +8,12 @@ import { identifyPostHogUser, resetPostHogUser } from '@/components/providers/an
  * Identifies the signed-in user in PostHog for product analytics.
  */
 export function PostHogIdentify() {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending } = authClient.useSession()
 
   useEffect(() => {
+    if (isPending) {
+      return
+    }
     const userId = session?.user?.id
     if (userId) {
       identifyPostHogUser(userId, {
@@ -19,7 +22,7 @@ export function PostHogIdentify() {
       return
     }
     resetPostHogUser()
-  }, [session?.user?.id, session?.user?.email])
+  }, [session?.user?.id, session?.user?.email, isPending])
 
   return null
 }

@@ -29,6 +29,7 @@ export const ShimmerButton = React.forwardRef<
     },
     ref
   ) => {
+    const { style: propsStyle, ...restProps } = props;
     return (
       <button
         style={
@@ -39,6 +40,7 @@ export const ShimmerButton = React.forwardRef<
             "--speed": shimmerDuration,
             "--cut": shimmerSize,
             "--bg": background,
+            ...propsStyle,
           } as CSSProperties
         }
         className={cn(
@@ -47,7 +49,8 @@ export const ShimmerButton = React.forwardRef<
           className
         )}
         ref={ref}
-        {...props}
+        type="button"
+        {...restProps}
       >
         <div className="-z-30 absolute inset-0 overflow-visible blur-[2px]">
           <div className="animate-shimmer-slide absolute inset-0 aspect-[1] h-[100cqh] rounded-none [mask:none]">

@@ -594,14 +594,14 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
       mcpJinaEnabled: agentType === 'content',
       mcpWinstonEnabled: agentType === 'content',
     }),
-    onEnd: async ({ response, usage }) => {
+    onEnd: async ({ responseMessages, usage }) => {
       appLogger.info('Chat stream finished', {
         endpoint: 'chat-stream',
         userId,
         conversationId,
         agentType,
         metadata: {
-          messagesCount: response.messages.length,
+          messagesCount: responseMessages.length,
           usage,
         },
       })

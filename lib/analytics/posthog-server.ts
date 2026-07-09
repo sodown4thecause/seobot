@@ -14,7 +14,7 @@ function getPostHogClient(): PostHog | null {
   }
 
   if (!posthogClient) {
-    posthogClient = new PostHog(key, { host, flushAt: 1, flushInterval: 0 })
+    posthogClient = new PostHog(key, { host })
   }
 
   return posthogClient
@@ -42,12 +42,5 @@ export async function captureServerProductEvent(
     properties: cleanProps,
   })
 
-  await client.flush()
-}
-
-export async function shutdownPostHog(): Promise<void> {
-  if (posthogClient) {
-    await posthogClient.shutdown()
-    posthogClient = null
-  }
+  await client.flush().catch(() => {})
 }

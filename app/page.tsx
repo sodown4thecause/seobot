@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import Script from 'next/script'
 import { LandingPageClient } from '@/components/landing/landing-page-client'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 import { faqSchema } from '@/lib/faq'
@@ -29,10 +28,8 @@ export const metadata: Metadata = buildPageMetadata({
 export default function LandingPage() {
   return (
     <>
-      <Script
-        id="faq-jsonld"
+      <script
         type="application/ld+json"
-        strategy="afterInteractive"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
       <Suspense fallback={null}>

@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Navbar } from '@/components/navbar'
@@ -16,9 +15,6 @@ export const revalidate = 300
 
 export default async function BlogPage() {
   const posts = await getBlogPosts()
-  if (posts.length === 0) {
-    notFound()
-  }
 
   const featured = posts.filter((p) => p.featured)
   const regular = posts.filter((p) => !p.featured)
@@ -37,6 +33,15 @@ export default async function BlogPage() {
           </p>
         </div>
 
+        {posts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <h2 className="text-2xl font-bold mb-3 text-white">Blog coming soon</h2>
+            <p className="text-gray-400 max-w-md">
+              We&apos;re working on insights and strategies for AEO, AI SEO, and cite-worthy content. Check back shortly.
+            </p>
+          </div>
+        ) : (
+          <>
         {featured.length > 0 && (
           <section className="mb-16">
             <h2 className="text-2xl font-bold mb-6 text-white">Featured</h2>
@@ -120,6 +125,8 @@ export default async function BlogPage() {
               ))}
             </div>
           </section>
+        )}
+          </>
         )}
       </div>
     </div>

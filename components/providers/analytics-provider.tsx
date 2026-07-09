@@ -47,6 +47,7 @@ export function resetPostHogUser() {
   if (!posthogKey || typeof window === 'undefined') {
     return
   }
+  initPostHog()
   posthog.reset()
 }
 
