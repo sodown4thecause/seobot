@@ -47,7 +47,11 @@ sessions/
 
 # Local agent/tooling folders
 .agent/
-.agents/
+!.agents/skills/
+.agents/*
+!.agents/skills/
+!.agents/skills/seobot-*/
+!.agents/skills/seobot-*/SKILL.md
 .gemini/
 .cursor/
 .taskmaster/
@@ -59,6 +63,9 @@ dist/
 skills/
 .github/skills/
 .copilot/
+!.agents/skills/
+!.agents/skills/seobot-*/
+!.agents/skills/seobot-*/SKILL.md
 
 # Temporary output files
 *.llm.xml

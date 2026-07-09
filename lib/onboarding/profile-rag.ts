@@ -69,7 +69,17 @@ export async function syncBusinessContextRag(userId: string, abortSignal?: Abort
     .where(eq(businessProfiles.userId, userId))
     .limit(1)
 
-  if (!profile?.websiteUrl) return
+  if (!profile?.websiteUrl) {
+    for (const mode of RAG_MODES) {
+      await db.execute(sql`
+        DELETE FROM agent_documents
+        WHERE source_type = ${ONBOARDING_SOURCE_TYPE}
+          AND mode = ${mode}
+          AND metadata->>'userId' = ${userId}
+      `)
+    }
+    return
+  }
 
   const [brandVoice] = await db
     .select()
@@ -110,7 +120,7 @@ export async function syncBusinessContextRag(userId: string, abortSignal?: Abort
         UPDATE agent_documents
         SET
           agent_type = ${ONBOARDING_AGENT_TYPE},
-          title = ${`Business context for ${profile.websiteUrl}`},
+          title = ${`Business context for ${profile.websiteUrl} (${mode})`},
           content = ${content},
           embedding = ${embeddingStr}::vector,
           source_type = ${ONBOARDING_SOURCE_TYPE},
@@ -144,7 +154,7 @@ export async function syncBusinessContextRag(userId: string, abortSignal?: Abort
         VALUES (
           ${ONBOARDING_AGENT_TYPE},
           ${mode},
-          ${`Business context for ${profile.websiteUrl}`},
+          ${`Business context for ${profile.websiteUrl} (${mode})`},
           ${content},
           ${embeddingStr}::vector,
           ${ONBOARDING_SOURCE_TYPE},

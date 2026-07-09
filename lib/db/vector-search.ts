@@ -202,12 +202,16 @@ export async function searchFrameworks(
 export async function searchAgentDocuments(
     queryEmbedding: number[],
     agentType: string = 'general',
-    options: VectorSearchOptions = {}
+    options: VectorSearchOptions = {},
+    userId?: string
 ): Promise<AgentDocumentSearchResult[]> {
     const { threshold = 0.3, limit = 5 } = options
 
     try {
         const embeddingStr = `[${queryEmbedding.join(',')}]`
+        const userFilter = userId
+            ? sql`AND ((metadata->>'userId') IS NULL OR metadata->>'userId' = ${userId})`
+            : sql``
 
         const results = await db.execute(sql`
             SELECT 
@@ -226,6 +230,7 @@ export async function searchAgentDocuments(
             WHERE agent_type = ${agentType}
               AND embedding IS NOT NULL
               AND 1 - (embedding <=> ${embeddingStr}::vector) > ${threshold}
+              ${userFilter}
             ORDER BY embedding <=> ${embeddingStr}::vector
             LIMIT ${limit}
         `)
@@ -253,13 +258,14 @@ export interface RetrieveRelevantChunksOptions extends VectorSearchOptions {
     mode: ChatMode
     topic?: string
     sourceType?: string
+    userId?: string
 }
 
 export async function retrieveRelevantChunks(
     queryEmbedding: number[],
     options: RetrieveRelevantChunksOptions
 ): Promise<AgentDocumentSearchResult[]> {
-    const { threshold = 0.3, limit = 5, mode, topic, sourceType } = options
+    const { threshold = 0.3, limit = 5, mode, topic, sourceType, userId } = options
 
     if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
         console.error('[Vector Search] Invalid embedding: must be non-empty array')
@@ -270,6 +276,9 @@ export async function retrieveRelevantChunks(
         const embeddingStr = `[${queryEmbedding.join(',')}]`
         const topicFilter = topic ? sql`AND topic = ${topic}` : sql``
         const sourceTypeFilter = sourceType ? sql`AND source_type = ${sourceType}` : sql``
+        const userScopeFilter = userId
+            ? sql`AND ((metadata->>'userId') IS NULL OR metadata->>'userId' = ${userId})`
+            : sql`AND (metadata->>'userId') IS NULL`
 
         const results = await db.execute(sql`
             SELECT
@@ -288,6 +297,7 @@ export async function retrieveRelevantChunks(
             WHERE mode = ${mode}
               AND embedding IS NOT NULL
               AND 1 - (embedding <=> ${embeddingStr}::vector) > ${threshold}
+              ${userScopeFilter}
               ${topicFilter}
               ${sourceTypeFilter}
             ORDER BY embedding <=> ${embeddingStr}::vector

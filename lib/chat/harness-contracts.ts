@@ -257,7 +257,7 @@ const AGENT_MODE_FALLBACK: Record<AgentType, ChatMode> = {
   image: 'content',
 }
 
-export const MAX_MODEL_FACING_FACADE_TOOLS = 12
+export const MAX_MODEL_FACING_FACADE_TOOLS = 15
 
 export function resolveHarnessMode(mode: ChatMode | undefined, agent: AgentType): ChatMode {
   return mode ?? AGENT_MODE_FALLBACK[agent] ?? 'seo'

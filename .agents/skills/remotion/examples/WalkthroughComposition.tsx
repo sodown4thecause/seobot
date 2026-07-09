@@ -20,18 +20,18 @@ export const WalkthroughComposition: React.FC = () => {
 
   return (
     <TransitionSeries>
-      {screensManifest.screens.map((screen, index) => {
+      {screensManifest.screens.flatMap((screen, index) => {
         const durationInFrames = screen.duration * fps;
-        
+
         // Select transition based on screen config
         const transition =
           screen.transitionType === 'slide'
             ? slide()
             : screen.transitionType === 'zoom'
-            ? fade() // Can customize with zoom effect
+            ? fade()
             : fade();
 
-        return (
+        const sequence = (
           <TransitionSeries.Sequence
             key={screen.id}
             durationInFrames={durationInFrames}
@@ -43,16 +43,23 @@ export const WalkthroughComposition: React.FC = () => {
               width={screen.width}
               height={screen.height}
             />
-            {index < screensManifest.screens.length - 1 && (
-              <TransitionSeries.Transition
-                presentation={transition}
-                timing={{
-                  durationInFrames: 20, // 20 frames for transition
-                }}
-              />
-            )}
           </TransitionSeries.Sequence>
         );
+
+        if (index < screensManifest.screens.length - 1) {
+          return [
+            sequence,
+            <TransitionSeries.Transition
+              key={`transition-${screen.id}`}
+              presentation={transition}
+              timing={{
+                durationInFrames: 20,
+              }}
+            />,
+          ];
+        }
+
+        return [sequence];
       })}
     </TransitionSeries>
   );
