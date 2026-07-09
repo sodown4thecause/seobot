@@ -7,7 +7,7 @@
 #   # or copy to the VPS and run:
 #   chmod +x geomode-vultr-bootstrap.sh && ./geomode-vultr-bootstrap.sh
 #
-# Non-interactive (requires pre-set secrets — see docs/deployment/geomode-vultr.md):
+# Non-interactive (requires pre-set secrets — set via env vars before running):
 #   ELMO_NONINTERACTIVE=1 BETTER_AUTH_SECRET=... OPENROUTER_API_KEY=... ./geomode-vultr-bootstrap.sh
 #
 # Prerequisites: Ubuntu 24.04/26.04, 2+ vCPU, 4+ GiB RAM, 40+ GiB disk.
@@ -134,6 +134,13 @@ else
 fi
 
 log "Starting Elmo stack..."
+
+if command -v iptables >/dev/null 2>&1; then
+  if ! iptables -C DOCKER-USER -p tcp --dport "${PUBLIC_APP_PORT}" ! -i lo -j DROP 2>/dev/null; then
+    iptables -I DOCKER-USER -p tcp --dport "${PUBLIC_APP_PORT}" ! -i lo -j DROP
+  fi
+fi
+
 elmo --dir "${ELMO_DIR}" compose up -d
 
 log "Waiting for containers..."

@@ -98,6 +98,7 @@ const serverEnvSchema = z.object({
   // Cron & Security
   CRON_SECRET: optionalNonEmptyString,
   BETTER_AUTH_URL: optionalUrl,
+  NEXT_PUBLIC_BETTER_AUTH_URL: optionalUrl,
   BETTER_AUTH_SECRET: optionalNonEmptyString,
 
   // GEO / AEO mode configuration
