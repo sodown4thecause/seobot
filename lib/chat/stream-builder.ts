@@ -26,6 +26,8 @@ import type { AgentType } from './intent-classifier'
 import type { Tool } from 'ai'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { normalizeChatMode, type ChatMode } from '@/lib/chat/modes'
+import { classifyProviderError, serializeStreamError } from '@/lib/errors/provider-errors'
+import { withToolTimeouts } from '@/lib/chat/tool-timeout'
 
 // Primary chat model — claude-haiku-4-5: fast, excellent tool call reliability,
 // Anthropic models issue parallel tool calls in a single step.
@@ -511,7 +513,7 @@ export function getCoreTools(userId?: string, conversationId?: string, mode?: Ch
     coreTools.generate_content_package = createContentPackageTool(userId, conversationId)
   }
 
-  return coreTools
+  return withToolTimeouts(coreTools, 180_000)
 }
 
 /**
@@ -620,6 +622,15 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
     onAbort: () => {
       console.log('[Stream Builder] Stream aborted by client disconnect')
     },
+    onError: ({ error }) => {
+      // Full details stay server-side; the client only ever sees the classified message.
+      const classified = classifyProviderError(error)
+      console.error('[Stream Builder] streamText error:', {
+        code: classified.code,
+        retryable: classified.retryable,
+        raw: error instanceof Error ? error.message : String(error),
+      })
+    },
   })
 
   // Return streaming response
@@ -630,6 +641,9 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
     },
     originalMessages,
     generateMessageId: serverMessageIdGenerator,
+    // Never leak raw provider/gateway error text (billing details, internal URLs)
+    // to the client — send a classified, machine-readable payload instead.
+    onError: serializeStreamError,
     onFinish: async ({ messages: uiMessages }) => {
       console.log('[Stream Builder] toUIMessageStreamResponse onFinish:', {
         hasMessages: !!uiMessages?.length,

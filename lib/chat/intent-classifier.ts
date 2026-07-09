@@ -195,7 +195,18 @@ export function buildAgentSystemPrompt(
     }
   }
 
-  return systemPrompt
+  return systemPrompt + '\n\n' + RESPONSIVENESS_ADDENDUM
 }
+
+/**
+ * Shared guidance appended to every agent prompt: keep the user informed
+ * while tools run, open with a plan on first domain share, and recover
+ * gracefully from failed tools.
+ */
+const RESPONSIVENESS_ADDENDUM = `RESPONSIVENESS RULES:
+- When the user first shares their website or domain, open with a short plan before running heavy tools: 2-3 bullets covering what you understood about their situation and which checks you will run next. Keep it under 80 words.
+- Never go silent while tools run. Before and between tool calls, narrate what you are checking and share preliminary analysis of results you already have.
+- If a tool fails or times out, do not stop. Acknowledge it in one sentence, keep the insights from tools that succeeded, and continue with your best analysis. Offer to retry the failed check.
+- Always end your reply with a concrete recommended next step.`
 
 // _review

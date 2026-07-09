@@ -4,41 +4,41 @@
 
 @layer base {
   :root {
-    /* Base dark theme - Deep Slate/Glass */
+    /* Cursor-inspired dark neutral theme */
     --background: 0 0% 4%; /* Near-black */
-    --foreground: 210 40% 98%;
+    --foreground: 0 0% 96%;
 
-    --card: 0 0% 6%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 96%;
  
-    --popover: 0 0% 6%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 96%;
  
-    --primary: 151 80% 35%; /* Emerald */
+    --primary: 151 80% 38%; /* Emerald brand accent */
     --primary-foreground: 0 0% 100%;
  
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 96%;
  
-    --muted: 0 0% 15%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 62%;
  
-    --accent: 0 0% 15%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 96%;
  
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 96%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 151 80% 35%;
+    --border: 0 0% 14%;
+    --input: 0 0% 16%;
+    --ring: 151 80% 38%;
  
-    --radius: 1rem;
+    --radius: 0.75rem;
   }
  
   .dark {
     --background: 0 0% 4%;
-    --foreground: 210 40% 98%;
+    --foreground: 0 0% 96%;
   }
 }
  
@@ -48,33 +48,33 @@
   }
   body {
     @apply bg-background text-foreground selection:bg-primary/30 selection:text-primary-foreground;
-    background-image:
-      radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.08), transparent 40%),
-      radial-gradient(circle at 0% 50%, rgba(0, 0, 0, 0.2), transparent 40%);
-    background-attachment: fixed;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 }
 
-/* Premium Glassmorphism Utilities */
+/* Surface utilities (Cursor-style flat panels with hairline borders) */
 .glass-panel {
-  @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-2xl;
+  @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-2xl rounded-xl;
 }
 
 .glass-card {
-  @apply bg-zinc-950/60 backdrop-blur-md border border-zinc-800/70 hover:border-zinc-700/80 hover:bg-zinc-900/40 transition-all duration-300 shadow-lg;
+  @apply bg-zinc-950/60 backdrop-blur-md border border-zinc-800/70 hover:border-zinc-700/80 hover:bg-zinc-900/40 transition-all duration-300 shadow-lg rounded-xl;
 }
 
 .glass-button {
-  @apply bg-white/[0.05] hover:bg-white/[0.1] backdrop-blur-sm border border-white/[0.05] text-white transition-all duration-200 active:scale-95;
+  @apply bg-white/[0.05] hover:bg-white/[0.1] backdrop-blur-sm border border-white/[0.08] text-white transition-all duration-200 active:scale-[0.98] rounded-lg;
 }
 
 .glass-input {
-  @apply bg-black/30 backdrop-blur-sm border border-zinc-700/70 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all duration-200 placeholder:text-zinc-500;
+  @apply bg-zinc-900/60 backdrop-blur-sm border border-zinc-800 focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 transition-all duration-200 placeholder:text-zinc-500 rounded-lg;
 }
 
 /* Gradient Text */
 .text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400;
+  @apply bg-clip-text text-transparent bg-gradient-to-b from-white via-zinc-100 to-zinc-500;
 }
 
 .text-gradient-primary {

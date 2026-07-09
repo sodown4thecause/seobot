@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
-import { Noto_Sans } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AIStateProvider } from '@/lib/context/ai-state-context';
 import { SITE_URL } from '@/lib/seo/site';
 
-const notoSans = Noto_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-noto-sans",
+  variable: "--font-sans",
   display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -172,7 +178,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${notoSans.variable} font-sans antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
         <noscript>
           <iframe

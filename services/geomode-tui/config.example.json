@@ -1,5 +1,0 @@
-{
-  "apiBaseUrl": "https://geo-api.flowintent.com",
-  "cfAccessClientId": "your-cloudflare-access-client-id",
-  "cfAccessClientSecret": "your-cloudflare-access-client-secret"
-}

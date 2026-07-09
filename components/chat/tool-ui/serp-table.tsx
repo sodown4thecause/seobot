@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, ExternalLink, Award } from "lucide-react"
+import { Search, ExternalLink, Award, Loader2 } from "lucide-react"
+import { ToolErrorCard } from "./tool-error-card"
 
 /**
  * Safely extracts hostname from a URL string
@@ -42,13 +43,25 @@ interface SERPTableProps {
 }
 
 export function SERPTable({ toolInvocation }: SERPTableProps) {
-    const { result } = toolInvocation
+    const { result, state } = toolInvocation
+    const isRunning = state !== 'result' && result === undefined
+
+    // Still executing — show a loading card, not an error.
+    if (isRunning) {
+        return (
+            <div className="my-3 flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400">
+                <Loader2 className="h-4 w-4 animate-spin text-zinc-500" aria-hidden="true" />
+                Fetching live SERP data…
+            </div>
+        )
+    }
 
     if (!result || result.status === 'error') {
         return (
-            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm">
-                Error loading SERP data: {result?.errorMessage || 'Unknown error'}
-            </div>
+            <ToolErrorCard
+                title="Couldn't load SERP data"
+                message={typeof result?.errorMessage === 'string' ? result.errorMessage : 'The search data provider returned an error. Try again in a moment.'}
+            />
         )
     }
 

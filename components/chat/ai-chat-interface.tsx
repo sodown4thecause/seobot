@@ -3,6 +3,7 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useEffect, useState, forwardRef, useMemo, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAIState } from '@/lib/context/ai-state-context'
 
 import { Terminal, Check, Copy, ChevronDown, ChevronRight, Loader2, Sparkles, Send, X, AlertCircle } from 'lucide-react'
@@ -23,15 +24,17 @@ import { GeoBrandScanResults } from './tool-ui/geo-brand-scan-results'
 import { SchemaMarkupResult } from './tool-ui/schema-markup-result'
 import { CrawlabilityAuditResult } from './tool-ui/crawlability-audit-result'
 import { GeoFixPlanResult } from './tool-ui/geo-fix-plan-result'
+import { ToolErrorCard } from './tool-ui/tool-error-card'
 import type { ProactiveSuggestion } from '@/lib/proactive/types'
 import { useArtifactStore } from '@/lib/artifacts/artifact-store'
 import { syncArtifactsFromMessages } from '@/lib/artifacts/sync-from-messages'
 import { ArtifactPanel } from '@/components/artifacts/artifact-panel'
 import { bootstrapConversationRecord } from '@/lib/chat/conversation-bootstrap'
 import { BlogArtifact } from './artifacts/blog-artifact'
-import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
+import { ToastArtifact, ToastMessage, ToastAction } from './artifacts/toast-artifact'
 import { useChatModeOptional } from './chat-mode-context'
 import { getChatModeAccentClasses, getChatModeUi } from '@/lib/chat/modes'
+import { buildDashboardChatHref } from '@/lib/chat/conversation-mode'
 import { DEFAULT_GEO_ENGINES } from '@/lib/geo/utils'
 import { DataPartRenderer } from './generative-ui/registry'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -84,9 +87,40 @@ type ParsedChatError = {
   message: string
   code: string | null
   isRateLimited: boolean
+  retryable: boolean
   retryAfterSeconds: number | null
   resetDate: string | null
   isPaused: boolean
+}
+
+/** Codes for which an immediate retry can never succeed — hide the Retry button. */
+const NON_RETRYABLE_ERROR_CODES = new Set([
+  'provider_credits_exhausted',
+  'provider_auth_error',
+  'subscription_required',
+  'credit_limit_exceeded',
+  'authentication_required',
+])
+
+/**
+ * Client-side safety net: raw provider billing/auth text should already be
+ * sanitized server-side, but never display it if it slips through.
+ */
+const sanitizeRawProviderMessage = (message: string): { message: string; code: string } | null => {
+  if (/api key/i.test(message)) {
+    return {
+      message: 'Authentication error with the AI provider.',
+      code: 'provider_auth_error',
+    }
+  }
+  if (/credit balance|positive credit|payment required|vercel\.com|billing/i.test(message)) {
+    return {
+      message:
+        "We're experiencing high demand and this request couldn't be completed right now. Our team has been notified — please try again in a little while.",
+      code: 'provider_credits_exhausted',
+    }
+  }
+  return null
 }
 
 const parseChatError = (err: Error | null | undefined): ParsedChatError | null => {
@@ -98,6 +132,7 @@ const parseChatError = (err: Error | null | undefined): ParsedChatError | null =
   let resetDate: string | null = null
   let isPaused = false
   let isRateLimited = false
+  let retryable = true
 
   type ErrorPayload = {
     error?: string
@@ -106,6 +141,7 @@ const parseChatError = (err: Error | null | undefined): ParsedChatError | null =
     message?: string
     resetDate?: string
     isPaused?: boolean
+    retryable?: boolean
   }
 
   const applyPayload = (payload: ErrorPayload) => {
@@ -118,6 +154,7 @@ const parseChatError = (err: Error | null | undefined): ParsedChatError | null =
     }
     if (typeof payload.resetDate === 'string') resetDate = payload.resetDate
     if (payload.isPaused === true) isPaused = true
+    if (payload.retryable === false) retryable = false
   }
 
   try {
@@ -144,7 +181,17 @@ const parseChatError = (err: Error | null | undefined): ParsedChatError | null =
     isRateLimited = true
   }
 
-  return { message, code, isRateLimited, retryAfterSeconds, resetDate, isPaused }
+  const sanitized = sanitizeRawProviderMessage(message)
+  if (sanitized) {
+    message = sanitized.message
+    if (!code) code = sanitized.code
+  }
+
+  if (code && NON_RETRYABLE_ERROR_CODES.has(code)) {
+    retryable = false
+  }
+
+  return { message, code, isRateLimited, retryable, retryAfterSeconds, resetDate, isPaused }
 }
 
 const ConversationLoadingSkeleton = () => (
@@ -175,6 +222,8 @@ const ChatErrorBanner = ({
     parsed.code === 'subscription_required' ||
     parsed.code === 'credit_limit_exceeded' ||
     parsed.code === 'authentication_required'
+  // Retrying can't fix provider-side billing/config failures — don't offer it.
+  const showRetry = !needsUpgrade && parsed.retryable
   const resetLabel = parsed.resetDate
     ? new Date(parsed.resetDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
     : null
@@ -206,7 +255,7 @@ const ChatErrorBanner = ({
               >
                 {parsed.code === 'authentication_required' ? 'Sign in' : 'Upgrade plan'}
               </a>
-            ) : (
+            ) : showRetry ? (
               <button
                 type="button"
                 onClick={onRetry}
@@ -220,6 +269,10 @@ const ChatErrorBanner = ({
               >
                 Retry
               </button>
+            ) : (
+              <p className="text-xs text-red-200/80">
+                This isn&apos;t something a retry can fix — please check back shortly.
+              </p>
             )}
           </div>
         </div>
@@ -258,6 +311,31 @@ const TOOL_COMPONENTS: Record<string, any> = {
   generate_schema_markup: SchemaMarkupResult,
   ai_crawlability_audit: CrawlabilityAuditResult,
   geo_generate_fix: GeoFixPlanResult,
+}
+
+const SLOW_TOOL_HINT_SECONDS = 20
+
+/** Elapsed-time readout for a running tool, with a hint once it's slow. */
+const ToolRunningStatus = () => {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
+  useEffect(() => {
+    const startedAt = Date.now()
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <p className="text-xs text-zinc-500 mt-0.5">
+      {elapsedSeconds >= SLOW_TOOL_HINT_SECONDS
+        ? `Still working (${elapsedSeconds}s) — complex lookups can take up to a minute.`
+        : elapsedSeconds > 2
+          ? `Processing… ${elapsedSeconds}s`
+          : 'Processing request...'}
+    </p>
+  )
 }
 
 // ... ToolInvocation Component (Keeping it as is for functionality) ...
@@ -388,9 +466,7 @@ const ToolInvocation = ({
                   {isLoading ? 'Running' : 'Completed'}
                 </span>
               </div>
-              {isLoading && (
-                <p className="text-xs text-zinc-500 mt-0.5">Processing request...</p>
-              )}
+              {isLoading && <ToolRunningStatus />}
             </div>
           </div>
           {!isLoading && (
@@ -505,6 +581,7 @@ const ToolPartInvocation = ({
                   {isLoading ? 'Running' : 'Completed'}
                 </span>
               </div>
+              {isLoading && <ToolRunningStatus />}
             </div>
           </div>
           {!isLoading && (
@@ -763,6 +840,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
   autoSendKey,
 }, ref) => {
   // 1. Initial State & Context
+  const router = useRouter()
   const { chatMode } = useChatModeOptional()
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null)
@@ -1201,27 +1279,91 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
     setToasts(prev => prev.filter(t => t.id !== id))
   }, [])
 
-  const addToast = useCallback((type: ToastMessage['type'], message: string) => {
+  const addToast = useCallback((type: ToastMessage['type'], message: string, action?: ToastAction) => {
     const id = Math.random().toString(36).substring(7)
-    setToasts(prev => [...prev, { id, type, message }])
-    setTimeout(() => removeToast(id), 5000)
+    setToasts(prev => [...prev, { id, type, message, action }])
+    // Toasts with an action stay longer so users have time to click it.
+    setTimeout(() => removeToast(id), action ? 10000 : 5000)
   }, [removeToast])
+
+  const startFreshChat = useCallback(async (mode: typeof chatMode) => {
+    try {
+      const res = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId: agentPreference, title: 'New Conversation', chatMode: mode }),
+      })
+      if (!res.ok) throw new Error(`Failed to create conversation (${res.status})`)
+      const data = await res.json()
+      const newId = data?.conversation?.id
+      if (newId) {
+        router.push(buildDashboardChatHref({ conversationId: newId, mode }))
+      }
+    } catch (err) {
+      console.error('[Chat] Failed to start a fresh chat:', err)
+    }
+  }, [router, agentPreference])
 
   const previousChatModeRef = useRef(chatMode)
   useEffect(() => {
     if (previousChatModeRef.current !== chatMode && messages.length > 0) {
+      const modeLabel = getChatModeUi(chatMode).selectorLabel
       addToast(
         'info',
-        'Mode switched — new messages will use the selected mode. Start a new chat for a clean thread.'
+        'Mode switched — new messages will use the selected mode.',
+        { label: `Start fresh in ${modeLabel}`, onClick: () => { void startFreshChat(chatMode) } }
       )
     }
     previousChatModeRef.current = chatMode
-  }, [chatMode, messages.length, addToast])
+  }, [chatMode, messages.length, addToast, startFreshChat])
 
   // 9. Rendering Logic Helpers
   const renderMessageContent = useCallback((message: any, textContent: string, isLast: boolean = false) => {
     const parts = message.parts || []
-    const toolInvocations = message.toolInvocations || []
+
+    // Dedupe: AI SDK 6 messages expose tool calls via `parts` AND the legacy
+    // `toolInvocations` field. Rendering both duplicates every tool card, so
+    // drop legacy invocations that already exist as parts.
+    const toolParts = parts.filter((p: any) => p?.type?.startsWith('tool-'))
+    const partToolCallIds = new Set(toolParts.map((p: any) => p.toolCallId).filter(Boolean))
+    const partToolNames = new Set(toolParts.map((p: any) => String(p.type).replace('tool-', '')))
+    const toolInvocations = (message.toolInvocations || []).filter((t: any) =>
+      t?.toolCallId ? !partToolCallIds.has(t.toolCallId) : !partToolNames.has(t?.toolName)
+    )
+
+    // Group identical failed tool calls into a single dismissible banner
+    // instead of stacking one banner per failed call.
+    const getToolErrorKey = (toolName: string, output: any): string | null => {
+      if (output && typeof output === 'object' && output.status === 'error') {
+        return `${toolName}::${typeof output.errorMessage === 'string' ? output.errorMessage : ''}`
+      }
+      return null
+    }
+    const toolErrorCounts = new Map<string, number>()
+    for (const p of toolParts) {
+      const key = getToolErrorKey(String(p.type).replace('tool-', ''), p.output ?? p.result)
+      if (key) toolErrorCounts.set(key, (toolErrorCounts.get(key) ?? 0) + 1)
+    }
+    for (const t of toolInvocations) {
+      const key = getToolErrorKey(t?.toolName, t?.result)
+      if (key) toolErrorCounts.set(key, (toolErrorCounts.get(key) ?? 0) + 1)
+    }
+    const renderedToolErrorKeys = new Set<string>()
+    const renderGroupedToolError = (toolName: string, output: any, key: React.Key) => {
+      const errorKey = getToolErrorKey(toolName, output)
+      if (!errorKey) return undefined
+      if (renderedToolErrorKeys.has(errorKey)) return null
+      renderedToolErrorKeys.add(errorKey)
+      return (
+        <ToolErrorCard
+          key={key}
+          title={`${formatToolName(toolName)} failed`}
+          message={typeof output?.errorMessage === 'string' ? output.errorMessage : undefined}
+          count={toolErrorCounts.get(errorKey) ?? 1}
+        />
+      )
+    }
+
     const imageSources: { src: string; alt?: string }[] = []
     const sources = extractSources(message)
     const reasoningSteps = extractReasoning(message)
@@ -1278,9 +1420,12 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           }
           if (part.type?.startsWith('tool-')) {
             const tName = part.type.replace('tool-', '')
+            const partKey = part.toolCallId ?? `tool-${idx}`
+            const groupedError = renderGroupedToolError(tName, part.output ?? part.result, partKey)
+            if (groupedError !== undefined) return groupedError
             return (
               <ToolPartInvocation
-                key={part.toolCallId ?? `tool-${idx}`}
+                key={partKey}
                 toolName={tName}
                 toolCallId={part.toolCallId}
                 state={part.state}
@@ -1292,14 +1437,18 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           }
           return null
         })}
-        {toolInvocations.map((t: any) => (
-          <ToolInvocation
-            key={t.toolCallId}
-            toolCall={t}
-            onComponentSubmit={(data) => handleComponentSubmit(t.args?.component, data)}
-            onGenerateFix={(prompt) => handleSendMessage({ text: prompt })}
-          />
-        ))}
+        {toolInvocations.map((t: any) => {
+          const groupedError = renderGroupedToolError(t?.toolName, t?.result, t.toolCallId)
+          if (groupedError !== undefined) return groupedError
+          return (
+            <ToolInvocation
+              key={t.toolCallId}
+              toolCall={t}
+              onComponentSubmit={(data) => handleComponentSubmit(t.args?.component, data)}
+              onGenerateFix={(prompt) => handleSendMessage({ text: prompt })}
+            />
+          )
+        })}
       </>
     )
   }, [isLoading, handleComponentSubmit, handleSendMessage])

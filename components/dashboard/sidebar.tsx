@@ -152,11 +152,11 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
       >
         {/* Header / Logo */}
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-4 h-[57px]">
-          <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 bg-white flex items-center justify-center text-black font-black italic text-sm transition-transform group-hover:scale-105">
+          <Link href="/dashboard" className="flex items-center gap-2.5 group">
+            <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center text-black font-bold text-xs transition-transform group-hover:scale-105">
               FI
             </div>
-            <span className="font-bold text-sm tracking-tighter text-zinc-100 uppercase italic">Flow Intent</span>
+            <span className="font-semibold text-sm tracking-tight text-zinc-100">FlowIntent</span>
           </Link>
         </div>
 

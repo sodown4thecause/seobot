@@ -186,7 +186,7 @@ The following Auth settings should be configured in the Supabase Dashboard:
 ## Migration Details
 
 The hardening changes are applied via migration:
-- **File**: `supabase/migrations/20250106000000_supabase_advisor_fixes.sql`
+- **File**: `docs/archive/supabase-migrations/20250106000000_supabase_advisor_fixes.sql`
 - **Date**: 2025-01-06
 - **Status**: Applied
 

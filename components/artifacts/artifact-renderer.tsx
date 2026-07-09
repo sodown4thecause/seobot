@@ -7,6 +7,7 @@ import { SchemaMarkupArtifact } from '@/components/chat/tool-ui/schema-markup-re
 import { CrawlabilityAuditArtifact } from '@/components/chat/tool-ui/crawlability-audit-result'
 import { GeoFixPlanArtifact } from '@/components/chat/tool-ui/geo-fix-plan-result'
 import { getArtifactDefinition } from '@/lib/artifacts/registry'
+import { normalizeKeywordArtifactData } from '@/lib/artifacts/normalize-keyword-data'
 import type { ArtifactStatus, ArtifactType } from '@/lib/artifacts/types'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -53,15 +54,27 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
   }
 
   switch (type) {
-    case 'keyword':
+    case 'keyword': {
+      const keywordData = normalizeKeywordArtifactData(data)
+      const hasParsedShape =
+        (data && typeof data === 'object' && Array.isArray((data as Record<string, unknown>).keywords)) ||
+        typeof data === 'string'
+      if (!keywordData && !hasParsedShape && status === 'complete') {
+        return (
+          <div className={cn('p-6 text-sm text-zinc-500', className)}>
+            No structured keyword data was returned for this run.
+          </div>
+        )
+      }
       return (
         <div className={cn('h-full', className)}>
           <KeywordArtifact
-            data={data as Parameters<typeof KeywordArtifact>[0]['data']}
+            data={(keywordData ?? { topic: 'Keywords', keywords: [] }) as Parameters<typeof KeywordArtifact>[0]['data']}
             status={status}
           />
         </div>
       )
+    }
     case 'backlink':
       return (
         <div className={cn('h-full', className)}>

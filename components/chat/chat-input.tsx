@@ -46,7 +46,7 @@ export function ChatInput({
 
   return (
     <div className={cn("w-full", className)}>
-      <div className="relative flex items-center bg-zinc-900/50 rounded-xl border border-zinc-700/50">
+      <div className="relative flex items-center rounded-xl border border-zinc-800 bg-zinc-900/70 shadow-lg transition-colors focus-within:border-zinc-600">
         {/* Action buttons - image generate and web search */}
         <div className="flex items-center gap-1 pl-2">
           {onImageGenerate && (
@@ -101,9 +101,9 @@ export function ChatInput({
             onClick={onSubmit}
             disabled={disabled}
             aria-label="Send message"
-            className="flex-shrink-0 p-2 m-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 transition-all cursor-pointer"
+            className="flex-shrink-0 p-2 m-2 rounded-lg bg-white text-black hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 transition-all cursor-pointer disabled:opacity-50"
           >
-            <ArrowUp className="w-5 h-5" aria-hidden="true" />
+            <ArrowUp className="w-4 h-4" aria-hidden="true" />
           </button>
         )}
       </div>
