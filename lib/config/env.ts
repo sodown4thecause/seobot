@@ -129,8 +129,6 @@ const serverEnvSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
   AXIOM_DATASET: z.string().min(1).optional(),
   AXIOM_TOKEN: z.string().min(1).optional(),
-  SENTRY_DSN: z.string().url().optional(),
-  SENTRY_ENVIRONMENT: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 
@@ -180,7 +178,6 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_BETTER_AUTH_URL: optionalUrl,
   NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_POSTHOG_HOST: optionalUrl,
-  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 })
 
 /**
