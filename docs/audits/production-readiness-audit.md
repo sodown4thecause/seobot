@@ -979,3 +979,37 @@ git merge-base origin/main "origin/pr-$($_)"
 ```
 
 Connector calls used for each requested PR in `sodown4thecause/seobot`: `github_get_pr_info`, `github_list_pr_changed_filenames`, `github_list_pull_request_reviews`, and `github_list_pull_request_review_threads`. Connector results were reduced to metadata, filenames, review states/dates, and unresolved-thread paths/counts; review bodies and credentials were not copied. CI/check state was not present in the returned metadata and remains an explicit limitation.
+
+## Task 8 final reconciliation
+
+This section supersedes the provisional recommended actions above for the current
+reconciliation branch. It records what is actually present in the branch after
+reviewed Tasks 1-7. The SHAs below are local branch commits, not claims that the
+open PR heads were merged. No GitHub state was changed by this task.
+
+| PR | Current disposition | Selective evidence now present | Exact current-branch commit(s) | Excluded or remaining risk |
+|---|---|---|---|---|
+| #75 | Selective port retained | Admin email normalization; dashboard/premium-gate regression coverage; the dashboard redirect was already absent on current main. | `99521152bf13b4769035a50bb34686db8e9d6f25`; `e32c7c43ee00564cd7c6ae03f5fc57c1fab0cb26` | The stale PR branch was not merged wholesale. Current auth/billing behavior still needs production validation. |
+| #78 | Selective reliability port retained | Provider error classification/sanitization, bounded tool timeout and cancellation, keyword artifact normalization, and retry behavior. | `1dcdf6987fcc738bb41a99dfdd5e18dc90059931`; `9ead1e84670a9da018096cbbffac00c9137a5f0f` | Broad UI restyle, cleanup/deletions, and archived migration/content moves were excluded. Focused tests were not rerun because pnpm/Vitest hangs in this environment. |
+| #82 | Selective security/reliability port retained | Conversation-scoped conflict-safe message persistence; loopback/body/trends safeguards; GEO suggestions/robots behavior; SHA-256 Elmo brand IDs. Auth-link verification was ported separately. | `3f4680049bd3d7a38efdba27effa916bdeece9ed`; `051c5bcbfedf3f6327f19109d1f31475bde73261` | Deployment/VPS changes were excluded and no database or VPS mutation was performed. Current tests and typecheck remain unexecuted. |
+| #83 | Reference only | CI, harness, and profile-RAG assets remain available in the fetched PR/reference worktree for later review. | None | Do not port CI/E2E yet. Tenant isolation, cleanup, migrations, workflow permissions, and production-readiness validation remain open. |
+| #81 | Close/superseded recommendation | No direct PR bundle ported; the branch is a broad stale-base overlap with current main and #79. | None | Do not copy Sentry, SDK6, npm/package-manager, Magic UI, or deleted-feature bundles. Any future observability change must be independently reimplemented and validated on current main. |
+| #79 | Close/superseded recommendation | No direct PR bundle ported; it duplicates the same stale-base change family as #81. | None | Do not copy Sentry, SDK6, npm/package-manager, Magic UI, or deleted-feature bundles. |
+| #76 | Superseded by merged #77/#80 | No direct PR files required; its mode-alignment intent is represented by the merged baseline. | None | Retain the PR only as historical comparison material; do not reintroduce its stale mode/auth/deployment bundle. |
+| #74 | Historical reference only | Current `README.md` and `AGENTS.md` are the setup authority. | None | Do not copy its older environment instructions without revalidation; no unique application change was ported. |
+
+### Validation evidence and blockers
+
+- `git diff --check` is the required Task 8 check and must pass before the audit
+  commit. No pnpm, application test, CI, or E2E command is part of this task.
+- Task 5 focused local Vitest passed. Tasks 2 and 6 focused Vitest execution was
+  blocked by local timeout/hang behavior; Task 3 pnpm checks were blocked by
+  `ERR_PNPM_IGNORED_BUILDS`; Task 4 pnpm lint/typecheck were inconclusive because
+  of environment hangs; Task 7 performed no database, VPS, or test execution.
+- No GitHub check conclusion is inferred: the connector did not expose reliable
+  CI/check state. CI/E2E, production smoke, provider-contract, browser,
+  Autonoma, VPS, backup/restore, and branch-protection validation remain deferred.
+- Remaining production risks are tenant-isolation and migration validation for
+  persistence/profile-RAG work, deployment/firewall verification for the GEO
+  companion, provider and external-service contract validation, and an eventual
+  current-main production build and smoke baseline.
