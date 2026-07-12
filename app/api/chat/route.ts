@@ -237,6 +237,8 @@ const handler = async (req: Request) => {
       effectiveAgent = 'content'
     } else if (mode === 'geo') {
       effectiveAgent = 'geo'
+    } else if (mode === 'social') {
+      effectiveAgent = 'social'
     } else {
       effectiveAgent = 'seo-aeo'
     }
@@ -256,7 +258,10 @@ const handler = async (req: Request) => {
         userId: user?.id,
         request: req,
       }),
-      effectiveAgent === 'seo-aeo' || effectiveAgent === 'content' || effectiveAgent === 'geo'
+      effectiveAgent === 'seo-aeo' ||
+      effectiveAgent === 'content' ||
+      effectiveAgent === 'geo' ||
+      effectiveAgent === 'social'
         ? (async () => {
             const controller = new AbortController()
             let timeoutId: ReturnType<typeof setTimeout> | undefined
