@@ -1016,3 +1016,21 @@ open PR heads were merged. No GitHub state was changed by this task.
   persistence/profile-RAG work, deployment/firewall verification for the GEO
   companion, provider and external-service contract validation, and an eventual
   current-main production build and smoke baseline.
+
+### GitHub review actions
+
+On 2026-07-12, connector-backed review comments documented the selective ports
+and dispositions without merging or closing any PR:
+
+- PR #75: `COMMENT` review `4679543361`.
+- PR #78: `COMMENT` review `4679543388`.
+- PR #82: `COMMENT` review `4679543411`.
+- PR #83: conversation comment `4950207168`.
+- PR #81: conversation comment `4950207206`.
+- PR #79: conversation comment `4950207252`.
+- PR #76: conversation comment `4950207301`.
+- PR #74: conversation comment `4950207333`.
+
+The comments explicitly recommend selective porting or retaining reference
+material; they do not represent merge approval or a claim that the open PR
+heads are production-ready.
