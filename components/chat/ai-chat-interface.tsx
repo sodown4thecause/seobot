@@ -27,6 +27,7 @@ import { GeoFixPlanResult } from './tool-ui/geo-fix-plan-result'
 import type { ProactiveSuggestion } from '@/lib/proactive/types'
 import { useArtifactStore } from '@/lib/artifacts/artifact-store'
 import { syncArtifactsFromMessages } from '@/lib/artifacts/sync-from-messages'
+import { getChatRetryAction } from '@/lib/chat/retry-behavior'
 import { ArtifactPanel } from '@/components/artifacts/artifact-panel'
 import { bootstrapConversationRecord } from '@/lib/chat/conversation-bootstrap'
 import { BlogArtifact } from './artifacts/blog-artifact'
@@ -1001,7 +1002,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
       mode: chatMode,
       conversationId: conversationId ?? undefined,
     })
-    setInput('') // Clear input after sending (AI SDK 6 best practice)
+    setInput('')
   }, [conversationId, isBootstrapping, sendMessage, messages.length, setFocus, chatMode])
 
   const handleComponentSubmit = useCallback((componentType: string, data: any) => {
@@ -1018,19 +1019,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   const handleRetry = useCallback(() => {
     if (retryCountdown !== null && retryCountdown > 0) return
-
-    const lastMessage = messages[messages.length - 1]
-    if (lastMessage?.role === 'assistant') {
-      regenerate?.()
-      return
-    }
-
-    const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')
-    const lastUserText = lastUserMessage ? getMessageText(lastUserMessage) : ''
-    if (lastUserText.trim()) {
-      handleSendMessage({ text: lastUserText })
-    }
-  }, [messages, regenerate, retryCountdown, handleSendMessage])
+    if (getChatRetryAction(messages) === 'regenerate') regenerate?.()
+  }, [messages, regenerate, retryCountdown])
 
   // Helper for safe JSON parsing
   const safeParseJSON = async (response: Response) => {

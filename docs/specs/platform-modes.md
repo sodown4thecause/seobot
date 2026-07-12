@@ -9,7 +9,7 @@
 
 ## Elevator pitch
 
-> FlowIntent is three paywalled AI chat modes—SEO, GEO / AEO, and Content—over live search data and AI visibility checks. Ask in plain English, inspect tool results as artifacts, and save what matters to your workspace. Start free with the Reddit content gap audit.
+> FlowIntent is four paywalled AI chat modes—SEO, GEO / AEO, Content, and Social—over live search data, AI visibility checks, and social-web intelligence. Ask in plain English, inspect tool results as artifacts, and save what matters to your workspace. Start free with the Reddit content gap audit.
 
 ---
 
@@ -26,13 +26,14 @@ Marketing leads with Reddit; conversion is into the paywalled dashboard. Do not 
 
 ## 2. Problem statement
 
-FlowIntent began as **SEO chat** with **live DataForSEO** via **AI SDK 6**.
+FlowIntent began as **SEO chat** with **live DataForSEO**; the current runtime uses **AI SDK 7**.
 
-Three distinct jobs emerged:
+Four distinct jobs are represented in the current runtime:
 
 1. **SEO** — rankings, keywords, SERPs, backlinks, technical.
 2. **GEO / AEO** — mentions and citations in AI answer engines (same lane; see §4).
 3. **Content** — research-first drafts, images, metadata.
+4. **Social** — social-web conversations, audience pain points, and trend signals.
 
 Each job needs different **tools, prompts, and RAG namespace**. **Modes** isolate them so SEO threads do not pull GEO memory (and vice versa).
 
@@ -45,9 +46,9 @@ Each job needs different **tools, prompts, and RAG namespace**. **Modes** isolat
 ```
 Reddit gap audit (lead)  →  sign up  →  Paywalled dashboard
 
-Chat (SEO | GEO/AEO | Content mode)
+Chat (SEO | GEO/AEO | Content | Social mode)
         ↓
-Artifacts (AI SDK 6 tool UI — any mode)
+Artifacts (AI SDK 7 tool UI — any mode)
         ↓
 Workspace (saved library — all modes)
 ```
@@ -55,15 +56,15 @@ Workspace (saved library — all modes)
 ### 3.1 Chat (primary)
 
 - One **streaming chat** per conversation.
-- **Mode selector:** SEO Mode · GEO / AEO Mode · Content Mode.
-- Each mode is an **AI SDK 6** lane: own agent, tools, and RAG filter (`agent_documents.mode`).
-- Mode on `conversations.metadata.chatMode`; deep link `/dashboard?mode=seo|geo|content`.
+- **Mode selector:** SEO Mode · GEO / AEO Mode · Content Mode · Social Mode.
+- Each mode is an **AI SDK 7** lane: own agent, tools, and RAG filter (`agent_documents.mode`).
+- Mode on `conversations.metadata.chatMode`; deep link `/dashboard?mode=seo|geo|content|social`.
 
 **Content Mode** is a chat mode only—not a separate app. Long-form output uses tools such as `create_content_package` (`lib/chat/stream-builder.ts`).
 
 ### 3.2 Artifacts
 
-An **artifact** is a **structured UI object** produced by **AI SDK 6 tool calls** in chat. Artifacts are mode-agnostic in pattern: any mode can emit them; the side panel renders the result.
+An **artifact** is a **structured UI object** produced by **AI SDK 7 tool calls** in chat. Artifacts are mode-agnostic in pattern: any mode can emit them; the side panel renders the result.
 
 | Artifact (examples) | Typical mode | Tool / source |
 |---------------------|--------------|---------------|
@@ -90,13 +91,14 @@ Code may still live under `components/content-zone/` paths; **do not delete**—
 
 ---
 
-## 4. Product model — three modes
+## 4. Product model — four modes
 
 | Mode ID | User-facing name | Accent | Agent | RAG `mode` | Primary data |
 |---------|------------------|--------|-------|------------|--------------|
 | `seo` | SEO Mode | emerald | `seo-aeo` | `seo` | DataForSEO live |
 | `geo` | GEO / AEO Mode | violet | `geo` | `geo` | ChatGPT, Perplexity, Google AI Overviews |
 | `content` | Content Mode | amber | `content` | `content` | Research + content package → workspace |
+| `social` | Social Mode | rose | `social` | `social` | X/Twitter, Reddit, and social web |
 
 **Default mode:** `seo`.
 
@@ -129,8 +131,8 @@ Code may still live under `components/content-zone/` paths; **do not delete**—
 
 **Job:** **Publish** — posts, hero + thumbnail images, metadata, saved to workspace.
 
-- Chat-only creation flow (AI SDK 6 + `create_content_package`).
-- Not a fourth product; not separate from the three-mode model.
+- Chat-only creation flow (AI SDK 7 + `create_content_package`).
+- Not a fifth product; not separate from the four-mode model.
 
 ---
 
@@ -171,7 +173,7 @@ Sidebar may still link labs/legacy routes (Rank Tracker, AEO Insights, Content P
 ## 7. Marketing copy rules
 
 1. Site brand: **FlowIntent** only — never **SEOBOT** (repo).
-2. Exactly **three modes** on all marketing surfaces.
+2. Exactly **four modes** on all marketing surfaces.
 3. Never user-facing **“Content Zone”** — say **workspace**.
 4. GEO engines: name ChatGPT, Perplexity, Google AI Overviews.
 5. Reddit gap = lead magnet; dashboard = paywalled core.
@@ -182,14 +184,14 @@ Sidebar may still link labs/legacy routes (Rank Tracker, AEO Insights, Content P
 ## 8. FAQ & landing alignment
 
 - `lib/faq.ts` — Platform Modes + elevator pitch.
-- `components/landing/landing-page-client.tsx` — three modes + `FLOWINTENT_*` from `lib/product/elevator-pitch.ts`.
+- `components/landing/landing-page-client.tsx` — four modes + `FLOWINTENT_*` from `lib/product/elevator-pitch.ts`.
 
 ---
 
 ## 9. Acceptance criteria
 
 - [x] Spec documents chat → artifacts → workspace
-- [x] Content Mode = AI SDK 6 chat mode only
+- [x] Content Mode = AI SDK 7 chat mode only
 - [x] Workspace route kept; user copy says Workspace not Content Zone
 - [x] GEO / AEO documented as one mode
 - [x] Reddit lead magnet vs paywalled dashboard

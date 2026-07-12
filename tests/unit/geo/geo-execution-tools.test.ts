@@ -89,6 +89,24 @@ Sitemap: https://example.com/sitemap.xml`
     expect(gpt.status).toBe('allowed')
     expect(perplexity.status).toBe('blocked')
   })
+
+  it('supports robots wildcards and trailing end anchors', () => {
+    const rules = parseRobotsTxt(`User-agent: GPTBot
+Disallow: /*.pdf$
+Allow: /public/*.pdf$`)
+
+    expect(evaluateCrawlerAccess(rules, 'GPTBot', ['/private/report.pdf']).status).toBe('partially_blocked')
+    expect(evaluateCrawlerAccess(rules, 'GPTBot', ['/private/report.pdf?download=1']).status).toBe('allowed')
+    expect(evaluateCrawlerAccess(rules, 'GPTBot', ['/public/report.pdf']).status).toBe('allowed')
+  })
+
+  it('prefers Allow when equally specific rules both match', () => {
+    const rules = parseRobotsTxt(`User-agent: GPTBot
+Disallow: /private
+Allow: /private`)
+
+    expect(evaluateCrawlerAccess(rules, 'GPTBot', ['/private']).status).toBe('allowed')
+  })
 })
 
 describe('schema markup tool', () => {

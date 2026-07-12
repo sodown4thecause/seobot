@@ -51,24 +51,24 @@ export const faqSections: FaqSection[] = [
     category: 'Platform Modes',
     questions: [
       {
-        q: 'What are SEO Mode, GEO / AEO Mode, and Content Mode?',
-        a: 'FlowIntent runs three AI SDK 6 chat modes inside the paywalled dashboard. SEO Mode handles keyword research, SERP analysis, backlinks, and technical SEO with live DataForSEO data. GEO / AEO Mode covers generative and answer-engine optimization—whether ChatGPT, Perplexity, or Google AI Overviews mention or cite your brand (more engines as we scale). Content Mode is research-first publishing: drafts, hero images, thumbnails, and metadata saved to your workspace.',
+        q: 'What are SEO Mode, GEO / AEO Mode, Content Mode, and Social Mode?',
+        a: 'FlowIntent runs four AI SDK 7 chat modes inside the paywalled dashboard. SEO Mode handles keyword research, SERP analysis, backlinks, and technical SEO with live DataForSEO data. GEO / AEO Mode covers generative and answer-engine optimization—whether ChatGPT, Perplexity, or Google AI Overviews mention or cite your brand (more engines as we scale). Content Mode is research-first publishing: drafts, hero images, thumbnails, and metadata saved to your workspace. Social Mode researches X/Twitter, Reddit, and social-web conversations for brand mentions, competitor reactions, audience pain points, and trend signals.',
       },
       {
         q: 'When should I use each mode?',
-        a: 'Use SEO Mode for rankings data, competitor gaps, and technical SEO. Use GEO / AEO Mode when you care how AI answer engines talk about your brand versus competitors. Use Content Mode when you are ready to publish. A common path is SEO discover → GEO / AEO measure → Content publish, but you can use any mode in any order.',
+        a: 'Use SEO Mode for rankings data, competitor gaps, and technical SEO. Use GEO / AEO Mode when you care how AI answer engines talk about your brand versus competitors. Use Content Mode when you are ready to publish. Use Social Mode to understand conversations, audience pain points, and trend signals. A common path is SEO discover → GEO / AEO measure → Content publish, but you can use any mode in any order.',
       },
       {
         q: 'What are artifacts and workspace?',
-        a: 'Artifacts are structured UI panels from AI SDK 6 tool calls in chat—keyword metrics, backlink tables, GEO visibility snapshots, content previews, and more. Any mode can produce them. Workspace is where you keep saved artifacts and library items (posts, briefs, exports) after the chat. Start with the free Reddit content gap audit; the full chat, artifacts, and workspace are in the paywalled dashboard.',
+        a: 'Artifacts are structured UI panels from AI SDK 7 tool calls in chat—keyword metrics, backlink tables, GEO visibility snapshots, content previews, and more. Any mode can produce them. Workspace is where you keep saved artifacts and library items (posts, briefs, exports) after the chat. Start with the free Reddit content gap audit; the full chat, artifacts, and workspace are in the paywalled dashboard.',
         links: [
           { label: 'Try Reddit audit', href: '/reddit-gap' },
           { label: 'Sign up', href: '/sign-up' },
         ],
       },
       {
-        q: 'Why three modes instead of one chat?',
-        a: 'SEO, GEO / AEO, and content creation need different tools and memory. Modes keep SEO questions from pulling GEO context (and vice versa) so answers stay accurate. FlowIntent began as DataForSEO-powered SEO chat and added GEO / AEO and Content as separate AI SDK 6 lanes.',
+        q: 'Why four modes instead of one chat?',
+        a: 'SEO, GEO / AEO, content creation, and social intelligence need different tools and memory. Modes keep SEO questions from pulling GEO context (and vice versa) so answers stay accurate. FlowIntent began as DataForSEO-powered SEO chat; the current runtime uses AI SDK 7 across the SEO, GEO / AEO, Content, and Social lanes.',
       },
     ],
   },

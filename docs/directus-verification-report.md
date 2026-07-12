@@ -1,10 +1,12 @@
-# Directus CMS Setup Verification Report
+# Directus CMS Setup Verification Report (Historical Reference)
 
 **Date:** 2026-03-25  
 **Branch:** feat/chat-ui-article-style  
 **Verified By:** AI Assistant
 
-## Status: ✅ FULLY OPERATIONAL
+## Status: ✅ VERIFIED AT THE TIME OF THIS REPORT; HISTORICAL/REFERENCE-ONLY
+
+This report records a March 2026 Directus verification. Directus is a legacy CMS integration reference, not the canonical application persistence architecture. The current application uses Neon PostgreSQL with Drizzle ORM; do not treat this report as a current production-readiness or deployment assertion.
 
 ## Environment Configuration
 
@@ -51,7 +53,7 @@ All 4 required content collections are properly configured:
 | Test Suite | Status | Details |
 |------------|--------|---------|
 | Unit Tests | ✅ PASS | tests/unit/directus.test.ts - 2/2 tests passing |
-| TypeScript | ✅ PASS | npm run typecheck - No errors |
+| TypeScript | ✅ PASS | pnpm typecheck - No errors at report time |
 | MCP Connection | ✅ PASS | Successfully connected to Directus |
 | Collections Query | ✅ PASS | All 4 collections accessible |
 
@@ -113,7 +115,7 @@ Content teams can use Directus MCP tools to:
 
 ## Conclusion
 
-**Directus CMS is production-ready.** Content teams can immediately:
+**At the time of this historical verification, Directus CMS was operational.** Content teams could:
 - Draft and publish content via MCP tools
 - Manage all content types (Blog, Case Studies, Guides, Resources)
 - Use existing content or create new items

@@ -35,6 +35,7 @@ import {
   type RequestBody,
 } from '@/lib/chat/message-handler'
 import { classifyUserIntent, buildAgentSystemPrompt, type AgentType } from '@/lib/chat/intent-classifier'
+import { resolveEffectiveAgent, shouldLoadRagContext } from '@/lib/chat/api-routing'
 import { assembleTools } from '@/lib/chat/tool-assembler'
 import { buildStreamResponse, type StreamOptions } from '@/lib/chat/stream-builder'
 import {
@@ -230,16 +231,7 @@ const handler = async (req: Request) => {
     })
 
     // 11. Build system prompt for the selected agent
-    let effectiveAgent: AgentType
-    if (classification.agent === 'image') {
-      effectiveAgent = classification.agent
-    } else if (mode === 'content') {
-      effectiveAgent = 'content'
-    } else if (mode === 'geo') {
-      effectiveAgent = 'geo'
-    } else {
-      effectiveAgent = 'seo-aeo'
-    }
+    const effectiveAgent: AgentType = resolveEffectiveAgent(classification.agent, mode)
 
     const systemPrompt = buildAgentSystemPrompt(
       effectiveAgent,
@@ -256,7 +248,7 @@ const handler = async (req: Request) => {
         userId: user?.id,
         request: req,
       }),
-      effectiveAgent === 'seo-aeo' || effectiveAgent === 'content' || effectiveAgent === 'geo'
+      shouldLoadRagContext(effectiveAgent)
         ? (async () => {
             const controller = new AbortController()
             let timeoutId: ReturnType<typeof setTimeout> | undefined

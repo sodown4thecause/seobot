@@ -6,7 +6,6 @@
 import { registerTelemetry } from 'ai'
 import { OpenTelemetry } from '@ai-sdk/otel'
 import { isLangfuseEnabled, getLangfuseConfig } from '@/lib/observability/langfuse'
-import * as Sentry from '@sentry/nextjs'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -15,8 +14,6 @@ declare global {
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    await import('./sentry.server.config')
-
     if (!isLangfuseEnabled()) {
       console.log('[Langfuse] Tracing disabled — missing keys or LANGFUSE_ENABLED=false')
     } else {
@@ -26,6 +23,7 @@ export async function register() {
       const config = getLangfuseConfig()
 
       const langfuseSpanProcessor = new LangfuseSpanProcessor({
+        baseUrl: config.baseUrl,
         shouldExportSpan: (span) =>
           span.otelSpan.instrumentationScope.name !== 'next.js',
       })
@@ -47,9 +45,4 @@ export async function register() {
     }
   }
 
-  if (process.env.NEXT_RUNTIME === 'edge') {
-    await import('./sentry.edge.config')
-  }
 }
-
-export const onRequestError = Sentry.captureRequestError

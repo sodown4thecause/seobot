@@ -10,7 +10,7 @@
   - `LANGFUSE_DEBUG` (optional, for debugging)
 
 - [x] **Instrumentation**: `instrumentation.ts` properly configured
-  - Uses `@langfuse/otel` with `LangfuseSpanProcessor` for AI SDK 6 compatibility
+  - Uses `@langfuse/otel` with `LangfuseSpanProcessor` for the AI SDK 7 runtime
   - Checks if Langfuse is enabled before registering
   - Properly configures `NodeTracerProvider` with `LangfuseSpanProcessor`
   - Exports `langfuseSpanProcessor` to global for forceFlush in API routes
@@ -94,11 +94,11 @@
 
 1. **Check Environment Variables**:
    ```bash
-   npm run validate:env
+   pnpm validate:env
    ```
 
 2. **Verify Instrumentation**:
-   - Start dev server: `npm run dev`
+   - Start dev server: `pnpm dev`
    - Look for: `[Langfuse] OpenTelemetry instrumentation registered with LangfuseSpanProcessor`
    - If `LANGFUSE_DEBUG=true`, you should also see base URL and debug mode confirmation
 

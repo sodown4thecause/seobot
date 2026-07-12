@@ -80,7 +80,7 @@ export default function PrivacyPage() {
             We <strong>do not sell</strong> your personal information. We share data only in these limited circumstances:
           </p>
           <ul className="text-gray-300 space-y-2 mb-6">
-            <li><strong>Service providers:</strong> Supabase (database), Upstash (rate limiting), and DataForSEO (SEO data) process data on our behalf</li>
+            <li><strong>Service providers:</strong> Neon PostgreSQL via Drizzle ORM (database), Upstash (rate limiting), and DataForSEO (SEO data) process data on our behalf</li>
             <li><strong>AI providers:</strong> Your queries may be sent to Anthropic (Claude), OpenAI (GPT), or Perplexity for processing</li>
             <li><strong>Legal requirements:</strong> We may disclose information if required by law or to protect our rights</li>
           </ul>

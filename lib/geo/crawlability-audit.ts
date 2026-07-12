@@ -106,16 +106,17 @@ function matchesAgent(ruleAgent: string, targetAgent: string): boolean {
 
 function pathMatchesPattern(path: string, pattern: string): boolean {
   if (!pattern || pattern === '') return false
-  if (pattern === '/') return true
 
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const normalizedPattern = pattern.startsWith('/') ? pattern : `/${pattern}`
+  const endAnchored = normalizedPattern.endsWith('$')
+  const patternBody = endAnchored ? normalizedPattern.slice(0, -1) : normalizedPattern
+  const regexBody = patternBody
+    .split('*')
+    .map(part => part.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&'))
+    .join('.*')
 
-  if (normalizedPattern.endsWith('*')) {
-    return normalizedPath.startsWith(normalizedPattern.slice(0, -1))
-  }
-
-  return normalizedPath === normalizedPattern || normalizedPath.startsWith(`${normalizedPattern}/`)
+  return new RegExp(`^${regexBody}${endAnchored ? '$' : ''}`).test(normalizedPath)
 }
 
 export function evaluateCrawlerAccess(
@@ -146,17 +147,24 @@ export function evaluateCrawlerAccess(
   let rootBlocked = false
 
   for (const path of checkPaths) {
-    let allowed = true
+    let bestMatch: { type: 'allow' | 'disallow'; length: number } | null = null
 
     for (const rule of relevant) {
-      const disallowHit = rule.disallow.some((d) => pathMatchesPattern(path, d))
-      const allowHit = rule.allow.some((a) => pathMatchesPattern(path, a))
-
-      if (disallowHit && !allowHit) {
-        allowed = false
-        blockedPaths.push(path)
-        if (path === '/') rootBlocked = true
+      for (const pattern of rule.disallow) {
+        if (pathMatchesPattern(path, pattern) && (!bestMatch || pattern.length > bestMatch.length)) {
+          bestMatch = { type: 'disallow', length: pattern.length }
+        }
       }
+      for (const pattern of rule.allow) {
+        if (pathMatchesPattern(path, pattern) && (!bestMatch || pattern.length >= bestMatch.length)) {
+          bestMatch = { type: 'allow', length: pattern.length }
+        }
+      }
+    }
+
+    if (bestMatch?.type === 'disallow') {
+      blockedPaths.push(path)
+      if (path === '/') rootBlocked = true
     }
   }
 

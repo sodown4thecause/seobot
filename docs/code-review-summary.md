@@ -1,4 +1,4 @@
-# Code Quality Review - Final Summary
+# Code Quality Review - Final Summary (Historical Reference)
 
 **Date:** 2026-01-09  
 **Session Duration:** ~2 hours  
@@ -312,7 +312,7 @@ ${kw.cpc.toFixed(2)}
 3. ✅ **Fix duplicate completions** - Breaks suggestion filtering
 
 ### Short-term Actions (High Priority)
-1. Apply vector index migration: `npm run db:push`
+1. Superseded: `pnpm db:push` is not currently available as a package script; do not run this historical command without a separately verified migration workflow.
 2. Test milestone persistence across server restarts
 3. Monitor vector search performance in production
 
@@ -338,7 +338,7 @@ ${kw.cpc.toFixed(2)}
 
 ## Conclusion
 
-This session successfully improved code quality, performance, and reliability across the codebase. The 10 implemented improvements are production-ready, while the 4 pending fixes require manual implementation due to file formatting constraints.
+This historical session recorded improvements to code quality, performance, and reliability. Its implementation and production-readiness claims are reference-only; validate them against the current branch before relying on them. The 10 implemented improvements were recorded as complete at that time, while the 4 pending fixes required manual implementation.
 
 **Next Steps:**
 1. Manually implement the 4 critical bug fixes

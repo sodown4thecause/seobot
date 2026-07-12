@@ -100,7 +100,7 @@ export const CHAT_MODE_UI: Record<ChatMode, ChatModeUiConfig> = {
     selectorLabel: 'Content Mode',
     heroTitle: 'Content Mode',
     tagline:
-      'AI SDK 6 chat for publishing—drafts, hero and thumbnail images. Preview in artifacts, save to workspace, export or ship to your CMS.',
+      'AI SDK 7 chat for publishing—drafts, hero and thumbnail images. Preview in artifacts, save to workspace, export or ship to your CMS.',
     selectorDescription: 'Publish via chat — save artifacts to workspace',
     accent: 'amber',
   },

@@ -32,13 +32,18 @@ export async function resolveLatestGeoDigest(): Promise<GeoDigestResponse | null
   if (isGeoApiConfigured()) {
     const remote = await fetchLatestDigestFromApi()
     if (remote) {
-      const suggestions = await fetchSuggestionsFromApi(remote.digestDate)
+      let suggestions = remote.suggestions
+      try {
+        suggestions = (await fetchSuggestionsFromApi(remote.digestDate)) ?? remote.suggestions
+      } catch (error) {
+        console.error('[digest-service] GEO suggestions fetch failed; using embedded suggestions:', error)
+      }
       return {
         source: 'geo-api',
         digestDate: remote.digestDate,
         brand: remote.brand,
         digest: remote.digest,
-        suggestions: suggestions ?? remote.suggestions,
+        suggestions,
         degradedSections: remote.degradedSections,
       }
     }

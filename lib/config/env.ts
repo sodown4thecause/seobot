@@ -109,6 +109,14 @@ const serverEnvSchema = z.object({
   CRON_SECRET: optionalNonEmptyString,
   BETTER_AUTH_URL: optionalUrl,
   BETTER_AUTH_SECRET: optionalNonEmptyString,
+  GOOGLE_CLIENT_ID: optionalNonEmptyString,
+  GOOGLE_CLIENT_SECRET: optionalNonEmptyString,
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: optionalNonEmptyString,
+
+  // Polar billing
+  POLAR_ACCESS_TOKEN: optionalNonEmptyString,
+  POLAR_PRODUCT_ID: optionalNonEmptyString,
+  POLAR_WEBHOOK_SECRET: optionalNonEmptyString,
 
   // GEO / AEO mode configuration
   GEO_ENABLED_ENGINES: z.string().optional(),
@@ -129,8 +137,6 @@ const serverEnvSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
   AXIOM_DATASET: z.string().min(1).optional(),
   AXIOM_TOKEN: z.string().min(1).optional(),
-  SENTRY_DSN: z.string().url().optional(),
-  SENTRY_ENVIRONMENT: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 
@@ -180,7 +186,6 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_BETTER_AUTH_URL: optionalUrl,
   NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_POSTHOG_HOST: optionalUrl,
-  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 })
 
 /**
