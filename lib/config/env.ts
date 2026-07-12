@@ -109,6 +109,14 @@ const serverEnvSchema = z.object({
   CRON_SECRET: optionalNonEmptyString,
   BETTER_AUTH_URL: optionalUrl,
   BETTER_AUTH_SECRET: optionalNonEmptyString,
+  GOOGLE_CLIENT_ID: optionalNonEmptyString,
+  GOOGLE_CLIENT_SECRET: optionalNonEmptyString,
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: optionalNonEmptyString,
+
+  // Polar billing
+  POLAR_ACCESS_TOKEN: optionalNonEmptyString,
+  POLAR_PRODUCT_ID: optionalNonEmptyString,
+  POLAR_WEBHOOK_SECRET: optionalNonEmptyString,
 
   // GEO / AEO mode configuration
   GEO_ENABLED_ENGINES: z.string().optional(),

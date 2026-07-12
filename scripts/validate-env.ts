@@ -1,154 +1,111 @@
 #!/usr/bin/env tsx
-/**
- * Environment Variable Validation Script
- *
- * Validates environment variables against the Zod schema in lib/config/env.ts
- * This script is designed to be run in CI/CD pipelines to catch missing or invalid
- * environment variables before deployment.
- *
- * Usage:
- *   tsx scripts/validate-env.ts
- *   npm run validate:env
- */
 
 import { config } from 'dotenv'
-import { resolve } from 'path'
-import { z } from 'zod'
+import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 
-// Load environment variables from .env.local and .env
-config({ path: resolve(process.cwd(), '.env.local') })
-config({ path: resolve(process.cwd(), '.env') })
+export type EnvValidationMode = 'local' | 'production'
 
-// Import schemas directly to avoid server-only check in validation script
-// These match the schemas in lib/config/env.ts
-const serverEnvSchema = z.object({
-  // Database (Neon)
-  DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid URL' }).optional(),
+export interface EnvValidationResult {
+  errors: string[]
+  warnings: string[]
+}
 
-  // Authentication (Better Auth)
-  BETTER_AUTH_SECRET: z.string().min(1).optional(),
-  BETTER_AUTH_URL: z.string().url().optional(),
+const requiredProductionVariables = [
+  'DATABASE_URL', 'BETTER_AUTH_SECRET', 'BETTER_AUTH_URL', 'NEXT_PUBLIC_SITE_URL',
+  'CRON_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'NEXT_PUBLIC_GOOGLE_CLIENT_ID',
+  'POLAR_ACCESS_TOKEN', 'POLAR_PRODUCT_ID', 'POLAR_WEBHOOK_SECRET',
+  'DATAFORSEO_USERNAME', 'DATAFORSEO_PASSWORD',
+] as const
 
-  // DataForSEO
-  DATAFORSEO_USERNAME: z.string().min(1).optional(),
-  DATAFORSEO_PASSWORD: z.string().min(1).optional(),
-}).passthrough()
+const modelVariables = [
+  'AI_GATEWAY_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_API_KEY', 'ANTHROPIC_API_KEY',
+  'DEEPSEEK_API_KEY', 'XAI_API_KEY', 'PERPLEXITY_API_KEY',
+] as const
 
-const clientEnvSchema = z.object({
-  NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
-}).passthrough()
+const urlVariables = ['DATABASE_URL', 'BETTER_AUTH_URL', 'NEXT_PUBLIC_SITE_URL'] as const
 
-// Parse process.env directly (same as env.ts does)
-function validateEnv() {
-  console.log('🔍 Validating environment variables...\n')
+const isPresent = (value: string | undefined): value is string =>
+  typeof value === 'string' && value.trim().length > 0
 
-  const errors: string[] = []
-  const warnings: string[] = []
-
-  // Validate server environment
+const isPlaceholderUrl = (value: string): boolean => {
   try {
-    const serverResult = serverEnvSchema.safeParse(process.env)
-
-    if (!serverResult.success) {
-      console.error('❌ Server environment validation failed:\n')
-      serverResult.error.errors.forEach((error: z.ZodIssue) => {
-        const path = error.path.join('.')
-        const message = error.message
-        const code = error.code
-
-        // Missing required fields show up as 'too_small' with min: 1
-        if (code === 'too_small' && error.minimum === 1) {
-          errors.push(`Missing required variable: ${path}`)
-          console.error(`  ✗ Missing: ${path}`)
-        } else {
-          errors.push(`Invalid variable ${path}: ${message}`)
-          console.error(`  ✗ Invalid: ${path} - ${message}`)
-        }
-      })
-    } else {
-      console.log('✅ Server environment variables validated successfully')
-    }
-  } catch (error) {
-    errors.push(`Server validation error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    console.error('❌ Server validation threw an error:', error)
-  }
-
-  // Validate client environment
-  try {
-    const clientResult = clientEnvSchema.safeParse(process.env)
-
-    if (!clientResult.success) {
-      console.error('\n❌ Client environment validation failed:\n')
-      clientResult.error.errors.forEach((error: z.ZodIssue) => {
-        const path = error.path.join('.')
-        const message = error.message
-
-        // Missing required fields show up as 'too_small' with min: 1
-        if (error.code === 'too_small' && error.minimum === 1) {
-          errors.push(`Missing required public variable: ${path}`)
-          console.error(`  ✗ Missing: ${path}`)
-        } else {
-          errors.push(`Invalid public variable ${path}: ${message}`)
-          console.error(`  ✗ Invalid: ${path} - ${message}`)
-        }
-      })
-    } else {
-      console.log('✅ Client environment variables validated successfully')
-    }
-  } catch (error) {
-    errors.push(`Client validation error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    console.error('❌ Client validation threw an error:', error)
-  }
-
-  // Check for common issues
-  const publicVars = Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_'))
-  const serverOnlyVars = Object.keys(process.env).filter(key =>
-    !key.startsWith('NEXT_PUBLIC_') &&
-    (key.includes('KEY') || key.includes('SECRET') || key.includes('PASSWORD'))
-  )
-
-  // Warn about potential security issues
-  if (serverOnlyVars.some(key => process.env[key] && process.env[key]!.length < 8)) {
-    warnings.push('Some API keys or secrets appear to be too short (less than 8 characters)')
-  }
-
-  // Summary
-  console.log('\n' + '='.repeat(60))
-  if (errors.length > 0) {
-    console.error(`\n❌ Validation failed with ${errors.length} error(s)`)
-    console.error('\nErrors:')
-    errors.forEach((error, index) => {
-      console.error(`  ${index + 1}. ${error}`)
-    })
-
-    if (warnings.length > 0) {
-      console.warn('\n⚠️  Warnings:')
-      warnings.forEach((warning, index) => {
-        console.warn(`  ${index + 1}. ${warning}`)
-      })
-    }
-
-    console.error('\n💡 Tip: Check your .env.local file and ensure all required variables are set.')
-    console.error('   See .env.example for a list of required variables.\n')
-    process.exit(1)
-  } else {
-    console.log(`\n✅ All environment variables validated successfully!`)
-
-    if (warnings.length > 0) {
-      console.warn('\n⚠️  Warnings:')
-      warnings.forEach((warning, index) => {
-        console.warn(`  ${index + 1}. ${warning}`)
-      })
-    }
-
-    console.log(`\n📊 Summary:`)
-    console.log(`   - Public variables: ${publicVars.length}`)
-    console.log(`   - Server-only variables: ${serverOnlyVars.length}`)
-    console.log(`   - Total validated: ${publicVars.length + serverOnlyVars.length}\n`)
-    process.exit(0)
+    const hostname = new URL(value).hostname.toLowerCase()
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' ||
+      hostname === 'example.com' || hostname === 'example.org' || hostname === 'example.net' ||
+      hostname.startsWith('your-') || hostname.includes('replace-me')
+  } catch {
+    return false
   }
 }
 
-// Run validation
-validateEnv()
+const validateUrl = (name: string, value: string, mode: EnvValidationMode, errors: string[]) => {
+  try {
+    new URL(value)
+  } catch {
+    errors.push(`Invalid variable ${name}: must be a valid URL`)
+    return
+  }
+  if (mode === 'production' && isPlaceholderUrl(value)) {
+    errors.push(`Invalid variable ${name}: placeholder URLs are not allowed in production`)
+  }
+}
 
+export function validateEnvironment(
+  env: NodeJS.ProcessEnv,
+  mode: EnvValidationMode,
+): EnvValidationResult {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (mode === 'production') {
+    for (const name of requiredProductionVariables) {
+      if (!isPresent(env[name])) errors.push(`Missing required variable: ${name}`)
+    }
+    if (!modelVariables.some((name) => isPresent(env[name]))) {
+      errors.push(`Missing required variable: one of ${modelVariables.join('/')}`)
+    }
+  }
+
+  for (const name of urlVariables) {
+    const value = env[name]
+    if (isPresent(value)) validateUrl(name, value, mode, errors)
+  }
+
+  return { errors, warnings }
+}
+
+function parseMode(argv: string[]): EnvValidationMode {
+  const modeIndex = argv.indexOf('--mode')
+  if (modeIndex === -1) return 'production'
+  const mode = argv[modeIndex + 1]
+  if (mode === 'local' || mode === 'production') return mode
+  throw new Error('Usage: tsx scripts/validate-env.ts [--mode local|production]')
+}
+
+function runCli(): number {
+  config({ path: resolve(process.cwd(), '.env.local') })
+  config({ path: resolve(process.cwd(), '.env') })
+
+  let mode: EnvValidationMode
+  try {
+    mode = parseMode(process.argv.slice(2))
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : 'Invalid validation mode')
+    return 1
+  }
+
+  const result = validateEnvironment(process.env, mode)
+  if (result.errors.length > 0) {
+    console.error(`Environment validation failed (${mode}):`)
+    for (const error of result.errors) console.error(`- ${error}`)
+    return 1
+  }
+  console.log(`Environment validation passed (${mode})`)
+  return 0
+}
+
+const entrypoint = process.argv[1]
+if (entrypoint && resolve(entrypoint) === resolve(fileURLToPath(import.meta.url))) {
+  process.exitCode = runCli()
+}
