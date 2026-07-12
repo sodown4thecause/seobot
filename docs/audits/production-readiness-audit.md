@@ -1000,12 +1000,15 @@ open PR heads were merged. No GitHub state was changed by this task.
 
 ### Validation evidence and blockers
 
-- `git diff --check` is the required Task 8 check and must pass before the audit
-  commit. No pnpm, application test, CI, or E2E command is part of this task.
-- Task 5 focused local Vitest passed. Tasks 2 and 6 focused Vitest execution was
-  blocked by local timeout/hang behavior; Task 3 pnpm checks were blocked by
-  `ERR_PNPM_IGNORED_BUILDS`; Task 4 pnpm lint/typecheck were inconclusive because
-  of environment hangs; Task 7 performed no database, VPS, or test execution.
+- `git diff --check` passed for the Task 8 audit diff (exit code 0). No pnpm,
+  application test, CI, or E2E command was part of this task.
+- Task 5 focused local Vitest passed. Task 2 focused Vitest execution timed out
+  in the local environment. Task 6 focused tests were intentionally not run
+  because its isolated implementation instructions prohibited pnpm/npm/Vitest;
+  this is not evidence of a test failure. Task 3 pnpm checks were blocked by
+  `ERR_PNPM_IGNORED_BUILDS`. Task 4 lint/typecheck were stopped at the user's
+  direction and are inconclusive. Task 7 performed no database, VPS, or test
+  execution.
 - No GitHub check conclusion is inferred: the connector did not expose reliable
   CI/check state. CI/E2E, production smoke, provider-contract, browser,
   Autonoma, VPS, backup/restore, and branch-protection validation remain deferred.
