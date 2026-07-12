@@ -35,7 +35,11 @@ const urlVariables = [
 ] as const
 
 const placeholderHostnamePattern = /(?:^|[._-])(?:example|test|xxx|placeholder|your|replace[-_]?me)(?:$|[._-])/i
-const placeholderCredentialPattern = /(?:^|[._:/-])(?:example|test|testing|xxx|placeholder|your|dummy|fake|sample|todo|insert|replace[-_]?me|change[-_]?me|changeme)(?:$|[._:/-])/i
+const exactPlaceholderCredentials = new Set([
+  'test', 'testing', 'example', 'placeholder', 'dummy', 'fake', 'sample',
+  'xxx', 'user', 'password', 'secret', 'token', 'key', 'changeme',
+])
+const placeholderCredentialPrefixPattern = /^(?:your|replace[-_]?me|change[-_]?me|insert[-_]?|set[-_]?|put[-_]?|todo[-_]?|xxx[-_]?)/i
 
 const isPresent = (value: string | undefined): value is string =>
   typeof value === 'string' && value.trim().length > 0
@@ -51,21 +55,32 @@ const isPlaceholderUrl = (value: string): boolean => {
 }
 
 const validateUrl = (name: string, value: string, mode: EnvValidationMode, errors: string[]) => {
+  let parsedUrl: URL
   try {
-    new URL(value)
+    parsedUrl = new URL(value)
   } catch {
     errors.push(`Invalid variable ${name}: must be a valid URL`)
     return
   }
   if (mode === 'production' && isPlaceholderUrl(value)) {
     errors.push(`Invalid variable ${name}: placeholder URLs are not allowed in production`)
+  } else if (
+    mode === 'production' &&
+    (isPlaceholderCredential(parsedUrl.username) || isPlaceholderCredential(parsedUrl.password))
+  ) {
+    errors.push(`Invalid variable ${name}: placeholder credentials are not allowed in production`)
   }
 }
 
 const validateCredential = (name: string, value: string, mode: EnvValidationMode, errors: string[]) => {
-  if (mode === 'production' && placeholderCredentialPattern.test(value.trim())) {
+  if (mode === 'production' && isPlaceholderCredential(value)) {
     errors.push(`Invalid variable ${name}: placeholder credentials are not allowed in production`)
   }
+}
+
+const isPlaceholderCredential = (value: string): boolean => {
+  const normalized = value.trim().toLowerCase()
+  return exactPlaceholderCredentials.has(normalized) || placeholderCredentialPrefixPattern.test(normalized)
 }
 
 export function validateEnvironment(
@@ -90,8 +105,9 @@ export function validateEnvironment(
   }
 
   if (mode === 'production') {
+    const urlVariableSet = new Set<string>(urlVariables)
     const credentialVariables = [...requiredProductionVariables, ...modelVariables]
-      .filter((name) => !urlVariables.includes(name as (typeof urlVariables)[number]))
+      .filter((name) => !urlVariableSet.has(name))
     for (const name of credentialVariables) {
       const value = env[name]
       if (isPresent(value)) validateCredential(name, value, mode, errors)

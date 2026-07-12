@@ -64,6 +64,26 @@ describe('validateEnvironment', () => {
     ]))
   })
 
+  it('rejects placeholder credentials embedded in production database URLs', () => {
+    const result = validateEnvironment({
+      ...validProductionEnv,
+      DATABASE_URL: 'postgresql://user:password@db.flowintent.com/production',
+    }, 'production')
+
+    expect(result.errors).toContain(
+      'Invalid variable DATABASE_URL: placeholder credentials are not allowed in production'
+    )
+  })
+
+  it('allows opaque secrets that contain template-like words in the middle', () => {
+    const result = validateEnvironment({
+      ...validProductionEnv,
+      BETTER_AUTH_SECRET: 'production-secret-test-2026',
+    }, 'production')
+
+    expect(result.errors).toEqual([])
+  })
+
   it('permits blank optional local values but rejects malformed present URLs', () => {
     const result = validateEnvironment({
       DATAFORSEO_USERNAME: '',
