@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { NextRequest } from 'next/server'
 
 const getSessionMock = vi.hoisted(() => vi.fn())
 const redirectMock = vi.hoisted(() => vi.fn((url: string) => {
   throw new Error(`NEXT_REDIRECT:${url}`)
 }))
 const selectRowsQueue = vi.hoisted(() => [] as unknown[][])
+const requireApiSubscriptionMock = vi.hoisted(() => vi.fn())
+const runWebsiteAuditMock = vi.hoisted(() => vi.fn())
+const saveDashboardSnapshotMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/auth-config', () => ({
   auth: {
@@ -112,5 +116,40 @@ describe('dashboard subscription guard', () => {
     await DashboardLayout({ children: 'dashboard content' })
 
     expect(requireSubscriptionMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps premium website-audit API work behind the subscription gate', async () => {
+    requireApiSubscriptionMock.mockResolvedValue({
+      success: false,
+      error: {
+        code: 'subscription_required',
+        message: 'Active subscription required',
+        status: 403,
+      },
+    })
+    vi.doMock('@/lib/billing/subscription-guard', () => ({
+      requireApiSubscription: requireApiSubscriptionMock,
+    }))
+    vi.doMock('@/lib/dashboard/repository', () => ({
+      saveDashboardSnapshot: saveDashboardSnapshotMock,
+    }))
+    vi.doMock('@/lib/dashboard/website-audit/service', () => ({
+      runWebsiteAudit: runWebsiteAuditMock,
+    }))
+
+    const { POST } = await import('@/app/api/dashboard/website-audit/run/route')
+    const response = await POST(new NextRequest('http://localhost/api/dashboard/website-audit/run', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'example.com' }),
+    }))
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({
+      error: 'subscription_required',
+      message: 'Active subscription required',
+    })
+    expect(runWebsiteAuditMock).not.toHaveBeenCalled()
+    expect(saveDashboardSnapshotMock).not.toHaveBeenCalled()
   })
 })
