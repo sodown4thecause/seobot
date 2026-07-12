@@ -6,7 +6,7 @@
 
 ## OVERVIEW
 
-AI-powered SEO, GEO / AEO, and content platform (**FlowIntent** brand). Next.js 16 + React 19 + Vercel AI SDK 7 + MCP integrations (DataForSEO, Jina, Firecrawl).
+AI-powered SEO, GEO / AEO, content, and social intelligence platform (**FlowIntent** brand). Next.js 16 + React 19 + Vercel AI SDK 7 + MCP integrations (DataForSEO, Jina, Firecrawl).
 
 ## STRUCTURE
 
@@ -127,7 +127,7 @@ git push origin main
 
 ## Learned Workspace Facts
 
-- Product: three paywalled AI SDK 7 chat modes (SEO, GEO / AEO, Content); `/reddit-gap` is the free lead magnet; `/dashboard/*` is paywalled core.
+- Product: four paywalled AI SDK 7 chat modes (SEO, GEO / AEO, Content, Social); `/reddit-gap` is the free lead magnet; `/dashboard/*` is paywalled core.
 - Core UX: mode-aware Chat → Artifacts (AI SDK 7 tool UI) → Workspace (saved library at `/dashboard/workspace`).
 - GEO and AEO share one lane; engines: ChatGPT, Perplexity, Google AI Overviews.
 - Legacy route `/dashboard/content-zone` kept; sidebar links to `/dashboard/workspace`.

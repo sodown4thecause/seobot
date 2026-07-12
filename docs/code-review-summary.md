@@ -312,7 +312,7 @@ ${kw.cpc.toFixed(2)}
 3. ✅ **Fix duplicate completions** - Breaks suggestion filtering
 
 ### Short-term Actions (High Priority)
-1. Apply vector index migration: `pnpm db:push`
+1. Superseded: `pnpm db:push` is not currently available as a package script; do not run this historical command without a separately verified migration workflow.
 2. Test milestone persistence across server restarts
 3. Monitor vector search performance in production
 

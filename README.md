@@ -1,6 +1,6 @@
 # FlowIntent (seobot)
 
-**FlowIntent** is an AI-powered SEO, GEO / AEO, and content platform. Users chat in plain English across three paywalled modes, inspect structured tool results as artifacts, and save outputs to a workspace library. The public lead magnet is the free [Reddit content gap audit](/reddit-gap).
+**FlowIntent** is an AI-powered SEO, GEO / AEO, content, and social intelligence platform. Users chat in plain English across four paywalled modes, inspect structured tool results as artifacts, and save outputs to a workspace library. The public lead magnet is the free [Reddit content gap audit](/reddit-gap).
 
 > Internal repo name: **seobot**. User-facing brand: **FlowIntent** only.
 
@@ -11,13 +11,14 @@
 | `/reddit-gap` | Public | Lead magnet — Reddit content gap audit |
 | `/dashboard/*` | Signed in + paywall | Core product — mode-aware chat, artifacts, workspace |
 
-### Three chat modes
+### Four chat modes
 
 | Mode | Job | Primary data |
 |------|-----|--------------|
 | **SEO Mode** | Rankings, keywords, SERPs, backlinks, technical SEO | DataForSEO (live) |
 | **GEO / AEO Mode** | AI visibility — mentions and citations in answer engines | ChatGPT, Perplexity, Google AI Overviews |
 | **Content Mode** | Research-first drafts, images, metadata → workspace | AI SDK tools + RAG |
+| **Social Mode** | Social-web conversations, audience pain points, and trend signals | X/Twitter, Reddit, social web |
 
 **Core UX:** Chat → Artifacts (AI SDK 7 tool UI) → Workspace (saved library)
 
