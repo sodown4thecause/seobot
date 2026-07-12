@@ -26,6 +26,7 @@ const modelVariables = [
 const urlVariables = [
   'DATABASE_URL', 'DATABASE_AUTHENTICATED_URL', 'BETTER_AUTH_URL',
   'NEXT_PUBLIC_BETTER_AUTH_URL', 'NEXT_PUBLIC_SITE_URL', 'AI_GATEWAY_BASE_URL',
+  'XAI_BASE_URL',
   'DATAFORSEO_MCP_URL', 'AISA_BASE_URL', 'N8N_BACKLINKS_WEBHOOK_URL',
   'LANGFUSE_BASEURL', 'LANGFUSE_BASE_URL', 'LANGFUSE_ALERT_WEBHOOK_URL',
   'LANGWATCH_BASE_URL', 'WINSTON_MCP_URL', 'FIRECRAWL_MCP_URL', 'JINA_MCP_URL',
@@ -33,9 +34,7 @@ const urlVariables = [
   'NEXT_PUBLIC_POSTHOG_HOST', 'POLAR_SUCCESS_URL', 'POLAR_RETURN_URL',
 ] as const
 
-const nonEmptyVariables = [...requiredProductionVariables, ...modelVariables] as const
-
-const placeholderHostnamePattern = /(?:^|[.-])(?:example|test|xxx|placeholder|your)(?:$|[.-])/i
+const placeholderHostnamePattern = /(?:^|[._-])(?:example|test|xxx|placeholder|your|replace[-_]?me)(?:$|[._-])/i
 
 const isPresent = (value: string | undefined): value is string =>
   typeof value === 'string' && value.trim().length > 0
@@ -75,14 +74,6 @@ export function validateEnvironment(
     }
     if (!modelVariables.some((name) => isPresent(env[name]))) {
       errors.push(`Missing required variable: one of ${modelVariables.join('/')}`)
-    }
-  }
-
-  if (mode === 'local') {
-    for (const name of nonEmptyVariables) {
-      if (Object.prototype.hasOwnProperty.call(env, name) && !isPresent(env[name])) {
-        errors.push(`Invalid variable ${name}: must not be empty`)
-      }
     }
   }
 

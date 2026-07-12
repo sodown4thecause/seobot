@@ -41,6 +41,8 @@ describe('validateEnvironment', () => {
       { DATABASE_URL: 'https://db.example.test/production' },
       { NEXT_PUBLIC_SITE_URL: 'https://your-site.example.com' },
       { BETTER_AUTH_URL: 'https://replaceme.example.com' },
+      { BETTER_AUTH_URL: 'https://replace-me.flowintent.com' },
+      { BETTER_AUTH_URL: 'https://replace_me.flowintent.com' },
     ]
 
     for (const env of placeholderEnvs) {
@@ -49,16 +51,28 @@ describe('validateEnvironment', () => {
     }
   })
 
-  it('rejects malformed and empty supplied local values', () => {
+  it('permits blank optional local values but rejects malformed present URLs', () => {
     const result = validateEnvironment({
       DATAFORSEO_USERNAME: '',
       DATAFORSEO_PASSWORD: 'local-password',
       NEXT_PUBLIC_SITE_URL: 'not-a-url',
+      XAI_BASE_URL: 'not-a-url',
     }, 'local')
 
     expect(result.errors).toEqual(expect.arrayContaining([
-      'Invalid variable DATAFORSEO_USERNAME: must not be empty',
       'Invalid variable NEXT_PUBLIC_SITE_URL: must be a valid URL',
+      'Invalid variable XAI_BASE_URL: must be a valid URL',
     ]))
+    expect(result.errors).not.toContain('Invalid variable DATAFORSEO_USERNAME: must not be empty')
+  })
+
+  it('permits blank optional production and model variables in local mode', () => {
+    expect(validateEnvironment({
+      DATABASE_URL: '',
+      AI_GATEWAY_API_KEY: '',
+      OPENAI_API_KEY: '',
+      DATAFORSEO_USERNAME: '',
+      DATAFORSEO_PASSWORD: '',
+    }, 'local').errors).toEqual([])
   })
 })
