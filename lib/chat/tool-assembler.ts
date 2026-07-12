@@ -38,6 +38,7 @@ import {
 } from '@/lib/agents/tools'
 import { onboardingTools } from '@/lib/onboarding/tools'
 import { serverEnv } from '@/lib/config/env'
+import { withToolTimeouts } from './tool-timeout'
 import { getSocialTools } from '@/lib/social/tools'
 import { trackAPICall } from '@/lib/analytics/api-tracker'
 import type { AgentType } from './intent-classifier'
@@ -599,7 +600,7 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
     tools: Object.keys(validatedTools),
   })
 
-  return validatedTools
+  return withToolTimeouts(validatedTools)
 }
 
 // _review

@@ -10,6 +10,7 @@ import { GeoFixPlanArtifact } from '@/components/chat/tool-ui/geo-fix-plan-resul
 import { GeoBrandScanResults } from '@/components/chat/tool-ui/geo-brand-scan-results'
 import { SocialListeningResult } from '@/components/chat/tool-ui/social-listening-result'
 import { getArtifactDefinition } from '@/lib/artifacts/registry'
+import { normalizeKeywordArtifactData } from '@/lib/artifacts/normalize-keyword-data'
 import type { ArtifactStatus, ArtifactType } from '@/lib/artifacts/types'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -56,15 +57,17 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
   }
 
   switch (type) {
-    case 'keyword':
+    case 'keyword': {
+      const keywordData = normalizeKeywordArtifactData(data) ?? { topic: 'Keyword Analysis', keywords: [] }
       return (
         <div className={cn('h-full', className)}>
           <KeywordArtifact
-            data={data as Parameters<typeof KeywordArtifact>[0]['data']}
+            data={keywordData as Parameters<typeof KeywordArtifact>[0]['data']}
             status={status}
           />
         </div>
       )
+    }
     case 'backlink':
       return (
         <div className={cn('h-full', className)}>

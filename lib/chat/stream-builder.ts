@@ -29,6 +29,8 @@ import type { AgentType } from './intent-classifier'
 import type { Tool } from 'ai'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 import { normalizeChatMode, type ChatMode } from '@/lib/chat/modes'
+import { classifyProviderError, serializeStreamError } from '@/lib/errors/provider-errors'
+import { withToolTimeouts } from '@/lib/chat/tool-timeout'
 
 // Primary chat model — claude-haiku-4-5: fast, excellent tool call reliability,
 // Anthropic models issue parallel tool calls in a single step.
@@ -514,7 +516,7 @@ export function getCoreTools(userId?: string, conversationId?: string, mode?: Ch
     coreTools.generate_content_package = createContentPackageTool(userId, conversationId)
   }
 
-  return coreTools
+  return withToolTimeouts(coreTools, 180_000)
 }
 
 /**
@@ -568,13 +570,13 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
     tools: allTools,
     toolChoice: 'auto',
     abortSignal,
-    // AI SDK 6: Model fallbacks via Vercel AI Gateway - used if primary model fails
+    // Model fallbacks via Vercel AI Gateway - used if primary model fails
     providerOptions: {
       gateway: {
         models: FALLBACK_MODELS,
       },
     },
-    // AI SDK 6: Use stopWhen instead of maxSteps
+    // Use stopWhen instead of the removed maxSteps option.
     // Per-agent step limits prevent excessive sequential tool calls (each DataForSEO call = 5-30s)
     stopWhen: [
       isStepCount(maxSteps),
@@ -639,12 +641,23 @@ export async function buildStreamResponse(options: StreamOptions): Promise<Respo
         conversationId,
       })
     },
+    onError: ({ error }) => {
+      const classified = classifyProviderError(error)
+      appLogger.error('Chat stream provider error', {
+        endpoint: 'chat-stream',
+        userId,
+        conversationId,
+        agentType,
+        metadata: { code: classified.code, retryable: classified.retryable },
+      })
+    },
   })
 
   const uiStream = toUIMessageStream({
     stream: result.stream,
     originalMessages,
     generateMessageId: serverMessageIdGenerator,
+    onError: serializeStreamError,
     onFinish: async ({ messages: uiMessages }) => {
       console.log('[Stream Builder] toUIMessageStreamResponse onFinish:', {
         hasMessages: !!uiMessages?.length,
