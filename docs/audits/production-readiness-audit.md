@@ -1059,6 +1059,6 @@ branch-protection validation remain deferred.
 
 ## Reconciliation draft PR
 
-The reviewed branch is published as draft [PR #84](https://github.com/sodown4thecause/seobot/pull/84), targeting `main`. The draft head is
-`fa3e1779196aea02e894e0ba11475f7e7a4f1721`; it is open, unmerged, and not a
+The reviewed branch is published as draft [PR #84](https://github.com/sodown4thecause/seobot/pull/84), targeting `main`. The current draft head is
+`01b18ae`; it is open, unmerged, and not a
 production-readiness approval.
