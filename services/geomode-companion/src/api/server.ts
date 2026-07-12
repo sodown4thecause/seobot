@@ -8,16 +8,46 @@ import {
 import { getLatestLocalDigest, getLocalDigest, getRecentJobRuns, listLocalDigests } from '../db/local.js'
 import type { CompanionConfig } from '../config.js'
 
+export const READ_API_HOST = '127.0.0.1'
+export const MAX_JSON_BODY_BYTES = 1024 * 1024
+
+class HttpError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message)
+  }
+}
+
 function sendJson(response: import('node:http').ServerResponse, status: number, body: unknown) {
   response.writeHead(status, { 'Content-Type': 'application/json' })
   response.end(JSON.stringify(body))
 }
 
-async function readJsonBody(request: import('node:http').IncomingMessage) {
+export async function readJsonBody(request: AsyncIterable<Uint8Array | string>) {
   const chunks: Buffer[] = []
-  for await (const chunk of request) chunks.push(Buffer.from(chunk))
+  let size = 0
+  for await (const chunk of request) {
+    const buffer = Buffer.from(chunk)
+    size += buffer.length
+    if (size > MAX_JSON_BODY_BYTES) {
+      throw new HttpError(413, 'Request body exceeds 1 MiB limit')
+    }
+    chunks.push(buffer)
+  }
   if (chunks.length === 0) return null
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+}
+
+export function parseTrendsDays(value: string | null): number {
+  const raw = value ?? '30'
+  if (!/^\d+$/.test(raw)) {
+    throw new HttpError(400, 'days must be an integer from 1 to 90')
+  }
+
+  const days = Number(raw)
+  if (days < 1 || days > 90) {
+    throw new HttpError(400, 'days must be an integer from 1 to 90')
+  }
+  return days
 }
 
 export function startReadApi(pool: pg.Pool, config: CompanionConfig) {
@@ -70,8 +100,8 @@ export function startReadApi(pool: pg.Pool, config: CompanionConfig) {
       }
 
       if (request.method === 'GET' && path === '/trends') {
-        const days = Number(url.searchParams.get('days') ?? '30')
-        const rows = await listLocalDigests(pool, Math.min(Math.max(days, 1), 90))
+        const days = parseTrendsDays(url.searchParams.get('days'))
+        const rows = await listLocalDigests(pool, days)
         const digests = rows.map(row => dailyDigestDocumentSchema.parse(row.digest))
         return sendJson(response, 200, { days, digests })
       }
@@ -83,14 +113,14 @@ export function startReadApi(pool: pg.Pool, config: CompanionConfig) {
 
       return sendJson(response, 404, { error: 'Not found' })
     } catch (error) {
-      return sendJson(response, 500, {
+      return sendJson(response, error instanceof HttpError ? error.status : 500, {
         error: error instanceof Error ? error.message : 'Internal server error',
       })
     }
   })
 
-  server.listen(config.READ_API_PORT, () => {
-    console.log(`geomode companion read API listening on :${config.READ_API_PORT}`)
+  server.listen(config.READ_API_PORT, READ_API_HOST, () => {
+    console.log(`geomode companion read API listening on ${READ_API_HOST}:${config.READ_API_PORT}`)
   })
 
   return server

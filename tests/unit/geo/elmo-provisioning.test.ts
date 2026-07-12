@@ -102,6 +102,74 @@ describe('elmo-provisioning', () => {
     })
   })
 
+  it('hashes the complete user ID when deriving a brand ID', async () => {
+    mockGetBusinessProfile.mockResolvedValue({
+      userId: 'shared-prefix-user-a',
+      websiteUrl: 'https://flowintent.com',
+      elmoBrandId: null,
+    })
+    mockGetGeoBusinessProfileForUser.mockResolvedValue({
+      userId: 'shared-prefix-user-a',
+      brand: 'FlowIntent',
+      websiteUrl: 'https://flowintent.com',
+      competitors: [],
+    })
+    mockAnalyzeElmoBrand.mockResolvedValue({
+      brandName: 'FlowIntent',
+      website: 'flowintent.com',
+      additionalDomains: [],
+      aliases: [],
+      competitors: [],
+      suggestedPrompts: [],
+    })
+    mockCreateElmoBrand.mockImplementation(async ({ id }: { id: string }) => ({
+      id,
+      name: 'FlowIntent',
+      domains: ['flowintent.com'],
+      aliases: [],
+      enabled: true,
+      onboarded: true,
+      createdAt: '2026-07-04T00:00:00.000Z',
+      updatedAt: '2026-07-04T00:00:00.000Z',
+    }))
+
+    await ensureElmoBrandForUser('shared-prefix-user-a')
+    const firstId = mockCreateElmoBrand.mock.calls[0][0].id
+
+    vi.clearAllMocks()
+    mockGetBusinessProfile.mockResolvedValue({
+      userId: 'shared-prefix-user-b',
+      websiteUrl: 'https://flowintent.com',
+      elmoBrandId: null,
+    })
+    mockGetGeoBusinessProfileForUser.mockResolvedValue({ brand: 'FlowIntent' })
+    mockAnalyzeElmoBrand.mockResolvedValue({
+      brandName: 'FlowIntent',
+      website: 'flowintent.com',
+      additionalDomains: [],
+      aliases: [],
+      competitors: [],
+      suggestedPrompts: [],
+    })
+    mockCreateElmoBrand.mockImplementation(async ({ id }: { id: string }) => ({
+      id,
+      name: 'FlowIntent',
+      domains: ['flowintent.com'],
+      aliases: [],
+      enabled: true,
+      onboarded: true,
+      createdAt: '2026-07-04T00:00:00.000Z',
+      updatedAt: '2026-07-04T00:00:00.000Z',
+    }))
+
+    await ensureElmoBrandForUser('shared-prefix-user-b')
+    const secondId = mockCreateElmoBrand.mock.calls[0][0].id
+
+    expect(firstId).toMatch(/^fi-flowintent-com-[0-9a-f]{16}$/)
+    expect(secondId).toMatch(/^fi-flowintent-com-[0-9a-f]{16}$/)
+    expect(firstId).not.toBe(secondId)
+  })
+
   it('inspect returns null when no brand is stored', async () => {
     mockGetBusinessProfile.mockResolvedValue({
       userId: 'user-3',

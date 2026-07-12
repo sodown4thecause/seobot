@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { createHash } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { businessProfiles } from '@/lib/db/schema'
@@ -36,8 +37,8 @@ function deriveElmoBrandId(userId: string, websiteUrl: string): string {
     .toLowerCase()
     .slice(0, 40)
 
-  const userSuffix = userId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase()
-  return `fi-${domainSlug || 'brand'}-${userSuffix || 'user'}`
+  const userSuffix = createHash('sha256').update(userId).digest('hex').slice(0, 16)
+  return `fi-${domainSlug || 'brand'}-${userSuffix}`
 }
 
 function buildDomainsFromAnalysis(analysis: Awaited<ReturnType<typeof analyzeElmoBrand>>): string[] {

@@ -1,9 +1,9 @@
 import { type UIMessage, safeValidateUIMessages } from 'ai'
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
-import { v5 as uuidv5 } from 'uuid'
 
 import { db } from '@/lib/db'
 import { conversations, messages, type Json } from '@/lib/db/schema'
+import { isUuid, selectMessageId } from '@/lib/chat/message-id'
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
@@ -39,7 +39,6 @@ export interface ConversationRecord {
 }
 
 const DEFAULT_CONVERSATION_TITLE = 'New Conversation'
-const MESSAGE_ID_NAMESPACE = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
 
 function extractTextFromParts(parts: UIMessage['parts'] | undefined): string {
   if (!Array.isArray(parts)) return ''
@@ -64,23 +63,24 @@ function coerceCreatedAt(message: PersistedMessage): Date {
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed
 }
 
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-}
-
 /**
- * Map client/stream message IDs (e.g. msg-*) to stable UUIDs for the messages table.
+ * Keep valid message UUIDs only when they are unused or belong to this conversation.
  */
-export function resolveMessageId(clientId: string | undefined): string {
-  if (!clientId) {
+export async function resolveMessageId(
+  clientId: string | undefined,
+  conversationId: string
+): Promise<string> {
+  if (!clientId || !isUuid(clientId)) {
     return crypto.randomUUID()
   }
 
-  if (isUuid(clientId)) {
-    return clientId
-  }
+  const [existing] = await db
+    .select({ conversationId: messages.conversationId })
+    .from(messages)
+    .where(eq(messages.id, clientId))
+    .limit(1)
 
-  return uuidv5(clientId, MESSAGE_ID_NAMESPACE)
+  return selectMessageId(clientId, conversationId, existing?.conversationId ?? null)
 }
 
 function getClientMessageId(metadata: MessageMetadata | null | undefined, dbId: string): string {
@@ -116,9 +116,9 @@ function buildMessageMetadata(
   return Object.keys(metadata).length > 0 ? (metadata as Json) : null
 }
 
-function normalizePersistedMessage(message: PersistedMessage) {
+async function normalizePersistedMessage(message: PersistedMessage, conversationId: string) {
   const parts = Array.isArray(message.parts) ? message.parts : []
-  const resolvedId = resolveMessageId(message.id)
+  const resolvedId = await resolveMessageId(message.id, conversationId)
 
   return {
     messageId: resolvedId,
@@ -220,7 +220,7 @@ export async function autosaveUserMessage(params: {
     throw new Error('Conversation not found for authenticated user')
   }
 
-  const normalized = normalizePersistedMessage(message)
+  const normalized = await normalizePersistedMessage(message, chatId)
   const suggestedTitle = deriveConversationTitle(normalized.content)
 
   await db
@@ -277,7 +277,9 @@ export async function persistAssistantMessages(params: {
   const assistants = messagesToPersist.filter((message) => message.role === 'assistant')
   if (assistants.length === 0) return
 
-  const normalizedAssistants = assistants.map(normalizePersistedMessage)
+  const normalizedAssistants = await Promise.all(
+    assistants.map(message => normalizePersistedMessage(message, chatId))
+  )
   const lastMessageAt = new Date(
     Math.max(...normalizedAssistants.map((msg) => msg.createdAt.getTime()))
   )
@@ -348,7 +350,7 @@ export async function saveChatUIMessage(
     content = extractTextFromParts(message.parts)
   }
 
-  const resolvedId = resolveMessageId(message.id)
+  const resolvedId = await resolveMessageId(message.id, chatId)
   const metadata = buildMessageMetadata(message, resolvedId)
   const createdAt = message.createdAt ?? new Date()
 
