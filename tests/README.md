@@ -21,7 +21,7 @@ tests/
 ### Install Dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Unit Tests
@@ -29,7 +29,7 @@ npm install
 Test the rate limiting logic in isolation:
 
 ```bash
-npm run test:unit
+pnpm test:unit
 ```
 
 ### Integration Tests
@@ -37,7 +37,7 @@ npm run test:unit
 Test rate limiting in actual API routes:
 
 ```bash
-npm run test:integration
+pnpm test:integration
 ```
 
 ### All Tests
@@ -45,7 +45,7 @@ npm run test:integration
 Run all tests:
 
 ```bash
-npm test
+pnpm test
 ```
 
 ### Watch Mode
@@ -53,7 +53,7 @@ npm test
 Run tests in watch mode during development:
 
 ```bash
-npm run test:watch
+pnpm test:watch
 ```
 
 ### Coverage
@@ -61,7 +61,7 @@ npm run test:watch
 Generate coverage report:
 
 ```bash
-npm run test:coverage
+pnpm test:coverage
 ```
 
 ## Load Testing
@@ -79,10 +79,10 @@ Install k6:
 
 ```bash
 # Test against local server
-npm run load:test
+pnpm load:test
 
 # Test against staging
-BASE_URL=https://staging.example.com npm run load:test
+BASE_URL=https://staging.example.com pnpm load:test
 ```
 
 See `tests/load/README.md` for detailed load testing documentation.
@@ -121,13 +121,13 @@ Add to your CI pipeline:
 # .github/workflows/test.yml
 - name: Run tests
   run: |
-    npm ci
-    npm run test:unit
-    npm run test:integration
+    pnpm install --frozen-lockfile
+    pnpm test:unit
+    pnpm test:integration
 
 - name: Run load tests (optional)
   run: |
-    npm run load:test
+    pnpm load:test
 ```
 
 ## Writing New Tests
@@ -178,7 +178,7 @@ Tests mock Redis by default. If you see Redis errors:
 ### Integration tests failing
 
 Integration tests require proper mocking of:
-- Supabase client
+- Neon/Drizzle database client
 - AI SDK functions
 - External API services
 

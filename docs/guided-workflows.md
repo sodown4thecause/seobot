@@ -79,9 +79,9 @@ Chat API (app/api/chat/route.ts)
 - Structured data recommendations
 - Authority signals
 
-## AI SDK 6 Best Practices
+## AI SDK 7 Best Practices
 
-This implementation follows AI SDK 6 best practices:
+This implementation follows AI SDK 7 best practices:
 
 ### 1. **Proper Message Flow**
 ```typescript

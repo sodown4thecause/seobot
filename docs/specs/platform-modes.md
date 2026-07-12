@@ -26,7 +26,7 @@ Marketing leads with Reddit; conversion is into the paywalled dashboard. Do not 
 
 ## 2. Problem statement
 
-FlowIntent began as **SEO chat** with **live DataForSEO** via **AI SDK 6**.
+FlowIntent began as **SEO chat** with **live DataForSEO** via **AI SDK 7**.
 
 Three distinct jobs emerged:
 
@@ -47,7 +47,7 @@ Reddit gap audit (lead)  →  sign up  →  Paywalled dashboard
 
 Chat (SEO | GEO/AEO | Content mode)
         ↓
-Artifacts (AI SDK 6 tool UI — any mode)
+Artifacts (AI SDK 7 tool UI — any mode)
         ↓
 Workspace (saved library — all modes)
 ```
@@ -56,14 +56,14 @@ Workspace (saved library — all modes)
 
 - One **streaming chat** per conversation.
 - **Mode selector:** SEO Mode · GEO / AEO Mode · Content Mode.
-- Each mode is an **AI SDK 6** lane: own agent, tools, and RAG filter (`agent_documents.mode`).
+- Each mode is an **AI SDK 7** lane: own agent, tools, and RAG filter (`agent_documents.mode`).
 - Mode on `conversations.metadata.chatMode`; deep link `/dashboard?mode=seo|geo|content`.
 
 **Content Mode** is a chat mode only—not a separate app. Long-form output uses tools such as `create_content_package` (`lib/chat/stream-builder.ts`).
 
 ### 3.2 Artifacts
 
-An **artifact** is a **structured UI object** produced by **AI SDK 6 tool calls** in chat. Artifacts are mode-agnostic in pattern: any mode can emit them; the side panel renders the result.
+An **artifact** is a **structured UI object** produced by **AI SDK 7 tool calls** in chat. Artifacts are mode-agnostic in pattern: any mode can emit them; the side panel renders the result.
 
 | Artifact (examples) | Typical mode | Tool / source |
 |---------------------|--------------|---------------|
@@ -129,7 +129,7 @@ Code may still live under `components/content-zone/` paths; **do not delete**—
 
 **Job:** **Publish** — posts, hero + thumbnail images, metadata, saved to workspace.
 
-- Chat-only creation flow (AI SDK 6 + `create_content_package`).
+- Chat-only creation flow (AI SDK 7 + `create_content_package`).
 - Not a fourth product; not separate from the three-mode model.
 
 ---
@@ -189,7 +189,7 @@ Sidebar may still link labs/legacy routes (Rank Tracker, AEO Insights, Content P
 ## 9. Acceptance criteria
 
 - [x] Spec documents chat → artifacts → workspace
-- [x] Content Mode = AI SDK 6 chat mode only
+- [x] Content Mode = AI SDK 7 chat mode only
 - [x] Workspace route kept; user copy says Workspace not Content Zone
 - [x] GEO / AEO documented as one mode
 - [x] Reddit lead magnet vs paywalled dashboard

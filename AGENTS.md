@@ -1,12 +1,12 @@
 # SEOBOT PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-07-04  
+**Generated:** 2026-07-12
 **Commit:** (see `git rev-parse HEAD`)  
-**Branch:** `feat/platform-modes-workspace-docs-sync`
+**Branch:** `codex/production-readiness-pr-reconciliation`
 
 ## OVERVIEW
 
-AI-powered SEO, GEO / AEO, and content platform (**FlowIntent** brand). Next.js 16 + React 19 + Vercel AI SDK 6 + MCP integrations (DataForSEO, Jina, Firecrawl).
+AI-powered SEO, GEO / AEO, and content platform (**FlowIntent** brand). Next.js 16 + React 19 + Vercel AI SDK 7 + MCP integrations (DataForSEO, Jina, Firecrawl).
 
 ## STRUCTURE
 
@@ -37,7 +37,7 @@ seobot/
 |------|----------|-------|
 | Add new AI agent | `lib/agents/` | Register in `registry.ts` |
 | Add API route | `app/api/` | Route handlers; auth via Better Auth |
-| Add MCP integration | `mcps/` + `lib/mcp/` | Generate with `npm run mcp:generate:*` |
+| Add MCP integration | `mcps/` + `lib/mcp/` | Generate with `pnpm mcp:generate:*` |
 | Add artifact type | `lib/artifacts/registry.ts` | Wire tool UI in `components/chat/tool-ui/` |
 | Add chat mode UI | `lib/chat/modes.ts` | Shared labels, accents, deep links |
 | Database schema | `lib/db/schema.ts` + `drizzle/` | Drizzle ORM, Neon serverless |
@@ -52,7 +52,7 @@ seobot/
 - `@/*` maps to project root (e.g., `@/lib/agents/registry`)
 
 ### AI SDK Usage
-- Vercel AI SDK v6 (`ai@6.x`)
+- Vercel AI SDK v7 (`ai@7.x`)
 - MCP via `@ai-sdk/mcp`
 - Models via AI Gateway (OpenAI, Anthropic, Google, Perplexity, DeepSeek)
 
@@ -83,14 +83,14 @@ seobot/
 ## COMMANDS
 
 ```bash
-npm run dev              # Start Next.js dev server
-npm run build            # Production build (runs env validation)
-npm run typecheck        # TypeScript check
-npm run test             # Run all tests
-npm run test:unit        # Unit tests only
-npm run seed:rag-documents
-npm run mcp:generate:jina
-npm run mcp:generate:dataforseo
+pnpm dev                 # Start Next.js dev server
+pnpm build               # Production build (runs env validation)
+pnpm typecheck           # TypeScript check
+pnpm test                # Run all tests
+pnpm test:unit           # Unit tests only
+pnpm seed:rag-documents
+pnpm mcp:generate:jina
+pnpm mcp:generate:dataforseo
 ```
 
 ## DEPLOYMENT (Vercel)
@@ -107,7 +107,7 @@ git push origin main
 
 | Package | Purpose |
 |---------|---------|
-| `ai@6.x` | Vercel AI SDK core |
+| `ai@7.x` | Vercel AI SDK core |
 | `@ai-sdk/mcp` | MCP protocol integration |
 | `better-auth` | Authentication (Google) |
 | `drizzle-orm` | Database ORM (Neon) |
@@ -127,8 +127,8 @@ git push origin main
 
 ## Learned Workspace Facts
 
-- Product: three paywalled AI SDK 6 chat modes (SEO, GEO / AEO, Content); `/reddit-gap` is the free lead magnet; `/dashboard/*` is paywalled core.
-- Core UX: mode-aware Chat → Artifacts (AI SDK 6 tool UI) → Workspace (saved library at `/dashboard/workspace`).
+- Product: three paywalled AI SDK 7 chat modes (SEO, GEO / AEO, Content); `/reddit-gap` is the free lead magnet; `/dashboard/*` is paywalled core.
+- Core UX: mode-aware Chat → Artifacts (AI SDK 7 tool UI) → Workspace (saved library at `/dashboard/workspace`).
 - GEO and AEO share one lane; engines: ChatGPT, Perplexity, Google AI Overviews.
 - Legacy route `/dashboard/content-zone` kept; sidebar links to `/dashboard/workspace`.
 - Canonical product spec: `docs/specs/platform-modes.md`; elevator pitch: `lib/product/elevator-pitch.ts`; mode UI: `lib/chat/modes.ts`.

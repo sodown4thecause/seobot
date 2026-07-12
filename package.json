@@ -30,13 +30,13 @@
     "bmad:validate": "bmad-method validate",
     "case-study:enrich": "node --import tsx scripts/enrich-case-study.ts",
     "research:ai-marketing-keywords": "node --import tsx scripts/research-ai-marketing-keywords.ts",
-    "mcp:generate:jina": "mcp-to-ai-sdk https://mcp.jina.ai",
-    "mcp:generate:winston": "mcp-to-ai-sdk https://api.gowinston.ai/mcp/v1",
+    "mcp:generate:jina": "pnpm exec mcp-to-ai-sdk https://mcp.jina.ai",
+    "mcp:generate:winston": "pnpm exec mcp-to-ai-sdk https://api.gowinston.ai/mcp/v1",
     "mcp:generate:dataforseo": "echo 'Run local DataForSEO MCP server first, then: mcp-to-ai-sdk http://localhost:3000/mcp'",
-    "mcp:generate:firecrawl": "echo 'Usage: npx mcp-to-ai-sdk https://mcp.firecrawl.dev/[YOUR_API_KEY]/v2/mcp'",
-    "eval:chatbot": "npx tsx scripts/evaluate-chatbot.ts",
-    "eval:chatbot:verbose": "npx tsx scripts/evaluate-chatbot.ts --verbose",
-    "eval:chatbot:quick": "npx tsx scripts/evaluate-chatbot.ts --skip-judge"
+    "mcp:generate:firecrawl": "echo 'Usage: pnpm exec mcp-to-ai-sdk https://mcp.firecrawl.dev/[YOUR_API_KEY]/v2/mcp'",
+    "eval:chatbot": "pnpm exec tsx scripts/evaluate-chatbot.ts",
+    "eval:chatbot:verbose": "pnpm exec tsx scripts/evaluate-chatbot.ts --verbose",
+    "eval:chatbot:quick": "pnpm exec tsx scripts/evaluate-chatbot.ts --skip-judge"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.8",

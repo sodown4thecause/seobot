@@ -52,7 +52,7 @@ export const faqSections: FaqSection[] = [
     questions: [
       {
         q: 'What are SEO Mode, GEO / AEO Mode, and Content Mode?',
-        a: 'FlowIntent runs three AI SDK 6 chat modes inside the paywalled dashboard. SEO Mode handles keyword research, SERP analysis, backlinks, and technical SEO with live DataForSEO data. GEO / AEO Mode covers generative and answer-engine optimization—whether ChatGPT, Perplexity, or Google AI Overviews mention or cite your brand (more engines as we scale). Content Mode is research-first publishing: drafts, hero images, thumbnails, and metadata saved to your workspace.',
+        a: 'FlowIntent runs three AI SDK 7 chat modes inside the paywalled dashboard. SEO Mode handles keyword research, SERP analysis, backlinks, and technical SEO with live DataForSEO data. GEO / AEO Mode covers generative and answer-engine optimization—whether ChatGPT, Perplexity, or Google AI Overviews mention or cite your brand (more engines as we scale). Content Mode is research-first publishing: drafts, hero images, thumbnails, and metadata saved to your workspace.',
       },
       {
         q: 'When should I use each mode?',
@@ -60,7 +60,7 @@ export const faqSections: FaqSection[] = [
       },
       {
         q: 'What are artifacts and workspace?',
-        a: 'Artifacts are structured UI panels from AI SDK 6 tool calls in chat—keyword metrics, backlink tables, GEO visibility snapshots, content previews, and more. Any mode can produce them. Workspace is where you keep saved artifacts and library items (posts, briefs, exports) after the chat. Start with the free Reddit content gap audit; the full chat, artifacts, and workspace are in the paywalled dashboard.',
+        a: 'Artifacts are structured UI panels from AI SDK 7 tool calls in chat—keyword metrics, backlink tables, GEO visibility snapshots, content previews, and more. Any mode can produce them. Workspace is where you keep saved artifacts and library items (posts, briefs, exports) after the chat. Start with the free Reddit content gap audit; the full chat, artifacts, and workspace are in the paywalled dashboard.',
         links: [
           { label: 'Try Reddit audit', href: '/reddit-gap' },
           { label: 'Sign up', href: '/sign-up' },
@@ -68,7 +68,7 @@ export const faqSections: FaqSection[] = [
       },
       {
         q: 'Why three modes instead of one chat?',
-        a: 'SEO, GEO / AEO, and content creation need different tools and memory. Modes keep SEO questions from pulling GEO context (and vice versa) so answers stay accurate. FlowIntent began as DataForSEO-powered SEO chat and added GEO / AEO and Content as separate AI SDK 6 lanes.',
+        a: 'SEO, GEO / AEO, and content creation need different tools and memory. Modes keep SEO questions from pulling GEO context (and vice versa) so answers stay accurate. FlowIntent began as DataForSEO-powered SEO chat and added GEO / AEO and Content as separate AI SDK 7 lanes.',
       },
     ],
   },

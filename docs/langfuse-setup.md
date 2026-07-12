@@ -27,7 +27,7 @@ LANGFUSE_DEBUG=false  # Set to 'true' for debug logging
 
 ### Instrumentation (`instrumentation.ts`)
 
-The OpenTelemetry instrumentation uses `@langfuse/otel` with `LangfuseSpanProcessor` for AI SDK 6 compatibility:
+The OpenTelemetry instrumentation uses `@langfuse/otel` with `LangfuseSpanProcessor` for the AI SDK 7 runtime:
 
 ```typescript
 import { LangfuseSpanProcessor } from '@langfuse/otel';
@@ -151,7 +151,7 @@ Langfuse telemetry works seamlessly with error handling:
 
 ### Check Instrumentation
 
-1. Start your dev server: `npm run dev`
+1. Start your dev server: `pnpm dev`
 2. Look for this log: `[Langfuse] OpenTelemetry instrumentation registered`
 3. If you see `[Langfuse] Tracing disabled`, check your environment variables
 
