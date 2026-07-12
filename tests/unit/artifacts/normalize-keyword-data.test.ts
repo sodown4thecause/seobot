@@ -10,16 +10,25 @@ describe('normalizeKeywordArtifactData', () => {
   })
 
   it('normalizes nested DataForSEO keyword rows', () => {
-    expect(normalizeKeywordArtifactData({ tasks: [{ result: [{ items: [{
+    const normalized = normalizeKeywordArtifactData({ tasks: [{ result: [{ items: [{
       keyword_data: {
         keyword: 'candle gifts',
         keyword_info: { search_volume: 880, cpc: 0.9 },
         keyword_properties: { keyword_difficulty: 42 },
         search_intent_info: { main_intent: 'commercial' },
       },
-    }] }] }] })?.keywords).toEqual([{
-      keyword: 'candle gifts', volume: 880, difficulty: 42, cpc: 0.9, intent: 'commercial',
-    }])
+    }] }] }] })
+
+    expect(normalized).toEqual({
+      topic: 'Keyword Analysis',
+      keywords: [{
+        keyword: 'candle gifts',
+        volume: 880,
+        difficulty: 42,
+        cpc: 0.9,
+        intent: 'commercial',
+      }],
+    })
   })
 
   it('rejects unusable payloads', () => {

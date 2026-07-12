@@ -26,6 +26,16 @@ export function getToolTimeoutMs(toolName: string, fallback = DEFAULT_TOOL_TIMEO
   return TOOL_TIMEOUT_OVERRIDES_MS[toolName] ?? fallback
 }
 
+function isAbortSignal(value: unknown): value is AbortSignal {
+  return typeof value === 'object'
+    && value !== null
+    && 'aborted' in value
+    && 'addEventListener' in value
+    && typeof value.addEventListener === 'function'
+    && 'removeEventListener' in value
+    && typeof value.removeEventListener === 'function'
+}
+
 export function withToolTimeout<T extends Tool>(toolName: string, toolDefinition: T, timeoutMs?: number): T {
   const executable = toolDefinition as T & { execute?: (...args: unknown[]) => Promise<unknown> }
   if (typeof executable.execute !== 'function') return toolDefinition
@@ -33,20 +43,40 @@ export function withToolTimeout<T extends Tool>(toolName: string, toolDefinition
   const originalExecute = executable.execute
   const effectiveTimeoutMs = timeoutMs ?? getToolTimeoutMs(toolName)
   const execute = async (...args: unknown[]): Promise<unknown> => {
+    const controller = new AbortController()
+    const context = args[1] && typeof args[1] === 'object'
+      ? args[1] as Record<string, unknown>
+      : {}
+    const upstreamSignal = isAbortSignal(context.abortSignal) ? context.abortSignal : undefined
+    const abortFromUpstream = () => controller.abort(upstreamSignal?.reason)
+
+    if (upstreamSignal) {
+      if (upstreamSignal.aborted) {
+        abortFromUpstream()
+      } else {
+        upstreamSignal.addEventListener('abort', abortFromUpstream, { once: true })
+      }
+    }
+
+    const executeArgs = [...args]
+    executeArgs[1] = { ...context, abortSignal: controller.signal }
     let timer: ReturnType<typeof setTimeout> | undefined
     const timeout = new Promise<ToolErrorResult>((resolve) => {
-      timer = setTimeout(() => resolve({
-        status: 'error',
-        success: false,
-        errorCode: 'tool_timeout',
-        errorMessage: `This step took longer than ${Math.round(effectiveTimeoutMs / 1000)}s and was stopped. Continue without it or try again.`,
-        toolName,
-        timedOut: true,
-      }), effectiveTimeoutMs)
+      timer = setTimeout(() => {
+        controller.abort()
+        resolve({
+          status: 'error',
+          success: false,
+          errorCode: 'tool_timeout',
+          errorMessage: `This step took longer than ${Math.round(effectiveTimeoutMs / 1000)}s and was stopped. Continue without it or try again.`,
+          toolName,
+          timedOut: true,
+        })
+      }, effectiveTimeoutMs)
     })
 
     try {
-      return await Promise.race([Promise.resolve(originalExecute.apply(toolDefinition, args)), timeout])
+      return await Promise.race([Promise.resolve(originalExecute.apply(toolDefinition, executeArgs)), timeout])
     } catch (error) {
       const classified = classifyProviderError(error)
       return {
@@ -58,6 +88,9 @@ export function withToolTimeout<T extends Tool>(toolName: string, toolDefinition
       } satisfies ToolErrorResult
     } finally {
       if (timer !== undefined) clearTimeout(timer)
+      if (upstreamSignal) {
+        upstreamSignal.removeEventListener('abort', abortFromUpstream)
+      }
     }
   }
 

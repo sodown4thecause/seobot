@@ -136,7 +136,13 @@ function normalizeKeywordRow(row: unknown): NormalizedKeywordData | null {
     return null
   }
 
+  const keywordData = isRecord(row.keyword_data) ? row.keyword_data : row
+  const keywordInfo = isRecord(keywordData.keyword_info) ? keywordData.keyword_info : {}
+  const keywordProperties = isRecord(keywordData.keyword_properties) ? keywordData.keyword_properties : {}
+  const searchIntentInfo = isRecord(keywordData.search_intent_info) ? keywordData.search_intent_info : {}
+
   const keywordRaw =
+    keywordData.keyword ??
     row.keyword ??
     row.term ??
     row.query
@@ -147,24 +153,27 @@ function normalizeKeywordRow(row: unknown): NormalizedKeywordData | null {
   }
 
   const difficultySource =
+    keywordProperties.keyword_difficulty ??
     row.difficulty ??
     row.keyword_difficulty ??
     row.competition ??
     row.competition_index
 
   const cpcSource =
+    keywordInfo.cpc ??
     row.cpc ??
     row.cost_per_click ??
     row.avg_cpc ??
     row.low_top_of_page_bid
 
   const volumeSource =
+    keywordInfo.search_volume ??
     row.volume ??
     row.search_volume ??
     row.searchVolume ??
     row.monthly_searches
 
-  const intentRaw = row.intent ?? row.search_intent ?? row.searchIntent
+  const intentRaw = searchIntentInfo.main_intent ?? row.intent ?? row.search_intent ?? row.searchIntent
   const intent = typeof intentRaw === 'string' && intentRaw.trim().length > 0
     ? intentRaw
     : 'Unknown'

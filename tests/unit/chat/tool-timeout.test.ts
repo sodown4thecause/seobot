@@ -27,6 +27,30 @@ describe('withToolTimeout', () => {
     }
   })
 
+  it('aborts the signal passed to tool execution when the timeout fires', async () => {
+    vi.useFakeTimers()
+    try {
+      let observedAbort = false
+      const wrapped = withToolTimeout('abortable_tool', tool({
+        description: 'Observes cancellation',
+        inputSchema: z.object({}),
+        execute: async (_input, { abortSignal }) => new Promise(() => {
+          abortSignal?.addEventListener('abort', () => {
+            observedAbort = true
+          }, { once: true })
+        }),
+      }), 5)
+
+      const pending = wrapped.execute?.({}, { toolCallId: 'call-1', messages: [], abortSignal: undefined as never })
+      await vi.advanceTimersByTimeAsync(6)
+
+      expect((await pending as ToolErrorResult).errorCode).toBe('tool_timeout')
+      expect(observedAbort).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('clears the timeout after successful execution', async () => {
     vi.useFakeTimers()
     const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
