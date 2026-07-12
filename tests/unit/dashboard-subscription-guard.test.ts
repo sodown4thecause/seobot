@@ -90,4 +90,27 @@ describe('dashboard subscription guard', () => {
     })
     expect(redirectMock).not.toHaveBeenCalled()
   })
+
+  it('accepts both configured admin identities regardless of email casing', async () => {
+    const { isAdminEmail } = await import('@/lib/auth/admin')
+
+    expect(isAdminEmail(' LIAM@FLOWINTENT.COM ')).toBe(true)
+    expect(isAdminEmail('LIAM.WILSON1990@GMAIL.COM')).toBe(true)
+  })
+
+  it('renders the dashboard without invoking the layout-level subscription redirect', async () => {
+    const requireSubscriptionMock = vi.fn()
+    vi.doMock('@/lib/billing/subscription-guard', () => ({
+      requireSubscription: requireSubscriptionMock,
+    }))
+    vi.doMock('@/app/dashboard/client-layout', () => ({
+      DashboardClientLayout: ({ children }: { children: React.ReactNode }) => children,
+    }))
+
+    const { default: DashboardLayout } = await import('@/app/dashboard/layout')
+
+    await DashboardLayout({ children: 'dashboard content' })
+
+    expect(requireSubscriptionMock).not.toHaveBeenCalled()
+  })
 })
