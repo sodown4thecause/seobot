@@ -23,7 +23,19 @@ const modelVariables = [
   'DEEPSEEK_API_KEY', 'XAI_API_KEY', 'PERPLEXITY_API_KEY',
 ] as const
 
-const urlVariables = ['DATABASE_URL', 'BETTER_AUTH_URL', 'NEXT_PUBLIC_SITE_URL'] as const
+const urlVariables = [
+  'DATABASE_URL', 'DATABASE_AUTHENTICATED_URL', 'BETTER_AUTH_URL',
+  'NEXT_PUBLIC_BETTER_AUTH_URL', 'NEXT_PUBLIC_SITE_URL', 'AI_GATEWAY_BASE_URL',
+  'DATAFORSEO_MCP_URL', 'AISA_BASE_URL', 'N8N_BACKLINKS_WEBHOOK_URL',
+  'LANGFUSE_BASEURL', 'LANGFUSE_BASE_URL', 'LANGFUSE_ALERT_WEBHOOK_URL',
+  'LANGWATCH_BASE_URL', 'WINSTON_MCP_URL', 'FIRECRAWL_MCP_URL', 'JINA_MCP_URL',
+  'DEEPWIKI_MCP_URL', 'UPSTASH_REDIS_REST_URL', 'ELMO_API_URL', 'GEO_API_URL',
+  'NEXT_PUBLIC_POSTHOG_HOST', 'POLAR_SUCCESS_URL', 'POLAR_RETURN_URL',
+] as const
+
+const nonEmptyVariables = [...requiredProductionVariables, ...modelVariables] as const
+
+const placeholderHostnamePattern = /(?:^|[.-])(?:example|test|xxx|placeholder|your)(?:$|[.-])/i
 
 const isPresent = (value: string | undefined): value is string =>
   typeof value === 'string' && value.trim().length > 0
@@ -32,8 +44,7 @@ const isPlaceholderUrl = (value: string): boolean => {
   try {
     const hostname = new URL(value).hostname.toLowerCase()
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' ||
-      hostname === 'example.com' || hostname === 'example.org' || hostname === 'example.net' ||
-      hostname.startsWith('your-') || hostname.includes('replace-me')
+      placeholderHostnamePattern.test(hostname) || hostname.includes('replaceme')
   } catch {
     return false
   }
@@ -64,6 +75,14 @@ export function validateEnvironment(
     }
     if (!modelVariables.some((name) => isPresent(env[name]))) {
       errors.push(`Missing required variable: one of ${modelVariables.join('/')}`)
+    }
+  }
+
+  if (mode === 'local') {
+    for (const name of nonEmptyVariables) {
+      if (Object.prototype.hasOwnProperty.call(env, name) && !isPresent(env[name])) {
+        errors.push(`Invalid variable ${name}: must not be empty`)
+      }
     }
   }
 

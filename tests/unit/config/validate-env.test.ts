@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { validateEnvironment } from '@/scripts/validate-env'
 
 const validProductionEnv = {
-  DATABASE_URL: 'https://db.example.test/production',
+  DATABASE_URL: 'https://db.flowintent.com/production',
   BETTER_AUTH_SECRET: 'test-secret-with-more-than-32-characters',
   BETTER_AUTH_URL: 'https://flowintent.com',
   NEXT_PUBLIC_SITE_URL: 'https://flowintent.com',
@@ -33,5 +33,32 @@ describe('validateEnvironment', () => {
 
   it('allows local development without production integrations', () => {
     expect(validateEnvironment({}, 'local').errors).toEqual([])
+  })
+
+  it('rejects placeholder URLs in production', () => {
+    const placeholderEnvs = [
+      { DATABASE_URL: 'postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/neondb' },
+      { DATABASE_URL: 'https://db.example.test/production' },
+      { NEXT_PUBLIC_SITE_URL: 'https://your-site.example.com' },
+      { BETTER_AUTH_URL: 'https://replaceme.example.com' },
+    ]
+
+    for (const env of placeholderEnvs) {
+      expect(validateEnvironment({ ...validProductionEnv, ...env }, 'production').errors)
+        .toContainEqual(expect.stringContaining('placeholder URLs'))
+    }
+  })
+
+  it('rejects malformed and empty supplied local values', () => {
+    const result = validateEnvironment({
+      DATAFORSEO_USERNAME: '',
+      DATAFORSEO_PASSWORD: 'local-password',
+      NEXT_PUBLIC_SITE_URL: 'not-a-url',
+    }, 'local')
+
+    expect(result.errors).toEqual(expect.arrayContaining([
+      'Invalid variable DATAFORSEO_USERNAME: must not be empty',
+      'Invalid variable NEXT_PUBLIC_SITE_URL: must be a valid URL',
+    ]))
   })
 })
