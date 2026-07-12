@@ -35,6 +35,7 @@ const urlVariables = [
 ] as const
 
 const placeholderHostnamePattern = /(?:^|[._-])(?:example|test|xxx|placeholder|your|replace[-_]?me)(?:$|[._-])/i
+const placeholderCredentialPattern = /(?:^|[._:/-])(?:example|test|testing|xxx|placeholder|your|dummy|fake|sample|todo|insert|replace[-_]?me|change[-_]?me|changeme)(?:$|[._:/-])/i
 
 const isPresent = (value: string | undefined): value is string =>
   typeof value === 'string' && value.trim().length > 0
@@ -61,6 +62,12 @@ const validateUrl = (name: string, value: string, mode: EnvValidationMode, error
   }
 }
 
+const validateCredential = (name: string, value: string, mode: EnvValidationMode, errors: string[]) => {
+  if (mode === 'production' && placeholderCredentialPattern.test(value.trim())) {
+    errors.push(`Invalid variable ${name}: placeholder credentials are not allowed in production`)
+  }
+}
+
 export function validateEnvironment(
   env: NodeJS.ProcessEnv,
   mode: EnvValidationMode,
@@ -80,6 +87,15 @@ export function validateEnvironment(
   for (const name of urlVariables) {
     const value = env[name]
     if (isPresent(value)) validateUrl(name, value, mode, errors)
+  }
+
+  if (mode === 'production') {
+    const credentialVariables = [...requiredProductionVariables, ...modelVariables]
+      .filter((name) => !urlVariables.includes(name as (typeof urlVariables)[number]))
+    for (const name of credentialVariables) {
+      const value = env[name]
+      if (isPresent(value)) validateCredential(name, value, mode, errors)
+    }
   }
 
   return { errors, warnings }

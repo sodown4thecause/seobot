@@ -1,13 +1,15 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { resolveEffectiveAgent, shouldLoadRagContext } from '@/lib/chat/api-routing'
 
 describe('chat API mode routing', () => {
   it('routes Social mode to the social agent and context lane', () => {
-    const source = readFileSync(resolve(process.cwd(), 'app/api/chat/route.ts'), 'utf8')
+    const agent = resolveEffectiveAgent('seo-aeo', 'social')
 
-    expect(source).toContain("} else if (mode === 'social') {")
-    expect(source).toContain("effectiveAgent = 'social'")
-    expect(source).toContain("effectiveAgent === 'social'")
+    expect(agent).toBe('social')
+    expect(shouldLoadRagContext(agent)).toBe(true)
+  })
+
+  it('keeps image intent ahead of mode-specific routing', () => {
+    expect(resolveEffectiveAgent('image', 'social')).toBe('image')
   })
 })
