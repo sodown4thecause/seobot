@@ -89,7 +89,7 @@ tests/                  # Vitest unit + integration tests
 | Route | Notes |
 |-------|-------|
 | `/dashboard` | Mode-aware chat (default SEO) |
-| `/dashboard?mode=geo\|content` | Deep-link chat mode |
+| `/dashboard?mode=seo\|geo\|content\|social` | Deep-link chat mode |
 | `/dashboard/workspace` | Saved artifacts + library |
 | `/dashboard/content-zone` | Legacy alias → workspace |
 | `/api/chat` | Streaming chat API |
