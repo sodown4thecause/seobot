@@ -39,6 +39,16 @@ export interface ConversationRecord {
 }
 
 const DEFAULT_CONVERSATION_TITLE = 'New Conversation'
+const MESSAGE_PERSIST_ATTEMPTS = 3
+
+interface MessageInsertPayload {
+  id: string
+  conversationId: string
+  role: ChatRole
+  content: string
+  metadata: Json | null
+  createdAt: Date
+}
 
 function extractTextFromParts(parts: UIMessage['parts'] | undefined): string {
   if (!Array.isArray(parts)) return ''
@@ -81,6 +91,58 @@ export async function resolveMessageId(
     .limit(1)
 
   return selectMessageId(clientId, conversationId, existing?.conversationId ?? null)
+}
+
+async function persistMessagePayload(payload: MessageInsertPayload) {
+  let candidate = payload
+  const clientMessageId = payload.id
+
+  for (let attempt = 0; attempt < MESSAGE_PERSIST_ATTEMPTS; attempt += 1) {
+    const [inserted] = await db
+      .insert(messages)
+      .values(candidate)
+      .onConflictDoNothing()
+      .returning()
+
+    if (inserted) return inserted
+
+    const [existing] = await db
+      .select({ conversationId: messages.conversationId })
+      .from(messages)
+      .where(eq(messages.id, candidate.id))
+      .limit(1)
+
+    if (existing?.conversationId === candidate.conversationId) {
+      const [updated] = await db
+        .update(messages)
+        .set({
+          role: candidate.role,
+          content: candidate.content,
+          metadata: candidate.metadata,
+          createdAt: candidate.createdAt,
+        })
+        .where(and(
+          eq(messages.id, candidate.id),
+          eq(messages.conversationId, candidate.conversationId)
+        ))
+        .returning()
+
+      if (updated) return updated
+      continue
+    }
+
+    const metadata = candidate.metadata && typeof candidate.metadata === 'object' && !Array.isArray(candidate.metadata)
+      ? { ...candidate.metadata, clientMessageId }
+      : { clientMessageId }
+
+    candidate = {
+      ...candidate,
+      id: crypto.randomUUID(),
+      metadata,
+    }
+  }
+
+  throw new Error('Failed to persist message after resolving ID conflicts')
 }
 
 function getClientMessageId(metadata: MessageMetadata | null | undefined, dbId: string): string {
@@ -223,25 +285,14 @@ export async function autosaveUserMessage(params: {
   const normalized = await normalizePersistedMessage(message, chatId)
   const suggestedTitle = deriveConversationTitle(normalized.content)
 
-  await db
-    .insert(messages)
-    .values({
-      id: normalized.messageId,
-      conversationId: chatId,
-      role: normalized.role,
-      content: normalized.content,
-      metadata: normalized.metadata,
-      createdAt: normalized.createdAt,
-    })
-    .onConflictDoUpdate({
-      target: [messages.id],
-      set: {
-        role: normalized.role,
-        content: normalized.content,
-        metadata: normalized.metadata,
-        createdAt: normalized.createdAt,
-      },
-    })
+  await persistMessagePayload({
+    id: normalized.messageId,
+    conversationId: chatId,
+    role: normalized.role,
+    content: normalized.content,
+    metadata: normalized.metadata,
+    createdAt: normalized.createdAt,
+  })
 
   const effectiveTitle = conversation.title === DEFAULT_CONVERSATION_TITLE && suggestedTitle
     ? suggestedTitle
@@ -294,18 +345,7 @@ export async function persistAssistantMessages(params: {
   }))
 
   for (const payload of payloads) {
-    await db
-      .insert(messages)
-      .values(payload)
-      .onConflictDoUpdate({
-        target: [messages.id],
-        set: {
-          role: payload.role,
-          content: payload.content,
-          metadata: payload.metadata,
-          createdAt: payload.createdAt,
-        },
-      })
+    await persistMessagePayload(payload)
   }
 
   const effectiveLastMessageAt = lastMessageAt.getTime() > 0 ? lastMessageAt : new Date()
@@ -354,30 +394,14 @@ export async function saveChatUIMessage(
   const metadata = buildMessageMetadata(message, resolvedId)
   const createdAt = message.createdAt ?? new Date()
 
-  const [saved] = await db
-    .insert(messages)
-    .values({
-      id: resolvedId,
-      conversationId: chatId,
-      role: message.role,
-      content,
-      metadata,
-      createdAt,
-    })
-    .onConflictDoUpdate({
-      target: [messages.id],
-      set: {
-        role: message.role,
-        content,
-        metadata,
-        createdAt,
-      },
-    })
-    .returning()
-
-  if (!saved) {
-    throw new Error('Failed to save chat UI message')
-  }
+  const saved = await persistMessagePayload({
+    id: resolvedId,
+    conversationId: chatId,
+    role: message.role,
+    content,
+    metadata,
+    createdAt,
+  })
 
   const nextTitle =
     message.role === 'user' && conversation.title === DEFAULT_CONVERSATION_TITLE

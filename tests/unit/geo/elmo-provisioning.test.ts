@@ -82,8 +82,8 @@ describe('elmo-provisioning', () => {
       competitors: [{ name: 'Competitor', domains: ['competitor.com'], aliases: [] }],
       suggestedPrompts: [{ prompt: 'best ai seo tools', tags: ['category'] }],
     })
-    mockCreateElmoBrand.mockResolvedValue({
-      id: 'fi-flowintent-com-user2',
+    mockCreateElmoBrand.mockImplementation(async ({ id }: { id: string }) => ({
+      id,
       name: 'FlowIntent',
       domains: ['flowintent.com'],
       aliases: [],
@@ -91,14 +91,17 @@ describe('elmo-provisioning', () => {
       onboarded: true,
       createdAt: '2026-07-04T00:00:00.000Z',
       updatedAt: '2026-07-04T00:00:00.000Z',
-    })
+    }))
 
     const result = await ensureElmoBrandForUser('user-2')
 
     expect(result.created).toBe(true)
     expect(mockCreateElmoBrand).toHaveBeenCalledTimes(1)
+    const expectedBrandId = 'fi-flowintent-com-d92b69cfb82cecab'
+    expect(mockCreateElmoBrand).toHaveBeenCalledWith(expect.objectContaining({ id: expectedBrandId }))
+    expect(result.brandId).toBe(expectedBrandId)
     expect(mockUpsertBusinessProfile).toHaveBeenCalledWith('user-2', {
-      elmoBrandId: 'fi-flowintent-com-user2',
+      elmoBrandId: expectedBrandId,
     })
   })
 
