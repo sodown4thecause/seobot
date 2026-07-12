@@ -39,6 +39,9 @@ Autonoma, VPS, backup/restore, and branch-protection work.
   VPS, and four-mode product documentation.
 - Ported reviewed PR #75 dashboard/admin guard coverage, PR #78 chatbot
   reliability fixes, and PR #82 security/reliability blockers.
+- Corrected Social mode runtime routing and added executable routing regression
+  tests; production validation now rejects obvious placeholder credentials,
+  including embedded database URL credentials, while allowing opaque secrets.
 - Added focused regression coverage for observability ownership, environment
   validation, provider errors, tool timeout cancellation, artifacts, retry,
   dashboard subscription gates, message IDs, GEO fallback/robots, Elmo IDs,
@@ -63,7 +66,9 @@ Autonoma, VPS, backup/restore, and branch-protection work.
 
 ## 5. Remaining blockers
 
-1. Full TypeScript validation timed out without a result.
+1. Full TypeScript validation reports an existing error in
+   `lib/jobs/functions/fortnightly-research.ts`: `cron` is not valid for the
+   current Inngest function type.
 2. `pnpm build` was blocked before Next.js compilation by
    `ERR_PNPM_IGNORED_BUILDS`; the safe placeholder build therefore has no
    production-build result.
@@ -74,20 +79,26 @@ Autonoma, VPS, backup/restore, and branch-protection work.
 
 ## 6. Test evidence
 
-- Direct local Vitest focused suite: 12 files, 44 tests passed.
+- Direct local Vitest focused suite: 13 files, 49 tests passed.
 - Local environment validation: passed.
 - Production environment validation with mandatory values absent: failed as
   expected, confirming fail-closed behavior.
-- Focused ESLint: exit code 0 with warnings for three unused imports and two
+- Focused ESLint on the final changed files: exit code 0 with three
   ignored-file warnings.
-- Full TypeScript: timed out after approximately 124 seconds.
+- Full TypeScript: reports the existing Inngest `cron` type error described
+  above.
+- Final PR check snapshot: Vercel Preview failed; Vercel Preview Comments
+  passed. Deployment logs were not accessible locally because no Vercel token
+  was available, so the failure cause is not claimed here.
 - No production database or production credential was used.
 
 ## 7. CI run links
 
 - [Draft PR #84](https://github.com/sodown4thecause/seobot/pull/84)
-- No CI run link is claimed: CI workflows were intentionally deferred and the
-  connector did not expose reliable historical check state for the audited PRs.
+- [Vercel Preview deployment check](https://vercel.com/liam-wilsons-projects-bafe443b/seobot/G7bF2nrUnztdQGjas3718wEmrmfa)
+- No CI run link is claimed: CI workflows were intentionally deferred. The
+  Vercel Preview failure is recorded above and is not treated as a passing
+  production build.
 
 ## 8. Browser report
 
