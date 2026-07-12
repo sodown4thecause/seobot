@@ -1,7 +1,7 @@
 # FlowIntent Final Production-Readiness Report
 
-Date: 2026-07-12  
-Branch: `codex/production-readiness-pr-reconciliation`  
+Date: 2026-07-12
+Branch: `codex/production-readiness-pr-reconciliation`
 Draft PR: [#84](https://github.com/sodown4thecause/seobot/pull/84)
 
 ## 1. Executive summary
