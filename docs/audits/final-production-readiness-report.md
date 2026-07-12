@@ -95,7 +95,7 @@ Autonoma, VPS, backup/restore, and branch-protection work.
 ## 7. CI run links
 
 - [Draft PR #84](https://github.com/sodown4thecause/seobot/pull/84)
-- [Vercel Preview deployment check](https://vercel.com/liam-wilsons-projects-bafe443b/seobot/G7bF2nrUnztdQGjas3718wEmrmfa)
+- [Vercel Preview deployment check](https://vercel.com/liam-wilsons-projects-bafe443b/seobot/63hKXwujeuiiLJzCfdvZevQfEKJF)
 - No CI run link is claimed: CI workflows were intentionally deferred. The
   Vercel Preview failure is recorded above and is not treated as a passing
   production build.
