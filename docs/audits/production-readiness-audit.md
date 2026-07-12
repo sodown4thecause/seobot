@@ -1048,7 +1048,7 @@ production Neon database, VPS, CI, or E2E environment was used.
 | `git diff --check` | Passed | Exit code 0 on the reviewed working tree before the audit evidence commit. |
 | Direct local Vitest focused suite | Passed | 12 files, 44 tests passed, including env, observability, PR #75, PR #78, and PR #82 regression suites. Direct local binary was used because pnpm execution triggers the environment build-policy failure. |
 | `tsx scripts/validate-env.ts --mode local` | Passed | `Environment validation passed (local)`. |
-| `tsx scripts/validate-env.ts --mode production` with empty environment | Failed as expected | Mandatory production variables were reported missing; this confirms fail-closed behavior. |
+| `tsx scripts/validate-env.ts --mode production` with mandatory production variables absent | Failed as expected | The command loaded `.env.local` and `.env` (both supplied zero variables) and reported mandatory production variables missing; this confirms fail-closed behavior. |
 | Focused ESLint on changed runtime files | Passed with warnings | Exit code 0; three pre-existing unused-schema-import warnings in `lib/geo/digest-service.ts` and two ignored-file warnings for script/static-test paths. |
 | `tsc --noEmit` | Inconclusive | Timed out after approximately 124 seconds without completing. |
 | `pnpm build` with ephemeral safe placeholders | Blocked before Next build | pnpm attempted an install and exited with `ERR_PNPM_IGNORED_BUILDS` for dependency build scripts; no production build result is claimed. |
