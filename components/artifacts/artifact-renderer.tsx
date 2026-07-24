@@ -8,11 +8,14 @@ import { SchemaMarkupArtifact } from '@/components/chat/tool-ui/schema-markup-re
 import { CrawlabilityAuditArtifact } from '@/components/chat/tool-ui/crawlability-audit-result'
 import { GeoFixPlanArtifact } from '@/components/chat/tool-ui/geo-fix-plan-result'
 import { GeoBrandScanResults } from '@/components/chat/tool-ui/geo-brand-scan-results'
+import { CitationDeltaReportArtifact } from '@/components/chat/tool-ui/citation-delta-report'
+import { FixCycleComposite } from '@/components/chat/tool-ui/fix-cycle-composite'
 import { SocialListeningResult } from '@/components/chat/tool-ui/social-listening-result'
 import { getArtifactDefinition } from '@/lib/artifacts/registry'
 import type { ArtifactStatus, ArtifactType } from '@/lib/artifacts/types'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import type { GeoFixPlan } from '@/lib/geo/fix-generator'
 
 export interface ArtifactRendererProps {
   type: ArtifactType
@@ -117,15 +120,19 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
     case 'geo-content-gap-report':
       return (
         <div className={cn('h-full overflow-auto', className)}>
-          <GeoFixPlanArtifact data={data} />
+          {isFixCycleResult(data) ? <FixCycleComposite result={data} /> : <GeoFixPlanArtifact data={data} />}
         </div>
       )
     case 'citation-tracker':
       return (
         <div className={cn('h-full overflow-auto', className)}>
-          <GeoBrandScanResults
-            toolInvocation={{ result: data as Parameters<typeof GeoBrandScanResults>[0]['toolInvocation']['result'], state: status === 'complete' ? 'result' : status }}
-          />
+          {hasCitationDelta(data) ? (
+            <CitationDeltaReportArtifact data={data} />
+          ) : (
+            <GeoBrandScanResults
+              toolInvocation={{ result: data as Parameters<typeof GeoBrandScanResults>[0]['toolInvocation']['result'], state: status === 'complete' ? 'result' : status }}
+            />
+          )}
         </div>
       )
     default:
@@ -135,6 +142,19 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
         </div>
       )
   }
+}
+
+function isFixCycleResult(data: unknown): data is {
+  success?: boolean
+  cycle: { fixPlan?: GeoFixPlan | null }
+} {
+  return Boolean(data && typeof data === 'object' && 'cycle' in data && (data as { cycle?: unknown }).cycle)
+}
+
+function hasCitationDelta(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false
+  const value = data as { delta?: unknown; cycle?: { latestDelta?: unknown } }
+  return Boolean(value.delta || value.cycle?.latestDelta)
 }
 
 function DefaultArtifactData({ type, data }: { type: ArtifactType; data: unknown }) {
