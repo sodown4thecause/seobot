@@ -196,7 +196,7 @@ export const ARTIFACT_REGISTRY: Record<ArtifactType, ArtifactDefinition> = {
     'geo-visibility',
     ['geo'],
     'live',
-    ['geo_brand_scan'],
+    ['geo_brand_scan', 'geo_fix_cycle_status'],
     'citation-tracker'
   ),
   'brand-mention-heatmap': def(
@@ -270,7 +270,7 @@ export const ARTIFACT_REGISTRY: Record<ArtifactType, ArtifactDefinition> = {
     'geo-competitive',
     ['geo', 'content'],
     'live',
-    ['geo_generate_fix'],
+    ['geo_generate_fix', 'geo_start_fix_cycle'],
     'geo-fix-plan'
   ),
   'ai-search-result-preview': def(
