@@ -17,6 +17,7 @@ import {
   FileText,
   Sparkles,
   FolderOpen,
+  ShieldCheck,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -56,6 +57,7 @@ const DASHBOARD_LINK_GROUPS = [
     hint: 'AI visibility snapshots — pairs with GEO / AEO mode',
     links: [
       { name: 'AEO Insights', href: '/dashboard/aeo', icon: Sparkles },
+      { name: 'Proof', href: '/dashboard/geo/proof', icon: ShieldCheck },
       { name: 'GEO / AEO Chat', href: '/dashboard?mode=geo', icon: MessageSquare },
     ],
   },

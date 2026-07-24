@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { randomBytes } from 'node:crypto'
 import { and, count, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { geoFixCycles, geoPrompts, geoRuns, type GeoFixCycle, type GeoRun, type Json } from '@/lib/db/schema'
@@ -11,6 +12,10 @@ import type { GeoEngine } from '@/lib/geo/types'
 
 export const MAX_ACTIVE_FIX_CYCLES = 15
 export const DEFAULT_VERIFY_SCHEDULE = 'every_3_days'
+
+export function generateFixCycleShareToken(): string {
+  return randomBytes(32).toString('base64url')
+}
 
 export type FixCycleStatus =
   | 'scanning'
@@ -241,6 +246,14 @@ export async function getFixCycle(userId: string, cycleId: string): Promise<GeoF
   const [cycle] = await db.select()
     .from(geoFixCycles)
     .where(and(eq(geoFixCycles.userId, userId), eq(geoFixCycles.id, cycleId)))
+    .limit(1)
+  return cycle ?? null
+}
+
+export async function getSharedFixCycle(shareToken: string): Promise<GeoFixCycle | null> {
+  const [cycle] = await db.select()
+    .from(geoFixCycles)
+    .where(eq(geoFixCycles.shareToken, shareToken))
     .limit(1)
   return cycle ?? null
 }

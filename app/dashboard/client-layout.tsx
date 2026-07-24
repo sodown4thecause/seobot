@@ -25,6 +25,7 @@ const PAGE_NAMES: Record<string, string> = {
   'content-performance': 'Content Performance',
   'aeo-insights': 'AEO Insights',
   'aeo': 'AEO Insights',
+  'geo': 'Proof',
   'workflows': 'Workflows',
   'content': 'Workspace',
   'content-zone': 'Workspace',
