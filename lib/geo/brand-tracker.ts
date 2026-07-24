@@ -181,14 +181,15 @@ function citationDomains(citations: Array<{ url: string }>): string[] {
 
 async function persistGeoBrandScan(params: {
   userId?: string
+  fixCycleId?: string
   brand: string
   query: string
   competitors: string[]
   platforms: GeoBrandScanPlatformResult[]
-}) {
-  if (!params.userId) return
+}): Promise<string[]> {
+  if (!params.userId) return []
 
-  await db.insert(geoRuns).values(params.platforms.map((platform) => {
+  const rows = await db.insert(geoRuns).values(params.platforms.map((platform) => {
     const citedUrls = platform.citations.map(citation => citation.url)
     const competitorMentions = Object.fromEntries(
       params.competitors.map(competitor => [
@@ -208,6 +209,7 @@ async function persistGeoBrandScan(params: {
 
     return {
       userId: params.userId,
+      fixCycleId: params.fixCycleId,
       engine: PLATFORM_ENGINE_MAP[platform.platform] ?? platform.platform.toLowerCase().replace(/\s+/g, '_'),
       prompt: params.query,
       brand: params.brand,
@@ -227,7 +229,9 @@ async function persistGeoBrandScan(params: {
       rawJson: rawJson as Json,
       capturedAt: new Date(),
     }
-  }))
+  })).returning({ id: geoRuns.id })
+
+  return rows.map((row) => row.id)
 }
 
 const PLATFORMS = [
@@ -238,139 +242,160 @@ const PLATFORMS = [
   { platform: 'google_ai_overview', modelName: 'google-organic-serp', label: 'Google AI Overview' },
 ] as const
 
+async function runPlatform(
+  platform: typeof PLATFORMS[number],
+  query: string,
+  brand: string,
+  competitors: string[],
+): Promise<GeoBrandScanPlatformResult> {
+  const { response, annotations, cost } = platform.platform === 'google_ai_overview'
+    ? await callGoogleAIOverview(query)
+    : await callLLMResponse({
+        query,
+        platform: platform.platform,
+        modelName: platform.modelName,
+      })
+  const { brandMentioned, mentionContext, sentiment } = analyzeMention(response, brand)
+  return {
+    platform: platform.label,
+    model: platform.modelName,
+    responseText: response,
+    responsePreview: response.slice(0, 600),
+    brandMentioned,
+    mentionContext,
+    competitorsMentioned: findCompetitors(response, competitors),
+    citations: annotations,
+    sentiment,
+    estimatedCost: cost,
+  }
+}
+
+export async function runGEOBrandScan(params: {
+  userId?: string
+  fixCycleId?: string
+  brand: string
+  query: string
+  engines?: string[]
+  competitors?: string[]
+}) {
+  const { userId, fixCycleId, brand, query, engines, competitors = [] } = params
+  console.log('[GEO Brand Tracker] Scanning brand for query')
+  const platforms = engines?.length
+    ? PLATFORMS.filter((platform) => engines.includes(PLATFORM_ENGINE_MAP[platform.label] ?? platform.platform))
+    : PLATFORMS
+
+  const platformResults = await Promise.all(
+    platforms.map(async (platform) => {
+      let lastError: unknown
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          return await runPlatform(platform, query, brand, competitors)
+        } catch (error) {
+          lastError = error
+        }
+      }
+      return {
+        platform: platform.label,
+        model: platform.modelName,
+        responseText: '',
+        responsePreview: '',
+        brandMentioned: false,
+        mentionContext: null,
+        competitorsMentioned: [],
+        citations: [],
+        sentiment: 'not_mentioned' as const,
+        error: lastError instanceof Error ? lastError.message : 'Probe failed after retry',
+      }
+    }),
+  )
+
+  const successfulPlatforms = platformResults.filter((platform) => !platform.error)
+  const mentionedCount = successfulPlatforms.filter((platform) => platform.brandMentioned).length
+  const shareOfVoice = successfulPlatforms.length
+    ? Math.round((mentionedCount / successfulPlatforms.length) * 100)
+    : 0
+  const sentiments = successfulPlatforms.filter((platform) => platform.brandMentioned).map((platform) => platform.sentiment)
+  const overallSentiment =
+    sentiments.includes('positive') ? 'Positive' :
+    sentiments.includes('negative') ? 'Negative' :
+    mentionedCount > 0 ? 'Neutral' : 'Not mentioned'
+
+  const recommendedFixes = deriveRecommendedFixes({
+    brand,
+    query,
+    platforms: successfulPlatforms,
+    summary: {
+      totalPlatforms: successfulPlatforms.length,
+      mentionedOn: mentionedCount,
+      shareOfVoice,
+    },
+  })
+
+  let runIds: string[] = []
+  try {
+    runIds = await persistGeoBrandScan({
+      userId,
+      fixCycleId,
+      brand,
+      query,
+      competitors,
+      platforms: platformResults,
+    })
+  } catch (error) {
+    console.warn('[GEO Brand Tracker] Failed to persist scan:', error)
+  }
+
+  if (userId) {
+    await Promise.allSettled(platformResults.map(platform =>
+      trackAPICall(userId, {
+        service: 'aisa',
+        endpoint: `geo_brand_scan:${platform.platform}`,
+        method: 'live',
+        statusCode: platform.error ? 502 : 200,
+        costUSD: platform.estimatedCost,
+        metadata: {
+          provider: 'dataforseo',
+          brand,
+          query,
+          model: platform.model,
+          brandMentioned: platform.brandMentioned,
+          citationsCount: platform.citations.length,
+          error: platform.error,
+        },
+      })
+    ))
+  }
+
+  return {
+    success: true,
+    brand,
+    query,
+    platforms: platformResults,
+    runIds,
+    summary: {
+      totalPlatforms: successfulPlatforms.length,
+      failedPlatforms: platformResults.length - successfulPlatforms.length,
+      mentionedOn: mentionedCount,
+      shareOfVoice,
+      overallSentiment,
+    },
+    recommendedFixes,
+  }
+}
+
 export function createGEOBrandScanTool(userId?: string) {
   return tool({
     description:
       'Check whether a brand is mentioned when users ask ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews about a topic. ' +
       'Returns real AI responses, whether the brand appeared, surrounding context, sentiment, competitor co-mentions, and citation URLs. ' +
-      'Use this any time the user wants to track brand visibility in AI-generated answers.',
+      'Failed probes are reported separately from brands that were not mentioned.',
     inputSchema: z.object({
-      brand: z.string().describe(
-        'The brand name to track (e.g. "Ahrefs", "Flow Intent", "Notion")'
-      ),
-      query: z.string().describe(
-        'The question to ask each AI model (e.g. "best SEO tools 2025", "alternatives to Ahrefs")'
-      ),
-      competitors: z
-        .array(z.string())
-        .optional()
-        .describe('Optional competitor brand names to also look for in responses'),
+      brand: z.string().describe('Brand name to track'),
+      query: z.string().describe('Question to ask each AI engine'),
+      competitors: z.array(z.string()).optional().describe('Optional competitor brand names'),
     }),
-    execute: async ({ brand, query, competitors = [] }) => {
-      console.log('[GEO Brand Tracker] Scanning brand for query')
-
-      const settled = await Promise.allSettled(
-        PLATFORMS.map(async p => {
-          const { response, annotations, cost } = p.platform === 'google_ai_overview'
-            ? await callGoogleAIOverview(query)
-            : await callLLMResponse({
-                query,
-                platform: p.platform,
-                modelName: p.modelName,
-              })
-
-          const { brandMentioned, mentionContext, sentiment } = analyzeMention(response, brand)
-          const competitorsMentioned = findCompetitors(response, competitors)
-
-          return {
-            platform: p.label,
-            model: p.modelName,
-            responseText: response,
-            responsePreview: response.slice(0, 600),
-            brandMentioned,
-            mentionContext,
-            competitorsMentioned,
-            citations: annotations,
-            sentiment,
-            estimatedCost: cost,
-          }
-        })
-      )
-
-      const platformResults: GeoBrandScanPlatformResult[] = settled.map((r, i) =>
-        r.status === 'fulfilled'
-          ? r.value
-          : {
-              platform: PLATFORMS[i].label,
-              model: PLATFORMS[i].modelName,
-              responseText: '',
-              responsePreview: '',
-              brandMentioned: false,
-              mentionContext: null,
-              competitorsMentioned: [],
-              citations: [],
-              sentiment: 'not_mentioned' as const,
-              error: r.reason instanceof Error ? r.reason.message : 'Failed',
-            }
-      )
-
-      const mentionedCount = platformResults.filter(p => p.brandMentioned).length
-      const shareOfVoice = Math.round((mentionedCount / PLATFORMS.length) * 100)
-
-      const sentiments = platformResults.filter(p => p.brandMentioned).map(p => p.sentiment)
-      const overallSentiment =
-        sentiments.includes('positive') ? 'Positive' :
-        sentiments.includes('negative') ? 'Negative' :
-        mentionedCount > 0 ? 'Neutral' : 'Not mentioned'
-
-      const recommendedFixes = deriveRecommendedFixes({
-        brand,
-        query,
-        platforms: platformResults,
-        summary: {
-          totalPlatforms: PLATFORMS.length,
-          mentionedOn: mentionedCount,
-          shareOfVoice,
-        },
-      })
-
-      try {
-        await persistGeoBrandScan({
-          userId,
-          brand,
-          query,
-          competitors,
-          platforms: platformResults,
-        })
-      } catch (error) {
-        console.warn('[GEO Brand Tracker] Failed to persist scan:', error)
-      }
-
-      if (userId) {
-        await Promise.allSettled(platformResults.map(platform =>
-          trackAPICall(userId, {
-            service: 'aisa',
-            endpoint: `geo_brand_scan:${platform.platform}`,
-            method: 'live',
-            statusCode: platform.error ? 502 : 200,
-            costUSD: platform.estimatedCost,
-            metadata: {
-              provider: 'dataforseo',
-              brand,
-              query,
-              model: platform.model,
-              brandMentioned: platform.brandMentioned,
-              citationsCount: platform.citations.length,
-              error: platform.error,
-            },
-          })
-        ))
-      }
-
-      return {
-        success: true,
-        brand,
-        query,
-        platforms: platformResults,
-        summary: {
-          totalPlatforms: PLATFORMS.length,
-          mentionedOn: mentionedCount,
-          shareOfVoice,
-          overallSentiment,
-        },
-        recommendedFixes,
-      }
-    },
+    execute: async ({ brand, query, competitors = [] }) =>
+      runGEOBrandScan({ userId, brand, query, competitors }),
   })
 }
 

@@ -108,6 +108,7 @@ const SEO_TOOLS = [
   'firecrawl_map',
   'firecrawl_extract',
   'firecrawl_check_crawl_status',
+  'geo_fix_cycle_status',
 ] as const
 
 const GENERAL_TOOLS = [
@@ -134,6 +135,9 @@ const GEO_TOOLS = [
   'geo_daily_digest',
   'geo_perplexity_direct_probe',
   'geo_gateway_control_probe',
+  'geo_start_fix_cycle',
+  'geo_mark_fix_shipped',
+  'geo_fix_cycle_status',
 ] as const
 
 const SOCIAL_TOOLS = [

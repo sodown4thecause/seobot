@@ -344,10 +344,36 @@ export const geoPrompts = pgTable('geo_prompts', {
     }
 })
 
+export const geoFixCycles = pgTable('geo_fix_cycles', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    geoPromptId: uuid('geo_prompt_id').references(() => geoPrompts.id, { onDelete: 'set null' }),
+    brand: text('brand').notNull(),
+    query: text('query').notNull(),
+    engines: text('engines').array().notNull(),
+    baselineRunIds: uuid('baseline_run_ids').array().notNull(),
+    fixPlan: jsonb('fix_plan').$type<Json>(),
+    fixType: text('fix_type'),
+    shippedUrl: text('shipped_url'),
+    shippedAt: timestamp('shipped_at'),
+    status: text('status').notNull().default('scanning'),
+    verifySchedule: text('verify_schedule').notNull().default('every_3_days'),
+    nextVerifyAt: timestamp('next_verify_at'),
+    lastVerifiedAt: timestamp('last_verified_at'),
+    latestDelta: jsonb('latest_delta').$type<Json>(),
+    shareToken: text('share_token').unique(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+    userIdx: index('idx_geo_fix_cycles_user_id').on(table.userId),
+    statusNextVerifyIdx: index('idx_geo_fix_cycles_status_next_verify').on(table.status, table.nextVerifyAt),
+    promptIdx: index('idx_geo_fix_cycles_prompt_id').on(table.geoPromptId),
+}))
+
 export const geoRuns = pgTable('geo_runs', {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: text('user_id'),
     geoPromptId: uuid('geo_prompt_id').references(() => geoPrompts.id, { onDelete: 'set null' }),
+    fixCycleId: uuid('fix_cycle_id').references(() => geoFixCycles.id, { onDelete: 'set null' }),
     engine: text('engine').notNull(),
     prompt: text('prompt').notNull(),
     brand: text('brand').notNull(),
@@ -369,6 +395,7 @@ export const geoRuns = pgTable('geo_runs', {
         userIdIdx: index('idx_geo_runs_user_id').on(table.userId),
         brandIdx: index('idx_geo_runs_brand').on(table.brand),
         capturedAtIdx: index('idx_geo_runs_captured_at').on(table.capturedAt),
+        fixCycleIdx: index('idx_geo_runs_fix_cycle_id').on(table.fixCycleId),
     }
 })
 
@@ -614,6 +641,8 @@ export type GeoPrompt = typeof geoPrompts.$inferSelect
 export type NewGeoPrompt = typeof geoPrompts.$inferInsert
 export type GeoRun = typeof geoRuns.$inferSelect
 export type NewGeoRun = typeof geoRuns.$inferInsert
+export type GeoFixCycle = typeof geoFixCycles.$inferSelect
+export type NewGeoFixCycle = typeof geoFixCycles.$inferInsert
 export type ResearchJob = typeof researchJobs.$inferSelect
 export type NewResearchJob = typeof researchJobs.$inferInsert
 
