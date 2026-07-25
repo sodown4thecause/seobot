@@ -12,6 +12,8 @@ export interface ArtifactDefinition {
   category: ArtifactCategory
   modes: ChatMode[]
   status: ArtifactImplementationStatus
+  /** Whether this artifact should appear in user-visible surfaces. */
+  visible: boolean
   /** AI SDK tool names that produce this artifact when complete. */
   toolNames: string[]
   /** Stable panel id used in chat artifact sync. */
@@ -34,6 +36,7 @@ const def = (
   category,
   modes,
   status,
+  visible: status === 'live',
   toolNames,
   panelId: panelId ?? type,
 })
@@ -305,9 +308,9 @@ export function isArtifactType(value: string): value is ArtifactType {
 }
 
 export function listArtifactsByMode(mode: ChatMode): ArtifactDefinition[] {
-  return Object.values(ARTIFACT_REGISTRY).filter((d) => d.modes.includes(mode))
+  return Object.values(ARTIFACT_REGISTRY).filter((d) => d.visible && d.modes.includes(mode))
 }
 
 export function listLiveArtifacts(): ArtifactDefinition[] {
-  return Object.values(ARTIFACT_REGISTRY).filter((d) => d.status === 'live')
+  return Object.values(ARTIFACT_REGISTRY).filter((d) => d.visible && d.status === 'live')
 }

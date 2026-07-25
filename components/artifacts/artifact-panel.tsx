@@ -28,6 +28,7 @@ export function ArtifactPanel({
   className,
 }: ArtifactPanelProps) {
   const definition = getArtifactDefinition(artifact.type)
+  if (!definition.visible) return null
   const modeUi = getChatModeUi(chatMode)
   const resolvedMode = artifact.metadata?.chatMode ?? chatMode
   const accent = getChatModeAccentClasses(resolvedMode)

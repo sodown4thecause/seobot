@@ -24,6 +24,8 @@ import { SocialListeningResult } from './tool-ui/social-listening-result'
 import { SchemaMarkupResult } from './tool-ui/schema-markup-result'
 import { CrawlabilityAuditResult } from './tool-ui/crawlability-audit-result'
 import { GeoFixPlanResult } from './tool-ui/geo-fix-plan-result'
+import { CitationDeltaReport } from './tool-ui/citation-delta-report'
+import { FixCycleComposite } from './tool-ui/fix-cycle-composite'
 import type { ProactiveSuggestion } from '@/lib/proactive/types'
 import { useArtifactStore } from '@/lib/artifacts/artifact-store'
 import { syncArtifactsFromMessages } from '@/lib/artifacts/sync-from-messages'
@@ -295,6 +297,14 @@ const ToolInvocation = ({
     return <GeoBrandScanResults toolInvocation={toolCall} onGenerateFix={onGenerateFix} />
   }
 
+  if (toolName === 'geo_start_fix_cycle' && isSuccess) {
+    return <FixCycleComposite result={result} />
+  }
+
+  if (toolName === 'geo_fix_cycle_status' && isSuccess && result?.cycle?.latestDelta) {
+    return <CitationDeltaReport delta={result.cycle.latestDelta} cycle={result.cycle} />
+  }
+
   // 1. Handle specialized client UI
   if (toolName === 'client_ui') {
     const componentData = {
@@ -475,6 +485,14 @@ const ToolPartInvocation = ({
         onGenerateFix={onGenerateFix}
       />
     )
+  }
+
+  if (toolName === 'geo_start_fix_cycle' && isSuccess) {
+    return <FixCycleComposite result={output} />
+  }
+
+  if (toolName === 'geo_fix_cycle_status' && isSuccess && output?.cycle?.latestDelta) {
+    return <CitationDeltaReport delta={output.cycle.latestDelta} cycle={output.cycle} />
   }
 
   // Use the same specialized component logic as ToolInvocation

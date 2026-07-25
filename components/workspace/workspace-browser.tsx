@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArtifactPreviewCard } from '@/components/workspace/artifact-preview-card'
 import { ArtifactRenderer } from '@/components/artifacts/artifact-renderer'
 import { buildArtifactPreviewSummary } from '@/lib/artifacts/preview'
-import { getArtifactDefinition } from '@/lib/artifacts/registry'
+import { getArtifactDefinition, isArtifactType } from '@/lib/artifacts/registry'
 import type { ArtifactType, SavedArtifactLibraryItem } from '@/lib/artifacts/types'
 import { CHAT_MODES, getChatModeUi, type ChatMode } from '@/lib/chat/modes'
 import { Button } from '@/components/ui/button'
@@ -38,7 +38,13 @@ export function WorkspaceBrowser({ className }: WorkspaceBrowserProps) {
       const res = await fetch(`/api/library?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load workspace')
       const json = await res.json()
-      setItems(json.data ?? [])
+      const visibleItems = (json.data ?? []).filter((item: SavedArtifactLibraryItem) => {
+        const artifactType = item.metadata?.artifactType
+        return typeof artifactType === 'string' && isArtifactType(artifactType)
+          ? getArtifactDefinition(artifactType).visible
+          : true
+      })
+      setItems(visibleItems)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load workspace')
     } finally {
