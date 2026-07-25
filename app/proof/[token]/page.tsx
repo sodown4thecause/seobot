@@ -20,6 +20,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${cycle.brand} gained AI citations — proof by FlowIntent`,
       description: `A read-only GEO citation report for ${cycle.brand}, measured by FlowIntent.`,
       type: 'article',
+      images: [{ url: `/proof/${token}/opengraph-image` }],
     },
   }
 }
