@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { ArrowRight, ExternalLink, Flame, MessageSquare, TrendingUp, Mail, CheckCircle, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { RedditGapResults, ContentGap } from '@/lib/reddit-gap/types'
@@ -110,6 +111,14 @@ function ContentGapCard({ gap, index }: { gap: ContentGap; index: number }) {
           ))}
         </div>
       )}
+
+      <Link
+        href={`/dashboard?mode=geo&query=${encodeURIComponent(gap.question)}&autostart=fix_cycle`}
+        className="inline-flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold uppercase tracking-wider text-emerald-300 transition-colors hover:bg-emerald-500/20"
+      >
+        Win this in AI search
+        <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
     </div>
   )
 }

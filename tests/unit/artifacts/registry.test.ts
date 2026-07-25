@@ -3,6 +3,7 @@ import {
   ARTIFACT_REGISTRY,
   TOOL_TO_ARTIFACT,
   getArtifactDefinition,
+  listArtifactsByMode,
   listLiveArtifacts,
 } from '@/lib/artifacts/registry'
 
@@ -45,5 +46,11 @@ describe('artifact registry', () => {
     expect(listLiveArtifacts().map((d) => d.type)).toEqual(
       expect.arrayContaining(['keyword', 'backlink', 'serp', 'blog', 'social-listening', 'citation-tracker'])
     )
+  })
+
+  it('keeps planned artifacts out of visible mode lists', () => {
+    expect(getArtifactDefinition('keyword-cluster-map').visible).toBe(false)
+    expect(listArtifactsByMode('seo').map((definition) => definition.type)).not.toContain('keyword-cluster-map')
+    expect(listLiveArtifacts().every((definition) => definition.visible)).toBe(true)
   })
 })
