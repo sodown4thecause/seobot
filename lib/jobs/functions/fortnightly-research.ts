@@ -4,11 +4,7 @@ import { runFortnightlyIndustryResearch } from '@/lib/research/fortnightly-indus
 export const fortnightlyResearchJob = inngest.createFunction(
   { id: 'fortnightly-industry-research', name: 'Fortnightly Industry Research' },
   { cron: '0 0 1,15 * *' },
-  async ({
-    step,
-  }: {
-    step: { run: <R>(name: string, fn: () => Promise<R>) => Promise<R> }
-  }) => {
+  async ({ step }) => {
     const modes = ['seo', 'geo', 'content', 'social'] as const
 
     const result = await step.run('run-research', async () => {
