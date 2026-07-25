@@ -30,6 +30,7 @@ export function ArtifactPreviewCard({
   onSelect,
 }: ArtifactPreviewCardProps) {
   const definition = getArtifactDefinition(preview.artifactType)
+  if (!definition.visible) return null
   const chatMode = resolveChatMode(preview.chatMode)
   const modeUi = getChatModeUi(chatMode)
   const accent = getChatModeAccentClasses(chatMode)

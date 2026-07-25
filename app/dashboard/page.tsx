@@ -25,6 +25,9 @@ function DashboardInner() {
   const isLoaded = !isSessionPending
   const searchParams = useSearchParams()
   const workflowId = searchParams?.get('workflow') ?? undefined
+  const urlMode = searchParams?.get('mode')
+  const geoQuery = searchParams?.get('query')
+  const shouldAutostartFixCycle = urlMode === 'geo' && searchParams?.get('autostart') === 'fix_cycle' && Boolean(geoQuery)
   const explicitConversationId = searchParams?.get('conversationId') ?? undefined
   const onboardingUrl = searchParams?.get('url') ?? undefined
   const shouldStartOnboarding = searchParams?.has('startOnboarding')
@@ -38,7 +41,14 @@ function DashboardInner() {
   )
   const resolvedConversationId = explicitConversationId
   const workflowMessage = workflowLaunch?.initialPrompt
+  const geoAutostartMessage = shouldAutostartFixCycle && geoQuery
+    ? `Start a GEO fix cycle for the question "${geoQuery}". Call geo_start_fix_cycle with query="${geoQuery}" and use the appropriate brand and engines.`
+    : undefined
+  const autoSendMessage = geoAutostartMessage ?? workflowMessage
   const workflowAutoSendKey = buildWorkflowAutoSendKey(workflowId, resolvedConversationId)
+  const autoSendKey = geoAutostartMessage
+    ? `geo-fix-cycle:${geoQuery}:${resolvedConversationId ?? 'new'}`
+    : workflowAutoSendKey
 
   // Check if user has a business profile (first-time user detection)
   useEffect(() => {
@@ -212,9 +222,9 @@ function DashboardInner() {
             conversationId={resolvedConversationId}
             agentId={activeAgentId}
             initialMessage={initialMessage}
-            autoSendMessage={workflowMessage}
-            autoSendKey={workflowAutoSendKey}
-            key={`${resolvedConversationId ?? 'no-conversation'}:${workflowId ?? 'no-workflow'}`}
+            autoSendMessage={autoSendMessage}
+            autoSendKey={autoSendKey}
+            key={`${resolvedConversationId ?? 'no-conversation'}:${workflowId ?? 'no-workflow'}:${geoAutostartMessage ?? 'no-geo-autostart'}`}
           />
         </div>
       </motion.div>
