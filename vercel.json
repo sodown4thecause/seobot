@@ -9,7 +9,7 @@
       "schedule": "0 21 * * 1"
     },
     {
-      "path": "/api/rag/ingest",
+      "path": "/api/rag/ingest?modes=content",
       "schedule": "0 21 * * 2"
     },
     {

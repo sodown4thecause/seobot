@@ -6,6 +6,9 @@ const require = createRequire(import.meta.url)
 const nextConfig: NextConfig = {
   trailingSlash: false,
   reactStrictMode: true,
+  turbopack: {
+    root: process.cwd(),
+  },
   images: {
     remotePatterns: [
       {
@@ -78,11 +81,8 @@ try {
   const { withSentryConfig } = require('@sentry/nextjs') as typeof import('@sentry/nextjs')
   exportedConfig = withSentryConfig(nextConfig, {
     silent: true,
-    disableLogger: true,
   })
 } catch {
-  // Sentry unavailable (e.g. incomplete local install). Skip wrapping so
-  // local dev can still boot; production behavior is preserved when present.
   console.warn('[next.config] @sentry/nextjs unavailable; skipping Sentry config wrapper.')
 }
 
