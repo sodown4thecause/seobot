@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useCallback, useContext, useState, useEffect, ReactNode } from 'react'
 import { DEFAULT_CHAT_MODE, isChatMode, type ChatMode } from '@/lib/chat/modes'
 import { captureProductEvent } from '@/components/providers/analytics-provider'
 import { PRODUCT_EVENTS } from '@/lib/analytics/product-events'
@@ -9,6 +9,7 @@ export type { ChatMode } from '@/lib/chat/modes'
 
 interface ChatModeContextValue {
   chatMode: ChatMode
+  isHydrated: boolean
   setChatMode: (mode: ChatMode) => void
 }
 
@@ -22,17 +23,23 @@ interface ChatModeProviderProps {
 
 export function ChatModeProvider({ children }: ChatModeProviderProps) {
   const [chatMode, setChatModeState] = useState<ChatMode>(DEFAULT_CHAT_MODE)
+  const [isHydrated, setIsHydrated] = useState(false)
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved && isChatMode(saved)) {
-        setChatModeState(saved)
-      }
-    } catch {}
+    const hydration = window.setTimeout(() => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved && isChatMode(saved)) {
+          setChatModeState(saved)
+        }
+      } catch {}
+      setIsHydrated(true)
+    }, 0)
+
+    return () => window.clearTimeout(hydration)
   }, [])
 
-  const setChatMode = (mode: ChatMode) => {
+  const setChatMode = useCallback((mode: ChatMode) => {
     setChatModeState((previous) => {
       if (previous !== mode) {
         captureProductEvent(PRODUCT_EVENTS.MODE_SELECTED, {
@@ -45,10 +52,10 @@ export function ChatModeProvider({ children }: ChatModeProviderProps) {
     try {
       localStorage.setItem(STORAGE_KEY, mode)
     } catch {}
-  }
+  }, [])
 
   return (
-    <ChatModeContext.Provider value={{ chatMode, setChatMode }}>
+    <ChatModeContext.Provider value={{ chatMode, isHydrated, setChatMode }}>
       {children}
     </ChatModeContext.Provider>
   )
@@ -61,5 +68,5 @@ export function useChatMode() {
 }
 
 export function useChatModeOptional() {
-  return useContext(ChatModeContext) ?? { chatMode: DEFAULT_CHAT_MODE, setChatMode: () => {} }
+  return useContext(ChatModeContext) ?? { chatMode: DEFAULT_CHAT_MODE, isHydrated: true, setChatMode: () => {} }
 }

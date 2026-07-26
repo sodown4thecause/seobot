@@ -27,6 +27,12 @@ export function parseChatModeFromSearchParam(value: string | null | undefined): 
   return isChatMode(value) ? value : null
 }
 
+export function buildDashboardModeHref(search: string, mode: ChatMode): string {
+  const params = new URLSearchParams(search)
+  params.set(CHAT_MODE_QUERY_PARAM, mode)
+  return `/dashboard?${params.toString()}`
+}
+
 export function buildDashboardChatHref(options?: {
   conversationId?: string
   mode?: ChatMode
@@ -40,6 +46,14 @@ export function buildDashboardChatHref(options?: {
   }
   const query = params.toString()
   return query ? `/dashboard?${query}` : '/dashboard'
+}
+
+export function resolveDashboardChatMode(options: {
+  urlMode: ChatMode | null
+  conversationMode: ChatMode | null
+  fallbackMode: ChatMode
+}): ChatMode {
+  return options.urlMode ?? options.conversationMode ?? options.fallbackMode
 }
 
 /** Prefer explicit field, then metadata.chatMode */

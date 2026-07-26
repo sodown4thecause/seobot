@@ -5,15 +5,15 @@ import { DefaultChatTransport } from 'ai'
 import { useEffect, useState, forwardRef, useMemo, useCallback, useRef } from 'react'
 import { useAIState } from '@/lib/context/ai-state-context'
 
-import { Terminal, Check, Copy, ChevronDown, ChevronRight, Loader2, Sparkles, Send, X, AlertCircle } from 'lucide-react'
+import { Terminal, Check, Copy, ChevronDown, Loader2, AlertCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { ChatInput } from '@/components/chat/chat-input'
 import { ChatModeSelector } from '@/components/chat/chat-mode-selector'
+import { ChatModeWelcome } from '@/components/chat/chat-mode-welcome'
 import { renderMessageComponent } from './message-types'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Logo } from '@/components/ui/logo'
 import { KeywordSuggestionsTable } from './tool-ui/keyword-suggestions-table'
 import { BacklinksTable } from './tool-ui/backlinks-table'
 import { SERPTable } from './tool-ui/serp-table'
@@ -32,10 +32,8 @@ import { bootstrapConversationRecord } from '@/lib/chat/conversation-bootstrap'
 import { BlogArtifact } from './artifacts/blog-artifact'
 import { ToastArtifact, ToastMessage } from './artifacts/toast-artifact'
 import { useChatModeOptional } from './chat-mode-context'
-import { getChatModeAccentClasses, getChatModeUi } from '@/lib/chat/modes'
 import { captureProductEvent } from '@/components/providers/analytics-provider'
 import { PRODUCT_EVENTS } from '@/lib/analytics/product-events'
-import { DEFAULT_GEO_ENGINES } from '@/lib/geo/utils'
 import { DataPartRenderer } from './generative-ui/registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -49,8 +47,6 @@ import {
 import { MessageBubble } from '@/components/chat/message-bubble'
 import { AgentHandoffCard } from './agent-handoff-card'
 import { Response } from '@/components/ai-elements/response'
-import { Loader } from '@/components/ai-elements/loader'
-import { Shimmer } from '@/components/ai-elements/shimmer'
 import { Suggestions } from '@/components/ai-elements/suggestions'
 import {
   extractCitations,
@@ -76,12 +72,6 @@ const formatToolName = (name: string) => {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
-
-const GEO_TRACKED_ENGINE_LABELS = {
-  chatgpt: { label: 'ChatGPT', sub: 'OpenAI responses' },
-  perplexity: { label: 'Perplexity', sub: 'sonar + citations' },
-  google_ai_overview: { label: 'Google AI Overviews', sub: 'live SERP overview' },
-} as const
 
 type ParsedChatError = {
   message: string
@@ -1352,402 +1342,17 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   const activeArtifact = activeArtifactId ? artifacts[activeArtifactId] : null
 
-  // Empty State View - with styled ProactiveSuggestions
   if (messages.length === 0) {
-    const seoSuggestions = [
-      { id: 'keyword-gap', text: 'Analyze flowintent.com and tell me the top 5 keyword opportunities I\'m missing vs my competitors', icon: 'target' as const },
-      { id: 'keyword-target', text: 'What keywords should I target to rank for "AI SEO tools" — give me search volume, difficulty, and intent', icon: 'search' as const },
-      { id: 'competitor-scrape', text: 'Run a full competitor analysis for the keyword "content marketing platform" and scrape the top 3 ranking pages', icon: 'lightbulb' as const },
-      { id: 'backlink-profile', text: 'Check the backlink profile for ahrefs.com and identify their top referring domains', icon: 'zap' as const },
-    ]
-    const geoSuggestions = [
-      { id: 'ai-brand-visibility', text: 'My brand is "Flow Intent" (flowintent.com) — check if I appear across ChatGPT, Perplexity, and Google AI Overviews for "best AI SEO tools"', icon: 'sparkles' as const },
-      { id: 'geo-competitor', text: 'Track my brand "Flow Intent" for the query "alternatives to Ahrefs" and tell me which competitors appear', icon: 'target' as const },
-      { id: 'geo-optimize', text: 'How can I optimize my content to get cited in AI-generated answers?', icon: 'search' as const },
-      { id: 'geo-new-brand', text: 'I want to start tracking my brand across AI platforms — where do I begin?', icon: 'zap' as const },
-    ]
-    const contentSuggestions = [
-      { id: 'pillar-page', text: 'Write a comprehensive pillar page on "AI SEO" — research top-ranking competitors first', icon: 'lightbulb' as const },
-      { id: 'comparison-article', text: 'Create a comparison article for the top 5 AI writing tools, targeting "best AI writer" (check search volume first)', icon: 'target' as const },
-      { id: 'faq-page', text: 'Write an FAQ page targeting "People Also Ask" questions for the keyword "content marketing strategy"', icon: 'sparkles' as const },
-      { id: 'blog-post', text: 'Generate a blog post about Core Web Vitals optimization — include current Google benchmarks', icon: 'zap' as const },
-    ]
-    const socialSuggestions = [
-      { id: 'x-mentions', text: 'Search X for recent mentions of Flow Intent and summarize the main narratives, praise, complaints, and opportunities', icon: 'sparkles' as const },
-      { id: 'reddit-pain-points', text: 'Search Reddit for pain points around AI SEO tools and group them into content opportunities', icon: 'target' as const },
-      { id: 'competitor-social', text: 'Compare social reactions to Ahrefs and Semrush launches and find positioning gaps we can use', icon: 'search' as const },
-      { id: 'social-trends', text: 'Find emerging social-web trends for GEO and AI search across X, Reddit, and forums', icon: 'zap' as const },
-    ]
-    const modeMap = { seo: seoSuggestions, geo: geoSuggestions, content: contentSuggestions, social: socialSuggestions }
-    const defaultSuggestions = modeMap[chatMode] ?? seoSuggestions
-
-    const activeModeUi = getChatModeUi(chatMode)
-
-    // GEO mode gets a dedicated workflow onboarding panel
-    if (chatMode === 'geo') {
-      return (
-        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
-          <div className="w-full max-w-3xl space-y-6 py-4">
-            <div className="flex justify-center">
-              <ChatModeSelector />
-            </div>
-
-            {/* Hero */}
-            <div className="text-center space-y-2">
-              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">GEO / AEO Mode</h1>
-              <p className="text-zinc-400 text-base max-w-xl mx-auto">
-                Track how often your brand appears inside ChatGPT, Perplexity, and Google AI Overviews — and get actionable steps to increase your AI visibility.
-              </p>
-            </div>
-
-            {/* How it works */}
-            <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5 space-y-4">
-              <p className="text-xs font-mono uppercase tracking-widest text-violet-400">How this works</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { step: '1', label: 'Tell us your brand', detail: 'Share your brand name, website, and industry so we know what to track.' },
-                  { step: '2', label: 'Pick your queries', detail: 'Choose what people search for — we suggest the best ones based on your niche.' },
-                  { step: '3', label: 'We query the AI models', detail: 'We send your queries to ChatGPT, Perplexity, and Google AI Overviews in real time and capture their responses.' },
-                  { step: '4', label: 'Get actionable insights', detail: 'See exactly where you appear, what your competitors say, and which content will get you cited.' },
-                ].map(({ step, label, detail }) => (
-                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
-                    <div className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
-                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* What we track */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-              {DEFAULT_GEO_ENGINES.map((engine) => {
-                const engineMeta = GEO_TRACKED_ENGINE_LABELS[engine as keyof typeof GEO_TRACKED_ENGINE_LABELS]
-                if (!engineMeta) return null
-                return (
-                  <div key={engine} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
-                    <p className="text-sm font-semibold text-zinc-200">{engineMeta.label}</p>
-                    <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{engineMeta.sub}</p>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Chat input */}
-            <div className="w-full">
-              <ChatInput
-                value={input}
-                onChange={setInput}
-                onSubmit={() => handleSendMessage({ text: input })}
-                disabled={isLoading}
-                placeholder="Tell me your brand name and what you want to track..."
-                className="bg-transparent"
-              />
-            </div>
-
-            {/* Starter prompts */}
-            <div className="space-y-2">
-              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {geoSuggestions.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => handleSendMessage({ text: s.text })}
-                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-violet-500/40 hover:bg-violet-500/5 hover:text-zinc-100 transition-all duration-200"
-                  >
-                    {s.text}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    // SEO mode gets a dedicated workflow onboarding panel
-    if (chatMode === 'seo') {
-      return (
-        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
-          <div className="w-full max-w-3xl space-y-6 py-4">
-            <div className="flex justify-center">
-              <ChatModeSelector />
-            </div>
-
-            {/* Hero */}
-            <div className="text-center space-y-2">
-              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">SEO Mode</h1>
-              <p className="text-zinc-400 text-base max-w-xl mx-auto">
-                Data-driven keyword research, competitor intelligence, backlink audits, and technical SEO — every recommendation backed by real DataForSEO and Firecrawl data.
-              </p>
-            </div>
-
-            {/* How it works */}
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-4">
-              <p className="text-xs font-mono uppercase tracking-widest text-emerald-400">How this works</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { step: '1', label: 'Share your domain', detail: 'Drop in your website or a target keyword — we pull live ranking and search data instantly.' },
-                  { step: '2', label: 'Analyze the SERP', detail: 'We check who currently ranks, search volume, difficulty, and intent for your terms.' },
-                  { step: '3', label: 'Find the gaps', detail: 'We compare you against competitors to surface the keyword and content gaps worth chasing.' },
-                  { step: '4', label: 'Build the strategy', detail: 'Get prioritized actions — quick wins first, then the longer-term plays with projected impact.' },
-                ].map(({ step, label, detail }) => (
-                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
-                    <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
-                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* What we cover */}
-            <div className="flex flex-wrap justify-center gap-2">
-              {['Keyword Research', 'Competitor Analysis', 'Backlinks', 'Technical Audit', 'Trends', 'YouTube SEO'].map(pill => (
-                <span key={pill} className="rounded-full border border-zinc-800 bg-zinc-900/40 px-3 py-1.5 text-xs font-medium text-zinc-300">
-                  {pill}
-                </span>
-              ))}
-            </div>
-
-            {/* Chat input */}
-            <div className="w-full">
-              <ChatInput
-                value={input}
-                onChange={setInput}
-                onSubmit={() => handleSendMessage({ text: input })}
-                disabled={isLoading}
-                placeholder="Share your domain or a keyword to start..."
-                className="bg-transparent"
-              />
-            </div>
-
-            {/* Starter prompts */}
-            <div className="space-y-2">
-              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {seoSuggestions.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => handleSendMessage({ text: s.text })}
-                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-emerald-500/40 hover:bg-emerald-500/5 hover:text-zinc-100 transition-all duration-200"
-                  >
-                    {s.text}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    // Content mode gets a dedicated workflow onboarding panel
-    if (chatMode === 'content') {
-      const contentUi = getChatModeUi('content')
-      const contentAccent = getChatModeAccentClasses('content')
-      return (
-        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
-          <div className="w-full max-w-3xl space-y-6 py-4">
-            <div className="flex justify-center">
-              <ChatModeSelector />
-            </div>
-
-            {/* Hero */}
-            <div className="text-center space-y-2">
-              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">{contentUi.heroTitle}</h1>
-              <p className="text-zinc-400 text-base max-w-xl mx-auto">{contentUi.tagline}</p>
-            </div>
-
-            {/* How it works */}
-            <div className={cn('rounded-2xl border p-5 space-y-4', contentAccent.borderPanel, contentAccent.bgPanel)}>
-              <p className={cn('text-xs font-mono uppercase tracking-widest', contentAccent.textLabel)}>How this works</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { step: '1', label: 'Choose your topic', detail: 'Tell us what you want to create and the goal — rank, convert, or earn AI citations.' },
-                  { step: '2', label: 'Research the keywords', detail: 'We pull search volume, difficulty, and intent, then study who already ranks.' },
-                  { step: '3', label: 'Generate the content', detail: 'We write SEO and AEO-optimized content with images, structured for featured snippets.' },
-                  { step: '4', label: 'Optimize and refine', detail: 'Quality scoring and a revision pass ensure the piece is ready to publish.' },
-                ].map(({ step, label, detail }) => (
-                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
-                    <div className={cn('w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 mt-0.5', contentAccent.stepRing)}>{step}</div>
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
-                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Content types */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
-              {[
-                { label: 'Blog Post', sub: '1000-2500 words' },
-                { label: 'Landing Page', sub: 'conversion-focused' },
-                { label: 'FAQ Page', sub: 'PAA-optimized' },
-                { label: 'Comparison', sub: 'best X / X vs Y' },
-                { label: 'Pillar Page', sub: '3000+ words' },
-              ].map(({ label, sub }) => (
-                <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
-                  <p className="text-sm font-semibold text-zinc-200">{label}</p>
-                  <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{sub}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Chat input */}
-            <div className="w-full">
-              <ChatInput
-                value={input}
-                onChange={setInput}
-                onSubmit={() => handleSendMessage({ text: input })}
-                disabled={isLoading}
-                placeholder="What content do you want to create today?"
-                className="bg-transparent"
-              />
-            </div>
-
-            {/* Starter prompts */}
-            <div className="space-y-2">
-              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {contentSuggestions.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => handleSendMessage({ text: s.text })}
-                    className={cn(
-                      'text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:text-zinc-100 transition-all duration-200',
-                      contentAccent.promptHoverBorder,
-                      contentAccent.promptHoverBg
-                    )}
-                  >
-                    {s.text}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    if (chatMode === 'social') {
-      const socialUi = getChatModeUi('social')
-      const socialAccent = getChatModeAccentClasses('social')
-      return (
-        <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
-          <div className="w-full max-w-3xl space-y-6 py-4">
-            <div className="flex justify-center">
-              <ChatModeSelector />
-            </div>
-
-            <div className="text-center space-y-2">
-              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">{socialUi.heroTitle}</h1>
-              <p className="text-zinc-400 text-base max-w-xl mx-auto">{socialUi.tagline}</p>
-            </div>
-
-            <div className={cn('rounded-2xl border p-5 space-y-4', socialAccent.borderPanel, socialAccent.bgPanel)}>
-              <p className={cn('text-xs font-mono uppercase tracking-widest', socialAccent.textLabel)}>Signal map</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { step: '1', label: 'Public mentions', detail: 'Track brand, product, and founder terms across X/Twitter and Reddit.' },
-                  { step: '2', label: 'Audience language', detail: 'Group objections, pain points, questions, and buying triggers into usable themes.' },
-                  { step: '3', label: 'Competitor reaction', detail: 'Compare how people talk about competing launches, features, and pricing changes.' },
-                  { step: '4', label: 'Content angles', detail: 'Turn repeat language into SEO, GEO, and social content opportunities.' },
-                ].map(({ step, label, detail }) => (
-                  <div key={step} className="flex gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
-                    <div className={cn('w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 mt-0.5', socialAccent.stepRing)}>{step}</div>
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-200">{label}</p>
-                      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{detail}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-              {[
-                { label: 'X/Twitter', sub: 'mentions and trends' },
-                { label: 'Reddit', sub: 'pain points and gaps' },
-                { label: 'Social Web', sub: 'forums and sources' },
-              ].map(({ label, sub }) => (
-                <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
-                  <p className="text-sm font-semibold text-zinc-200">{label}</p>
-                  <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{sub}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="w-full">
-              <ChatInput
-                value={input}
-                onChange={setInput}
-                onSubmit={() => handleSendMessage({ text: input })}
-                disabled={isLoading}
-                placeholder="Search a brand, competitor, category, or audience pain point..."
-                className="bg-transparent"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-xs text-zinc-600 uppercase tracking-widest font-mono">Quick starts</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {socialSuggestions.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => handleSendMessage({ text: s.text })}
-                    className={cn(
-                      'text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:text-zinc-100 transition-all duration-200',
-                      socialAccent.promptHoverBorder,
-                      socialAccent.promptHoverBg
-                    )}
-                  >
-                    {s.text}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-
     return (
-      <div className={cn("flex flex-col h-full items-center justify-center p-8 relative bg-zinc-950 font-chat", className)}>
-        <div className="w-full max-w-4xl space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-4xl md:text-5xl font-semibold text-zinc-100 tracking-tight">Flow Intent</h1>
-            <p className="text-base md:text-lg text-zinc-500">{activeModeUi.selectorDescription}</p>
-          </div>
-          {/* Mode Selector */}
-          <div className="flex justify-center">
-            <ChatModeSelector />
-          </div>
-          <div className="w-full max-w-3xl mx-auto">
-            <ChatInput
-              value={input}
-              onChange={setInput}
-              onSubmit={() => handleSendMessage({ text: input })}
-              disabled={isLoading}
-              placeholder={placeholder}
-              className="bg-transparent"
-            />
-          </div>
-          <div className="max-w-3xl mx-auto">
-            <Suggestions
-              suggestions={defaultSuggestions}
-              onSuggestionClick={(prompt) => handleSendMessage({ text: prompt })}
-              title="Try asking"
-            />
-          </div>
-        </div>
-      </div>
+      <ChatModeWelcome
+        mode={chatMode}
+        value={input}
+        onChange={setInput}
+        onSubmit={() => handleSendMessage({ text: input })}
+        onPromptSelect={(prompt) => handleSendMessage({ text: prompt })}
+        disabled={isLoading}
+        className={className}
+      />
     )
   }
 
@@ -1761,7 +1366,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           : "w-full"
       )}>
         <Conversation>
-          <ConversationContent className="px-4 py-2 max-w-3xl mx-auto">
+          <ConversationContent className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8">
             {isLoadingConversation && messages.length === 0 ? (
               <ConversationLoadingSkeleton />
             ) : (
@@ -1820,7 +1425,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
             {showThinkingIndicator && (
               <MessageBubble role="assistant" isStreaming>
                 <div className="flex items-center gap-2 text-zinc-400" role="status" aria-live="polite" aria-label="AI is thinking">
-                  <Loader2 size={16} className="text-emerald-400 animate-spin" aria-hidden="true" />
+                  <Loader2 size={16} className="animate-spin text-red-400" aria-hidden="true" />
                   <span>Thinking...</span>
                 </div>
               </MessageBubble>
@@ -1832,8 +1437,8 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
           <ConversationScrollButton />
         </Conversation>
 
-        <div className="p-4">
-          <div className="max-w-3xl mx-auto space-y-3">
+        <div className="border-t border-zinc-800 bg-[#090909] p-4">
+          <div className="mx-auto max-w-4xl space-y-3">
             {error && (
               <ChatErrorBanner
                 error={error}
@@ -1856,7 +1461,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
               />
             )}
             {/* Mode selector above input */}
-            <div className="flex justify-start">
+            <div className="flex justify-start lg:hidden">
               <ChatModeSelector />
             </div>
             <div className="flex items-center gap-3">
@@ -1868,7 +1473,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   type="button"
                   onClick={() => stop?.()}
                   aria-label="Stop generating"
-                  className="h-10 shrink-0 rounded-full border border-zinc-700/50 bg-zinc-800/50 px-4 text-xs font-semibold uppercase tracking-wide text-zinc-200 hover:bg-zinc-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 cursor-pointer"
+                  className="h-10 shrink-0 border border-zinc-700 bg-zinc-900 px-4 text-xs font-semibold uppercase tracking-wide text-zinc-200 hover:border-red-500/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 cursor-pointer"
                 >
                   Stop
                 </button>

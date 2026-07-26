@@ -7,6 +7,7 @@ import { useAgent } from '@/components/providers/agent-provider'
 import {
   getChatModeFromMetadata,
   parseChatModeFromSearchParam,
+  resolveDashboardChatMode,
 } from '@/lib/chat/conversation-mode'
 import { isChatMode, type ChatMode } from '@/lib/chat/modes'
 
@@ -15,42 +16,40 @@ import { isChatMode, type ChatMode } from '@/lib/chat/modes'
  */
 export function DashboardChatModeSync() {
   const searchParams = useSearchParams()
-  const { chatMode, setChatMode } = useChatModeOptional()
+  const { chatMode, isHydrated, setChatMode } = useChatModeOptional()
   const { state, actions } = useAgent()
   const lastPersistedRef = useRef<{ conversationId: string; mode: ChatMode } | null>(null)
   const lastRestoredConversationId = useRef<string | null>(null)
 
   const urlMode = parseChatModeFromSearchParam(searchParams?.get('mode'))
 
-  useEffect(() => {
-    if (!urlMode) return
-    setChatMode(urlMode)
-    lastRestoredConversationId.current = null
-  }, [urlMode, setChatMode])
+  const activeConversation = state.activeConversation
+  const conversationMode = activeConversation
+    ? (activeConversation.chatMode && isChatMode(activeConversation.chatMode)
+        ? activeConversation.chatMode
+        : null) ?? getChatModeFromMetadata(activeConversation.metadata)
+    : null
+  const authoritativeMode = resolveDashboardChatMode({
+    urlMode,
+    conversationMode,
+    fallbackMode: chatMode,
+  })
+  const restoreKey = `${urlMode ?? 'no-url'}:${activeConversation?.id ?? 'no-conversation'}`
 
   useEffect(() => {
-    if (urlMode) return
+    if (!isHydrated) return
+    if (lastRestoredConversationId.current === restoreKey) return
 
-    const conv = state.activeConversation
-    if (!conv) {
-      lastRestoredConversationId.current = null
-      return
+    lastRestoredConversationId.current = restoreKey
+    if (authoritativeMode !== chatMode) {
+      setChatMode(authoritativeMode)
     }
-    if (lastRestoredConversationId.current === conv.id) return
-    lastRestoredConversationId.current = conv.id
-
-    const fromConversation =
-      (conv.chatMode && isChatMode(conv.chatMode) ? conv.chatMode : null) ??
-      getChatModeFromMetadata(conv.metadata)
-
-    if (fromConversation) {
-      setChatMode(fromConversation)
-    }
-  }, [state.activeConversation, setChatMode, urlMode])
+  }, [authoritativeMode, chatMode, isHydrated, restoreKey, setChatMode])
 
   useEffect(() => {
     const conv = state.activeConversation
-    if (!conv?.id) return
+    if (!isHydrated || !conv?.id) return
+    if (authoritativeMode !== chatMode) return
 
     const stored =
       (conv.chatMode && isChatMode(conv.chatMode) ? conv.chatMode : null) ??
@@ -74,7 +73,7 @@ export function DashboardChatModeSync() {
     }, 400)
 
     return () => window.clearTimeout(timeout)
-  }, [actions, chatMode, state.activeConversation])
+  }, [actions, authoritativeMode, chatMode, isHydrated, state.activeConversation])
 
   return null
 }

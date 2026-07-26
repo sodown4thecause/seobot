@@ -124,7 +124,10 @@ export const CHAT_MODE_LABELS: Record<ChatMode, string> = {
   social: 'Social',
 }
 
+export const PRIMARY_CHAT_MODES = ['seo', 'geo', 'content'] as const satisfies readonly ChatMode[]
+
 export const CHAT_MODE_LIST = CHAT_MODES.map((id) => CHAT_MODE_UI[id])
+export const PRIMARY_CHAT_MODE_LIST = PRIMARY_CHAT_MODES.map((id) => CHAT_MODE_UI[id])
 
 export function getChatModeUi(mode: ChatMode): ChatModeUiConfig {
   return CHAT_MODE_UI[mode]
