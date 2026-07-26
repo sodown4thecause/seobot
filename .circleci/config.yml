@@ -14,7 +14,7 @@ commands:
       - run:
           name: Enable pnpm
           command: |
-            echo 'export PNPM_HOME=/home/circleci/.local/share/pnpm' >> "$BASH_ENV"
+            echo 'export PNPM_HOME=/home/circleci/.local/share/pnpm/bin' >> "$BASH_ENV"
             echo 'export PATH=$PNPM_HOME:$PATH' >> "$BASH_ENV"
             source "$BASH_ENV"
             corepack enable
