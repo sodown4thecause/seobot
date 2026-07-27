@@ -9,6 +9,7 @@ import {
   rateLimitMiddleware,
   RATE_LIMITS,
   createRateLimitResponse,
+  resetRateLimitStateForTests,
 } from '@/lib/redis/rate-limit'
 import { getRedisClient } from '@/lib/redis/client'
 
@@ -20,6 +21,7 @@ vi.mock('@/lib/redis/client', () => ({
 describe('Rate Limiting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetRateLimitStateForTests()
   })
 
   afterEach(() => {

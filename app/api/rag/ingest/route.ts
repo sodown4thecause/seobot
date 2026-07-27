@@ -4,6 +4,9 @@ import { serverEnv } from '@/lib/config/env'
 import { runWeeklyIngestion } from '@/lib/rag/weekly-ingestion'
 import { CHAT_MODES, isChatMode } from '@/lib/chat/modes'
 import type { ChatMode } from '@/lib/chat/modes'
+import { getRedisClient } from '@/lib/redis/client'
+import { getBatchHttpStatus, isBatchSuccessful } from '@/lib/cron/batch-status'
+import { getWeeklyRunKey, runScheduledOnce } from '@/lib/cron/scheduled-run'
 
 export const maxDuration = 300
 
@@ -43,12 +46,31 @@ export async function GET(req: Request) {
     } else {
       modes = [...CHAT_MODES]
     }
-    const results = await runWeeklyIngestion(modes)
+    const force = new URL(req.url).searchParams.get('force') === 'true'
+    const execute = () => runWeeklyIngestion(modes)
+    const redis = getRedisClient()
+    if (!force && !redis) {
+      throw new Error('Redis is required for scheduled-run idempotency')
+    }
+    const modeKey = modes.slice().sort().join('-')
+    const scheduled = force
+      ? { executed: true as const, value: await execute() }
+      : await runScheduledOnce(
+          redis!,
+          getWeeklyRunKey(`weekly-rag-ingest-${modeKey}`),
+          8 * 24 * 60 * 60,
+          execute,
+          isBatchSuccessful
+        )
+    if (!scheduled.executed) {
+      return NextResponse.json({ success: true, skipped: true, reason: 'already-executed' })
+    }
+    const results = scheduled.value
     const failed = results.filter(result => result.status === 'failed')
 
     return NextResponse.json(
       { success: failed.length === 0, results },
-      { status: failed.length > 0 && failed.length === results.length ? 500 : 200 }
+      { status: getBatchHttpStatus(results) }
     )
   } catch (error) {
     console.error('[Cron] Weekly RAG ingestion failed:', error)

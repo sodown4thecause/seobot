@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { captureClientException } from "@/components/providers/analytics-provider";
 
 export default function Error({
     error,
@@ -11,6 +12,10 @@ export default function Error({
 }) {
     useEffect(() => {
         console.error("Error boundary caught:", error);
+        captureClientException(error, {
+            boundary: "app",
+            digest: error.digest,
+        });
     }, [error]);
 
     return (
