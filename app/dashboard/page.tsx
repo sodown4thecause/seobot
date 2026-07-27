@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { useMemo, useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AIChatInterface } from '@/components/chat/ai-chat-interface'
@@ -196,28 +195,20 @@ function DashboardInner() {
   // Dashboard always shows all NextPhase features now
 
   return (
-    <div className="relative flex h-full flex-col bg-zinc-950">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex-1 min-h-0 px-6 pt-6"
-      >
-        {/* Chat Interface - Full height */}
-        <div className="max-w-7xl mx-auto h-full">
-          <AIChatInterface
-            context={context}
-            placeholder={isNewUser ? "Tell me about your business..." : "Ask anything..."}
-            className="h-full"
-            conversationId={resolvedConversationId}
-            agentId={activeAgentId}
-            initialMessage={initialMessage}
-            autoSendMessage={workflowMessage}
-            autoSendKey={workflowAutoSendKey}
-            key={`${resolvedConversationId ?? 'no-conversation'}:${workflowId ?? 'no-workflow'}`}
-          />
-        </div>
-      </motion.div>
+    <div className="relative flex h-full flex-col bg-[#090909]">
+      <div className="min-h-0 flex-1">
+        <AIChatInterface
+          context={context}
+          placeholder={isNewUser ? 'Tell me about your business…' : 'Ask FlowIntent…'}
+          className="h-full"
+          conversationId={resolvedConversationId}
+          agentId={activeAgentId}
+          initialMessage={initialMessage}
+          autoSendMessage={workflowMessage}
+          autoSendKey={workflowAutoSendKey}
+          key={`${resolvedConversationId ?? 'no-conversation'}:${workflowId ?? 'no-workflow'}`}
+        />
+      </div>
     </div>
   )
 }

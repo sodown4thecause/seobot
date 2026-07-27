@@ -24,7 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useAgent, type Conversation } from '@/components/providers/agent-provider'
 import { useChatModeOptional } from '@/components/chat/chat-mode-context'
-import { buildDashboardChatHref } from '@/lib/chat/conversation-mode'
+import { buildDashboardChatHref, getChatModeFromMetadata } from '@/lib/chat/conversation-mode'
 
 export interface SidebarProps {
   open: boolean
@@ -34,6 +34,15 @@ export interface SidebarProps {
 const DEFAULT_VISIBLE_RECENT_CHATS = 5
 
 const DASHBOARD_LINK_GROUPS = [
+  {
+    title: 'Work modes',
+    hint: 'Choose the kind of decision you need to make',
+    links: [
+      { name: 'SEO Intelligence', href: '/dashboard?mode=seo', icon: Search },
+      { name: 'GEO / AEO', href: '/dashboard?mode=geo', icon: Sparkles },
+      { name: 'Content Production', href: '/dashboard?mode=content', icon: FileText },
+    ],
+  },
   {
     title: 'Workspace',
     hint: 'Saved artifacts and library items from all modes',
@@ -54,10 +63,7 @@ const DASHBOARD_LINK_GROUPS = [
   {
     title: 'GEO / AEO',
     hint: 'AI visibility snapshots — pairs with GEO / AEO mode',
-    links: [
-      { name: 'AEO Insights', href: '/dashboard/aeo', icon: Sparkles },
-      { name: 'GEO / AEO Chat', href: '/dashboard?mode=geo', icon: MessageSquare },
-    ],
+    links: [{ name: 'AEO Insights', href: '/dashboard/aeo', icon: MessageSquare }],
   },
 ] as const
 
@@ -101,9 +107,10 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
 
   const handleSelectConversation = React.useCallback((conv: Conversation) => {
     actions.setActiveConversation(conv)
-    const mode = conv.chatMode ?? undefined
+    const mode = conv.chatMode ?? getChatModeFromMetadata(conv.metadata) ?? undefined
     router.push(buildDashboardChatHref({ conversationId: conv.id, mode }))
-  }, [actions, router])
+    if (open) onToggle()
+  }, [actions, onToggle, open, router])
 
   const handleDeleteConversation = React.useCallback(async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -121,7 +128,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
         onClick={onToggle}
         aria-label={open ? 'Close sidebar' : 'Open sidebar'}
         className={cn(
-          'fixed top-1/2 -translate-y-1/2 z-50 flex items-center justify-center',
+          'fixed top-1/2 -translate-y-1/2 z-50 flex items-center justify-center md:hidden',
           'w-5 h-14 rounded-r-lg bg-zinc-800 border border-l-0 border-zinc-700',
           'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-all duration-300',
           open ? 'left-[260px]' : 'left-0'
@@ -144,9 +151,9 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
         role="navigation"
         aria-label="Main navigation"
         className={cn(
-          'fixed top-0 left-0 z-40 h-screen w-[260px] shrink-0',
-          'border-r border-zinc-800 bg-zinc-950 flex flex-col',
-          'transition-transform duration-300',
+          'fixed top-0 left-0 z-40 h-screen w-[260px] shrink-0 md:relative md:z-20 md:w-[248px]',
+          'border-r border-zinc-800 bg-[#090909] flex flex-col',
+          'transition-transform duration-300 md:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -165,7 +172,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
           <Button
             id="new-chat-btn"
             onClick={handleNewChat}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-lg transition-all justify-start gap-2 px-3"
+            className="w-full rounded-none bg-red-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-red-500 justify-start gap-2"
           >
             <MessageSquarePlus className="h-4 w-4 shrink-0" />
             <span>New Chat</span>
@@ -176,7 +183,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
           {/* ── Dashboard pages ── */}
           <div className="py-2 border-b border-zinc-800/60 space-y-3">
             <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
-              Analytics workspaces
+              Navigate
             </p>
             {DASHBOARD_LINK_GROUPS.map((group) => (
               <div key={group.title} className="space-y-0.5">
@@ -187,24 +194,24 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                 <nav className="space-y-0.5">
                   {group.links.map((item) => {
                     const Icon = item.icon
-                    const isGeoChatLink = item.href.includes('mode=geo')
-                    const isActive = isGeoChatLink
-                      ? pathname === '/dashboard' && searchParams?.get('mode') === 'geo'
+                    const modeParam = item.href.match(/[?&]mode=([^&]+)/)?.[1]
+                    const isActive = modeParam
+                      ? pathname === '/dashboard' && (searchParams?.get('mode') ?? chatMode) === modeParam
                       : pathname === item.href || pathname?.startsWith(`${item.href}/`)
-                    const isGeoGroup = group.title === 'GEO / AEO'
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
                         className={cn(
-                          'flex items-center rounded-lg px-2 py-1.5 text-sm transition-colors gap-2',
+                          'flex items-center border-l-2 px-2 py-2 text-sm transition-colors gap-2',
                           isActive
-                            ? isGeoGroup
-                              ? 'bg-violet-500/10 text-violet-300'
-                              : 'bg-emerald-500/10 text-emerald-300'
-                            : 'text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200'
+                            ? 'border-red-500 bg-zinc-900 text-zinc-100'
+                            : 'border-transparent text-zinc-500 hover:bg-zinc-900/70 hover:text-zinc-200'
                         )}
                         aria-current={isActive ? 'page' : undefined}
+                        onClick={() => {
+                          if (open) onToggle()
+                        }}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
                         <span className="text-sm">{item.name}</span>
@@ -234,8 +241,8 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                       className={cn(
                         'group relative flex items-center rounded-lg px-2 py-1.5 transition-colors cursor-pointer select-none',
                         isActive
-                          ? 'bg-emerald-500/10 text-emerald-300'
-                          : 'text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200'
+                          ? 'bg-zinc-900 text-zinc-100'
+                          : 'text-zinc-500 hover:bg-zinc-900/70 hover:text-zinc-200'
                       )}
                       onClick={() => handleSelectConversation(conv)}
                       role="button"

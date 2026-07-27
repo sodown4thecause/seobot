@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { DashboardChatModeSync } from '@/components/chat/dashboard-chat-mode-sync'
+import { ChatModeSelector } from '@/components/chat/chat-mode-selector'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Sidebar } from '@/components/dashboard/sidebar'
@@ -53,6 +54,7 @@ export function DashboardClientLayout({ children }: DashboardClientLayoutProps) 
   const [queryClient] = useState(() => createDashboardQueryClient())
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const currentPage = getCurrentPageName(pathname ?? '')
+  const isChatDashboard = pathname === '/dashboard'
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -73,10 +75,19 @@ export function DashboardClientLayout({ children }: DashboardClientLayoutProps) 
                     />
                   </Suspense>
                   <main className={cn('relative z-10 flex h-full flex-1 flex-col')}>
-                    <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/90 px-5 py-3 backdrop-blur">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        <DashboardBreadcrumbs currentPage={currentPage} />
-                        <UsageSummaryCard className="max-w-sm lg:min-w-[240px]" />
+                    <header className="shrink-0 border-b border-zinc-800 bg-[#090909]">
+                      <div className="flex min-h-14 items-stretch">
+                        <div className="flex min-w-[180px] items-center px-5">
+                          <DashboardBreadcrumbs currentPage={currentPage} />
+                        </div>
+                        {isChatDashboard && (
+                          <div className="hidden min-w-0 flex-1 items-stretch lg:flex">
+                            <ChatModeSelector variant="header" className="mx-auto" />
+                          </div>
+                        )}
+                        <div className="ml-auto hidden items-center border-l border-zinc-800 px-4 xl:flex">
+                          <UsageSummaryCard className="min-w-[220px]" />
+                        </div>
                       </div>
                     </header>
                     <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>

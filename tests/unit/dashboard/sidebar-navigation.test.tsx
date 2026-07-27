@@ -22,6 +22,9 @@ describe('dashboard sidebar navigation', () => {
       <Sidebar open={false} onToggle={() => {}} />
     )
 
+    expect(html).toContain('SEO Intelligence')
+    expect(html).toContain('GEO / AEO')
+    expect(html).toContain('Content Production')
     expect(html).toContain('Website Audit')
     expect(html).not.toContain('Overview')
     expect(html).not.toContain('Free AEO Audit')

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { ArrowUp, Image, Search } from 'lucide-react'
+import { ArrowUp, Image as ImageIcon, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ChatInputProps {
@@ -46,7 +46,7 @@ export function ChatInput({
 
   return (
     <div className={cn("w-full", className)}>
-      <div className="relative flex items-center bg-zinc-900/50 rounded-xl border border-zinc-700/50">
+      <div className="relative flex items-center border border-zinc-700/70 bg-zinc-950 transition-colors focus-within:border-red-500/60">
         {/* Action buttons - image generate and web search */}
         <div className="flex items-center gap-1 pl-2">
           {onImageGenerate && (
@@ -58,7 +58,7 @@ export function ChatInput({
               aria-label="Generate image"
               className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              <Image className="w-4 h-4" aria-hidden="true" />
+              <ImageIcon className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
           {onWebSearch && (
@@ -101,7 +101,7 @@ export function ChatInput({
             onClick={onSubmit}
             disabled={disabled}
             aria-label="Send message"
-            className="flex-shrink-0 p-2 m-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 transition-all cursor-pointer"
+            className="m-2 flex-shrink-0 bg-red-600 p-2 text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 cursor-pointer"
           >
             <ArrowUp className="w-5 h-5" aria-hidden="true" />
           </button>
