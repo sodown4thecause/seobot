@@ -19,7 +19,7 @@ function sanitizeCompetitiveLanguage(input: string): string {
 }
 
 export function buildShareCopy(input: BuildShareCopyInput): string {
-  const base = `${input.brand} topical authority score is ${input.score}/100. Fastest next move: ${input.action}`
+  const base = `${input.brand} topical authority score is ${input.score}/100. Your fastest next move: ${input.action}`
   return sanitizeCompetitiveLanguage(base)
 }
 

@@ -4,16 +4,6 @@ import posthog from 'posthog-js'
 import { PostHogProvider as PHProvider } from 'posthog-js/react'
 
 const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
-const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com'
-
-if (typeof window !== 'undefined' && posthogKey) {
-  posthog.init(posthogKey, {
-    api_host: posthogHost,
-    person_profiles: 'identified_only',
-    capture_pageview: false,
-    capture_pageleave: true,
-  })
-}
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   if (!posthogKey) {
@@ -35,6 +25,23 @@ export function resetPostHogUser() {
     return
   }
   posthog.reset()
+}
+
+export function captureClientException(
+  error: unknown,
+  properties?: Record<string, string | number | boolean | null | undefined>
+) {
+  if (!posthogKey || typeof window === 'undefined') {
+    return
+  }
+
+  const cleanProperties = properties
+    ? Object.fromEntries(
+        Object.entries(properties).filter(([, value]) => value !== undefined && value !== null)
+      )
+    : undefined
+
+  posthog.captureException(error, cleanProperties)
 }
 
 export function captureProductEvent(
