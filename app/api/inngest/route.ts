@@ -11,7 +11,6 @@
 import { serve } from 'inngest/next'
 import { inngest } from '@/lib/jobs/inngest-client'
 import { refreshDashboardJob } from '@/lib/jobs/functions/refresh-dashboard'
-import { fortnightlyResearchJob } from '@/lib/jobs/functions/fortnightly-research'
 
 /**
  * Create the Inngest serve handler
@@ -24,7 +23,6 @@ const handler = serve({
   client: inngest,
   functions: [
     refreshDashboardJob,
-    fortnightlyResearchJob,
   ],
 })
 

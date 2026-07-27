@@ -32,21 +32,38 @@ process.env.DATABASE_URL =
 
 // Mock Next.js server components
 vi.mock('server-only', () => ({}))
+vi.mock('next/headers', () => ({
+  headers: vi.fn(async () => new Headers()),
+  cookies: vi.fn(async () => ({
+    get: vi.fn(),
+    getAll: vi.fn(() => []),
+    set: vi.fn(),
+    delete: vi.fn(),
+  })),
+}))
 
-// Mock Better Auth server SDK (avoids crashes in unit tests)
-vi.mock('@/lib/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn(async () => ({
-        user: { id: 'test-user-id', email: 'test@test.com', name: 'Test User' },
-      })),
-    },
-  },
-  getCurrentUser: vi.fn(async () => ({
+const { testUser, getTestSession } = vi.hoisted(() => {
+  const user = {
     id: 'test-user-id',
     email: 'test@test.com',
     name: 'Test User',
-  })),
+  }
+  return {
+    testUser: user,
+    getTestSession: vi.fn(async () => ({ user })),
+  }
+})
+
+// Mock Better Auth server SDK (avoids crashes in unit tests)
+vi.mock('@/lib/auth-config', () => ({
+  auth: { api: { getSession: getTestSession } },
+}))
+vi.mock('@/lib/auth', () => ({
+  auth: { api: { getSession: getTestSession } },
+  getCurrentUser: vi.fn(async () => testUser),
+  getUserId: vi.fn(async () => testUser.id),
+  requireUserId: vi.fn(async () => testUser.id),
+  getSession: getTestSession,
 }))
 
 // Mock env config to bypass validation in tests

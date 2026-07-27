@@ -6,8 +6,16 @@ const mocks = vi.hoisted(() => ({
   runDashboardAction: vi.fn(),
 }))
 
-vi.mock('@/lib/auth/clerk', () => ({
+vi.mock('@/lib/auth', () => ({
   getUserId: mocks.getUserId,
+}))
+
+vi.mock('@/lib/billing/subscription-guard', () => ({
+  requireApiSubscription: vi.fn(async () => ({
+    success: true,
+    userId: 'user_123',
+    subscription: { hasSubscription: true },
+  })),
 }))
 
 vi.mock('@/lib/dashboard/actions/orchestrator', () => ({

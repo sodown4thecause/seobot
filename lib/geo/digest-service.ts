@@ -1,12 +1,9 @@
 import 'server-only'
 
-import {
-  dailyDigestDocumentSchema,
-  geoHealthResponseSchema,
-  geoSuggestionsSchema,
-  type DailyDigestDocument,
-  type GeoHealthResponse,
-  type GeoSuggestions,
+import type {
+  DailyDigestDocument,
+  GeoHealthResponse,
+  GeoSuggestions,
 } from '@/lib/geo/digest-types'
 import { getGeoDigestByDate, getLatestGeoDigest, listGeoDigestTrends } from '@/lib/geo/digest-store'
 import {
@@ -17,6 +14,18 @@ import {
   fetchSuggestionsFromApi,
   isGeoApiConfigured,
 } from '@/lib/geo/geo-api-client'
+
+export async function fetchSuggestionsWithFallback<T>(
+  fallback: T,
+  fetchSuggestions: () => Promise<T | null>
+) {
+  try {
+    return (await fetchSuggestions()) ?? fallback
+  } catch (error) {
+    console.error('[GEO Digest] Suggestion refresh failed; using digest suggestions:', error)
+    return fallback
+  }
+}
 
 export interface GeoDigestResponse {
   source: 'neon' | 'geo-api'
@@ -32,7 +41,10 @@ export async function resolveLatestGeoDigest(): Promise<GeoDigestResponse | null
   if (isGeoApiConfigured()) {
     const remote = await fetchLatestDigestFromApi()
     if (remote) {
-      const suggestions = await fetchSuggestionsFromApi(remote.digestDate)
+      const suggestions = await fetchSuggestionsWithFallback(
+        remote.suggestions,
+        () => fetchSuggestionsFromApi(remote.digestDate)
+      )
       return {
         source: 'geo-api',
         digestDate: remote.digestDate,
@@ -62,7 +74,10 @@ export async function resolveGeoDigestByDate(date: string): Promise<GeoDigestRes
   if (isGeoApiConfigured()) {
     const digest = await fetchDigestFromApiByDate(date)
     if (digest) {
-      const suggestions = await fetchSuggestionsFromApi(date)
+      const suggestions = await fetchSuggestionsWithFallback<GeoSuggestions | null>(
+        null,
+        () => fetchSuggestionsFromApi(date)
+      )
       return {
         source: 'geo-api',
         digestDate: date,

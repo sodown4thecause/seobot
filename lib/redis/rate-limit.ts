@@ -76,6 +76,11 @@ interface InMemoryRateLimitEntry {
 
 const inMemoryRateLimits = new Map<string, InMemoryRateLimitEntry>()
 
+export function resetRateLimitStateForTests() {
+  rateLimiters.clear()
+  inMemoryRateLimits.clear()
+}
+
 /**
  * Parse window string to milliseconds
  */

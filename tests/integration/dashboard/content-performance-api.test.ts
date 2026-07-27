@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   buildContentPerformanceSnapshot: vi.fn(),
 }))
 
-vi.mock('@/lib/auth/clerk', () => ({
+vi.mock('@/lib/auth', () => ({
   getUserId: mocks.getUserId,
 }))
 
@@ -62,7 +62,7 @@ describe('content performance dashboard API routes', () => {
 
     expect(response.status).toBe(200)
     expect(payload.success).toBe(true)
-    expect(payload.refreshQueued).toBe(true)
-    expect(payload.jobId).toBeTypeOf('string')
+    expect(payload.refreshed).toBe(true)
+    expect(payload.data.workspace).toBe('content-performance')
   })
 })

@@ -6,17 +6,13 @@
 import { registerTelemetry } from 'ai'
 import { OpenTelemetry } from '@ai-sdk/otel'
 import { isLangfuseEnabled, getLangfuseConfig } from '@/lib/observability/langfuse'
-import * as Sentry from '@sentry/nextjs'
 
 declare global {
-  // eslint-disable-next-line no-var
   var langfuseSpanProcessor: { forceFlush: () => Promise<void> } | undefined
 }
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    await import('./sentry.server.config')
-
     if (!isLangfuseEnabled()) {
       console.log('[Langfuse] Tracing disabled — missing keys or LANGFUSE_ENABLED=false')
     } else {
@@ -46,10 +42,40 @@ export async function register() {
       })
     }
   }
-
-  if (process.env.NEXT_RUNTIME === 'edge') {
-    await import('./sentry.edge.config')
-  }
 }
 
-export const onRequestError = Sentry.captureRequestError
+type RequestErrorRequest = {
+  path: string
+  method: string
+}
+
+type RequestErrorContext = {
+  routerKind?: string
+  routePath?: string
+  routeType?: string
+  renderSource?: string
+  revalidateReason?: string
+  renderType?: string
+}
+
+export async function onRequestError(
+  error: unknown,
+  request: RequestErrorRequest,
+  context: RequestErrorContext
+) {
+  const { captureServerException } = await import('@/lib/analytics/posthog-server')
+  await captureServerException(error, {
+    distinctId: 'server',
+    properties: {
+      runtime: process.env.NEXT_RUNTIME,
+      path: request.path,
+      method: request.method,
+      routerKind: context.routerKind,
+      routePath: context.routePath,
+      routeType: context.routeType,
+      renderSource: context.renderSource,
+      revalidateReason: context.revalidateReason,
+      renderType: context.renderType,
+    },
+  })
+}
