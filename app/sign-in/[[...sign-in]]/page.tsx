@@ -1,6 +1,9 @@
 import LoginForm from '@/components/auth/LoginForm'
 import Link from 'next/link'
 import { SymbolBackground } from '@/components/landing/symbol-background'
+import { AUTH_PAGE_METADATA } from '@/lib/seo/auth-metadata'
+
+export const metadata = AUTH_PAGE_METADATA
 
 export default function SignInPage() {
     return (

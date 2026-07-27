@@ -101,3 +101,7 @@ export function getCaseStudy(slug: string): CaseStudy | undefined {
 export function getCaseStudySlugs(): string[] {
   return CASE_STUDIES.map((c) => c.slug)
 }
+
+export function getRelatedCaseStudies(slug: string): CaseStudy[] {
+  return CASE_STUDIES.filter((study) => study.slug !== slug)
+}

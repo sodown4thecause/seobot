@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
-import { getBlogPosts, getCaseStudies } from '@/lib/webflow'
+import { getBlogPosts } from '@/lib/webflow'
+import { getCaseStudies } from '@/lib/case-studies'
 import { absoluteUrl } from '@/lib/seo/site'
 
 type SitemapEntry = MetadataRoute.Sitemap[number]
@@ -14,7 +15,6 @@ const STATIC_ROUTES: Array<{
   { path: '/audit', changeFrequency: 'monthly', priority: 0.9 },
   { path: '/aeo-auditor', changeFrequency: 'monthly', priority: 0.85 },
   { path: '/reddit-gap', changeFrequency: 'monthly', priority: 0.8 },
-  { path: '/diagnostic', changeFrequency: 'monthly', priority: 0.7 },
   { path: '/blog', changeFrequency: 'weekly', priority: 0.8 },
   { path: '/case-studies', changeFrequency: 'monthly', priority: 0.75 },
   { path: '/privacy', changeFrequency: 'yearly', priority: 0.2 },
@@ -46,7 +46,8 @@ export async function getIndexableRoutes(): Promise<MetadataRoute.Sitemap> {
   )
 
   try {
-    const [posts, caseStudies] = await Promise.all([getBlogPosts(300), getCaseStudies(300)])
+    const posts = await getBlogPosts(300)
+    const caseStudies = getCaseStudies()
 
     routes.push(
       ...posts
@@ -59,10 +60,8 @@ export async function getIndexableRoutes(): Promise<MetadataRoute.Sitemap> {
           }),
         ),
       ...caseStudies
-        .filter((study) => study.slug)
         .map((study) =>
           toSitemapEntry(`/case-studies/${study.slug}`, {
-            lastModified: study.lastUpdated ?? study.lastPublished ?? study.createdOn,
             changeFrequency: 'monthly',
             priority: 0.65,
           }),

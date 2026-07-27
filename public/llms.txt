@@ -7,7 +7,7 @@ FlowIntent is the first SEO platform built for both traditional search engines a
 ## Most important
 
 - [Get Your Free AI Trust Audit](https://flowintent.com/audit): Discover how AI chatbots represent your brand
-- [Answer Engine Optimization Guide](https://flowintent.com/guides/answer-engine-optimization): Complete guide to AEO
+- [Answer Engine Optimization Guide](https://flowintent.com/blog/answer-engine-optimization-aeo): Complete guide to AEO
 - [Pricing](https://flowintent.com/prices): Free beta access and upcoming premium plan
 
 ## Product
@@ -18,13 +18,13 @@ FlowIntent is the first SEO platform built for both traditional search engines a
 
 ## Resources
 
-- [Answer Engine Optimization (AEO)](https://flowintent.com/guides/answer-engine-optimization): What is AEO and why it matters
-- [AEO vs GEO](https://flowintent.com/guides/aeo-vs-geo): Understanding the difference between Answer Engine and Generative Engine Optimization
-- [ChatGPT SEO](https://flowintent.com/guides/chatgpt-seo): How to optimize for ChatGPT search and citations
+- [Answer Engine Optimization (AEO)](https://flowintent.com/blog/answer-engine-optimization-aeo): What is AEO and why it matters
+- [AEO vs GEO](https://flowintent.com/blog/generative-engine-optimization-geo): Understanding the difference between Answer Engine and Generative Engine Optimization
+- [ChatGPT SEO](https://flowintent.com/blog/llm-seo-explained): How to optimize for ChatGPT search and citations
 
 ## Guides
 
-- [Guides](https://flowintent.com/guides): How FlowIntent works and practical walkthroughs
+- [Guides](https://flowintent.com/blog): How FlowIntent works and practical walkthroughs
 - [Knowledge Hub](https://flowintent.com/blog): Latest articles on SEO, AEO, and AI search
 
 ## Optional

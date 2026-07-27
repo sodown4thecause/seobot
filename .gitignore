@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -134,4 +134,5 @@ scripts/publish-all-articles.ts
 scripts/publish-json-to-sanity.ts
 scripts/test-chat-questions.ts
 .firecrawl/
+.seo-cache/
 .env.local

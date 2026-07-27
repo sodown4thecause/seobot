@@ -6,6 +6,7 @@ import { AIStateProvider } from '@/lib/context/ai-state-context';
 import { PostHogProvider } from '@/components/providers/analytics-provider';
 import { PostHogPageView } from '@/components/providers/posthog-page-view';
 import { SITE_URL } from '@/lib/seo/site';
+import { siteSchemaMarkup } from '@/lib/seo/site-schema';
 
 const notoSans = Noto_Sans({
   subsets: ["latin"],
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/site.webmanifest",
-  description: "FlowIntent is the AI-powered intent marketing platform for answer engine optimization (AEO). Optimize for Google, ChatGPT, Perplexity & Gemini. AI Trust Audits, buyer intent data analysis, and automated content creation. Free trial.",
+  description: "FlowIntent unifies SEO, GEO and AEO research for Google, ChatGPT, Perplexity and Google AI Overviews, with live data and content workflows.",
   keywords: [
     "intent based marketing",
     "answer engine optimization",
@@ -74,78 +75,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const schemaMarkup = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "WebSite",
-        "@id": "https://flowintent.com/#website",
-        "name": "FlowIntent",
-        "url": "https://flowintent.com",
-        "description": "AI-powered intent marketing platform for answer engine optimization (AEO)",
-        "publisher": { "@id": "https://flowintent.com/#organization" },
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": {
-            "@type": "EntryPoint",
-            "urlTemplate": "https://flowintent.com/blog?q={search_term_string}",
-          },
-          "query-input": "required name=search_term_string",
-        },
-      },
-      {
-        "@type": "SoftwareApplication",
-        "@id": "https://flowintent.com/#software",
-        "name": "FlowIntent",
-        "applicationCategory": "BusinessApplication",
-        "applicationSubCategory": "SEO & Answer Engine Optimization",
-        "operatingSystem": "Web",
-        "offers": {
-          "@type": "AggregateOffer",
-          "lowPrice": "0",
-          "highPrice": "39",
-          "priceCurrency": "USD",
-          "offerCount": "2",
-        },
-        "featureList": [
-          "AI Trust Audits",
-          "Answer Engine Optimization (AEO)",
-          "Competitor Analysis",
-          "Buyer Intent Data Analysis",
-          "Automated Content Creation",
-          "EEAT Scoring",
-          "LLM Citation Tracking",
-          "DataForSEO Integration (70+ endpoints)",
-          "AI Search Visibility Monitoring",
-        ],
-        "description": "AI-powered intent marketing platform that optimizes for Google, ChatGPT, Perplexity & Gemini. Get AI Trust Audits, buyer intent data analysis, and automated content creation.",
-        "url": "https://flowintent.com",
-      },
-      {
-        "@type": "Organization",
-        "@id": "https://flowintent.com/#organization",
-        "name": "FlowIntent",
-        "url": "https://flowintent.com",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://flowintent.com/logo-new.png",
-          "width": 512,
-          "height": 512,
-        },
-        "description": "AI-powered intent marketing platform for Google and AI search engines",
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "contactType": "customer support",
-          "email": "liam@flowintent.com",
-        },
-        "sameAs": [
-          "https://twitter.com/flowintent",
-          "https://linkedin.com/company/flowintent",
-        ],
-      },
-    ],
-  };
-
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
@@ -171,7 +100,7 @@ export default function RootLayout({
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchemaMarkup) }}
         />
       </head>
       <body

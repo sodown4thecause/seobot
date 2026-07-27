@@ -68,11 +68,6 @@ export default async function PricesPage({
           priceValidUntil: '2026-12-31',
           availability: 'https://schema.org/InStock',
           url: 'https://flowintent.com/prices',
-          hasMerchantReturnPolicy: {
-            '@type': 'MerchantReturnPolicy',
-            returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
-            merchantReturnDays: 7,
-          },
         },
       },
       {

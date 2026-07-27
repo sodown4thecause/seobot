@@ -5,7 +5,8 @@ import { buildPageMetadata } from '@/lib/seo/metadata'
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'FlowIntent Terms of Service | Platform Usage Agreement & Guidelines',
-  description: 'Read the terms and conditions for using the FlowIntent platform and services.',
+  description:
+    'Review the FlowIntent terms for accounts, acceptable use, AI-generated content, subscriptions, service limits, intellectual property and liability.',
   path: '/terms',
 })
 
