@@ -1,4 +1,14 @@
-import * as Sentry from '@sentry/nextjs'
-import './sentry.client.config'
+import posthog from 'posthog-js'
 
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
+const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com'
+
+if (posthogKey) {
+  posthog.init(posthogKey, {
+    api_host: posthogHost,
+    person_profiles: 'identified_only',
+    capture_pageview: false,
+    capture_pageleave: true,
+    capture_exceptions: true,
+  })
+}

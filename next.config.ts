@@ -1,7 +1,4 @@
 import type { NextConfig } from 'next'
-import { createRequire } from 'node:module'
-
-const require = createRequire(import.meta.url)
 
 const nextConfig: NextConfig = {
   trailingSlash: false,
@@ -33,7 +30,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/aeo-vs-seo',
-        destination: '/blog/aeo-vs-geo',
+        destination: '/blog/generative-engine-optimization-geo',
         permanent: true,
       },
       {
@@ -75,15 +72,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-let exportedConfig: NextConfig = nextConfig
-
-try {
-  const { withSentryConfig } = require('@sentry/nextjs') as typeof import('@sentry/nextjs')
-  exportedConfig = withSentryConfig(nextConfig, {
-    silent: true,
-  })
-} catch {
-  console.warn('[next.config] @sentry/nextjs unavailable; skipping Sentry config wrapper.')
-}
-
-export default exportedConfig
+export default nextConfig
