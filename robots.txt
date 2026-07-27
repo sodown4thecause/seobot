@@ -1,4 +1,7 @@
-User-Agent: *
+# Flowintent robots.txt
+# Public pages are crawlable. Private application and authentication routes remain blocked.
+
+User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /admin/
@@ -12,7 +15,8 @@ Disallow: /user-profile/
 Disallow: /auth/
 Disallow: /test-tailwind/
 
-User-Agent: GPTBot
+# AI answer-engine and search crawlers: allow public content for citation and discovery.
+User-agent: GPTBot
 Allow: /
 Disallow: /api/
 Disallow: /admin/
@@ -26,7 +30,7 @@ Disallow: /user-profile/
 Disallow: /auth/
 Disallow: /test-tailwind/
 
-User-Agent: ChatGPT-User
+User-agent: ChatGPT-User
 Allow: /
 Disallow: /api/
 Disallow: /admin/
@@ -40,7 +44,7 @@ Disallow: /user-profile/
 Disallow: /auth/
 Disallow: /test-tailwind/
 
-User-Agent: OAI-SearchBot
+User-agent: PerplexityBot
 Allow: /
 Disallow: /api/
 Disallow: /admin/
@@ -54,7 +58,7 @@ Disallow: /user-profile/
 Disallow: /auth/
 Disallow: /test-tailwind/
 
-User-Agent: PerplexityBot
+User-agent: ClaudeBot
 Allow: /
 Disallow: /api/
 Disallow: /admin/
@@ -68,7 +72,7 @@ Disallow: /user-profile/
 Disallow: /auth/
 Disallow: /test-tailwind/
 
-User-Agent: ClaudeBot
+User-agent: Google-Extended
 Allow: /
 Disallow: /api/
 Disallow: /admin/
@@ -82,7 +86,8 @@ Disallow: /user-profile/
 Disallow: /auth/
 Disallow: /test-tailwind/
 
-User-Agent: Google-Extended
+# Other existing crawler policies retained.
+User-agent: OAI-SearchBot
 Allow: /
 Disallow: /api/
 Disallow: /admin/
@@ -96,7 +101,22 @@ Disallow: /user-profile/
 Disallow: /auth/
 Disallow: /test-tailwind/
 
-User-Agent: Applebot-Extended
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: googleother
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: bytespider
+Allow: /
+
+User-agent: ccbot
+Allow: /
+
+User-agent: Applebot-Extended
 Allow: /
 Disallow: /api/
 Disallow: /admin/
