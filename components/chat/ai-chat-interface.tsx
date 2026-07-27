@@ -26,6 +26,7 @@ import { CrawlabilityAuditResult } from './tool-ui/crawlability-audit-result'
 import { GeoFixPlanResult } from './tool-ui/geo-fix-plan-result'
 import { CitationDeltaReport } from './tool-ui/citation-delta-report'
 import { FixCycleComposite } from './tool-ui/fix-cycle-composite'
+import { GeoScanProgress } from './tool-ui/geo-scan-progress'
 import type { ProactiveSuggestion } from '@/lib/proactive/types'
 import { useArtifactStore } from '@/lib/artifacts/artifact-store'
 import { syncArtifactsFromMessages } from '@/lib/artifacts/sync-from-messages'
@@ -38,6 +39,7 @@ import { getChatModeAccentClasses, getChatModeUi } from '@/lib/chat/modes'
 import { captureProductEvent } from '@/components/providers/analytics-provider'
 import { PRODUCT_EVENTS } from '@/lib/analytics/product-events'
 import { DEFAULT_GEO_ENGINES } from '@/lib/geo/utils'
+import { STARTER_PROMPTS_BY_MODE } from '@/lib/chat/starter-prompts'
 import { DataPartRenderer } from './generative-ui/registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -297,6 +299,15 @@ const ToolInvocation = ({
     return <GeoBrandScanResults toolInvocation={toolCall} onGenerateFix={onGenerateFix} />
   }
 
+  if ((toolName === 'geo_brand_scan' || toolName === 'geo_start_fix_cycle') && isLoading) {
+    return (
+      <GeoScanProgress
+        engines={args?.engines}
+        defaultEngines={toolName === 'geo_start_fix_cycle' ? ['chatgpt', 'perplexity', 'google_ai_overview'] : undefined}
+      />
+    )
+  }
+
   if (toolName === 'geo_start_fix_cycle' && isSuccess) {
     return <FixCycleComposite result={result} />
   }
@@ -483,6 +494,15 @@ const ToolPartInvocation = ({
       <GeoBrandScanResults
         toolInvocation={{ args: input, result: output, state: 'result' }}
         onGenerateFix={onGenerateFix}
+      />
+    )
+  }
+
+  if ((toolName === 'geo_brand_scan' || toolName === 'geo_start_fix_cycle') && isLoading) {
+    return (
+      <GeoScanProgress
+        engines={input?.engines}
+        defaultEngines={toolName === 'geo_start_fix_cycle' ? ['chatgpt', 'perplexity', 'google_ai_overview'] : undefined}
       />
     )
   }
@@ -1372,37 +1392,17 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
   // Empty State View - with styled ProactiveSuggestions
   if (messages.length === 0) {
-    const seoSuggestions = [
-      { id: 'keyword-gap', text: 'Analyze flowintent.com and tell me the top 5 keyword opportunities I\'m missing vs my competitors', icon: 'target' as const },
-      { id: 'keyword-target', text: 'What keywords should I target to rank for "AI SEO tools" — give me search volume, difficulty, and intent', icon: 'search' as const },
-      { id: 'competitor-scrape', text: 'Run a full competitor analysis for the keyword "content marketing platform" and scrape the top 3 ranking pages', icon: 'lightbulb' as const },
-      { id: 'backlink-profile', text: 'Check the backlink profile for ahrefs.com and identify their top referring domains', icon: 'zap' as const },
-    ]
-    const geoSuggestions = [
-      { id: 'ai-brand-visibility', text: 'My brand is "Flow Intent" (flowintent.com) — check if I appear across ChatGPT, Perplexity, and Google AI Overviews for "best AI SEO tools"', icon: 'sparkles' as const },
-      { id: 'geo-competitor', text: 'Track my brand "Flow Intent" for the query "alternatives to Ahrefs" and tell me which competitors appear', icon: 'target' as const },
-      { id: 'geo-optimize', text: 'How can I optimize my content to get cited in AI-generated answers?', icon: 'search' as const },
-      { id: 'geo-new-brand', text: 'I want to start tracking my brand across AI platforms — where do I begin?', icon: 'zap' as const },
-    ]
-    const contentSuggestions = [
-      { id: 'pillar-page', text: 'Write a comprehensive pillar page on "AI SEO" — research top-ranking competitors first', icon: 'lightbulb' as const },
-      { id: 'comparison-article', text: 'Create a comparison article for the top 5 AI writing tools, targeting "best AI writer" (check search volume first)', icon: 'target' as const },
-      { id: 'faq-page', text: 'Write an FAQ page targeting "People Also Ask" questions for the keyword "content marketing strategy"', icon: 'sparkles' as const },
-      { id: 'blog-post', text: 'Generate a blog post about Core Web Vitals optimization — include current Google benchmarks', icon: 'zap' as const },
-    ]
-    const socialSuggestions = [
-      { id: 'x-mentions', text: 'Search X for recent mentions of Flow Intent and summarize the main narratives, praise, complaints, and opportunities', icon: 'sparkles' as const },
-      { id: 'reddit-pain-points', text: 'Search Reddit for pain points around AI SEO tools and group them into content opportunities', icon: 'target' as const },
-      { id: 'competitor-social', text: 'Compare social reactions to Ahrefs and Semrush launches and find positioning gaps we can use', icon: 'search' as const },
-      { id: 'social-trends', text: 'Find emerging social-web trends for GEO and AI search across X, Reddit, and forums', icon: 'zap' as const },
-    ]
-    const modeMap = { seo: seoSuggestions, geo: geoSuggestions, content: contentSuggestions, social: socialSuggestions }
-    const defaultSuggestions = modeMap[chatMode] ?? seoSuggestions
+    const seoSuggestions = STARTER_PROMPTS_BY_MODE.seo
+    const geoSuggestions = STARTER_PROMPTS_BY_MODE.geo
+    const contentSuggestions = STARTER_PROMPTS_BY_MODE.content
+    const socialSuggestions = STARTER_PROMPTS_BY_MODE.social
+    const defaultSuggestions = STARTER_PROMPTS_BY_MODE[chatMode] ?? seoSuggestions
 
     const activeModeUi = getChatModeUi(chatMode)
 
     // GEO mode gets a dedicated workflow onboarding panel
     if (chatMode === 'geo') {
+      const geoAccent = getChatModeAccentClasses('geo')
       return (
         <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
           <div className="w-full max-w-3xl space-y-6 py-4">
@@ -1473,7 +1473,11 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   <button
                     key={s.id}
                     onClick={() => handleSendMessage({ text: s.text })}
-                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-violet-500/40 hover:bg-violet-500/5 hover:text-zinc-100 transition-all duration-200"
+                    className={cn(
+                      'text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:text-zinc-100 transition-all duration-200',
+                      geoAccent.promptHoverBorder,
+                      geoAccent.promptHoverBg
+                    )}
                   >
                     {s.text}
                   </button>
@@ -1487,6 +1491,7 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
 
     // SEO mode gets a dedicated workflow onboarding panel
     if (chatMode === 'seo') {
+      const seoAccent = getChatModeAccentClasses('seo')
       return (
         <div className={cn("flex flex-col h-full items-center justify-center p-6 relative bg-zinc-950 font-chat overflow-y-auto", className)}>
           <div className="w-full max-w-3xl space-y-6 py-4">
@@ -1552,7 +1557,11 @@ export const AIChatInterface = forwardRef<HTMLDivElement, AIChatInterfaceProps>(
                   <button
                     key={s.id}
                     onClick={() => handleSendMessage({ text: s.text })}
-                    className="text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:border-emerald-500/40 hover:bg-emerald-500/5 hover:text-zinc-100 transition-all duration-200"
+                    className={cn(
+                      'text-left px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-300 hover:text-zinc-100 transition-all duration-200',
+                      seoAccent.promptHoverBorder,
+                      seoAccent.promptHoverBg
+                    )}
                   >
                     {s.text}
                   </button>

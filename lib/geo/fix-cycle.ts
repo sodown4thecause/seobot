@@ -1,6 +1,5 @@
 import 'server-only'
 
-import { randomBytes } from 'node:crypto'
 import { and, count, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { geoFixCycles, geoPrompts, geoRuns, type GeoFixCycle, type GeoRun, type Json } from '@/lib/db/schema'
@@ -14,7 +13,11 @@ export const MAX_ACTIVE_FIX_CYCLES = 15
 export const DEFAULT_VERIFY_SCHEDULE = 'every_3_days'
 
 export function generateFixCycleShareToken(): string {
-  return randomBytes(32).toString('base64url')
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
 export type FixCycleStatus =
