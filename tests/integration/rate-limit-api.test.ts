@@ -9,10 +9,20 @@ import { POST as chatPOST } from '@/app/api/chat/route'
 import { POST as keywordsPOST } from '@/app/api/keywords/research/route'
 import { POST as contentGeneratePOST } from '@/app/api/content/generate/route'
 import { getRedisClient } from '@/lib/redis/client'
+import { resetRateLimitStateForTests } from '@/lib/redis/rate-limit'
 
 // Mock dependencies
 vi.mock('@/lib/redis/client', () => ({
   getRedisClient: vi.fn(),
+}))
+
+vi.mock('@/lib/auth', () => ({
+  getUserId: vi.fn(async () => null),
+  getCurrentUser: vi.fn(async () => ({
+    id: 'test-user-id',
+    email: 'test@test.com',
+    name: 'Test User',
+  })),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -92,6 +102,7 @@ describe('API Route Rate Limiting Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    resetRateLimitStateForTests()
     // Mock Redis as unavailable to use in-memory fallback
     vi.mocked(getRedisClient).mockReturnValue(null)
   })
@@ -120,7 +131,7 @@ describe('API Route Rate Limiting Integration', () => {
       }
 
       // Make requests up to the limit - create fresh request for each call
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 30; i++) {
         const req = createRequest('http://localhost/api/chat', body, '192.168.1.101')
         await chatPOST(req)
       }
@@ -239,7 +250,7 @@ describe('API Route Rate Limiting Integration', () => {
       }
 
       // Exceed limit for IP 1 - create fresh request for each call
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 30; i++) {
         const req1 = createRequest('http://localhost/api/chat', body, '192.168.1.200')
         await chatPOST(req1)
       }
