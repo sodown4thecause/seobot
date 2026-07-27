@@ -95,22 +95,19 @@ export async function logError(
       })
     }
 
-    // Sentry for server-side errors (5xx and agent failures)
+    // PostHog Error Tracking for server-side 5xx and agent failures.
     if (logEntry.level === 'error' && (logEntry.error.statusCode ?? 500) >= 500) {
-      void import('@sentry/nextjs').then((Sentry) => {
-        Sentry.captureException(new Error(logEntry.error.message), {
-          tags: {
-            agent: logEntry.context.agent,
-            provider: logEntry.context.provider,
-            endpoint: logEntry.context.endpoint,
-          },
-          extra: {
-            code: logEntry.error.code,
-            statusCode: logEntry.error.statusCode,
-            userId: logEntry.context.userId,
-            metadata: logEntry.metadata,
-          },
-        })
+      const { captureServerException } = await import('@/lib/analytics/posthog-server')
+      await captureServerException(error, {
+        distinctId: logEntry.context.userId ?? 'server',
+        properties: {
+          agent: logEntry.context.agent,
+          provider: logEntry.context.provider,
+          endpoint: logEntry.context.endpoint,
+          code: logEntry.error.code,
+          statusCode: logEntry.error.statusCode,
+          requestId: logEntry.context.requestId,
+        },
       })
     }
   } catch (logError) {

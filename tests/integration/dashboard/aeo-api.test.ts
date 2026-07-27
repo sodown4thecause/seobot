@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   buildAeoInsightsSnapshot: vi.fn(),
 }))
 
-vi.mock('@/lib/auth/clerk', () => ({
+vi.mock('@/lib/auth', () => ({
   getUserId: mocks.getUserId,
 }))
 
@@ -60,7 +60,7 @@ describe('aeo dashboard API routes', () => {
 
     expect(response.status).toBe(200)
     expect(payload.success).toBe(true)
-    expect(payload.refreshQueued).toBe(true)
-    expect(payload.jobId).toBeTypeOf('string')
+    expect(payload.refreshed).toBe(true)
+    expect(payload.data.workspace).toBe('aeo-insights')
   })
 })
