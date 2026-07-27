@@ -44,6 +44,7 @@ jobs:
       GOOGLE_CLIENT_ID: ci-google-client-id.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: ci-secure-google-client-secret
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ci-google-client-id.apps.googleusercontent.com
+      NEXT_PUBLIC_POSTHOG_KEY: phc_ci_error_tracking
       POLAR_ACCESS_TOKEN: polar_ci_secure_access_token
       POLAR_PRODUCT_ID: polar_ci_product_id
       POLAR_WEBHOOK_SECRET: polar_ci_secure_webhook_secret

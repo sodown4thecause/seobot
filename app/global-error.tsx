@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { captureClientException } from "@/components/providers/analytics-provider";
 
 export default function GlobalError({
   error,
@@ -10,8 +11,11 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error to console for debugging
     console.error("Global error:", error);
+    captureClientException(error, {
+      boundary: "global",
+      digest: error.digest,
+    });
   }, [error]);
 
   return (
@@ -35,7 +39,7 @@ export default function GlobalError({
               onClick={() => reset()}
               style={{
                 padding: '0.75rem 1.5rem',
-                backgroundColor: '#6366f1',
+                backgroundColor: '#dc2626',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '0.5rem',
