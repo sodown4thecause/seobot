@@ -4,6 +4,7 @@ import { db, redditGapAudits } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import { RedditGapResults } from '@/components/reddit-gap/RedditGapResults'
 import { buildPageMetadata } from '@/lib/seo/metadata'
+import { publicRedditGapAuditSelection } from '@/lib/reddit-gap/public-audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,7 +35,7 @@ export default async function RedditGapResultsPage({ params }: PageProps) {
   const { id } = await params
 
   const [audit] = await db
-    .select()
+    .select(publicRedditGapAuditSelection)
     .from(redditGapAudits)
     .where(eq(redditGapAudits.id, id))
     .limit(1)

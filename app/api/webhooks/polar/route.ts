@@ -7,16 +7,16 @@ import { eq } from 'drizzle-orm'
 
 type PolarSubscriptionPayload = {
   metadata?: Record<string, unknown>
-  customer_id?: string | null
+  customerId?: string | null
   id?: string | null
   status?: string | null
-  current_period_end?: string | null
+  currentPeriodEnd?: Date | null
 }
 
 type PolarOrderPayload = {
   id?: string | null
   amount?: number | null
-  customer_id?: string | null
+  customerId?: string | null
   metadata?: Record<string, unknown>
 }
 
@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
             case 'subscription.active':
             case 'subscription.revoked':
             case 'subscription.canceled':
+            case 'subscription.uncanceled':
                 await handleSubscriptionUpdate(event.data)
                 break
 
@@ -82,10 +83,10 @@ export async function POST(req: NextRequest) {
 
 async function handleSubscriptionUpdate(data: PolarSubscriptionPayload) {
     const userId = resolvePolarUserId(data.metadata)
-    const polarCustomerId = data.customer_id
+    const polarCustomerId = data.customerId
     const polarSubscriptionId = data.id
     const status = data.status
-    const currentPeriodEnd = data.current_period_end ? new Date(data.current_period_end) : null
+    const currentPeriodEnd = data.currentPeriodEnd ?? null
 
     if (userId) {
         await db.update(users)
@@ -115,7 +116,7 @@ async function handleOrderEvent(data: PolarOrderPayload, eventType: string) {
     console.log(`Processing Order Event: ${eventType}`, {
         orderId: data.id,
         amount: data.amount,
-        customerId: data.customer_id,
+        customerId: data.customerId,
         metadata: data.metadata
     })
 }

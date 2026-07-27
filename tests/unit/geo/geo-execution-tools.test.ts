@@ -89,6 +89,22 @@ Sitemap: https://example.com/sitemap.xml`
     expect(gpt.status).toBe('allowed')
     expect(perplexity.status).toBe('blocked')
   })
+
+  it('supports wildcard and end-anchored rules with Allow winning ties', () => {
+    const rules = parseRobotsTxt(`User-agent: *
+Disallow: /private/*
+Disallow: /docs$
+Allow: /docs
+
+User-agent: GPTBot
+Disallow: /docs/secret$
+Allow: /docs/secret`)
+
+    expect(evaluateCrawlerAccess(rules, 'PerplexityBot', ['/private/page']).status).toBe('partially_blocked')
+    expect(evaluateCrawlerAccess(rules, 'PerplexityBot', ['/docs']).status).toBe('allowed')
+    expect(evaluateCrawlerAccess(rules, 'GPTBot', ['/docs/secret']).status).toBe('allowed')
+    expect(evaluateCrawlerAccess(rules, 'GPTBot', ['/docs/secret/page']).status).toBe('allowed')
+  })
 })
 
 describe('schema markup tool', () => {

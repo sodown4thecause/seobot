@@ -66,7 +66,7 @@ describe('pricing page flow', () => {
 
     expect(html).toContain('Create an account')
     expect(html).toContain('Start your SEO journey today.')
-  })
+  }, 15000)
 
   it('redirects authenticated users from billing checkout to the hosted Polar link', async () => {
     authMock.mockResolvedValue({

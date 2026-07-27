@@ -20,6 +20,27 @@ function getPostHogClient(): PostHog | null {
   return posthogClient
 }
 
+export async function captureServerException(
+  error: unknown,
+  options?: {
+    distinctId?: string
+    properties?: Record<string, string | number | boolean | null | undefined>
+  }
+) {
+  const client = getPostHogClient()
+  if (!client) {
+    return
+  }
+
+  const properties = options?.properties
+    ? Object.fromEntries(
+        Object.entries(options.properties).filter(([, value]) => value !== undefined && value !== null)
+      )
+    : undefined
+
+  await client.captureExceptionImmediate(error, options?.distinctId ?? 'server', properties)
+}
+
 export async function captureServerProductEvent(
   distinctId: string,
   event: string,

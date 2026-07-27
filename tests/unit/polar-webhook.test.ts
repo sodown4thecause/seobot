@@ -45,8 +45,9 @@ describe('Polar webhook route', () => {
       type: 'subscription.updated',
       data: {
         id: 'sub_123',
-        customer_id: 'cust_123',
+        customerId: 'cust_123',
         status: 'active',
+        currentPeriodEnd: new Date('2026-08-01T00:00:00.000Z'),
         metadata: {
           userId: 'user_123',
         },
@@ -65,6 +66,12 @@ describe('Polar webhook route', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
+    expect(setMock).toHaveBeenCalledWith(expect.objectContaining({
+      subscriptionStatus: 'active',
+      polarCustomerId: 'cust_123',
+      polarSubscriptionId: 'sub_123',
+      currentPeriodEnd: new Date('2026-08-01T00:00:00.000Z'),
+    }))
     expect(eqMock).toHaveBeenCalledWith('betterAuthId', 'user_123')
   })
 })
