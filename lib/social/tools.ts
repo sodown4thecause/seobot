@@ -90,6 +90,8 @@ function normalizeTwitterItems(raw: unknown): SocialItem[] {
       const likes = firstNumber(record, ['likes', 'favorite_count', 'likeCount'])
       const replies = firstNumber(record, ['replies', 'reply_count', 'replyCount'])
       const reposts = firstNumber(record, ['retweets', 'retweet_count', 'retweetCount', 'reposts'])
+      const quotes = firstNumber(record, ['quotes', 'quote_count', 'quoteCount'])
+      const explicitEngagement = firstNumber(record, ['engagement'])
 
       items.push({
         id,
@@ -98,7 +100,7 @@ function normalizeTwitterItems(raw: unknown): SocialItem[] {
         author,
         url,
         source: author ? `@${author.replace(/^@/, '')}` : 'X/Twitter',
-        engagement: [likes, replies, reposts]
+        engagement: explicitEngagement ?? [likes, replies, reposts, quotes]
           .filter((value): value is number => typeof value === 'number')
           .reduce((sum, value) => sum + value, 0),
         createdAt: firstString(record, ['createdAt', 'created_at', 'date']),
@@ -167,7 +169,9 @@ export async function runTwitterSearch(input: {
 
   if (serverEnv.AI_GATEWAY_API_KEY) {
     try {
-      const items = (await searchTweetsViaGrok({ query: input.query })).slice(0, maxResults)
+      const items = normalizeTwitterItems(
+        await searchTweetsViaGrok({ query: input.query })
+      ).slice(0, maxResults)
       if (input.userId) {
         await trackAPICall(input.userId, {
           service: 'grok',

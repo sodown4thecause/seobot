@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
-import { requireUserId } from '@/lib/auth'
+import { getUserId } from '@/lib/auth'
 import { isAdmin } from '@/lib/auth/admin-check'
 import { db, redditGapAudits } from '@/lib/db'
 import { desc, sql } from 'drizzle-orm'
@@ -61,7 +61,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await requireUserId()
+    const userId = await getUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const admin = await isAdmin(userId)
     if (!admin) {
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })

@@ -6,8 +6,11 @@ const REDDIT_BASE = 'https://oauth.reddit.com'
 let cachedToken: { accessToken: string; expiresAt: number } | null = null
 
 async function fetchAccessToken(): Promise<string> {
-  const clientId = process.env.REDDIT_CLIENT_ID || '0C2vZ0aybA8iA2pXXFqvTA'
-  const clientSecret = process.env.REDDIT_CLIENT_SECRET || 'J2o0LXyR3MyxcxkMlLAuirtxWffh6g'
+  const clientId = process.env.REDDIT_CLIENT_ID?.trim()
+  const clientSecret = process.env.REDDIT_CLIENT_SECRET?.trim()
+  if (!clientId || !clientSecret) {
+    throw new Error('REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET are required')
+  }
 
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
 
