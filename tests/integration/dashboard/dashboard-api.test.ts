@@ -10,8 +10,22 @@ const mocks = vi.hoisted(() => ({
   listDashboardHistory: vi.fn(),
 }))
 
-vi.mock('@/lib/auth/clerk', () => ({
+vi.mock('@/lib/auth', () => ({
   getUserId: mocks.getUserId,
+}))
+
+vi.mock('@/lib/billing/subscription-guard', () => ({
+  requireApiSubscription: vi.fn(async () => {
+    const userId = await mocks.getUserId()
+    return userId
+      ? { success: true, userId, subscription: { hasSubscription: true } }
+      : {
+          success: false,
+          userId: null,
+          subscription: null,
+          error: { code: 'authentication_required', message: 'Authentication required', status: 401 },
+        }
+  }),
 }))
 
 vi.mock('@/lib/dashboard/website-audit/service', () => ({
@@ -58,7 +72,7 @@ function buildStatusContext(jobId: string) {
 
 describe('dashboard API routes', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
 
     mocks.getUserId.mockResolvedValue('user_123')
     mocks.runWebsiteAudit.mockResolvedValue({

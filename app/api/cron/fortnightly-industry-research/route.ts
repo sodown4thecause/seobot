@@ -3,6 +3,9 @@ import { timingSafeEqual } from 'crypto'
 import { serverEnv } from '@/lib/config/env'
 import { CHAT_MODES, isChatMode, type ChatMode } from '@/lib/chat/modes'
 import { runFortnightlyIndustryResearch } from '@/lib/research/fortnightly-industry'
+import { getRedisClient } from '@/lib/redis/client'
+import { getBatchHttpStatus, isBatchSuccessful } from '@/lib/cron/batch-status'
+import { getFortnightlyRunKey, runScheduledOnce } from '@/lib/cron/scheduled-run'
 
 export const maxDuration = 300
 
@@ -38,12 +41,31 @@ export async function GET(req: Request) {
       modes = rawModes as ChatMode[]
     }
 
-    const results = await runFortnightlyIndustryResearch(modes)
+    const force = new URL(req.url).searchParams.get('force') === 'true'
+    const execute = () => runFortnightlyIndustryResearch(modes)
+    const redis = getRedisClient()
+    if (!force && !redis) {
+      throw new Error('Redis is required for scheduled-run idempotency')
+    }
+    const modeKey = modes.slice().sort().join('-')
+    const scheduled = force
+      ? { executed: true as const, value: await execute() }
+      : await runScheduledOnce(
+          redis!,
+          getFortnightlyRunKey(`fortnightly-industry-research-${modeKey}`),
+          16 * 24 * 60 * 60,
+          execute,
+          isBatchSuccessful
+        )
+    if (!scheduled.executed) {
+      return NextResponse.json({ success: true, skipped: true, reason: 'already-executed' })
+    }
+    const results = scheduled.value
     const failed = results.filter(result => result.status === 'failed')
 
     return NextResponse.json(
       { success: failed.length === 0, results },
-      { status: failed.length > 0 && failed.length === results.length ? 500 : 200 }
+      { status: getBatchHttpStatus(results) }
     )
   } catch (error) {
     console.error('[Cron] Fortnightly industry research failed:', error)

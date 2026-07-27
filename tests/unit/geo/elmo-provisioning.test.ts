@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ensureElmoBrandForUser,
   inspectElmoBrandForUser,
+  deriveElmoBrandId,
 } from '@/lib/geo/elmo-provisioning'
 
 const mockGetBusinessProfile = vi.fn()
@@ -113,5 +114,13 @@ describe('elmo-provisioning', () => {
 
     expect(brand).toBeNull()
     expect(mockGetElmoBrand).not.toHaveBeenCalled()
+  })
+
+  it('uses a SHA-256 digest of the complete user ID in the brand ID', () => {
+    const first = deriveElmoBrandId('user-abcdefgh-111111', 'https://example.com')
+    const second = deriveElmoBrandId('user-abcdefgh-222222', 'https://example.com')
+
+    expect(first).not.toBe(second)
+    expect(first).toMatch(/^fi-example-com-[0-9a-f]{64}$/)
   })
 })

@@ -8,6 +8,10 @@ import {
 import { getLatestLocalDigest, getLocalDigest, getRecentJobRuns, listLocalDigests } from '../db/local.js'
 import type { CompanionConfig } from '../config.js'
 
+const MAX_REQUEST_BODY_BYTES = 1024 * 1024
+
+class RequestBodyTooLargeError extends Error {}
+
 function sendJson(response: import('node:http').ServerResponse, status: number, body: unknown) {
   response.writeHead(status, { 'Content-Type': 'application/json' })
   response.end(JSON.stringify(body))
@@ -15,7 +19,17 @@ function sendJson(response: import('node:http').ServerResponse, status: number, 
 
 async function readJsonBody(request: import('node:http').IncomingMessage) {
   const chunks: Buffer[] = []
-  for await (const chunk of request) chunks.push(Buffer.from(chunk))
+  let bytesRead = 0
+
+  for await (const chunk of request) {
+    const buffer = Buffer.from(chunk)
+    bytesRead += buffer.byteLength
+    if (bytesRead > MAX_REQUEST_BODY_BYTES) {
+      throw new RequestBodyTooLargeError('Request body exceeds one MiB')
+    }
+    chunks.push(buffer)
+  }
+
   if (chunks.length === 0) return null
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
 }
@@ -71,6 +85,9 @@ export function startReadApi(pool: pg.Pool, config: CompanionConfig) {
 
       if (request.method === 'GET' && path === '/trends') {
         const days = Number(url.searchParams.get('days') ?? '30')
+        if (!Number.isInteger(days)) {
+          return sendJson(response, 400, { error: 'days must be an integer' })
+        }
         const rows = await listLocalDigests(pool, Math.min(Math.max(days, 1), 90))
         const digests = rows.map(row => dailyDigestDocumentSchema.parse(row.digest))
         return sendJson(response, 200, { days, digests })
@@ -83,13 +100,19 @@ export function startReadApi(pool: pg.Pool, config: CompanionConfig) {
 
       return sendJson(response, 404, { error: 'Not found' })
     } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        return sendJson(response, 413, { error: error.message })
+      }
+      if (error instanceof SyntaxError) {
+        return sendJson(response, 400, { error: 'Request body must be valid JSON' })
+      }
       return sendJson(response, 500, {
         error: error instanceof Error ? error.message : 'Internal server error',
       })
     }
   })
 
-  server.listen(config.READ_API_PORT, () => {
+  server.listen(config.READ_API_PORT, '127.0.0.1', () => {
     console.log(`geomode companion read API listening on :${config.READ_API_PORT}`)
   })
 

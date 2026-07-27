@@ -104,18 +104,23 @@ function matchesAgent(ruleAgent: string, targetAgent: string): boolean {
   return rule === target
 }
 
-function pathMatchesPattern(path: string, pattern: string): boolean {
-  if (!pattern || pattern === '') return false
-  if (pattern === '/') return true
+function pathMatchesPattern(path: string, pattern: string) {
+  if (!pattern) return false
 
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const normalizedPattern = pattern.startsWith('/') ? pattern : `/${pattern}`
+  const endAnchored = normalizedPattern.endsWith('$')
+  const patternBody = endAnchored ? normalizedPattern.slice(0, -1) : normalizedPattern
+  const escaped = patternBody
+    .split('*')
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('.*')
 
-  if (normalizedPattern.endsWith('*')) {
-    return normalizedPath.startsWith(normalizedPattern.slice(0, -1))
-  }
+  return new RegExp(`^${escaped}${endAnchored ? '$' : ''}`).test(normalizedPath)
+}
 
-  return normalizedPath === normalizedPattern || normalizedPath.startsWith(`${normalizedPattern}/`)
+function patternSpecificity(pattern: string) {
+  return pattern.replace(/\*|\$$/g, '').length
 }
 
 export function evaluateCrawlerAccess(
@@ -146,17 +151,22 @@ export function evaluateCrawlerAccess(
   let rootBlocked = false
 
   for (const path of checkPaths) {
-    let allowed = true
+    const matchingRules = relevant.flatMap((rule) => [
+      ...rule.disallow
+        .filter((pattern) => pathMatchesPattern(path, pattern))
+        .map((pattern) => ({ allowed: false, specificity: patternSpecificity(pattern) })),
+      ...rule.allow
+        .filter((pattern) => pathMatchesPattern(path, pattern))
+        .map((pattern) => ({ allowed: true, specificity: patternSpecificity(pattern) })),
+    ])
+    const longestMatch = Math.max(0, ...matchingRules.map((rule) => rule.specificity))
+    const allowed = matchingRules
+      .filter((rule) => rule.specificity === longestMatch)
+      .some((rule) => rule.allowed)
 
-    for (const rule of relevant) {
-      const disallowHit = rule.disallow.some((d) => pathMatchesPattern(path, d))
-      const allowHit = rule.allow.some((a) => pathMatchesPattern(path, a))
-
-      if (disallowHit && !allowHit) {
-        allowed = false
-        blockedPaths.push(path)
-        if (path === '/') rootBlocked = true
-      }
+    if (matchingRules.length > 0 && !allowed) {
+      blockedPaths.push(path)
+      if (path === '/') rootBlocked = true
     }
   }
 

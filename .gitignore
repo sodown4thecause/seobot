@@ -95,7 +95,6 @@ NUL
 .sisyphus/
 logs/
 tmp/
-e2e/
 plans/
 sanity-content/
 
