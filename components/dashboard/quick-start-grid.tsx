@@ -35,14 +35,9 @@ const INSTANT_CAMPAIGNS: QuickStartAction[] = [
 
 const QUICK_START_ACTIONS: QuickStartAction[] = [
   {
-    title: 'SEO Tools',
-    description: 'Keyword analysis, content gaps & search volume',
-    workflow: 'seo-tools',
-  },
-  {
     title: 'Create Ranking Content',
     description: 'Generate SEO-optimized content',
-    workflow: 'complete-ranking-campaign',
+    workflow: 'ranking-campaign',
   },
   {
     title: 'Audit My Website',
@@ -159,5 +154,4 @@ export function QuickStartGrid({ onWorkflowSelect }: QuickStartGridProps) {
     </div>
   )
 }
-
 

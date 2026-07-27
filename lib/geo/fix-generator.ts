@@ -58,7 +58,7 @@ function buildContentBrief(params: {
           'Include FAQ schema for each objection',
           'Add Organization schema linking ${brand} entity',
         ],
-        estimatedImpact: 'High — comparison pages are the #1 cited content type on Perplexity.',
+        estimatedImpact: 'Heuristic estimate — high potential; comparison pages are often cited by Perplexity.',
       }
 
     case 'faq_block':
@@ -77,7 +77,7 @@ function buildContentBrief(params: {
           'FAQPage JSON-LD matching visible content exactly',
           'Include specific numbers and dates where possible',
         ],
-        estimatedImpact: 'Medium-high — FAQ schema directly feeds Google AI Overviews and Gemini.',
+        estimatedImpact: 'Heuristic estimate — medium-high potential; FAQ schema can support Google AI Overviews and Gemini.',
       }
 
     case 'schema_fix':
@@ -96,7 +96,7 @@ function buildContentBrief(params: {
           'sameAs links to G2, LinkedIn, Crunchbase',
           'Visible content must mirror structured data',
         ],
-        estimatedImpact: 'Medium — entity clarity improves Gemini and Google AI Overview inclusion.',
+        estimatedImpact: 'Heuristic estimate — medium potential; entity clarity may improve Gemini and Google AI Overview inclusion.',
       }
 
     case 'third_party_coverage':
@@ -115,7 +115,7 @@ function buildContentBrief(params: {
           'Ensure NAP and brand description consistency across platforms',
           'Track which third-party URLs get cited in AI answers',
         ],
-        estimatedImpact: 'High — ChatGPT heavily weights third-party validation over owned content.',
+        estimatedImpact: 'Heuristic estimate — high potential; third-party validation can strengthen ChatGPT visibility.',
       }
 
     default:
@@ -135,7 +135,7 @@ function buildContentBrief(params: {
           'Cite authoritative sources inline',
           'Include updated date and author credentials',
         ],
-        estimatedImpact: 'Medium — authoritative guides earn citations when competitors lack depth.',
+        estimatedImpact: 'Heuristic estimate — medium potential; authoritative guides may earn citations when competitors lack depth.',
       }
   }
 }

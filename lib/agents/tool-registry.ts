@@ -73,6 +73,7 @@ export const TOOL_REGISTRY: Record<AgentId, string[]> = {
     'firecrawl_map',
     'firecrawl_extract',
     'firecrawl_check_crawl_status',
+    'geo_fix_cycle_status',
   ],
 
   [AGENT_IDS.GEO]: [
@@ -88,6 +89,9 @@ export const TOOL_REGISTRY: Record<AgentId, string[]> = {
     'geo_daily_digest',
     'geo_perplexity_direct_probe',
     'geo_gateway_control_probe',
+    'geo_start_fix_cycle',
+    'geo_mark_fix_shipped',
+    'geo_fix_cycle_status',
   ],
 
   [AGENT_IDS.CONTENT]: [

@@ -19,6 +19,7 @@ import { getEnhancedContentQualityTools } from '@/lib/ai/content-quality-enhance
 import { getAEOTools } from '@/lib/ai/aeo-tools'
 import { getAEOPlatformTools } from '@/lib/ai/aeo-platform-tools'
 import { getGEOTools, getGeoExecutionTools } from '@/lib/geo/brand-tracker'
+import { getGeoFixCycleTools } from '@/lib/geo/fix-cycle-tools'
 import {
   backlinkAnchors,
   backlinksList,
@@ -578,10 +579,17 @@ export async function assembleTools(options: ToolAssemblyOptions): Promise<Recor
     ...((agent === 'seo-aeo' || intentTools?.includes('n8n_backlinks')) ? { legacy_n8n_backlinks: createBacklinksTool() } : {}),
 
     // AEO Tools - Only for SEO/AEO agent (citation analysis, EEAT detection, platform optimization)
-    ...(agent === 'seo-aeo' ? { ...getAEOTools(), ...getAEOPlatformTools(), ...getGeoExecutionTools(userId) } : {}),
+    ...(agent === 'seo-aeo'
+      ? {
+          ...getAEOTools(),
+          ...getAEOPlatformTools(),
+          ...getGeoExecutionTools(userId),
+          geo_fix_cycle_status: getGeoFixCycleTools(userId).geo_fix_cycle_status,
+        }
+      : {}),
 
     // GEO Tools - Only for GEO agent (real-time brand mentions across ChatGPT, Gemini, Perplexity)
-    ...(agent === 'geo' ? getGEOTools(userId) : {}),
+    ...(agent === 'geo' ? { ...getGEOTools(userId), ...getGeoFixCycleTools(userId) } : {}),
 
     // MCP Tools - Use intent-based filtering for SEO/AEO, otherwise load by agent type
     ...(intentTools && intentTools.length > 0

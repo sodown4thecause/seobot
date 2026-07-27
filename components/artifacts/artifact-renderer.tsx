@@ -8,11 +8,15 @@ import { SchemaMarkupArtifact } from '@/components/chat/tool-ui/schema-markup-re
 import { CrawlabilityAuditArtifact } from '@/components/chat/tool-ui/crawlability-audit-result'
 import { GeoFixPlanArtifact } from '@/components/chat/tool-ui/geo-fix-plan-result'
 import { GeoBrandScanResults } from '@/components/chat/tool-ui/geo-brand-scan-results'
+import { SERPTable } from '@/components/chat/tool-ui/serp-table'
+import { CitationDeltaReportArtifact } from '@/components/chat/tool-ui/citation-delta-report'
+import { FixCycleComposite } from '@/components/chat/tool-ui/fix-cycle-composite'
 import { SocialListeningResult } from '@/components/chat/tool-ui/social-listening-result'
 import { getArtifactDefinition } from '@/lib/artifacts/registry'
 import type { ArtifactStatus, ArtifactType } from '@/lib/artifacts/types'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import type { GeoFixPlan } from '@/lib/geo/fix-generator'
 
 export interface ArtifactRendererProps {
   type: ArtifactType
@@ -21,39 +25,10 @@ export interface ArtifactRendererProps {
   className?: string
 }
 
-function PlannedArtifactPlaceholder({
-  type,
-  status,
-}: {
-  type: ArtifactType
-  status: ArtifactStatus
-}) {
-  const definition = getArtifactDefinition(type)
-
-  return (
-    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-      <Badge variant="outline" className="mb-4 text-zinc-400 border-zinc-700">
-        Coming soon
-      </Badge>
-      <h3 className="text-lg font-semibold text-zinc-100">{definition.label}</h3>
-      <p className="mt-2 text-sm text-zinc-500 max-w-sm">{definition.description}</p>
-      {status === 'streaming' || status === 'loading' ? (
-        <p className="mt-4 text-xs text-zinc-600 animate-pulse">Generating…</p>
-      ) : null}
-    </div>
-  )
-}
-
 export function ArtifactRenderer({ type, data, status, className }: ArtifactRendererProps) {
   const definition = getArtifactDefinition(type)
 
-  if (definition.status === 'planned') {
-    return (
-      <div className={cn('h-full', className)}>
-        <PlannedArtifactPlaceholder type={type} status={status} />
-      </div>
-    )
-  }
+  if (!definition.visible) return null
 
   switch (type) {
     case 'keyword':
@@ -96,10 +71,8 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
       )
     case 'serp':
       return (
-        <div className={cn('h-full overflow-auto p-6', className)}>
-          <pre className="text-xs text-zinc-400 whitespace-pre-wrap">
-            {data ? JSON.stringify(data, null, 2) : 'Loading SERP data…'}
-          </pre>
+        <div className={cn('h-full overflow-auto', className)}>
+          <SERPArtifact data={data} status={status} />
         </div>
       )
     case 'schema-markup-generator':
@@ -117,15 +90,19 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
     case 'geo-content-gap-report':
       return (
         <div className={cn('h-full overflow-auto', className)}>
-          <GeoFixPlanArtifact data={data} />
+          {isFixCycleResult(data) ? <FixCycleComposite result={data} /> : <GeoFixPlanArtifact data={data} />}
         </div>
       )
     case 'citation-tracker':
       return (
         <div className={cn('h-full overflow-auto', className)}>
-          <GeoBrandScanResults
-            toolInvocation={{ result: data as Parameters<typeof GeoBrandScanResults>[0]['toolInvocation']['result'], state: status === 'complete' ? 'result' : status }}
-          />
+          {hasCitationDelta(data) ? (
+            <CitationDeltaReportArtifact data={data} />
+          ) : (
+            <GeoBrandScanResults
+              toolInvocation={{ result: data as Parameters<typeof GeoBrandScanResults>[0]['toolInvocation']['result'], state: status === 'complete' ? 'result' : status }}
+            />
+          )}
         </div>
       )
     default:
@@ -135,6 +112,44 @@ export function ArtifactRenderer({ type, data, status, className }: ArtifactRend
         </div>
       )
   }
+}
+
+function SERPArtifact({ data, status }: { data: unknown; status: ArtifactStatus }) {
+  if (!data && status !== 'complete') {
+    return <p className="p-6 text-sm text-zinc-500">Loading SERP data…</p>
+  }
+
+  if (isStructuredSerpData(data) || typeof data === 'string' || data === null) {
+    return <SERPTable toolInvocation={{ result: data, state: status === 'complete' ? 'result' : status }} />
+  }
+
+  return (
+    <div className="p-6">
+      <p className="mb-3 text-sm text-zinc-400">SERP results were returned in an unsupported format.</p>
+      <pre className="whitespace-pre-wrap text-xs text-zinc-500">{JSON.stringify(data, null, 2)}</pre>
+    </div>
+  )
+}
+
+function isStructuredSerpData(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false
+  if (Array.isArray(data)) {
+    return Array.isArray((data[0] as { result?: Array<{ items?: unknown[] }> } | undefined)?.result?.[0]?.items)
+  }
+  return Array.isArray((data as { items?: unknown[] }).items)
+}
+
+function isFixCycleResult(data: unknown): data is {
+  success?: boolean
+  cycle: { fixPlan?: GeoFixPlan | null }
+} {
+  return Boolean(data && typeof data === 'object' && 'cycle' in data && (data as { cycle?: unknown }).cycle)
+}
+
+function hasCitationDelta(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false
+  const value = data as { delta?: unknown; cycle?: { latestDelta?: unknown } }
+  return Boolean(value.delta || value.cycle?.latestDelta)
 }
 
 function DefaultArtifactData({ type, data }: { type: ArtifactType; data: unknown }) {

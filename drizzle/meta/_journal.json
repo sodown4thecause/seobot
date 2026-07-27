@@ -36,6 +36,13 @@
       "when": 1736416298307,
       "tag": "0004_add_vector_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784875283441,
+      "tag": "0005_geo_fix_cycles",
+      "breakpoints": true
     }
   ]
 }
