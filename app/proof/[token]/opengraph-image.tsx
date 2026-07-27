@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
 import { getSharedFixCycle } from '@/lib/geo/fix-cycle'
 import type { GeoCitationDelta } from '@/lib/geo/citation-delta'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 export const alt = 'FlowIntent GEO proof report'
 export const size = {
   width: 1200,
