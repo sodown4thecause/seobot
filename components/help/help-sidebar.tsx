@@ -77,7 +77,7 @@ export function HelpSidebar({ isOpen, onClose, currentContext }: HelpSidebarProp
                   key={topic.id}
                   className="w-full flex items-center gap-3 p-3 rounded-md hover:bg-zinc-800 transition-colors text-left"
                   onClick={() => {
-                    window.open('/guides', '_blank')
+                    window.open('/blog', '_blank')
                   }}
                 >
                   <Icon className="h-5 w-5 text-zinc-400" />

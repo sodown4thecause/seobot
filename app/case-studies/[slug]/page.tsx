@@ -4,7 +4,11 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Navbar } from '@/components/navbar'
 import { buildPageMetadata } from '@/lib/seo/metadata'
-import { getCaseStudy, getCaseStudySlugs } from '@/lib/case-studies'
+import {
+  getCaseStudy,
+  getCaseStudySlugs,
+  getRelatedCaseStudies,
+} from '@/lib/case-studies'
 import { CHAT_MODE_UI, CHAT_MODE_ACCENT_CLASSES } from '@/lib/chat/modes'
 
 interface CaseStudyPageProps {
@@ -39,6 +43,7 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
   if (!study) notFound()
 
   const accent = CHAT_MODE_ACCENT_CLASSES[CHAT_MODE_UI[study.mode].accent]
+  const relatedStudies = getRelatedCaseStudies(study.slug)
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -95,6 +100,23 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
             </section>
           ))}
         </div>
+
+        {relatedStudies.length > 0 && (
+          <aside className="mt-14 border-t border-white/10 pt-8" aria-labelledby="related-case-studies">
+            <h2 id="related-case-studies" className="mb-4 text-2xl font-bold uppercase tracking-tight">
+              More case studies
+            </h2>
+            {relatedStudies.map((relatedStudy) => (
+              <Link
+                key={relatedStudy.slug}
+                href={`/case-studies/${relatedStudy.slug}`}
+                className="block text-zinc-300 hover:text-white"
+              >
+                {relatedStudy.title}
+              </Link>
+            ))}
+          </aside>
+        )}
 
         <div className="mt-16 border-t border-white/10 pt-10 text-center">
           <Link

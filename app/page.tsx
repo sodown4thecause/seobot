@@ -1,14 +1,15 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Script from 'next/script'
-import { LandingPageClient } from '@/components/landing/landing-page-client'
+import { AuthErrorRedirect } from '@/components/landing/landing-page-client'
+import { LandingPageContent } from '@/components/landing/landing-page-content'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 import { faqSchema } from '@/lib/faq'
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Intent-Based Marketing & AI SEO Platform | FlowIntent',
   description:
-    'FlowIntent is the AI-powered intent marketing platform for answer engine optimization (AEO). Optimize for Google, ChatGPT, Perplexity and Gemini with AI trust audits, buyer intent analysis, and automated content creation.',
+    'FlowIntent unifies SEO, GEO and AEO research for Google, ChatGPT, Perplexity and Google AI Overviews, with live data and content workflows.',
   path: '/',
   keywords: [
     'intent based marketing',
@@ -35,8 +36,9 @@ export default function LandingPage() {
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
+      <LandingPageContent />
       <Suspense fallback={null}>
-        <LandingPageClient />
+        <AuthErrorRedirect />
       </Suspense>
     </>
   )

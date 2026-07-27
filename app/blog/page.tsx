@@ -7,7 +7,8 @@ import { getBlogPosts } from '@/lib/webflow'
 
 export const metadata = buildPageMetadata({
   title: 'Blog | FlowIntent',
-  description: 'Insights, strategies, and updates on AEO, AI SEO, and building cite-worthy content.',
+  description:
+    'Practical FlowIntent guides for SEO, GEO and AEO, including AI citations, content research, Google AI Overviews and answer-engine visibility.',
   path: '/blog',
   type: 'website',
 })

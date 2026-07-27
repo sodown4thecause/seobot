@@ -2,11 +2,15 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Metadata } from 'next'
-import DOMPurify from 'isomorphic-dompurify'
 import { Navbar } from '@/components/navbar'
+import {
+  buildBlogMetadataText,
+  sanitizeBlogBody,
+  selectRelatedBlogPosts,
+} from '@/lib/seo/blog-content'
 import { buildPageMetadata } from '@/lib/seo/metadata'
 import { absoluteUrl } from '@/lib/seo/site'
-import { getBlogPost, getBlogSlugs } from '@/lib/webflow'
+import { getBlogPost, getBlogPosts, getBlogSlugs } from '@/lib/webflow'
 
 function safeJsonLd(input: object): string {
   return JSON.stringify(input)
@@ -34,9 +38,13 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   if (!post) {
     return { title: 'Post Not Found | FlowIntent' }
   }
-  return buildPageMetadata({
-    title: `${post.name} | Blog | FlowIntent`,
+  const seoText = buildBlogMetadataText({
+    title: post.name,
     description: post.summary ?? `Read "${post.name}" on the FlowIntent blog.`,
+  })
+  return buildPageMetadata({
+    title: seoText.title,
+    description: seoText.description,
     path: `/blog/${post.slug}`,
     type: 'article',
     imagePath: post.thumbnailImage ?? post.mainImage ?? undefined,
@@ -52,6 +60,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   if (!post.body) {
     notFound()
   }
+  const relatedPosts = selectRelatedBlogPosts(await getBlogPosts(), post.slug, 3)
 
   const articleSchema = {
     '@context': 'https://schema.org',
@@ -120,8 +129,28 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         <div
           className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-a:text-blue-400 hover:prose-a:text-blue-300"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.body, { ADD_TAGS: ['img'], ADD_ATTR: ['loading', 'fetchpriority'] }) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeBlogBody(post.body) }}
         />
+
+        {relatedPosts.length > 0 && (
+          <aside className="mt-14 border-t border-white/10 pt-8" aria-labelledby="related-articles">
+            <h2 id="related-articles" className="mb-5 text-2xl font-bold text-white">
+              Related articles
+            </h2>
+            <ul className="space-y-3">
+              {relatedPosts.map((relatedPost) => (
+                <li key={relatedPost.slug}>
+                  <Link
+                    href={`/blog/${relatedPost.slug}`}
+                    className="text-blue-400 hover:text-blue-300"
+                  >
+                    {relatedPost.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )}
       </article>
     </div>
   )
